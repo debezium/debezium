@@ -24,9 +24,10 @@
         <postgres.encoding>UTF8</postgres.encoding>
         <postgres.system.lang>en_US.utf8</postgres.system.lang>
         <postgres.image>debezium/postgres:${version.postgres.server}</postgres.image>
+        <postgres.config.file>/usr/share/postgresql/postgresql.conf.sample</postgres.config.file>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
-        <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; /usr/share/postgresql/postgresql.conf.sample</docker.initimage>
+        <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
     </properties>
