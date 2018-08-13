@@ -12,6 +12,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.ExtractField;
+import org.apache.kafka.connect.transforms.InsertField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,9 +59,22 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             .withDescription("Drop delete records converted to tombstones records if a processing connector "
                     + "cannot process them or a compaction is undesirable.");
 
+    private static final Field REWRITE_DELETES = Field.create("rewrite.deletes")
+            .withDisplayName("Rewrite outgoing tombstones")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(false)
+            .withDescription("Rewrite delete records converted to tombstones records if a processing connector "
+                    + "cannot process them or a compaction is undesirable.");
+
     private boolean dropTombstones;
     private boolean dropDeletes;
-    private final ExtractField<R> delegate = new ExtractField.Value<R>();
+    private boolean rewriteDeletes;
+    private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
+    private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
+    private final InsertField<R> removedDelegate = new InsertField.Value<R>();
+    private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -72,10 +86,25 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
 
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
         dropDeletes = config.getBoolean(DROP_DELETES);
+        rewriteDeletes = config.getBoolean(REWRITE_DELETES);
 
-        final Map<String, String> delegateConfig = new HashMap<>();
+        Map<String, String> delegateConfig = new HashMap<>();
+        delegateConfig.put("field", "before");
+        beforeDelegate.configure(delegateConfig);
+
+        delegateConfig = new HashMap<>();
         delegateConfig.put("field", "after");
-        delegate.configure(delegateConfig);
+        afterDelegate.configure(delegateConfig);
+
+        delegateConfig = new HashMap<>();
+        delegateConfig.put("static.field", "__deleted!");
+        delegateConfig.put("static.value", "true");
+        removedDelegate.configure(delegateConfig);
+
+        delegateConfig = new HashMap<>();
+        delegateConfig.put("static.field", "__deleted!");
+        delegateConfig.put("static.value", "false");
+        updatedDelegate.configure(delegateConfig);
     }
 
     @Override
@@ -93,10 +122,19 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             logger.warn("Expected Envelope for transformation, passing it unchanged");
             return record;
         }
-        final R newRecord = delegate.apply(record);
+        final R newRecord = afterDelegate.apply(record);
         if (newRecord.value() == null && dropDeletes) {
             logger.trace("Delete message {} requested to be dropped", record.key());
             return null;
+        }
+        if (rewriteDeletes) {
+            logger.trace("Delete message {} requested to be rewrited", record.key());
+            final R oldRecord = beforeDelegate.apply(record);
+            if (newRecord.value() == null) {
+                return removedDelegate.apply(oldRecord);
+            } else {
+                return updatedDelegate.apply(newRecord);
+            }
         }
         return newRecord;
     }
@@ -110,7 +148,10 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
 
     @Override
     public void close() {
-        delegate.close();
+        beforeDelegate.close();
+        afterDelegate.close();
+        removedDelegate.close();
+        updatedDelegate.close();
     }
 
 }
