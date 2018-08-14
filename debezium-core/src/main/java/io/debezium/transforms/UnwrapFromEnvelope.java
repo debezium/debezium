@@ -8,6 +8,7 @@ package io.debezium.transforms;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.config.EnumeratedValue;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -38,7 +39,53 @@ import io.debezium.config.Field;
  */
 public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    public static enum DeleteHandling implements EnumeratedValue {
+        DROP("drop"),
+        REWRITE("rewrite"),
+        NONE("none");
+
+        private final String value;
+
+        private DeleteHandling(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DeleteHandling parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DeleteHandling option : DeleteHandling.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DeleteHandling parse(String value, String defaultValue) {
+            DeleteHandling mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
     private static final String ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
+    private static final String DELETED_FIELD = "__deleted!";
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
             .withDisplayName("Drop tombstones")
@@ -55,24 +102,22 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             .withType(ConfigDef.Type.BOOLEAN)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault(true)
             .withDescription("Drop delete records converted to tombstones records if a processing connector "
                     + "cannot process them or a compaction is undesirable.");
 
     private static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
             .withDisplayName("Handle delete records")
-            .withType(ConfigDef.Type.STRING)
+            .withEnum(DeleteHandling.class, DeleteHandling.DROP)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault(true)
             .withDescription("How to handle delete records. Options are: "
                     + "none - records are passed,"
                     + "drop - records are removed,"
-                    + "rewrite - __delete field is added to records.");
+                    + "rewrite - __deleted field is added to records.");
 
     private boolean dropTombstones;
     private boolean dropDeletes;
-    private String handleDeletes;
+    private DeleteHandling handleDeletes;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
@@ -81,20 +126,20 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     @Override
     public void configure(final Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
-        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, HANDLE_DELETES);
+        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, DROP_DELETES, HANDLE_DELETES);
         if (!config.validateAndRecord(configFields, logger::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
-        dropDeletes = config.getBoolean(DROP_DELETES);
-        if (dropDeletes) {
-            handleDeletes = "drop";
-        } else {
-            handleDeletes = "none";
-        }
-        if (!config.getString(HANDLE_DELETES).isEmpty()) {
-            handleDeletes = config.getString(HANDLE_DELETES);
+        handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
+        if (config.hasKey(DROP_DELETES.name())) {
+            dropDeletes = config.getBoolean(DROP_DELETES);
+            if (dropDeletes) {
+                handleDeletes = DeleteHandling.DROP;
+            } else {
+                handleDeletes = DeleteHandling.NONE;
+            }
         }
 
         Map<String, String> delegateConfig = new HashMap<>();
@@ -106,12 +151,12 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         afterDelegate.configure(delegateConfig);
 
         delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", "__deleted!");
+        delegateConfig.put("static.field", DELETED_FIELD);
         delegateConfig.put("static.value", "true");
         removedDelegate.configure(delegateConfig);
 
         delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", "__deleted!");
+        delegateConfig.put("static.field", DELETED_FIELD);
         delegateConfig.put("static.value", "false");
         updatedDelegate.configure(delegateConfig);
     }
@@ -135,10 +180,10 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         if (newRecord.value() == null) {
             // Handling delete records
             switch (handleDeletes) {
-                case "drop":
+                case DROP:
                     logger.trace("Delete message {} requested to be dropped", record.key());
                     return null;
-                case "rewrite":
+                case REWRITE:
                     logger.trace("Delete message {} requested to be rewritten", record.key());
                     final R oldRecord = beforeDelegate.apply(record);
                     return removedDelegate.apply(oldRecord);
@@ -148,7 +193,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         } else {
             // Handling insert and update records
             switch (handleDeletes) {
-                case "rewrite":
+                case REWRITE:
                     logger.trace("Delete message {} requested to be rewritten", record.key());
                     return updatedDelegate.apply(newRecord);
                 default:
@@ -160,7 +205,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, DROP_TOMBSTONES, HANDLE_DELETES);
+        Field.group(config, null, DROP_TOMBSTONES, DROP_DELETES, HANDLE_DELETES);
         return config;
     }
 
