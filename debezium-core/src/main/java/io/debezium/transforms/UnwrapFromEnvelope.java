@@ -50,6 +50,15 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                     + "a delete record was generated. This record is usually filtered out to avoid duplicates "
                     + "as a delete record is converted to a tombstone record, too");
 
+    private static final Field DROP_DELETES = Field.create("drop.deletes")
+            .withDisplayName("Drop outgoing tombstones")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(true)
+            .withDescription("Drop delete records converted to tombstones records if a processing connector "
+                    + "cannot process them or a compaction is undesirable.");
+
     private static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
             .withDisplayName("Handle delete records")
             .withType(ConfigDef.Type.STRING)
@@ -62,6 +71,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                     + "rewrite - __delete field is added to records.");
 
     private boolean dropTombstones;
+    private boolean dropDeletes;
     private String handleDeletes;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
@@ -77,7 +87,15 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         }
 
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
-        handleDeletes = config.getString(HANDLE_DELETES);
+        dropDeletes = config.getBoolean(DROP_DELETES);
+        if (dropDeletes) {
+            handleDeletes = "drop";
+        } else {
+            handleDeletes = "none";
+        }
+        if (!config.getString(HANDLE_DELETES).isEmpty()) {
+            handleDeletes = config.getString(HANDLE_DELETES);
+        }
 
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
