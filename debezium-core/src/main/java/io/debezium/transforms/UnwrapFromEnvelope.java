@@ -134,6 +134,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
         handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
         if (config.hasKey(DROP_DELETES.name())) {
+            logger.warn(DROP_DELETES.name() + " option is deprecated. Please use " + HANDLE_DELETES.name());
             dropDeletes = config.getBoolean(DROP_DELETES);
             if (dropDeletes) {
                 handleDeletes = DeleteHandling.DROP;
@@ -194,7 +195,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             // Handling insert and update records
             switch (handleDeletes) {
                 case REWRITE:
-                    logger.trace("Delete message {} requested to be rewritten", record.key());
+                    logger.trace("Insert/update message {} requested to be rewritten", record.key());
                     return updatedDelegate.apply(newRecord);
                 default:
                     return newRecord;
