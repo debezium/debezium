@@ -50,27 +50,19 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                     + "a delete record was generated. This record is usually filtered out to avoid duplicates "
                     + "as a delete record is converted to a tombstone record, too");
 
-    private static final Field DROP_DELETES = Field.create("drop.deletes")
-            .withDisplayName("Drop outgoing tombstones")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
+    private static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
+            .withDisplayName("Handle delete records")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(true)
-            .withDescription("Drop delete records converted to tombstones records if a processing connector "
-                    + "cannot process them or a compaction is undesirable.");
-
-    private static final Field REWRITE_DELETES = Field.create("rewrite.deletes")
-            .withDisplayName("Rewrite outgoing tombstones")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault(false)
-            .withDescription("Rewrite delete records converted to tombstones records if a processing connector "
-                    + "cannot process them or a compaction is undesirable.");
+            .withDescription("How to handle delete records. Options are: "
+                    + "none - records are passed,"
+                    + "drop - records are removed,"
+                    + "rewrite - __delete field is added to records.");
 
     private boolean dropTombstones;
-    private boolean dropDeletes;
-    private boolean rewriteDeletes;
+    private String handleDeletes;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
@@ -79,14 +71,13 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     @Override
     public void configure(final Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
-        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, DROP_DELETES);
+        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, HANDLE_DELETES);
         if (!config.validateAndRecord(configFields, logger::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
-        dropDeletes = config.getBoolean(DROP_DELETES);
-        rewriteDeletes = config.getBoolean(REWRITE_DELETES);
+        handleDeletes = config.getString(HANDLE_DELETES);
 
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
@@ -123,26 +114,35 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             return record;
         }
         final R newRecord = afterDelegate.apply(record);
-        if (newRecord.value() == null && dropDeletes) {
-            logger.trace("Delete message {} requested to be dropped", record.key());
-            return null;
-        }
-        if (rewriteDeletes) {
-            logger.trace("Delete message {} requested to be rewrited", record.key());
-            final R oldRecord = beforeDelegate.apply(record);
-            if (newRecord.value() == null) {
-                return removedDelegate.apply(oldRecord);
-            } else {
-                return updatedDelegate.apply(newRecord);
+        if (newRecord.value() == null) {
+            // Handling delete records
+            switch (handleDeletes) {
+                case "drop":
+                    logger.trace("Delete message {} requested to be dropped", record.key());
+                    return null;
+                case "rewrite":
+                    logger.trace("Delete message {} requested to be rewritten", record.key());
+                    final R oldRecord = beforeDelegate.apply(record);
+                    return removedDelegate.apply(oldRecord);
+                default:
+                    return newRecord;
+            }
+        } else {
+            // Handling insert and update records
+            switch (handleDeletes) {
+                case "rewrite":
+                    logger.trace("Delete message {} requested to be rewritten", record.key());
+                    return updatedDelegate.apply(newRecord);
+                default:
+                    return newRecord;
             }
         }
-        return newRecord;
     }
 
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, DROP_TOMBSTONES, DROP_DELETES);
+        Field.group(config, null, DROP_TOMBSTONES, HANDLE_DELETES);
         return config;
     }
 
