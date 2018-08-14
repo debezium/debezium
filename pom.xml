@@ -68,7 +68,7 @@
         <!-- Databases -->
         <version.postgresql.driver>42.0.0-SNAPSHOT</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>5.1.40</version.mysql.driver>
+        <version.mysql.driver>8.0.12</version.mysql.driver>
         <version.mysql.binlog>0.13.0</version.mysql.binlog>
         <version.mongo.server>3.6.3</version.mongo.server>
         <version.mongo.driver>3.6.3</version.mongo.driver>
