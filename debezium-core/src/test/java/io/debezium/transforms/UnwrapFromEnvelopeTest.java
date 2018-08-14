@@ -25,6 +25,7 @@ public class UnwrapFromEnvelopeTest {
 
     private static final String DROP_DELETES = "drop.deletes";
     private static final String DROP_TOMBSTONES = "drop.tombstones";
+    private static final String HANDLE_DELETES = "delete.handling.mode";
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -138,6 +139,57 @@ public class UnwrapFromEnvelopeTest {
             final SourceRecord deleteRecord = createDeleteRecord();
             final SourceRecord tombstone = transform.apply(deleteRecord);
             assertThat(tombstone.value()).isNull();
+        }
+    }
+
+    @Test
+    public void testHandleDeleteDrop() {
+        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "drop");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            assertThat(transform.apply(deleteRecord)).isNull();
+        }
+    }
+
+    @Test
+    public void testHandleDeleteNone() {
+        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "none");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord tombstone = transform.apply(deleteRecord);
+            assertThat(tombstone.value()).isNull();
+        }
+    }
+
+    @Test
+    public void testHandleDeleteRewrite() {
+        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct)unwrapped.value()).getString("__deleted")).isEqualTo("true");
+        }
+    }
+
+    @Test
+    public void testHandleCreateRewrite() {
+        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct)unwrapped.value()).getString("__deleted")).isEqualTo("false");
         }
     }
 
