@@ -672,7 +672,17 @@ public final class EmbeddedEngine implements Runnable {
                         return;
                     }
                     try {
-                        SourceTaskContext taskContext = () -> offsetReader;
+                        SourceTaskContext taskContext = new SourceTaskContext() {
+                            @Override
+                            public OffsetStorageReader offsetStorageReader() {
+                                return offsetReader;
+                            }
+
+                            public Map<String, String> configs() {
+                                // TODO Auto-generated method stub
+                                return null;
+                            }
+                        };
                         task.initialize(taskContext);
                         task.start(taskConfigs.get(0));
                         connectorCallback.ifPresent(ConnectorCallback::taskStarted);
