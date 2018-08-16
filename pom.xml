@@ -55,15 +55,15 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>1.1.1</version.kafka>
+        <version.kafka>2.0.0</version.kafka>
         <version.kafka.scala>2.11</version.kafka.scala>
         <version.curator>2.11.0</version.curator>
-        <version.zookeeper>3.4.10</version.zookeeper>
+        <version.zookeeper>3.4.13</version.zookeeper>
         <version.jackson>2.9.6</version.jackson>
         <version.org.slf4j>1.7.25</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>4.1.2</version.confluent.platform>
+        <version.confluent.platform>5.0.0</version.confluent.platform>
 
         <!-- Databases -->
         <version.postgresql.driver>42.0.0-SNAPSHOT</version.postgresql.driver>
