@@ -1576,6 +1576,19 @@ public class MySqlDdlParserTest {
         assertThat(table.columnWithName("columnE").defaultValue()).isEqualTo(null);
     }
 
+    @Test
+    @FixFor("DBZ-860")
+    public void parsePrimaryKey() {
+        String ddl = "CREATE TABLE data(id INT, PRIMARY KEY (id))";
+        MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
+        MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);
+        ddlParser.parse(ddl, tables);
+        Table table = tables.forTable(new TableId(null, null, "data"));
+        assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(false);
+    }
+
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
