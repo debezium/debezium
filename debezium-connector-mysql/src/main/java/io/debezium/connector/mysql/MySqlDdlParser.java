@@ -626,7 +626,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
                     pkColumnNames.forEach(name -> {
                         Column c = table.columnWithName(name);
                         if (c != null && c.isOptional()) {
-                            table.addColumn(c.edit().optional(false).create());
+                            table.addColumn(c.edit().optional(false).unsetDefaultValue().create());
                         }
                     });
                     return;
