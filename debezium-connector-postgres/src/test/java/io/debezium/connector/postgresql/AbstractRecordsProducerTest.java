@@ -546,6 +546,8 @@ public abstract class AbstractRecordsProducerTest {
         assertNotNull(offset.get(SourceInfo.TXID_KEY));
         assertNotNull(offset.get(SourceInfo.TIMESTAMP_KEY));
         assertNotNull(offset.get(SourceInfo.LSN_KEY));
+        assertNotNull(offset.get(SourceInfo.SCHEMA_NAME_KEY));
+        assertNotNull(offset.get(SourceInfo.TABLE_NAME_KEY));
         Object snapshot = offset.get(SourceInfo.SNAPSHOT_KEY);
         Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
         if (expectSnapshot) {

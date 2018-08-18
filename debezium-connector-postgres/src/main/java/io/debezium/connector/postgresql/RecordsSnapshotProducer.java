@@ -172,7 +172,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
-            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId);
+            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId, null);
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
@@ -319,7 +319,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             return;
         }
         Schema keySchema = tableSchema.keySchema();
-        sourceInfo.update(clock().currentTimeInMicros());
+        sourceInfo.update(clock().currentTimeInMicros(), tableId);
         Map<String, ?> partition = sourceInfo.partition();
         Map<String, ?> offset = sourceInfo.offset();
         String topicName = topicSelector().topicNameFor(tableId);
