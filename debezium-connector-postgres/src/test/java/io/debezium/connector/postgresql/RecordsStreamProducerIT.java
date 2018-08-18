@@ -714,7 +714,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
                 selector
         );
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.getLogicalName()));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.getLogicalName(), config.databaseName()));
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
