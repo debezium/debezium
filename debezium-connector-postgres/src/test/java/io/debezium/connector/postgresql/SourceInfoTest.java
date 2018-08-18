@@ -22,7 +22,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo("serverX");
+        source = new SourceInfo("serverX", "databaseX");
     }
 
     @Test

@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.relational.TableId;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -77,9 +78,12 @@ final class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
+    public static final String DB_NAME_KEY = "db";
     public static final String TIMESTAMP_KEY = "ts_usec";
     public static final String TXID_KEY = "txId";
     public static final String LSN_KEY = "lsn";
+    public static final String SCHEMA_NAME_KEY = "schema";
+    public static final String TABLE_NAME_KEY = "table";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
@@ -89,14 +93,18 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final Schema SCHEMA = schemaBuilder()
                                                      .name("io.debezium.connector.postgresql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                                                     .field(DB_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                                                     .field(SCHEMA_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                                                     .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                      .field(LAST_SNAPSHOT_RECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                                                      .build();
 
     private final String serverName;
+    private final String dbName;
     private final Map<String, String> sourcePartition;
 
     private Long lsn;
@@ -104,10 +112,13 @@ final class SourceInfo extends AbstractSourceInfo {
     private Long useconds;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
+    private String schemaName;
+    private String tableName;
 
-    protected SourceInfo(String serverName) {
+    protected SourceInfo(String serverName, String dbName) {
         super(Module.version());
         this.serverName = serverName;
+        this.dbName = dbName;
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
     }
 
@@ -116,6 +127,8 @@ final class SourceInfo extends AbstractSourceInfo {
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
         this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_KEY);
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
+        this.schemaName = (String) lastStoredOffset.get(SCHEMA_NAME_KEY);
+        this.tableName = (String) lastStoredOffset.get(TABLE_NAME_KEY);
         if (this.snapshot) {
             this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
         }
@@ -139,7 +152,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
-        assert serverName != null;
+        assert serverName != null && dbName != null;
         Map<String, Object> result = new HashMap<>();
         if (useconds != null) {
             result.put(TIMESTAMP_KEY, useconds);
@@ -149,6 +162,12 @@ final class SourceInfo extends AbstractSourceInfo {
         }
         if (lsn != null) {
             result.put(LSN_KEY, lsn);
+        }
+        if (schemaName != null) {
+            result.put(SCHEMA_NAME_KEY, schemaName);
+        }
+        if (tableName != null) {
+            result.put(TABLE_NAME_KEY, tableName);
         }
         if (snapshot) {
             result.put(SNAPSHOT_KEY, true);
@@ -165,17 +184,30 @@ final class SourceInfo extends AbstractSourceInfo {
      * @param useconds the commit time (in microseconds since epoch) of the transaction that generated the event;
      * may be null indicating that this information is not available
      * @param txId the ID of the transaction that generated the transaction; may be null if this information nis not available
+     * @param tableId the table that should be included in the source info; may be null
      * @return this instance
      */
-    protected SourceInfo update(Long lsn, Long useconds, Long txId) {
+    protected SourceInfo update(Long lsn, Long useconds, Long txId, TableId tableId) {
         this.lsn = lsn;
         this.useconds = useconds;
         this.txId = txId;
+        if (tableId != null && tableId.schema() != null) {
+            this.schemaName = tableId.schema();
+        }
+        if (tableId != null && tableId.table() != null) {
+            this.tableName = tableId.table();
+        }
         return this;
     }
 
-    protected SourceInfo update(Long useconds) {
+    protected SourceInfo update(Long useconds, TableId tableId) {
         this.useconds = useconds;
+        if (tableId != null && tableId.schema() != null) {
+            this.schemaName = tableId.schema();
+        }
+        if (tableId != null && tableId.table() != null) {
+            this.tableName = tableId.table();
+        }
         return this;
     }
 
@@ -199,15 +231,16 @@ final class SourceInfo extends AbstractSourceInfo {
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
      * complies with the {@link #SCHEMA} for the Postgres connector.
      * <p>
-     * This method should always be called after {@link #update(Long, Long, Integer)}.
+     * This method should always be called after {@link #update(Long, Long, Long, TableId)}.
      *
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
     protected Struct source() {
-        assert serverName != null;
+        assert serverName != null && dbName != null;
         Struct result = super.struct();
         result.put(SERVER_NAME_KEY, serverName);
+        result.put(DB_NAME_KEY, dbName);
         // use the offset information without the snapshot part (see below)
         offset().forEach(result::put);
         return result;
@@ -249,6 +282,7 @@ final class SourceInfo extends AbstractSourceInfo {
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");
         sb.append("server='").append(serverName).append('\'');
+        sb.append("db='").append(dbName).append('\'');
         if (lsn != null) {
             sb.append(", lsn=").append(ReplicationConnection.format(lsn));
         }
@@ -262,6 +296,12 @@ final class SourceInfo extends AbstractSourceInfo {
         sb.append(", snapshot=").append(snapshotInEffect);
         if (snapshotInEffect) {
             sb.append(", last_snapshot_record=").append(lastSnapshotRecord);
+        }
+        if (schemaName != null) {
+            sb.append(", schema=").append(schemaName);
+        }
+        if (tableName != null) {
+            sb.append(", table=").append(tableName);
         }
         sb.append(']');
         return sb.toString();
