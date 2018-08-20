@@ -1579,20 +1579,21 @@ public class MySqlDdlParserTest {
     @Test
     @FixFor("DBZ-860")
     public void shouldTreatPrimaryKeyColumnsImplicitlyAsNonNull() {
-        MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
-
-        String ddl = "CREATE TABLE data(id INT, PRIMARY KEY (id))";
-        MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);
-        ddlParser.parse(ddl, tables);
+        String ddl = "CREATE TABLE data(id INT, PRIMARY KEY (id))"
+                + "CREATE TABLE datadef(id INT DEFAULT 0, PRIMARY KEY (id))";
+        parser.parse(ddl, tables);
 
         Table table = tables.forTable(new TableId(null, null, "data"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(false);
 
+        Table tableDef = tables.forTable(new TableId(null, null, "datadef"));
+        assertThat(tableDef.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(tableDef.columnWithName("id").hasDefaultValue()).isEqualTo(true);
+        assertThat(tableDef.columnWithName("id").defaultValue()).isEqualTo(0);
+
         ddl = "CREATE TABLE data(id INT DEFAULT 1, PRIMARY KEY (id))";
-        ddlParser = new MySqlDdlParser(false, valueConverters);
-        ddlParser.parse(ddl, tables);
+        parser.parse(ddl, tables);
 
         table = tables.forTable(new TableId(null, null, "data"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
