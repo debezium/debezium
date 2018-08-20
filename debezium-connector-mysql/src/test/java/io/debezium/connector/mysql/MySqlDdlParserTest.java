@@ -1578,15 +1578,26 @@ public class MySqlDdlParserTest {
 
     @Test
     @FixFor("DBZ-860")
-    public void parsePrimaryKey() {
-        String ddl = "CREATE TABLE data(id INT, PRIMARY KEY (id))";
+    public void shouldTreatPrimaryKeyColumnsImplicitlyAsNonNull() {
         MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
+
+        String ddl = "CREATE TABLE data(id INT, PRIMARY KEY (id))";
         MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);
         ddlParser.parse(ddl, tables);
+
         Table table = tables.forTable(new TableId(null, null, "data"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(false);
+
+        ddl = "CREATE TABLE data(id INT DEFAULT 1, PRIMARY KEY (id))";
+        ddlParser = new MySqlDdlParser(false, valueConverters);
+        ddlParser.parse(ddl, tables);
+
+        table = tables.forTable(new TableId(null, null, "data"));
+        assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
+        assertThat(table.columnWithName("id").hasDefaultValue()).isEqualTo(true);
+        assertThat(table.columnWithName("id").defaultValue()).isEqualTo(1);
     }
 
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
