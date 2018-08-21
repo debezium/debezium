@@ -95,10 +95,11 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToLocalDate(Column column, String value) {
-        if (ALL_ZERO_DATE.equals(value) && column.isOptional()) {
+        final boolean zero = ALL_ZERO_DATE.equals(value) || "0".equals(value);
+        if (zero && column.isOptional()) {
             return null;
         }
-        if (ALL_ZERO_DATE.equals(value)) {
+        if (zero) {
             value = EPOCH_DATE;
         }
         return LocalDate.from(DateTimeFormatter.ISO_LOCAL_DATE.parse(value));
@@ -114,7 +115,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToLocalDateTime(Column column, String value) {
-        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches();
+        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || "0".equals(value);
         if (matches) {
             if (column.isOptional()) {
                 return null;
@@ -145,7 +146,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToTimestamp(Column column, String value) {
-        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || EPOCH_TIMESTAMP.equals(value);
+        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || "0".equals(value) || EPOCH_TIMESTAMP.equals(value);
         if (matches) {
             if (column.isOptional()) {
                 return null;
