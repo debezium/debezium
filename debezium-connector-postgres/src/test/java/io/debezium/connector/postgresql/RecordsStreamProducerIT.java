@@ -728,6 +728,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             executeAndWait(statement);
             SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, pk);
             assertRecordOffset(record, false, false);
+            assertSourceInfo(record, "postgres", table.schema(), table.table());
             assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
         } catch (Exception e) {
             throw new RuntimeException(e);
