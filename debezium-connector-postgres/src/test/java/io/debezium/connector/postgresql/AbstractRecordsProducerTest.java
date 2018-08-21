@@ -546,8 +546,6 @@ public abstract class AbstractRecordsProducerTest {
         assertNotNull(offset.get(SourceInfo.TXID_KEY));
         assertNotNull(offset.get(SourceInfo.TIMESTAMP_KEY));
         assertNotNull(offset.get(SourceInfo.LSN_KEY));
-        assertNotNull(offset.get(SourceInfo.SCHEMA_NAME_KEY));
-        assertNotNull(offset.get(SourceInfo.TABLE_NAME_KEY));
         Object snapshot = offset.get(SourceInfo.SNAPSHOT_KEY);
         Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
         if (expectSnapshot) {
@@ -557,6 +555,22 @@ public abstract class AbstractRecordsProducerTest {
             assertNull("Snapshot marker not expected, but found", snapshot);
             assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
         }
+    }
+
+    protected void assertSourceInfo(SourceRecord record, String db, String schema, String table) {
+        assertTrue(record.value() instanceof Struct);
+        Struct source = ((Struct) record.value()).getStruct("source");
+        assertEquals(db, source.getString("db"));
+        assertEquals(schema, source.getString("schema"));
+        assertEquals(table, source.getString("table"));
+    }
+
+    protected void assertSourceInfo(SourceRecord record) {
+        assertTrue(record.value() instanceof Struct);
+        Struct source = ((Struct) record.value()).getStruct("source");
+        assertNotNull(source.getString("db"));
+        assertNotNull(source.getString("schema"));
+        assertNotNull(source.getString("table"));
     }
 
     protected static String tableNameFromInsertStmt(String statement) {

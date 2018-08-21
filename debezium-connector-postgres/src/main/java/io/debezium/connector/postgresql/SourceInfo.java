@@ -127,8 +127,6 @@ final class SourceInfo extends AbstractSourceInfo {
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
         this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_KEY);
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
-        this.schemaName = (String) lastStoredOffset.get(SCHEMA_NAME_KEY);
-        this.tableName = (String) lastStoredOffset.get(TABLE_NAME_KEY);
         if (this.snapshot) {
             this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
         }
@@ -162,12 +160,6 @@ final class SourceInfo extends AbstractSourceInfo {
         }
         if (lsn != null) {
             result.put(LSN_KEY, lsn);
-        }
-        if (schemaName != null) {
-            result.put(SCHEMA_NAME_KEY, schemaName);
-        }
-        if (tableName != null) {
-            result.put(TABLE_NAME_KEY, tableName);
         }
         if (snapshot) {
             result.put(SNAPSHOT_KEY, true);
@@ -237,10 +229,15 @@ final class SourceInfo extends AbstractSourceInfo {
      * @see #schema()
      */
     protected Struct source() {
-        assert serverName != null && dbName != null;
+        assert serverName != null
+                && dbName != null
+                && schemaName != null
+                && tableName != null;
         Struct result = super.struct();
         result.put(SERVER_NAME_KEY, serverName);
         result.put(DB_NAME_KEY, dbName);
+        result.put(SCHEMA_NAME_KEY, schemaName);
+        result.put(TABLE_NAME_KEY, tableName);
         // use the offset information without the snapshot part (see below)
         offset().forEach(result::put);
         return result;
