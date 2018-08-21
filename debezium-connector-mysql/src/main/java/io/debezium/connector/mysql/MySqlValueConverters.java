@@ -32,7 +32,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
-import com.mysql.jdbc.CharsetMapping;
+import com.mysql.cj.CharsetMapping;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
