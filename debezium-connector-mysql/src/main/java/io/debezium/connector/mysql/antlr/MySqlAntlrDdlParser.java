@@ -30,6 +30,7 @@ import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -248,7 +249,11 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                     }
                     Column column = tableEditor.columnWithName(columnName);
                     if (column != null && column.isOptional()) {
-                        tableEditor.addColumn(column.edit().optional(false).create());
+                        final ColumnEditor ce = column.edit().optional(false);
+                        if (ce.hasDefaultValue() && ce.defaultValue() == null) {
+                            ce.unsetDefaultValue();
+                        }
+                        tableEditor.addColumn(ce.create());
                     }
                     return columnName;
                 })
