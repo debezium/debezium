@@ -7,6 +7,8 @@
 package io.debezium.connector.mysql;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -253,7 +255,12 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         }
 
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
-            super(false, includeViews, null);
+            super(false, includeViews, new MySqlValueConverters(
+                    JdbcValueConverters.DecimalMode.DOUBLE,
+                    TemporalPrecisionMode.ADAPTIVE,
+                    JdbcValueConverters.BigIntUnsignedMode.PRECISE
+            ));
+
             this.ddlChanges = changesListener;
         }
     }

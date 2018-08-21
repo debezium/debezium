@@ -1563,10 +1563,7 @@ public class MySqlDdlParserTest {
                 "columnD VARCHAR(10) NULL DEFAULT NULL," +
                 "columnE VARCHAR(10) NOT NULL," +
                 "my_date datetime NOT NULL DEFAULT '2018-04-27 13:28:43');";
-        MySqlValueConverters valueConverters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                TemporalPrecisionMode.ADAPTIVE, JdbcValueConverters.BigIntUnsignedMode.PRECISE);
-        MySqlDdlParser ddlParser = new MySqlDdlParser(false, valueConverters);
-        ddlParser.parse(ddl, tables);
+        parser.parse(ddl, tables);
         Table table = tables.forTable(new TableId(null, null, "tmp"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("columnA").defaultValue()).isEqualTo("A");
@@ -1711,7 +1708,12 @@ public class MySqlDdlParserTest {
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlDdlParser {
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
-            super(false);
+            super(false,
+                    new MySqlValueConverters(
+                            JdbcValueConverters.DecimalMode.DOUBLE,
+                            TemporalPrecisionMode.ADAPTIVE,
+                            JdbcValueConverters.BigIntUnsignedMode.PRECISE
+            ));
             this.ddlChanges = changesListener;
         }
     }

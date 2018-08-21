@@ -91,6 +91,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 String afterColumn = parser.parseName(ctx.uid(1));
                 tableEditor.reorderColumn(columnName, afterColumn);
             }
+            listeners.remove(columnDefinitionListener);
         }, tableEditor, columnDefinitionListener);
         super.exitAlterByAddColumn(ctx);
     }
@@ -134,6 +135,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     public void exitAlterByAddColumns(MySqlParser.AlterByAddColumnsContext ctx) {
         parser.runIfNotNull(() -> {
             columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create()));
+            listeners.remove(columnDefinitionListener);
         }, tableEditor, columnEditors);
         super.exitAlterByAddColumns(ctx);
     }
@@ -179,6 +181,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             else if (ctx.afterColumn != null) {
                 tableEditor.reorderColumn(newColumnName, parser.parseName(ctx.afterColumn));
             }
+            listeners.remove(columnDefinitionListener);
         }, tableEditor, columnDefinitionListener);
         super.exitAlterByChangeColumn(ctx);
     }
@@ -213,6 +216,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 String afterColumn = parser.parseName(ctx.uid(1));
                 tableEditor.reorderColumn(column.name(), afterColumn);
             }
+            listeners.remove(columnDefinitionListener);
         }, tableEditor, columnDefinitionListener);
         super.exitAlterByModifyColumn(ctx);
     }
