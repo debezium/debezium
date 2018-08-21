@@ -1,10 +1,10 @@
-# Job definition to test PostgreSQL connector with wal2json decoder without metadata
+# Job definition to verify backward compatibility of Debezium with Kafka 1.x
 ---
 - job:
     project-type: freestyle
-    name: debezium-postgresql-test-wal2json-legacy
-    display-name: Debezium PostgreSQL(wal2json w/o metadata) Test
-    description: Executes tests for wal2json decoder without metadata
+    name: debezium-kafka-1.x-test
+    display-name: Debezium Kafka 1.x Test
+    description: Executes testsuite with Kafka 1.x dependencies
     node: Slave
     properties:
       - build-discarder:
@@ -30,11 +30,11 @@
           timeout: 45
     triggers:
       - reverse:
-          jobs: 'debezium-kafka-1.x-test'
+          jobs: 'debezium-postgresql-alpine-10-test'
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=9.6-legacy -Pwal2json-decoder
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.kafka=1.1.1 -Dversion.zookeeper=3.4.10 -Dversion.confluent.platform=4.1.2 -Dmysql.port=33306 -Dmysql.gtid.port=33306 -Dmysql.gtid.replica.port=33306 -Dmysql.replica.port=33306
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
