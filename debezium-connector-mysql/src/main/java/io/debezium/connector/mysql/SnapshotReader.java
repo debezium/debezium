@@ -64,7 +64,6 @@ public class SnapshotReader extends AbstractReader {
     private RecordRecorder recorder;
     private final SnapshotReaderMetrics metrics;
     private ExecutorService executorService;
-    private final Heartbeat heartbeat;
 
     private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
@@ -80,9 +79,6 @@ public class SnapshotReader extends AbstractReader {
         this.snapshotLockingMode = context.getConnectorConfig().getSnapshotLockingMode();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context.getClock(), context.dbSchema());
-
-        heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
-                context.getConnectorConfig().getLogicalName());
     }
 
     /**
@@ -688,7 +684,13 @@ public class SnapshotReader extends AbstractReader {
                     // Mark the source as having completed the snapshot. This will ensure the `source` field on records
                     // are not denoted as a snapshot ...
                     source.completeSnapshot();
-                    heartbeat.forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
+                    Heartbeat
+                        .create(
+                                context.config(),
+                                context.topicSelector().getHeartbeatTopic(),
+                                context.getConnectorConfig().getLogicalName()
+                        )
+                        .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
                 } finally {
                     // Set the completion flag ...
                     completeSuccessfully();
