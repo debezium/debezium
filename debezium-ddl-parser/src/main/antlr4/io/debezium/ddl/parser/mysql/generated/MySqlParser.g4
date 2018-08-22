@@ -248,7 +248,7 @@ createView
 // details
 
 createDatabaseOption
-    : DEFAULT? CHARACTER SET '='? charsetName
+    : DEFAULT? (CHARACTER SET | CHARSET) '='? charsetName
     | DEFAULT? COLLATE '='? collationName
     ;
 

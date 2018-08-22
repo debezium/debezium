@@ -353,6 +353,14 @@ public class MySqlDdlParserTest {
         parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "utf8mb4");
+
+        parser.parse("CREATE DATABASE db3 CHARSET latin2;", tables);
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "utf8mb4");
+
+        parser.parse("USE db3;", tables);// changes the "character_set_database" system variable ...
+        assertVariable("character_set_server", "utf8");
+        assertVariable("character_set_database", "latin2");
     }
 
     @Test
