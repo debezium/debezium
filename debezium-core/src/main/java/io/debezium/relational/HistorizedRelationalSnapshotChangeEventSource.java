@@ -131,6 +131,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                 ctx.offset.postSnapshotCompletion();
             }
 
+            dispatcher.dispatchHeartbeatEvent(ctx.offset);
             return SnapshotResult.completed(ctx.offset);
         }
         catch(InterruptedException e) {
