@@ -3,6 +3,14 @@ cache:
   directories:
   - $HOME/.m2/repository
 
+env:
+  - MAVEN_CLI: '"clean install -pl debezium-connector-mysql -am -Passembly"'
+  - MAVEN_CLI: '"clean install -pl debezium-connector-postgres -am -Passembly -Dversion.postgres.server=9.6-devel"'
+  - MAVEN_CLI: '"clean install -pl debezium-connector-mongodb -am -Passembly"'
+  - MAVEN_CLI: '"clean install -pl debezium-connector-mysql -am -Passembly,parser-antlr"'
+  - MAVEN_CLI: '"clean install -pl debezium-connector-postgres -am -Passembly,wal2json-decoder -Dversion.postgres.server=9.6-devel"'
+  - MAVEN_CLI: '"clean install -pl debezium-connector-mongodb -am -Passembly -Dversion.mongo.server=3.2.19"'
+
 sudo: required
 
 jdk:
@@ -32,11 +40,8 @@ install: true
 after_install:
   - docker ps -a
 
-script: 
-  - mvn clean install -Passembly -Dversion.postgres.server=9.6-devel
-  - mvn install -pl debezium-connector-mysql -Pparser-antlr -DskipTests
-  - mvn install -pl debezium-connector-postgres -Pwal2json-decoder -Dversion.postgres.server=9.6-devel
-  - mvn install -pl debezium-connector-mongodb -Dversion.mongo.server=3.2.19
+script:
+  - "mvn $MAVEN_CLI"
 
 notifications:
   webhooks:
