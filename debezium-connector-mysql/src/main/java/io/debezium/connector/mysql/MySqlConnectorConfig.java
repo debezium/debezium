@@ -647,7 +647,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                 .withDisplayName("Jdbc Driver Class Name")
                                                 .withType(Type.CLASS)
                                                 .withWidth(Width.MEDIUM)
-                                                .withDefault(com.mysql.jdbc.Driver.class.getName())
+                                                .withDefault(com.mysql.cj.jdbc.Driver.class.getName())
                                                 .withImportance(Importance.LOW)
                                                 .withValidation(Field::isClassName)
                                                 .withDescription("JDBC Driver class name used to connect to the MySQL database server.");
