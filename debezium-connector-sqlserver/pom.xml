@@ -20,7 +20,7 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.filter>microsoft/mssql-server-linux:2017-CU8</docker.filter>
+        <docker.filter>microsoft/mssql-server-linux:2017-CU9-GDR2</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
     </properties>
@@ -102,6 +102,7 @@
                                     <ACCEPT_EULA>Y</ACCEPT_EULA>
                                     <SA_PASSWORD>${sqlserver.password}</SA_PASSWORD>
                                     <MSSQL_PID>Standard</MSSQL_PID>
+                                    <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
                                 </env>
                                 <ports>
                                     <port>${sqlserver.port}:1433</port>
