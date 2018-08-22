@@ -19,6 +19,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,6 +32,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -235,6 +237,21 @@ public class SnapshotIT extends AbstractConnectorTest {
             assertThat(record1.sourceOffset()).isEqualTo(expectedSource1);
             assertNull(value1.get("before"));
         }
+    }
+
+    @Test
+    public void takeSchemaOnlySnapshotAndSendHeartbeat() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        final SourceRecord record = consumeRecord();
+        
+        Assertions.assertThat(record.topic()).startsWith("__debezium-heartbeat");
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
