@@ -56,6 +56,11 @@ public interface Heartbeat {
         @Override
         public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         }
+
+        @Override
+        public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
+                throws InterruptedException {
+        }
     };
 
     /**
@@ -68,6 +73,17 @@ public interface Heartbeat {
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
     // too
     void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+
+    /**
+     * Generates a heartbeat record unconditionaly
+     *
+     * @param partition partition for the heartbeat record
+     * @param offset offset for the heartbeat record
+     * @param consumer - a code to place record among others to be sent into Connect
+     */
+    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
+    // too
+    void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
 
     /**
      * Provide an instance of Heartbeat object

@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -26,6 +27,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.DecimalHandlingM
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
@@ -173,6 +175,45 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
         assertRecordOffset(second, false, false);
         assertSourceInfo(second, "test_database", "s2", "a");
+    }
+
+    @Test
+    public void shouldGenerateSnapshotAndSendHeartBeat() throws Exception {
+        // PostGIS must not be used
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE t1 (pk SERIAL, aa integer, PRIMARY KEY(pk)); INSERT INTO t1 VALUES (default, 11)");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
+                    .with(PostgresConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                    .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
+                    .build()
+        );
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                selector
+        );
+
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
+        TestConsumer consumer = testConsumer(2);
+        snapshotProducer.start(consumer, e -> {});
+
+        // Make sure we get the table schema record and heartbeat record
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+
+        final SourceRecord first = consumer.remove();
+        VerifyRecord.isValidRead(first, PK_FIELD, 1);
+        assertRecordOffset(first, true, true);
+
+        final SourceRecord second = consumer.remove();
+        assertThat(second.topic()).startsWith("__debezium-heartbeat");
+        assertRecordOffset(second, false, false);
+
+        // now shut down the producers and insert some more records
+        snapshotProducer.stop();
     }
 
     private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTableName) {

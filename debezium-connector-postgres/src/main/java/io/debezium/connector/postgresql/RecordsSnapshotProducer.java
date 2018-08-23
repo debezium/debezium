@@ -35,6 +35,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -217,6 +218,18 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // and complete the snapshot
             sourceInfo.completeSnapshot();
             logger.info("Snapshot completed in '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
+            Heartbeat
+                .create(
+                    taskContext.config().getConfig(),
+                    taskContext.topicSelector().getHeartbeatTopic(),
+                    taskContext.config().getLogicalName()
+                )
+                .forcedBeat(
+                    sourceInfo.partition(),
+                    sourceInfo.offset(),
+                    r -> consumer.accept(new ChangeEvent(r)
+                )
+            );
         }
         catch (SQLException e) {
             rollbackTransaction(jdbcConnection);
