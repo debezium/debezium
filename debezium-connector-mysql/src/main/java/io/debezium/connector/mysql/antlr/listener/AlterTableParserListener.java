@@ -123,6 +123,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 else {
                     // all columns parsed
                     // reset global variables for next parsed statement
+                    columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create()));
                     columnEditors = null;
                     parsingColumnIndex = STARTING_INDEX;
                 }
