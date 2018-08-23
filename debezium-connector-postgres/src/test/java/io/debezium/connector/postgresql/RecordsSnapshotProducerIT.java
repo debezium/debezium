@@ -178,6 +178,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-859")
     public void shouldGenerateSnapshotAndSendHeartBeat() throws Exception {
         // PostGIS must not be used
         TestHelper.dropAllSchemas();
@@ -197,7 +198,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER), true);
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
         TestConsumer consumer = testConsumer(2);
         snapshotProducer.start(consumer, e -> {});
 

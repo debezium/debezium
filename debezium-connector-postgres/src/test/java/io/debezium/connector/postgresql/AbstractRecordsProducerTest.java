@@ -758,7 +758,7 @@ public abstract class AbstractRecordsProducerTest {
 
         protected void await(long timeout, TimeUnit unit) throws InterruptedException {
             if (!latch.await(timeout, unit)) {
-                fail("Consumer is stil expecting " + latch.getCount() + " records, as it received only " + records.size());
+                fail("Consumer is still expecting " + latch.getCount() + " records, as it received only " + records.size());
             }
         }
     }
