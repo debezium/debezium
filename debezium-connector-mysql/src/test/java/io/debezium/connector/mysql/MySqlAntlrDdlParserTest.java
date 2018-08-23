@@ -6,22 +6,25 @@
 
 package io.debezium.connector.mysql;
 
-import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.jdbc.JdbcValueConverters;
-import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.DdlChanges;
-import io.debezium.relational.ddl.SimpleDdlParserListener;
-import io.debezium.util.Strings;
-import io.debezium.util.Testing;
-import org.junit.Test;
+import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Types;
 import java.util.List;
 
-import static org.fest.assertions.Assertions.assertThat;
+import org.junit.Test;
+
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
+import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.ddl.DdlChanges;
+import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.util.Strings;
+import io.debezium.util.Testing;
 
 /**
  * @author Roman Kuchár <kucharrom@gmail.com>.
@@ -241,6 +244,30 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(foo.columnNames()).containsExactly("c2");
         assertThat(foo.primaryKeyColumnNames()).isEmpty();
         assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
+    }
+
+    @Test
+    public void shouldUseFiltersForAlterTable() {
+        ((MysqlDdlParserWithSimpleTestListener)parser).tableFilter(TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        final String ddl = "CREATE TABLE ok (id int primary key, val smallint);" + System.lineSeparator()
+                + "ALTER TABLE ignored ADD COLUMN(x tinyint)" + System.lineSeparator()
+                + "ALTER TABLE ok ADD COLUMN(y tinyint)";
+        parser.parse(ddl, tables);
+        assertThat(((MysqlDdlParserWithSimpleTestListener)parser).getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(tables.size()).isEqualTo(1);
+
+        final Table t1 = tables.forTable(null, null, "ok");
+        assertThat(t1.columns()).hasSize(3);
+
+        final Column c1 = t1.columns().get(0);
+        final Column c2 = t1.columns().get(1);
+        final Column c3 = t1.columns().get(2);
+        assertThat(c1.name()).isEqualTo("id");
+        assertThat(c1.typeName()).isEqualTo("INT");
+        assertThat(c2.name()).isEqualTo("val");
+        assertThat(c2.typeName()).isEqualTo("SMALLINT");
+        assertThat(c3.name()).isEqualTo("y");
+        assertThat(c3.typeName()).isEqualTo("TINYINT");
     }
 
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {

@@ -34,6 +34,7 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.TableFilter;
 
 /**
  * An ANTLR based parser for MySQL DDL statements.
@@ -44,6 +45,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final MySqlValueConverters converters;
+    private TableFilter tableFilter = TableFilter.fromPredicate((t) -> true);
 
     public MySqlAntlrDdlParser() {
         this(true);
@@ -314,4 +316,12 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return converters;
     }
 
+    @Override
+    public void tableFilter(TableFilter filter) {
+        tableFilter = filter;
+    }
+
+    public TableFilter getTableFilter() {
+        return tableFilter;
+    }
 }

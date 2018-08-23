@@ -47,7 +47,10 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
-        TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+        final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
+        if (!parser.getTableFilter().isIncluded(tableId)) {
+            return;
+        }
         tableEditor = parser.databaseTables().editTable(tableId);
         if (tableEditor == null) {
             throw new ParsingException(null, "Trying to alter table " + tableId.toString()
