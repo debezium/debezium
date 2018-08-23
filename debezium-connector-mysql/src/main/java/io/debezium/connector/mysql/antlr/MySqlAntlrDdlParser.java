@@ -45,24 +45,25 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final MySqlValueConverters converters;
-    private TableFilter tableFilter = TableFilter.fromPredicate((t) -> true);
+    private final TableFilter tableFilter;
 
     public MySqlAntlrDdlParser() {
-        this(true);
+        this(null, TableFilter.includeAll());
     }
 
     public MySqlAntlrDdlParser(MySqlValueConverters converters) {
-        this(true, false, converters);
+        this(converters, TableFilter.includeAll());
     }
 
-    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk) {
-        this(throwErrorsFromTreeWalk, false, null);
+    public MySqlAntlrDdlParser(MySqlValueConverters converters, TableFilter tableFilter) {
+        this(true, false, converters, tableFilter);
     }
 
-    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, MySqlValueConverters converters) {
+    protected MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, MySqlValueConverters converters, TableFilter tableFilter) {
         super(throwErrorsFromTreeWalk, includeViews);
         systemVariables = new MySqlSystemVariables();
         this.converters = converters;
+        this.tableFilter = tableFilter;
     }
 
     @Override
@@ -314,11 +315,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     public MySqlValueConverters getConverters() {
         return converters;
-    }
-
-    @Override
-    public void tableFilter(TableFilter filter) {
-        tableFilter = filter;
     }
 
     public TableFilter getTableFilter() {

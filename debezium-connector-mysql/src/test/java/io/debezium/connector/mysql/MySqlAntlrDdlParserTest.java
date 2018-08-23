@@ -14,8 +14,6 @@ import java.util.List;
 import org.junit.Test;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.jdbc.JdbcValueConverters;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -248,7 +246,8 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
 
     @Test
     public void shouldUseFiltersForAlterTable() {
-        ((MysqlDdlParserWithSimpleTestListener)parser).tableFilter(TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+
         final String ddl = "CREATE TABLE ok (id int primary key, val smallint);" + System.lineSeparator()
                 + "ALTER TABLE ignored ADD COLUMN(x tinyint)" + System.lineSeparator()
                 + "ALTER TABLE ok ADD COLUMN(y tinyint)";
@@ -270,6 +269,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(c3.typeName()).isEqualTo("TINYINT");
     }
 
+    @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
@@ -277,17 +277,21 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
+
         public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener) {
             this(changesListener, false);
         }
 
-        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
-            super(false, includeViews, new MySqlValueConverters(
-                    JdbcValueConverters.DecimalMode.DOUBLE,
-                    TemporalPrecisionMode.ADAPTIVE,
-                    JdbcValueConverters.BigIntUnsignedMode.PRECISE
-            ));
+        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, TableFilter tableFilter) {
+            this(changesListener, false, tableFilter);
+        }
 
+        public MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews) {
+            this(changesListener, includeViews, TableFilter.includeAll());
+        }
+
+        private MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, TableFilter tableFilter) {
+            super(false, includeViews, null, tableFilter);
             this.ddlChanges = changesListener;
         }
     }

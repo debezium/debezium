@@ -8,7 +8,6 @@ package io.debezium.relational.ddl;
 
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
-import io.debezium.relational.Tables.TableFilter;
 import io.debezium.text.ParsingException;
 
 /**
@@ -48,7 +47,4 @@ public interface DdlParser {
     String terminator();
 
     SystemVariables systemVariables();
-
-    default void tableFilter(TableFilter filter) {
-    }
 }

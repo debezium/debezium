@@ -108,10 +108,10 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
 
-        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(getValueConverters(config));
-        if (storeOnlyMonitoredTablesDdl) {
-            this.ddlParser.tableFilter(getTableFilter());
-        }
+        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(
+                getValueConverters(config),
+                storeOnlyMonitoredTablesDdl ? getTableFilter() : TableFilter.includeAll()
+        );
         this.ddlChanges = this.ddlParser.getDdlChanges();
 
         // Create and configure the database history ...

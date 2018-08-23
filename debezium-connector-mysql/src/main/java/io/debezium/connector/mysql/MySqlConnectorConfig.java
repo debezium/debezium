@@ -25,6 +25,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -458,14 +459,14 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
 
         LEGACY("legacy") {
             @Override
-            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters) {
+            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters, TableFilter tableFilter) {
                 return new MySqlDdlParser(false, (MySqlValueConverters) valueConverters);
             }
         },
         ANTLR("antlr") {
             @Override
-            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters) {
-                return new MySqlAntlrDdlParser((MySqlValueConverters) valueConverters);
+            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters, TableFilter tableFilter) {
+                return new MySqlAntlrDdlParser((MySqlValueConverters) valueConverters, tableFilter);
             }
         };
 
@@ -480,7 +481,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
             return value;
         }
 
-        public abstract DdlParser getNewParserInstance(JdbcValueConverters valueConverters);
+        public abstract DdlParser getNewParserInstance(JdbcValueConverters valueConverters, TableFilter tableFilter);
 
         /**
          * Determine if the supplied value is one of the predefined options.

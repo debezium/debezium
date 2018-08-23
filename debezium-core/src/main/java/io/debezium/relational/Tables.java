@@ -50,6 +50,13 @@ public final class Tables {
         public static TableFilter fromPredicate(Predicate<TableId> predicate) {
             return t -> predicate.test(t);
         }
+
+        /**
+         * Creates a {@link TableFilter} that includes all tables.
+         */
+        public static TableFilter includeAll() {
+            return t -> true;
+        }
     }
 
     /**
