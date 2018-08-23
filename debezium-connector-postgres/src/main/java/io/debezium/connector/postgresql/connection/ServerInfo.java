@@ -160,5 +160,10 @@ public class ServerInfo {
         protected boolean hasValidFlushedLSN() {
             return latestFlushedLSN != null;
         }
+
+        @Override
+        public String toString() {
+            return "ReplicationSlot [active=" + active + ", latestFlushedLSN=" + latestFlushedLSN + "]";
+        }
     }
 }
