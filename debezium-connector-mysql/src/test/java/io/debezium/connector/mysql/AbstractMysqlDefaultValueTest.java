@@ -32,11 +32,11 @@ import io.debezium.time.ZonedTimestamp;
  */
 public abstract class AbstractMysqlDefaultValueTest {
 
-    private AbstractDdlParser parser;
-    private Tables tables;
+    protected AbstractDdlParser parser;
+    protected Tables tables;
     private MySqlValueConverters converters;
     protected Function<MySqlValueConverters, AbstractDdlParser> parserProducer;
-    
+
     @Before
     public void beforeEach() {
         converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
@@ -355,4 +355,6 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("K").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 0, ZoneOffset.UTC).toInstant()));
         assertThat(table.columnWithName("L").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000, ZoneOffset.UTC).toInstant()));
     }
+
+
 }
