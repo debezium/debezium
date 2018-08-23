@@ -11,9 +11,9 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
@@ -29,6 +29,8 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 
 /**
  * {@link JdbcConnection} connection extension used for connecting to Postgres instances.
@@ -122,30 +124,43 @@ public class PostgresConnection extends JdbcConnection {
         return ServerInfo.ReplicaIdentity.parseFromDB(replIdentity.toString());
     }
 
-    protected ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
-        AtomicReference<ServerInfo.ReplicationSlot> replicationSlotInfo = new AtomicReference<>();
-        String database = database();
-        prepareQuery(
-             "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                 statement.setString(1, slotName);
-                 statement.setString(2, database);
-                 statement.setString(3, pluginName);
-             },
-             rs -> {
-                 if (rs.next()) {
-                     boolean active = rs.getBoolean("active");
-                     Long confirmedFlushedLSN = parseConfirmedFlushLsn(slotName, pluginName, database, rs);
-                     replicationSlotInfo.compareAndSet(null, new ServerInfo.ReplicationSlot(active, confirmedFlushedLSN));
-                 }
-                 else {
-                     LOGGER.debug("No replication slot '{}' is present for plugin '{}' and database '{}'", slotName,
-                                  pluginName, database);
-                     replicationSlotInfo.compareAndSet(null, ServerInfo.ReplicationSlot.INVALID);
-                 }
-             }
-        );
+    protected ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException, InterruptedException {
+        final int maxAttempts = 30;
+        final Duration pauseBetweenAttempts = Duration.ofSeconds(2);
 
-        return replicationSlotInfo.get();
+        final String database = database();
+        final Metronome metronome = Metronome.parker(pauseBetweenAttempts, Clock.SYSTEM);
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            final ServerInfo.ReplicationSlot slot = prepareQueryAndMap(
+                    "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                        statement.setString(1, slotName);
+                        statement.setString(2, database);
+                        statement.setString(3, pluginName);
+                    },
+                    rs -> {
+                        if (rs.next()) {
+                            boolean active = rs.getBoolean("active");
+                            Long confirmedFlushedLSN = parseConfirmedFlushLsn(slotName, pluginName, database, rs);
+                            if (confirmedFlushedLSN == null) {
+                                return null;
+                            }
+                            return new ServerInfo.ReplicationSlot(active, confirmedFlushedLSN);
+                        }
+                        else {
+                            LOGGER.debug("No replication slot '{}' is present for plugin '{}' and database '{}'", slotName,
+                                         pluginName, database);
+                            return ServerInfo.ReplicationSlot.INVALID;
+                        }
+                    }
+               );
+            if (slot != null) {
+                LOGGER.info("Obtained valid replication slot {}", slot);
+                return slot;
+            }
+            LOGGER.warn("Cannot obtain valid replication slot '{}' for plugin '{}' and database '{}' [during attempt {} out of {}, concurrent tx probably blocks taking snapshot.", slotName, pluginName, database, attempt, maxAttempts);
+            metronome.pause();
+        }
+        throw new ConnectException("Unable to obtain valid replication slot");
     }
 
     private Long parseConfirmedFlushLsn(String slotName, String pluginName, String database, ResultSet rs) {
@@ -154,10 +169,7 @@ public class PostgresConnection extends JdbcConnection {
         try {
             String confirmedFlushLSNString = rs.getString("confirmed_flush_lsn");
             if (confirmedFlushLSNString == null) {
-                throw new ConnectException("Value confirmed_flush_lsn is missing from the pg_replication_slots table for slot = '"
-                        + slotName + "', plugin = '"
-                        + pluginName + "', database = '"
-                        + database + "'. This is an abnormal situation and the database status should be checked.");
+                return null;
             }
             try {
                 confirmedFlushedLsn = LogSequenceNumber.valueOf(confirmedFlushLSNString).asLong();
