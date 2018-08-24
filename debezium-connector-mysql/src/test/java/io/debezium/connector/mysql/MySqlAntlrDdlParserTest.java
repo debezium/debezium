@@ -14,6 +14,8 @@ import java.util.List;
 import org.junit.Test;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -291,7 +293,14 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         }
 
         private MysqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, TableFilter tableFilter) {
-            super(false, includeViews, null, tableFilter);
+            super(false,
+                    includeViews,
+                    new MySqlValueConverters(
+                        JdbcValueConverters.DecimalMode.DOUBLE,
+                        TemporalPrecisionMode.ADAPTIVE,
+                        JdbcValueConverters.BigIntUnsignedMode.PRECISE
+                    ),
+                    tableFilter);
             this.ddlChanges = changesListener;
         }
     }
