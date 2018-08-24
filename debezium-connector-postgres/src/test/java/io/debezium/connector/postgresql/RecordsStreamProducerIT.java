@@ -69,6 +69,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
                 .build());
         setupRecordsProducer(config);
     }
