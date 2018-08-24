@@ -115,9 +115,10 @@ public class PostgresConnectionIT {
     public void shouldDetectRunningConncurrentTxOnInit() throws Exception {
         Testing.Print.enable();
         // drop the slot from the previous connection
+        final String slotName = "block";
         try (PostgresConnection connection = TestHelper.create()) {
             // try to drop the previous slot
-            connection.dropReplicationSlot("block");
+            connection.dropReplicationSlot(slotName);
             connection.execute(
                     "DROP SCHEMA IF EXISTS public CASCADE",
                     "CREATE SCHEMA public",
@@ -136,7 +137,7 @@ public class PostgresConnectionIT {
 
             final Future<?> f1 = Executors.newSingleThreadExecutor().submit(() -> {
                 // Create a replication connection that is blocked till the concurrent TX is completed
-                try (ReplicationConnection replConnection = TestHelper.createForReplication("block", false)) {
+                try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
                     Testing.print("Connecting with replication connection 1");
                     assertTrue(replConnection.isConnected());
                     Testing.print("Replication connection 1 - completed");
@@ -150,7 +151,7 @@ public class PostgresConnectionIT {
 
             final Future<?> f2 = Executors.newSingleThreadExecutor().submit(() -> {
                 // Create a replication connection that receives confirmed_flush_lsn == null
-                try (ReplicationConnection replConnection = TestHelper.createForReplication("block", false)) {
+                try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
                     Testing.print("Connecting with replication connection 2");
                     assertTrue(replConnection.isConnected());
                     Testing.print("Replication connection 2 - completed");
@@ -168,6 +169,11 @@ public class PostgresConnectionIT {
 
             f1.get();
             f2.get();
+            // drop the slot from the previous connection
+            try (PostgresConnection connection = TestHelper.create()) {
+                // try to drop the previous slot
+                assertTrue(connection.dropReplicationSlot(slotName));
+            }
         }
     }
 }
