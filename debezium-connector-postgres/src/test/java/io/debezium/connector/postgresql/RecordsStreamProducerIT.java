@@ -725,13 +725,16 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private void assertInsert(String statement, int pk, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         TableId table = tableIdFromInsertStmt(statement);
         String expectedTopicName = table.schema() + "." + table.table();
+        expectedTopicName = expectedTopicName.replaceAll("[ \"]", "_");
+
         try {
             executeAndWait(statement);
             SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, pk);
             assertRecordOffset(record, false, false);
             assertSourceInfo(record, "postgres", table.schema(), table.table());
             assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

@@ -36,6 +36,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -301,6 +302,58 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         String updateId = JSON.parse(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
         assertThat(updateId).isEqualTo(id.get());
+    }
+
+    @Test
+    @FixFor("DBZ-865")
+    public void shouldConsumeEventsFromCollectionWithReplacedTopicName() throws InterruptedException, IOException {
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.dbz865.*")
+                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                              .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        primary().execute("create", mongo->{
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("dbz865_my@collection");
+            coll.drop();
+
+            Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
+            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            coll.insertOne(doc, insertOptions);
+        });
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(12);
+        records.topics().forEach(System.out::println);
+        assertThat(records.recordsForTopic("mongo.dbit.dbz865_my_collection")).hasSize(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
     }
 
     protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
