@@ -27,6 +27,7 @@ The Oracle connector was storing event timestamp in the `source` block in field 
 * Misleading timestamp field name [DBZ-795](https://issues.jboss.org/browse/DBZ-795)
 * Adjust scale of decimal values to column's scale if present [DBZ-818](https://issues.jboss.org/browse/DBZ-818)
 * Avoid NPE if commit is called before any offset is prepared [DBZ-826](https://issues.jboss.org/browse/DBZ-826)
+* MySQLConnectorTask no longer reports that it has found the binlog file when it hasn't [DBZ-880](https://issues.jboss.org/browse/DBZ-880)
 
 
 ### Other changes since 0.8.1.Final
