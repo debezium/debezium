@@ -21,6 +21,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.schema.TopicSelector;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -318,7 +319,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     logNames.add(rs.getString(1));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
         }
 
@@ -327,7 +329,10 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         if (!found) {
             logger.info("Connector requires binlog file '{}', but MySQL only has {}", binlogFilename, String.join(", ", logNames));
         }
-        logger.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
+        else {
+            logger.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
+        }
+
         return found;
     }
 
