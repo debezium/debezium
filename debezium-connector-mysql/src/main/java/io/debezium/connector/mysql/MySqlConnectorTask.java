@@ -326,8 +326,10 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         boolean found = logNames.stream().anyMatch(binlogFilename::equals);
         if (!found) {
             logger.info("Connector requires binlog file '{}', but MySQL only has {}", binlogFilename, String.join(", ", logNames));
+        } else {
+            logger.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
         }
-        logger.info("MySQL has the binlog file '{}' required by the connector", binlogFilename);
+
         return found;
     }
 
