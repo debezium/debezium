@@ -5,6 +5,12 @@
  */
 package io.debezium.schema;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.CommonConnectorConfig;
 
 /**
@@ -27,7 +33,7 @@ public class TopicSelector<I extends DataCollectionId> {
         this.prefix = prefix;
         this.heartbeatPrefix = heartbeatPrefix;
         this.delimiter = delimiter;
-        this.dataCollectionTopicNamer = dataCollectionTopicNamer;
+        this.dataCollectionTopicNamer = new TopicNameCache<>(new TopicNameSanitizer<>(dataCollectionTopicNamer));
     }
 
     public static <I extends DataCollectionId> TopicSelector<I> defaultSelector(String prefix, String heartbeatPrefix, String delimiter, DataCollectionTopicNamer<I> dataCollectionTopicNamer) {
@@ -38,7 +44,7 @@ public class TopicSelector<I extends DataCollectionId> {
         String heartbeatTopicsPrefix = connectorConfig.getHeartbeatTopicsPrefix();
         String delimiter = ".";
 
-        return new TopicSelector<>(prefix, heartbeatTopicsPrefix, delimiter, dataCollectionTopicNamer);
+        return defaultSelector(prefix, heartbeatTopicsPrefix, delimiter, dataCollectionTopicNamer);
     }
 
     /**
@@ -81,5 +87,78 @@ public class TopicSelector<I extends DataCollectionId> {
     @FunctionalInterface
     public interface DataCollectionTopicNamer<I extends DataCollectionId> {
         String topicNameFor(I id, String prefix, String delimiter);
+    }
+
+    /**
+     * A topic namer that replaces any characters invalid in a topic name with {@code _}.
+     */
+    private static class TopicNameSanitizer<I extends DataCollectionId> implements DataCollectionTopicNamer<I> {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(TopicNameSanitizer.class);
+
+        private static final String REPLACEMENT_CHAR = "_";
+
+        private final DataCollectionTopicNamer<I> delegate;
+
+        public TopicNameSanitizer(DataCollectionTopicNamer<I> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String topicNameFor(I id, String prefix, String delimiter) {
+            String topicName = delegate.topicNameFor(id, prefix, delimiter);
+
+            StringBuilder sanitizedNameBuilder = new StringBuilder(topicName.length());
+            boolean changed = false;
+
+            for(int i = 0; i < topicName.length(); i++) {
+                char c = topicName.charAt(i);
+                if (isValidTopicNameCharacter(c)) {
+                    sanitizedNameBuilder.append(c);
+                }
+                else {
+                    sanitizedNameBuilder.append(REPLACEMENT_CHAR);
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                String sanitizedName = sanitizedNameBuilder.toString();
+                LOGGER.warn("Topic '{}' name isn't a valid topic name, replacing it with '{}'.", topicName, sanitizedName);
+
+                return sanitizedName;
+            }
+            else {
+                return topicName;
+            }
+        }
+
+        /**
+         * Whether the given character is a legal character of a Kafka topic name. Legal characters are
+         * {@code [a-zA-Z0-9._-]}.
+         *
+         * @see https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
+         */
+        private boolean isValidTopicNameCharacter(char c) {
+            return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')  || (c >= '0' && c <= '9');
+        }
+    }
+
+    /**
+     * A topic namer that caches names it has obtained from a delegate.
+     */
+    private static class TopicNameCache <I extends DataCollectionId> implements DataCollectionTopicNamer<I> {
+
+        private final ConcurrentMap<I, String> topicNames = new ConcurrentHashMap<>();
+        private final DataCollectionTopicNamer<I> delegate;
+
+        public TopicNameCache(DataCollectionTopicNamer<I> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String topicNameFor(I id, String prefix, String delimiter) {
+            return topicNames.computeIfAbsent(id, did -> delegate.topicNameFor(did, prefix, delimiter));
+        }
     }
 }

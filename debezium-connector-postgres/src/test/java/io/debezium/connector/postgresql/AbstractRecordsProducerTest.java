@@ -461,18 +461,18 @@ public abstract class AbstractRecordsProducerTest {
        return Arrays.asList(new SchemaAndValueField("Quoted_\" . Text_Column", Schema.OPTIONAL_STRING_SCHEMA, "some text"));
     }
 
-    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableName() {
-        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
+    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTopicName() {
+        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::topicNameFromInsertStmt,
                                                            this::schemasAndValuesForTable));
     }
 
-    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableNameAdaptiveTimeMicroseconds() {
-        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
+    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTopicNameAdaptiveTimeMicroseconds() {
+        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::topicNameFromInsertStmt,
                 this::schemasAndValuesForTableAdaptiveTimeMicroseconds));
     }
 
-    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTableNameStringEncodedDecimals() {
-        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::tableNameFromInsertStmt,
+    protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTopicNameStringEncodedDecimals() {
+        return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::topicNameFromInsertStmt,
                 this::schemasAndValuesForNumericTypesUsingStringEncoding));
     }
 
@@ -573,8 +573,9 @@ public abstract class AbstractRecordsProducerTest {
         assertNotNull(source.getString("table"));
     }
 
-    protected static String tableNameFromInsertStmt(String statement) {
-        return tableIdFromInsertStmt(statement).toString();
+    protected static String topicNameFromInsertStmt(String statement) {
+        String qualifiedTableNameName = tableIdFromInsertStmt(statement).toString();
+        return qualifiedTableNameName.replaceAll("[ \"]", "_");
     }
 
     protected static TableId tableIdFromInsertStmt(String statement) {
