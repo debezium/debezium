@@ -2,6 +2,36 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.8.2.Final
+August 30th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338793)
+
+### New features since 0.8.1.Final
+
+* Postgres connector - add database, schema and table names to "source" section of records [DBZ-866](https://issues.jboss.org/browse/DBZ-866)
+
+
+### Breaking changes since 0.8.1.Final
+
+There are no breaking changes in this release.
+
+
+### Fixes since 0.8.0.Final
+
+* Initial synchronization is not interrupted [DBZ-838](https://issues.jboss.org/browse/DBZ-838)
+* DDL parsing in MySQL - default value of primary key is set to null [DBZ-860](https://issues.jboss.org/browse/DBZ-860)
+* Antlr DDL parser exception for "create database ... CHARSET=..." [DBZ-864](https://issues.jboss.org/browse/DBZ-864)
+* Missing 0.8.1.Final tags for Zookeper and Kafka [DBZ-868](https://issues.jboss.org/browse/DBZ-868)
+* AlterTableParserListener does not remove column definition listeners [DBZ-869](https://issues.jboss.org/browse/DBZ-869)
+* MySQL parser does not recognize 0 as default value for date/time [DBZ-870](https://issues.jboss.org/browse/DBZ-870)
+* A new column might not be added with ALTER TABLE antlr parser [DBZ-877](https://issues.jboss.org/browse/DBZ-877)
+* MySQLConnectorTask always reports it has the required Binlog file from MySQL [DBZ-880](https://issues.jboss.org/browse/DBZ-880)
+
+
+### Other changes since 0.8.1.Final
+
+None
+
+
 ## 0.8.1.Final
 July 25th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338169)
 
