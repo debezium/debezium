@@ -52,8 +52,12 @@
           default: "master"
       - bool:
           name: DRY_RUN
-          description: "When checked the changes and artefacts are not pushed to repositories and registries"
+          description: "When checked the changes and artifacts are not pushed to repositories and registries"
           default: "true"
+      - string:
+          name: MAVEN_CENTRAL_SYNC_TIMEOUT
+          description: "Timeout in hours to wait for artifacts being published in the Maven Central"
+          default: "12"
     dsl:
       !include-raw:
         - "scripts/release-pipeline.groovy"
