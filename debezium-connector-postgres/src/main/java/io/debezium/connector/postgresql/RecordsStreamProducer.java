@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -54,6 +55,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     private final ExecutorService executorService;
     private final ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream;
+    private final AtomicBoolean cleanupExecuted = new AtomicBoolean();
     private PgConnection typeResolverConnection = null;
 
     private final Heartbeat heartbeat;
@@ -165,7 +167,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
 
         try {
-            if (replicationStream.get() == null) {
+            if (!cleanupExecuted.compareAndSet(false, true)) {
                 logger.debug("already stopped....");
                 return;
             }
