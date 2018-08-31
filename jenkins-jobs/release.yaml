@@ -12,10 +12,12 @@
     parameters:
       - string:
           name: RELEASE_VERSION
-          description: "Version of Debezium to be released - e.g. 0.5.2"
+          description: "Version of Debezium to be released - e.g. 0.5.2.Final"
+          default: "x.y.z.Final"
       - string:
           name: DEVELOPMENT_VERSION
           description: "Next development version - e.g. 0.5.3-SNAPSHOT"
+          default: "x.y.z-SNAPSHOT"
       - string:
           name: DEBEZIUM_REPOSITORY
           description: "Repository from which Debezium is built"
