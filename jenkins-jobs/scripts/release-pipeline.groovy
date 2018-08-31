@@ -36,9 +36,32 @@ ORACLE_ARTIFACT_DIR = '/home/jenkins/oracle-libs/12.2.0.1.0'
 ORACLE_ARTIFACT_VERSION = '12.1.0.2'
 
 VERSION_TAG = "v$RELEASE_VERSION"
-CORE_CONNECTORS = ['mongodb','mysql','postgres']
-INCUBATOR_CONNECTORS = ['oracle', 'sqlserver']
+VERSION_PARTS = RELEASE_VERSION.split('\\.')
+VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
+IMAGE_TAG = VERSION_MAJOR_MINOR
+
+CORE_CONNECTORS_PER_VERSION = [
+    '0.8': ['mongodb','mysql','postgres'],
+    '0.9': ['mongodb','mysql','postgres']
+]
+INCUBATOR_CONNECTORS_PER_VERSION = [
+    '0.8': ['oracle'],
+    '0.9': ['oracle', 'sqlserver']
+]
+
+CORE_CONNECTORS = CORE_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
+INCUBATOR_CONNECTORS = INCUBATOR_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
+if (CORE_CONNECTORS == null) {
+    error "List of core connectors not available"
+}
+if (INCUBATOR_CONNECTORS == null) {
+    error "List of incubator connectors not available"
+}
+
+
 CONNECTORS = CORE_CONNECTORS + INCUBATOR_CONNECTORS
+echo "Connector to be released: $CONNECTORS"
+
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
@@ -224,8 +247,6 @@ node('Slave') {
                 userRemoteConfigs: [[url: "https://$POSTGRES_DECODER_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
         )
-        def version = RELEASE_VERSION.split('\\.')
-        IMAGE_TAG = "${version[0]}.${version[1]}"
         echo "Images tagged with $IMAGE_TAG will be used"
         dir(ORACLE_ARTIFACT_DIR) {
             sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=ojdbc8.jar"
