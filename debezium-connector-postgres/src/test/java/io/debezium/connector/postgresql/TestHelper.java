@@ -89,6 +89,17 @@ public final class TestHelper {
     }
 
     /**
+     * Obtain a DB connection with a custom application name.
+     *
+     * @param appName the name of the application used for PostgreSQL diagnostics
+     *
+     * @return the PostgresConnection instance; never null
+     */
+    public static PostgresConnection create(String appName) {
+        return new PostgresConnection(defaultJdbcConfig().edit().with("ApplicationName", appName).build());
+    }
+
+    /**
      * Executes a JDBC statement using the default jdbc config without autocommitting the connection
      *
      * @param statement an array of statement

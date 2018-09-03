@@ -18,7 +18,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -29,6 +28,7 @@ import org.junit.Test;
 
 import io.debezium.connector.postgresql.DecoderDifferences;
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -80,24 +80,33 @@ public class ReplicationConnectionIT {
     public void shouldCloseConnectionOnInvalidSlotName() throws Exception {
         final int closeRetries = 60;
         final int waitPeriod = 2_000;
+        final String slotQuery = "select count(*) from pg_stat_replication where state = 'startup'";
+        final ResultSetMapper<Integer> slotQueryMapper = rs -> {
+            rs.next();
+            return rs.getInt(1);
+        };
+        final int slotsBefore;
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            slotsBefore = connection.queryAndMap(slotQuery, slotQueryMapper);
+        }
+
         try (ReplicationConnection conn1 = TestHelper.createForReplication("test1-", true)) {
             conn1.startStreaming();
             fail("Invalid slot name should fail");
         }
         catch (Exception e) {
-            final AtomicBoolean disconnected = new AtomicBoolean();
-            for (int retry = 1; retry <= closeRetries; retry++) {
-                PostgresConnection connection = TestHelper.create();
-                connection.execute(x -> {
-                    disconnected.set(!x.executeQuery("select * from pg_stat_replication where state = 'startup'").next());
-                });
-                if (disconnected.get()) {
-                    break;
+            try (PostgresConnection connection = TestHelper.create()) {
+                final int slotsAfter = connection.queryAndMap(slotQuery, slotQueryMapper);
+                for (int retry = 1; retry <= closeRetries; retry++) {
+                    if (slotsAfter <= slotsBefore) {
+                        break;
+                    }
+                    if (retry == closeRetries) {
+                        Assert.fail("Connection should not be active");
+                    }
+                    Thread.sleep(waitPeriod);
                 }
-                if (retry == closeRetries) {
-                    Assert.fail("Connection should not be active");
-                }
-                Thread.sleep(waitPeriod);
             }
         }
     }
