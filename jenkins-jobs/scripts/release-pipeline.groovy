@@ -60,7 +60,7 @@ if (INCUBATOR_CONNECTORS == null) {
 
 
 CONNECTORS = CORE_CONNECTORS + INCUBATOR_CONNECTORS
-echo "Connector to be released: $CONNECTORS"
+echo "Connectors to be released: $CONNECTORS"
 
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
@@ -160,13 +160,16 @@ def issuesWithoutComponentsFromJira() {
 }
 
 @NonCPS
-def closeJiraIssues() {
-    def resolvedIssues = jiraGET('search', [
+def resolvedIssuesFromJira() {
+    jiraGET('search', [
         'jql': "project=$JIRA_PROJECT AND fixVersion=$JIRA_VERSION AND status='Resolved'",
         'fields': 'key'
     ]).issues.collect { it.self }
+}
 
-    resolvedIssues.each { issue -> jiraUpdate("${issue}/transitions", JIRA_CLOSE_ISSUE) }
+@NonCPS
+def closeJiraIssues() {
+    resolvedIssuesFromJira().each { issue -> jiraUpdate("${issue}/transitions", JIRA_CLOSE_ISSUE) }
 }
 
 @NonCPS
@@ -258,6 +261,9 @@ node('Slave') {
         if (!DRY_RUN) {
             unresolvedIssues = unresolvedIssuesFromJira()
             issuesWithoutComponents = issuesWithoutComponentsFromJira()
+            if (!resolvedIssuesFromJira()) {
+                error "Error, there are no resolved issues for the release"
+            }
             if (unresolvedIssues) {
                 error "Error, issues ${unresolvedIssues.toString()} must be resolved"
             }
