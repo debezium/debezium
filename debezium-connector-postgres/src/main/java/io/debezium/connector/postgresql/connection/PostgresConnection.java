@@ -39,12 +39,13 @@ import io.debezium.util.Metronome;
  */
 public class PostgresConnection extends JdbcConnection {
 
+    private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
+
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
             + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
+    protected static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
                                                                                     org.postgresql.Driver.class.getName(),
                                                                                     PostgresConnection.class.getClassLoader());
-    private static Logger LOGGER = LoggerFactory.getLogger(PostgresConnection.class);
 
     private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
@@ -52,6 +53,13 @@ public class PostgresConnection extends JdbcConnection {
     private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
+
+    /**
+     * Obtaining a replication slot may fail if there's a pending transaction. We're retrying to get a slot for 30 min.
+     */
+    private static final int MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT =  900;
+
+    private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
     private final TypeRegistry typeRegistry;
 
@@ -125,12 +133,10 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     protected ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException, InterruptedException {
-        final int maxAttempts = 30;
-        final Duration pauseBetweenAttempts = Duration.ofSeconds(2);
-
         final String database = database();
-        final Metronome metronome = Metronome.parker(pauseBetweenAttempts, Clock.SYSTEM);
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+        final Metronome metronome = Metronome.parker(PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS, Clock.SYSTEM);
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT; attempt++) {
             final ServerInfo.ReplicationSlot slot = prepareQueryAndMap(
                     "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
                         statement.setString(1, slotName);
@@ -157,10 +163,12 @@ public class PostgresConnection extends JdbcConnection {
                 LOGGER.info("Obtained valid replication slot {}", slot);
                 return slot;
             }
-            LOGGER.warn("Cannot obtain valid replication slot '{}' for plugin '{}' and database '{}' [during attempt {} out of {}, concurrent tx probably blocks taking snapshot.", slotName, pluginName, database, attempt, maxAttempts);
+            LOGGER.warn("Cannot obtain valid replication slot '{}' for plugin '{}' and database '{}' [during attempt {} out of {}, concurrent tx probably blocks taking snapshot.", slotName, pluginName, database, attempt, MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT);
             metronome.pause();
         }
-        throw new ConnectException("Unable to obtain valid replication slot");
+
+        throw new ConnectException("Unable to obtain valid replication slot. "
+                + "Make sure there are no long-running transactions running in parallel as they may hinder the allocation of the replication slot when starting this connector");
     }
 
     private Long parseConfirmedFlushLsn(String slotName, String pluginName, String database, ResultSet rs) {
