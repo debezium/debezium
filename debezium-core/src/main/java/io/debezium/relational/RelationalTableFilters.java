@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
@@ -15,13 +16,13 @@ public class RelationalTableFilters implements DataCollectionFilters {
 
     private final TableFilter tableFilter;
 
-    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter) {
+    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, Function<TableId, String> tableIdConverter) {
         // Define the filter using the whitelists and blacklists for tables and database names ...
         Predicate<TableId> predicate = Selectors.tableSelector()
 //                                                  .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
 //                                                  .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
-                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST))
-                                                  .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST))
+                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdConverter)
+                                                  .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST), tableIdConverter)
                                                   .build();
 
 

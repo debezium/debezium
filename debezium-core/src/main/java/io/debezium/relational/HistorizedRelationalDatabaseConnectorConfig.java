@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.util.function.Function;
+
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -40,7 +42,11 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .withDefault(KafkaDatabaseHistory.class.getName());
 
     protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
-        super(config, logicalName, systemTablesFilter);
+        super(config, logicalName, systemTablesFilter, TableId::toString);
+    }
+
+    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, Function<TableId, String> tableIdConverter) {
+        super(config, logicalName, systemTablesFilter, tableIdConverter);
     }
 
     /**
