@@ -241,7 +241,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotLockingMode snapshotLockingMode;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate());
+        super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
