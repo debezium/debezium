@@ -5,7 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.annotation.Immutable;
@@ -23,27 +22,32 @@ import io.debezium.function.Predicates;
  * By default all columns in included tables will be selected, except when they are specifically excluded using regular
  * expressions that match the columns' fully-qualified names. Therefore, the predicate is constructed using a simple
  * {@link #excludeColumns(String) static method}.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
 public class Selectors {
-    
+
     /**
      * Obtain a new {@link TableSelectionPredicateBuilder builder} for a table selection predicate.
-     * 
+     *
      * @return the builder; never null
      */
     public static DatabaseSelectionPredicateBuilder databaseSelector() {
         return new DatabaseSelectionPredicateBuilder();
     }
-    
+
     private static boolean isEmpty(String value) {
         return value == null || value.trim().isEmpty();
     }
 
+    /**
+     * Implementations convert given {@link TableId}s to strings, so regular expressions can be applied to them for the
+     * purpose of table filtering.
+     */
     @FunctionalInterface
-    public static interface TableIdToStringMapper extends Function<TableId, String> {
+    public static interface TableIdToStringMapper {
+        String toString(TableId tableId);
     }
 
     /**
@@ -56,7 +60,7 @@ public class Selectors {
         /**
          * Specify the names of the databases that should be included. This method will override previously included and
          * {@link #excludeDatabases(String) excluded} databases.
-         * 
+         *
          * @param databaseNames the comma-separated list of database names to include; may be null or empty
          * @return this builder so that methods can be chained together; never null
          */
@@ -73,7 +77,7 @@ public class Selectors {
          * Specify the names of the databases that should be excluded. This method will override previously {@link
          * #excludeDatabases(String) excluded} databases, although {@link #includeDatabases(String) including databases} overrides
          * exclusions.
-         * 
+         *
          * @param databaseNames the comma-separated list of database names to exclude; may be null or empty
          * @return this builder so that methods can be chained together; never null
          */
@@ -88,7 +92,7 @@ public class Selectors {
 
         /**
          * Build the {@link Predicate} that determines whether a database identified by its name is to be included.
-         * 
+         *
          * @return the table selection predicate; never null
          * @see #includeDatabases(String)
          * @see #excludeDatabases(String)
@@ -101,7 +105,7 @@ public class Selectors {
 
     /**
      * Obtain a new {@link TableSelectionPredicateBuilder builder} for a table selection predicate.
-     * 
+     *
      * @return the builder; never null
      */
     public static TableSelectionPredicateBuilder tableSelector() {
@@ -122,7 +126,7 @@ public class Selectors {
         /**
          * Specify the names of the databases that should be included. This method will override previously included and
          * {@link #excludeDatabases(String) excluded} databases.
-         * 
+         *
          * @param databaseNames the comma-separated list of database names to include; may be null or empty
          * @return this builder so that methods can be chained together; never null
          */
@@ -139,7 +143,7 @@ public class Selectors {
          * Specify the names of the databases that should be excluded. This method will override previously {@link
          * #excludeDatabases(String) excluded} databases, although {@link #includeDatabases(String) including databases} overrides
          * exclusions.
-         * 
+         *
          * @param databaseNames the comma-separated list of database names to exclude; may be null or empty
          * @return this builder so that methods can be chained together; never null
          */
@@ -151,7 +155,7 @@ public class Selectors {
             }
             return this;
         }
-    
+
         /**
          * Specify the names of the schemas that should be included. This method will override previously included and
          * {@link #excludeSchemas(String) excluded} schemas.
@@ -167,7 +171,7 @@ public class Selectors {
             }
             return this;
         }
-    
+
         /**
          * Specify the names of the schemas that should be excluded. This method will override previously {@link
          * #excludeSchemas(String) excluded} schemas, although {@link #includeSchemas(String)} including schemas} overrides
@@ -190,7 +194,7 @@ public class Selectors {
          * {@link #excludeTables(String) excluded} table names.
          * <p>
          * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
-         * 
+         *
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to include; may be null or
          *            empty
          * @param tableIdMapper an arbitrary converter used to convert TableId into String for pattern matching.
@@ -200,9 +204,11 @@ public class Selectors {
         public TableSelectionPredicateBuilder includeTables(String fullyQualifiedTableNames, TableIdToStringMapper tableIdMapper) {
             if (isEmpty(fullyQualifiedTableNames)) {
                 tableInclusions = null;
-            } else {
-                tableInclusions = Predicates.includes(fullyQualifiedTableNames, tableIdMapper);
             }
+            else {
+                tableInclusions = Predicates.includes(fullyQualifiedTableNames, tableId -> tableIdMapper.toString(tableId));
+            }
+
             return this;
         }
 
@@ -211,7 +217,7 @@ public class Selectors {
          * {@link #excludeTables(String) excluded} table names.
          * <p>
          * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
-         * 
+         *
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to include; may be null or
          *            empty
          * @return this builder so that methods can be chained together; never null
@@ -226,7 +232,7 @@ public class Selectors {
          * exclusions.
          * <p>
          * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
-         * 
+         *
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to exclude; may be null or
          *            empty
          * @param tableIdMapper an arbitrary converter used to convert TableId into String for pattern matching.
@@ -236,9 +242,11 @@ public class Selectors {
         public TableSelectionPredicateBuilder excludeTables(String fullyQualifiedTableNames, TableIdToStringMapper tableIdMapper) {
             if (isEmpty(fullyQualifiedTableNames)) {
                 tableExclusions = null;
-            } else {
-                tableExclusions = Predicates.excludes(fullyQualifiedTableNames, tableIdMapper);
             }
+            else {
+                tableExclusions = Predicates.excludes(fullyQualifiedTableNames, tableId -> tableIdMapper.toString(tableId));
+            }
+
             return this;
         }
 
@@ -248,7 +256,7 @@ public class Selectors {
          * exclusions.
          * <p>
          * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
-         * 
+         *
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to exclude; may be null or
          *            empty
          * @return this builder so that methods can be chained together; never null
@@ -259,20 +267,20 @@ public class Selectors {
 
         /**
          * Build the {@link Predicate} that determines whether a table identified by a given {@link TableId} is to be included.
-         * 
+         *
          * @return the table selection predicate; never null
          * @see #includeDatabases(String)
          * @see #excludeDatabases(String)
          * @see #includeTables(String)
-         * @see #excludeTables(String) 
-         * @see #includeSchemas(String) 
-         * @see #excludeSchemas(String) 
+         * @see #excludeTables(String)
+         * @see #includeSchemas(String)
+         * @see #excludeSchemas(String)
          */
         public Predicate<TableId> build() {
             Predicate<TableId> tableFilter = tableInclusions != null ? tableInclusions : tableExclusions;
             Predicate<String> dbFilter = dbInclusions != null ? dbInclusions : dbExclusions;
             Predicate<String> schemaFilter = schemaInclusions != null ? schemaInclusions : schemaExclusions;
-            
+
             if (dbFilter != null) {
                 return buildStartingFromDbFilter(dbFilter, schemaFilter, tableFilter);
             }
@@ -284,10 +292,10 @@ public class Selectors {
             if (tableFilter != null) {
                 return tableFilter;
             }
-            
+
             return (id) -> true;
         }
-    
+
         private Predicate<TableId> buildStartingFromSchemaFilter(Predicate<String> schemaFilter, Predicate<TableId> tableFilter) {
             assert schemaFilter != null;
             if (tableFilter != null) {
@@ -296,21 +304,21 @@ public class Selectors {
                 return (id) -> schemaFilter.test(id.schema());
             }
         }
-    
+
         private Predicate<TableId> buildStartingFromDbFilter(Predicate<String> dbFilter, Predicate<String> schemaFilter,
                                                              Predicate<TableId> tableFilter) {
             assert dbFilter != null;
-            
+
             if (schemaFilter != null) {
                 if (tableFilter != null) {
                     return (id) -> dbFilter.test(id.catalog()) && schemaFilter.test(id.schema()) && tableFilter.test(id);
                 } else {
-                    return (id) -> schemaFilter.test(id.schema());                        
+                    return (id) -> schemaFilter.test(id.schema());
                 }
             } else if (tableFilter != null) {
                 return (id) -> dbFilter.test(id.catalog()) && tableFilter.test(id);
             } else {
-                return (id) -> dbFilter.test(id.catalog());    
+                return (id) -> dbFilter.test(id.catalog());
             }
         }
     }
@@ -321,7 +329,7 @@ public class Selectors {
      * <p>
      * Note that this predicate is completely independent of the table selection predicate, so it is expected that this predicate
      * be used only <i>after</i> the table selection predicate determined the table containing the column(s) is to be used.
-     * 
+     *
      * @param columnNames the comma-separated list of column names names to exclude; may be null or
      *            empty
      * @return this builder so that methods can be chained together; never null
