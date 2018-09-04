@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.annotation.Immutable;
@@ -40,7 +41,11 @@ public class Selectors {
     private static boolean isEmpty(String value) {
         return value == null || value.trim().isEmpty();
     }
-    
+
+    @FunctionalInterface
+    public static interface TableIdToStringMapper extends Function<TableId, String> {
+    }
+
     /**
      * A builder of a database predicate.
      */
@@ -188,13 +193,51 @@ public class Selectors {
          * 
          * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to include; may be null or
          *            empty
+         * @param tableIdMapper an arbitrary converter used to convert TableId into String for pattern matching.
+         *         Usually used to remove a component from tableId to simplify patterns.
          * @return this builder so that methods can be chained together; never null
          */
-        public TableSelectionPredicateBuilder includeTables(String fullyQualifiedTableNames) {
+        public TableSelectionPredicateBuilder includeTables(String fullyQualifiedTableNames, TableIdToStringMapper tableIdMapper) {
             if (isEmpty(fullyQualifiedTableNames)) {
                 tableInclusions = null;
             } else {
-                tableInclusions = Predicates.includes(fullyQualifiedTableNames, TableId::toString);
+                tableInclusions = Predicates.includes(fullyQualifiedTableNames, tableIdMapper);
+            }
+            return this;
+        }
+
+        /**
+         * Specify the names of the tables that should be included. This method will override previously included and
+         * {@link #excludeTables(String) excluded} table names.
+         * <p>
+         * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
+         * 
+         * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to include; may be null or
+         *            empty
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder includeTables(String fullyQualifiedTableNames) {
+            return includeTables(fullyQualifiedTableNames, TableId::toString);
+        }
+
+        /**
+         * Specify the names of the tables that should be excluded. This method will override previously {@link
+         * #excludeDatabases(String) excluded} tables, although {@link #includeTables(String) including tables} overrides
+         * exclusions.
+         * <p>
+         * Note that any specified tables that are in an {@link #excludeDatabases(String) excluded database} will not be included.
+         * 
+         * @param fullyQualifiedTableNames the comma-separated list of fully-qualified table names to exclude; may be null or
+         *            empty
+         * @param tableIdMapper an arbitrary converter used to convert TableId into String for pattern matching.
+         *         Usually used to remove a component from tableId to simplify patterns.
+         * @return this builder so that methods can be chained together; never null
+         */
+        public TableSelectionPredicateBuilder excludeTables(String fullyQualifiedTableNames, TableIdToStringMapper tableIdMapper) {
+            if (isEmpty(fullyQualifiedTableNames)) {
+                tableExclusions = null;
+            } else {
+                tableExclusions = Predicates.excludes(fullyQualifiedTableNames, tableIdMapper);
             }
             return this;
         }
@@ -211,12 +254,7 @@ public class Selectors {
          * @return this builder so that methods can be chained together; never null
          */
         public TableSelectionPredicateBuilder excludeTables(String fullyQualifiedTableNames) {
-            if (isEmpty(fullyQualifiedTableNames)) {
-                tableExclusions = null;
-            } else {
-                tableExclusions = Predicates.excludes(fullyQualifiedTableNames, TableId::toString);
-            }
-            return this;
+            return excludeTables(fullyQualifiedTableNames, TableId::toString);
         }
 
         /**
