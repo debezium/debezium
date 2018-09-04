@@ -5,11 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import io.debezium.annotation.ThreadSafe;
-import io.debezium.util.Strings;
-import org.apache.kafka.common.config.ConfigException;
-import org.bson.Document;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -20,6 +15,12 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.apache.kafka.common.config.ConfigException;
+import org.bson.Document;
+
+import io.debezium.annotation.ThreadSafe;
+import io.debezium.util.Strings;
 
 /**
  * This filter selector is designed to determine the filter to exclude or rename fields in a document.
@@ -43,6 +44,9 @@ public final class FieldSelector {
         Document apply(Document doc);
     }
 
+    /**
+     * The configured exclusion/renaming patterns.
+     */
     private final List<Path> paths;
 
     private FieldSelector(List<Path> paths) {
@@ -145,19 +149,23 @@ public final class FieldSelector {
     public FieldFilter fieldFilterFor(CollectionId id) {
         if (!paths.isEmpty()) {
             String namespace = id.namespace();
-            List<Path> result = paths.stream().filter(path -> path.supports(namespace)).collect(Collectors.toList());
-            if (result.size() == 1) {
+            List<Path> pathsApplyingToCollection = paths.stream()
+                    .filter(path -> path.matches(namespace))
+                    .collect(Collectors.toList());
+
+            if (pathsApplyingToCollection.size() == 1) {
                 return doc -> {
                     Document setDoc = doc.get("$set", Document.class);
                     Document unsetDoc = doc.get("$unset", Document.class);
-                    result.get(0).modify(doc, setDoc, unsetDoc);
+                    pathsApplyingToCollection.get(0).modify(doc, setDoc, unsetDoc);
                     return doc;
                 };
-            } else if (result.size() > 1) {
+            }
+            else if (pathsApplyingToCollection.size() > 1) {
                 return doc -> {
                     Document setDoc = doc.get("$set", Document.class);
                     Document unsetDoc = doc.get("$unset", Document.class);
-                    result.forEach(path -> path.modify(doc, setDoc, unsetDoc));
+                    pathsApplyingToCollection.forEach(path -> path.modify(doc, setDoc, unsetDoc));
                     return doc;
                 };
             }
@@ -165,27 +173,38 @@ public final class FieldSelector {
         return doc -> doc;
     }
 
-    private static final class Entry {
+    private static final class FieldNameAndValue {
 
         private final String key;
         private final Object value;
 
-        private Entry(String key, Object value) {
+        private FieldNameAndValue(String key, Object value) {
             this.key = key;
             this.value = value;
         }
     }
 
+    /**
+     * Represents a field that should be excluded from or renamed in MongoDB documents.
+     */
     @ThreadSafe
     private static interface Path {
 
-        boolean supports(String namespace);
+        /**
+         * Whether this path applies to the given collection namespace or not.
+         */
+        boolean matches(String namespace);
 
+        /**
+         * Applies the transformation represented by this path, i.e. removes or renames the represented field.
+         */
         void modify(Document doc, Document setDoc, Document unsetDoc);
     }
 
     @ThreadSafe
     private static abstract class AbstractPath implements Path {
+
+        final static Pattern DOT = Pattern.compile("\\.");
 
         final Pattern namespacePattern;
         final String[] fieldNodes;
@@ -209,7 +228,7 @@ public final class FieldSelector {
         }
 
         @Override
-        public boolean supports(String namespace) {
+        public boolean matches(String namespace) {
             return namespacePattern.matcher(namespace).matches();
         }
 
@@ -217,7 +236,8 @@ public final class FieldSelector {
         public void modify(Document doc, Document setDoc, Document unsetDoc) {
             if (setDoc == null && unsetDoc == null) {
                 modifyFields(doc, fieldNodes, 0);
-            } else {
+            }
+            else {
                 if (setDoc != null) {
                     modifyFieldsWithDotNotation(setDoc);
                 }
@@ -245,11 +265,13 @@ public final class FieldSelector {
                 if (i == stopIndex) {
                     modifyField(current, node);
                     break;
-                } else {
+                }
+                else {
                     Object next = current.get(node);
                     if (next instanceof Document) {
                         current = (Document) next;
-                    } else {
+                    }
+                    else {
                         modifyFields(next, nodes, i + 1);
                         break;
                     }
@@ -272,11 +294,11 @@ public final class FieldSelector {
                 modifyFieldWithDotNotation(doc, field);
                 return;
             }
-            List<Entry> deferred = null;
+            List<FieldNameAndValue> deferred = null;
             Iterator<Map.Entry<String, Object>> it = doc.entrySet().iterator();
             while (it.hasNext()) {
                 Map.Entry<String, Object> entry = it.next();
-                String[] originKeyNodes = entry.getKey().split("\\.");
+                String[] originKeyNodes = DOT.split(entry.getKey());
                 String[] keyNodes = excludeNumericItems(originKeyNodes);
                 if (keyNodes.length > fieldNodes.length) {
                     // field is a prefix of key, e.g. field is 'a' and key is 'a.b'
@@ -284,18 +306,21 @@ public final class FieldSelector {
                         deferred = modifyFieldDeferred(deferred, originKeyNodes, entry.getValue());
                         it.remove();
                     }
-                } else if (keyNodes.length < fieldNodes.length) {
+                }
+                else if (keyNodes.length < fieldNodes.length) {
                     // key is a prefix of field, e.g. field is 'a.b' and key is 'a'
                     if (startsWith(keyNodes, fieldNodes)) {
                         Object value = entry.getValue();
                         if (value instanceof Document) {
                             modifyFields((Document) value, fieldNodes, keyNodes.length);
-                        } else {
+                        }
+                        else {
                             modifyFields(value, fieldNodes, keyNodes.length);
                         }
                         break;
                     }
-                } else {
+                }
+                else {
                     // key is equal to field, e.g. field is 'a' and key is 'a'
                     if (Arrays.equals(keyNodes, fieldNodes)) {
                         deferred = modifyFieldDeferred(deferred, originKeyNodes, entry.getValue());
@@ -303,6 +328,7 @@ public final class FieldSelector {
                     }
                 }
             }
+
             if (deferred != null) {
                 deferred.forEach(entry -> doc.put(checkFieldExists(doc, entry.key), entry.value));
             }
@@ -310,7 +336,7 @@ public final class FieldSelector {
 
         private void modifyFields(Object value, String[] fieldNodes, int length) {
             if (value instanceof List) {
-                for (Object item : (List) value) {
+                for (Object item : (List<?>) value) {
                     if (item instanceof Document) {
                         modifyFields((Document) item, fieldNodes, length);
                     }
@@ -343,13 +369,13 @@ public final class FieldSelector {
                             newItems = new ArrayList<>(Arrays.asList(items));
                         }
                         newItems.remove(i - offset++);
-                    } else {
+                    }
+                    else {
                         previousNumerical = false;
                     }
                 }
                 if (newItems != null) {
-                    String[] result = new String[newItems.size()];
-                    return newItems.toArray(result);
+                    return newItems.toArray(new String[newItems.size()]);
                 }
             }
             return items;
@@ -381,7 +407,7 @@ public final class FieldSelector {
             return field;
         }
 
-        abstract List<Entry> modifyFieldDeferred(List<Entry> deferred, String[] fieldNodes, Object value);
+        abstract List<FieldNameAndValue> modifyFieldDeferred(List<FieldNameAndValue> deferred, String[] fieldNodes, Object value);
 
         abstract void modifyField(Document doc, String field);
 
@@ -401,7 +427,7 @@ public final class FieldSelector {
         }
 
         @Override
-        List<Entry> modifyFieldDeferred(List<Entry> deferred, String[] fieldNodes, Object value) {
+        List<FieldNameAndValue> modifyFieldDeferred(List<FieldNameAndValue> deferred, String[] fieldNodes, Object value) {
             // this path doesn't support deferred field modification
             return deferred;
         }
@@ -442,12 +468,12 @@ public final class FieldSelector {
         }
 
         @Override
-        List<Entry> modifyFieldDeferred(List<Entry> deferred, String[] fieldNodes, Object value) {
+        List<FieldNameAndValue> modifyFieldDeferred(List<FieldNameAndValue> deferred, String[] fieldNodes, Object value) {
             String newField = rename(fieldNodes);
             if (deferred == null) {
                 deferred = new ArrayList<>();
             }
-            deferred.add(new Entry(newField, value));
+            deferred.add(new FieldNameAndValue(newField, value));
             return deferred;
         }
 
