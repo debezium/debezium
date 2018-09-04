@@ -5,10 +5,10 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.debezium.config.Configuration;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.DataCollectionFilters;
 
@@ -16,13 +16,13 @@ public class RelationalTableFilters implements DataCollectionFilters {
 
     private final TableFilter tableFilter;
 
-    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, Function<TableId, String> tableIdConverter) {
+    public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         // Define the filter using the whitelists and blacklists for tables and database names ...
         Predicate<TableId> predicate = Selectors.tableSelector()
 //                                                  .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
 //                                                  .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
-                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdConverter)
-                                                  .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST), tableIdConverter)
+                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdMapper)
+                                                  .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST), tableIdMapper)
                                                   .build();
 
 

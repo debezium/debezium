@@ -5,8 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Function;
-
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -15,6 +13,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
 /**
@@ -62,10 +61,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, Function<TableId, String> tableIdConverter) {
+    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         super(config, logicalName);
 
-        this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdConverter);
+        this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
     }
 
     public RelationalTableFilters getTableFilters() {
