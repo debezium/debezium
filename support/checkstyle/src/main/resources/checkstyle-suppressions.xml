@@ -18,4 +18,6 @@
     <!--exclude files from antlr which has to be copied into the module, because they are not included in library-->
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]antlr[\\/]CaseChangingCharStream\.java$"/>
     <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]antlr[\\/]ProxyParseTreeListener\.java$"/>
+
+    <suppress checks="." files=".[\\/]io[\\/]debezium[\\/]util[\\/]BoundedConcurrentHashMap\.java$"/>
 </suppressions>
