@@ -5,13 +5,13 @@
  */
 package io.debezium.schema;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 
 /**
  * Implementations return names for Kafka topics (data and meta-data).
@@ -147,18 +147,20 @@ public class TopicSelector<I extends DataCollectionId> {
     /**
      * A topic namer that caches names it has obtained from a delegate.
      */
+    @ThreadSafe
     private static class TopicNameCache <I extends DataCollectionId> implements DataCollectionTopicNamer<I> {
 
-        private final ConcurrentMap<I, String> topicNames = new ConcurrentHashMap<>();
+        private final BoundedConcurrentHashMap<I, String> topicNames;
         private final DataCollectionTopicNamer<I> delegate;
 
         public TopicNameCache(DataCollectionTopicNamer<I> delegate) {
+            this.topicNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LIRS);
             this.delegate = delegate;
         }
 
         @Override
         public String topicNameFor(I id, String prefix, String delimiter) {
-            return topicNames.computeIfAbsent(id, did -> delegate.topicNameFor(did, prefix, delimiter));
+            return topicNames.computeIfAbsent(id, i -> delegate.topicNameFor(i, prefix, delimiter));
         }
     }
 }
