@@ -211,6 +211,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             );
         }
 
+        consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         stopConnector();
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_RESTART + i;
@@ -225,17 +226,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        // After restart the last record from transaction is reprocessed, the problem is
-        // that the SQL Server seems to return sometimes the last change in transaction even if
-        // the from LSN is after the last change
-        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES + 1);
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
         List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
-        if (tableB != null && tableB.size() == RECORDS_PER_TABLE + 1) {
-            tableB = tableB.subList(1, RECORDS_PER_TABLE + 1);
-        }
+
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = i + ID_RESTART;
             final SourceRecord recordA = tableA.get(i);
