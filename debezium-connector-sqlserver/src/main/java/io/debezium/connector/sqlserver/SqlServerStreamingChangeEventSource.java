@@ -59,6 +59,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         try {
             final TableId[] tables = schema.getCapturedTables().toArray(new TableId[schema.getCapturedTables().size()]);
+            final Lsn lastProcessedLsnOnStart = offsetContext.getChangeLsn();
+            LOGGER.info("Last LSN recorded in offsets is {}", lastProcessedLsnOnStart);
             Lsn lastProcessedLsn = offsetContext.getChangeLsn();
             while (context.isRunning()) {
                 final Lsn currentMaxLsn = connection.getMaxLsn();
@@ -106,6 +108,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             break;
                         }
 
+                        if (tableSmallestLsn.getRowLsn().compareTo(lastProcessedLsnOnStart) <= 0) {
+                            LOGGER.info("Skipping change {} as its LSN is smaller than the last recorded LSN {}", tableSmallestLsn, lastProcessedLsnOnStart);
+                            tableSmallestLsn.next();
+                            continue;
+                        }
                         LOGGER.trace("Processing change {}", tableSmallestLsn);
                         final TableId tableId = tableSmallestLsn.getTableId();
                         final Lsn commitLsn = tableSmallestLsn.getCommitLsn();
