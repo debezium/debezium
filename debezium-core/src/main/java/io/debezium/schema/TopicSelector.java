@@ -154,7 +154,7 @@ public class TopicSelector<I extends DataCollectionId> {
         private final DataCollectionTopicNamer<I> delegate;
 
         public TopicNameCache(DataCollectionTopicNamer<I> delegate) {
-            this.topicNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LIRS);
+            this.topicNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LRU);
             this.delegate = delegate;
         }
 
