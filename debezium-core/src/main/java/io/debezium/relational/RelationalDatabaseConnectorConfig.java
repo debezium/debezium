@@ -13,6 +13,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
 /**
@@ -60,10 +61,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
+    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         super(config, logicalName);
 
-        this.tableFilters = new RelationalTableFilters(config, systemTablesFilter);
+        this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
     }
 
     public RelationalTableFilters getTableFilters() {

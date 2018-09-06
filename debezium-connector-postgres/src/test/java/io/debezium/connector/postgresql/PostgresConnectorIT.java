@@ -410,6 +410,35 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertNoRecordsToConsume();
     }
 
+    @Test
+    @FixFor("DBZ-878")
+    public void shouldReplaceInvalidTopicNameCharacters() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT +
+                           "CREATE TABLE s1.\"dbz_878_some|test@data\" (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                           "INSERT INTO s1.\"dbz_878_some|test@data\" (aa) VALUES (123);";
+
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                                        .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                                                        .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
+                                                        .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.dbz_878_some\\|test@data");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+
+        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("s1.dbz_878_some_test_data"));
+        assertThat(records.size()).isEqualTo(1);
+
+        SourceRecord record = records.get(0);
+        VerifyRecord.isValidRead(record, PK_FIELD, 1);
+
+        String sourceTable = ((Struct)record.value()).getStruct("source").getString("table");
+        assertThat(sourceTable).isEqualTo("dbz_878_some|test@data");
+    }
+
     private void assertFieldAbsent(SourceRecord record, String fieldName) {
         Struct value = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
         try {

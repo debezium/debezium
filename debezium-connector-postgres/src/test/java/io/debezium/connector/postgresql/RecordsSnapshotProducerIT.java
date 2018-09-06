@@ -70,7 +70,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
 
-        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted__");
 
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
@@ -80,8 +80,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableName();
-        consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
+        Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicName();
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
 
         // check the offset information for each record
         while (!consumer.isEmpty()) {
@@ -217,12 +217,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.stop();
     }
 
-    private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTableName) {
+    private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTopicName) {
         VerifyRecord.isValidRead(record, PK_FIELD, 1);
-        String tableName = record.topic().replace(TestHelper.TEST_SERVER + ".", "");
-        List<SchemaAndValueField> expectedValuesAndSchemasForTable = expectedValuesByTableName.get(tableName);
-        assertNotNull("No expected values for " + tableName + " found", expectedValuesAndSchemasForTable);
-        assertRecordSchemaAndValues(expectedValuesAndSchemasForTable, record, Envelope.FieldName.AFTER);
+        String topicName = record.topic().replace(TestHelper.TEST_SERVER + ".", "");
+        List<SchemaAndValueField> expectedValuesAndSchemasForTopic = expectedValuesByTopicName.get(topicName);
+        assertNotNull("No expected values for " + topicName + " found", expectedValuesAndSchemasForTopic);
+        assertRecordSchemaAndValues(expectedValuesAndSchemasForTopic, record, Envelope.FieldName.AFTER);
     }
 
     @Test
@@ -242,7 +242,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
 
-        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted_\"");
+        TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted__");
 
         //insert data for each of different supported types
         String statementsBuilder = ALL_STMTS.stream().collect(Collectors.joining(";" + System.lineSeparator())) + ";";
@@ -252,8 +252,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameAdaptiveTimeMicroseconds();
-        consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
+        Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicNameAdaptiveTimeMicroseconds();
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
 
         // check the offset information for each record
         while (!consumer.isEmpty()) {
@@ -293,8 +293,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        Map<String, List<SchemaAndValueField>> expectedValuesByTableName = super.schemaAndValuesByTableNameStringEncodedDecimals();
-        consumer.process(record -> assertReadRecord(record, expectedValuesByTableName));
+        Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicNameStringEncodedDecimals();
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
 
         // check the offset information for each record
         while (!consumer.isEmpty()) {

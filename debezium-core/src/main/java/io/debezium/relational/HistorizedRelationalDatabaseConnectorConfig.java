@@ -12,6 +12,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.HistoryRecordComparator;
@@ -40,7 +41,11 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .withDefault(KafkaDatabaseHistory.class.getName());
 
     protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
-        super(config, logicalName, systemTablesFilter);
+        super(config, logicalName, systemTablesFilter, TableId::toString);
+    }
+
+    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
+        super(config, logicalName, systemTablesFilter, tableIdMapper);
     }
 
     /**

@@ -11,7 +11,8 @@ if (
     !IMAGES_REPOSITORY ||
     !IMAGES_BRANCH ||
     !POSTGRES_DECODER_REPOSITORY ||
-    !POSTGRES_DECODER_BRANCH
+    !POSTGRES_DECODER_BRANCH ||
+    !MAVEN_CENTRAL_SYNC_TIMEOUT
 ) {
     error 'Input parameters not provided'
 }
@@ -35,9 +36,32 @@ ORACLE_ARTIFACT_DIR = '/home/jenkins/oracle-libs/12.2.0.1.0'
 ORACLE_ARTIFACT_VERSION = '12.1.0.2'
 
 VERSION_TAG = "v$RELEASE_VERSION"
-CORE_CONNECTORS = ['mongodb','mysql','postgres']
-INCUBATOR_CONNECTORS = ['oracle', 'sqlserver']
+VERSION_PARTS = RELEASE_VERSION.split('\\.')
+VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
+IMAGE_TAG = VERSION_MAJOR_MINOR
+
+CORE_CONNECTORS_PER_VERSION = [
+    '0.8': ['mongodb','mysql','postgres'],
+    '0.9': ['mongodb','mysql','postgres']
+]
+INCUBATOR_CONNECTORS_PER_VERSION = [
+    '0.8': ['oracle'],
+    '0.9': ['oracle', 'sqlserver']
+]
+
+CORE_CONNECTORS = CORE_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
+INCUBATOR_CONNECTORS = INCUBATOR_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
+if (CORE_CONNECTORS == null) {
+    error "List of core connectors not available"
+}
+if (INCUBATOR_CONNECTORS == null) {
+    error "List of incubator connectors not available"
+}
+
+
 CONNECTORS = CORE_CONNECTORS + INCUBATOR_CONNECTORS
+echo "Connectors to be released: $CONNECTORS"
+
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/postgres', 'examples/mongodb', 'kafka', 'zookeeper']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
@@ -136,13 +160,16 @@ def issuesWithoutComponentsFromJira() {
 }
 
 @NonCPS
-def closeJiraIssues() {
-    def resolvedIssues = jiraGET('search', [
+def resolvedIssuesFromJira() {
+    jiraGET('search', [
         'jql': "project=$JIRA_PROJECT AND fixVersion=$JIRA_VERSION AND status='Resolved'",
         'fields': 'key'
     ]).issues.collect { it.self }
+}
 
-    resolvedIssues.each { issue -> jiraUpdate("${issue}/transitions", JIRA_CLOSE_ISSUE) }
+@NonCPS
+def closeJiraIssues() {
+    resolvedIssuesFromJira().each { issue -> jiraUpdate("${issue}/transitions", JIRA_CLOSE_ISSUE) }
 }
 
 @NonCPS
@@ -177,6 +204,15 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
 }
 
 node('Slave') {
+
+    stage ('Validate parameters') {
+        if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
+            error "Release version '$RELEASE_VERSION' is not of the required format x.y.z.suffix"
+        }
+        if (!(DEVELOPMENT_VERSION ==~ /\d+\.\d+.\d+\-SNAPSHOT/)) {
+            error "Development version '$DEVELOPMENT_VERSION' is not of the required format x.y.z-SNAPSHOT"
+        }
+    }
 
     stage ('Initialize') {
         dir('.') {
@@ -214,8 +250,6 @@ node('Slave') {
                 userRemoteConfigs: [[url: "https://$POSTGRES_DECODER_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
         )
-        def version = RELEASE_VERSION.split('\\.')
-        IMAGE_TAG = "${version[0]}.${version[1]}"
         echo "Images tagged with $IMAGE_TAG will be used"
         dir(ORACLE_ARTIFACT_DIR) {
             sh "mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 -Dversion=$ORACLE_ARTIFACT_VERSION -Dpackaging=jar -Dfile=ojdbc8.jar"
@@ -227,6 +261,9 @@ node('Slave') {
         if (!DRY_RUN) {
             unresolvedIssues = unresolvedIssuesFromJira()
             issuesWithoutComponents = issuesWithoutComponentsFromJira()
+            if (!resolvedIssuesFromJira()) {
+                error "Error, there are no resolved issues for the release"
+            }
             if (unresolvedIssues) {
                 error "Error, issues ${unresolvedIssues.toString()} must be resolved"
             }
@@ -380,7 +417,7 @@ node('Slave') {
 
     stage ('Wait for Central sync') {
         if (!DRY_RUN) {
-            timeout (time: 2, unit: java.util.concurrent.TimeUnit.HOURS) {
+            timeout (time: MAVEN_CENTRAL_SYNC_TIMEOUT, unit: java.util.concurrent.TimeUnit.HOURS) {
                 while (true) {
                     failed = false
                     for (i = 0; i < CONNECTORS.size(); i++) {
