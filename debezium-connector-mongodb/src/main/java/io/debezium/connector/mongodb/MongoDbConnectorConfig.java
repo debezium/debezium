@@ -210,9 +210,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * A comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change
      * event message values. Fully-qualified replacements for fields are of the form {@code
-     * <databaseName>.<collectionName>.<fieldName>.<nestedFieldName>=<newNestedFieldName>}, where
+     * <databaseName>.<collectionName>.<fieldName>.<nestedFieldName>:<newNestedFieldName>}, where
      * {@code <databaseName>} and {@code <collectionName>} may contain the wildcard ({@code *}) which matches
-     * any characters, the equal character ({@code =}) is used to determine rename mapping of field.
+     * any characters, the colon character ({@code :}) is used to determine rename mapping of field.
      */
     public static final Field FIELD_RENAMES = Field.create("field.renames")
                                                      .withDisplayName("Rename Fields")

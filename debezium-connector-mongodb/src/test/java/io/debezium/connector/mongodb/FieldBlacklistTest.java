@@ -25,6 +25,7 @@ import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.fest.assertions.Assertions.assertThat;
 
 public class FieldBlacklistTest {
+
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = "patch";
     private static final JsonWriterSettings WRITER_SETTINGS =
@@ -721,6 +722,18 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -751,6 +764,20 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldNotExcludeNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      [
+        //         {
+        //            "number": 34,
+        //            "street": "Claude Debussylaan",
+        //            "city": "Amsterdam"
+        //         }
+        //      ]
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -774,6 +801,22 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "second": [
+        //            {
+        //               "number": 34,
+        //               "street": "Claude Debussylaan",
+        //               "city": "Amsterdam"
+        //            }
+        //         ]
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -804,6 +847,18 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -832,6 +887,18 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -890,6 +957,18 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -920,6 +999,20 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldNotExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      [
+        //         {
+        //            "number": 34,
+        //            "street": "Claude Debussylaan",
+        //            "city": "Amsterdam"
+        //         }
+        //      ]
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -943,6 +1036,22 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "second": [
+        //            {
+        //               "number": 34,
+        //               "street": "Claude Debussylaan",
+        //               "city": "Amsterdam"
+        //            }
+        //         ]
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -973,6 +1082,18 @@ public class FieldBlacklistTest {
 
     @Test
     public void shouldExcludeFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();

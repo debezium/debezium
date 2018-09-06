@@ -25,6 +25,7 @@ import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.fest.assertions.Assertions.assertThat;
 
 public class FieldRenamesTest {
+
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = "patch";
     private static final JsonWriterSettings WRITER_SETTINGS =
@@ -52,7 +53,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c2.name=new_name,*.c2.active=new_active").createFilters();
+        Filters filters = build.renameFields("*.c2.name:new_name,*.c2.active:new_active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -75,7 +76,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -105,7 +106,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.missing=new_missing").createFilters();
+        Filters filters = build.renameFields("*.c1.missing:new_missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -132,7 +133,7 @@ public class FieldRenamesTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active,*.c1.address.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active,*.c1.address.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -171,7 +172,7 @@ public class FieldRenamesTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.address.missing=new_missing").createFilters();
+        Filters filters = build.renameFields("*.c1.address.missing:new_missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -181,6 +182,29 @@ public class FieldRenamesTest {
         // then
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameNestedFieldsToExistingNamesForReadEvent() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("address", new Document()
+                        .append("number", 34L)
+                        .append("street", "Claude Debussylaan")
+                        .append("city", "Amsterdam"))
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+        Filters filters = build.renameFields("*.c1.address.street:city").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
     }
 
     @Test
@@ -194,7 +218,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -224,7 +248,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.missing=new_missing").createFilters();
+        Filters filters = build.renameFields("*.c1.missing:new_missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -251,7 +275,7 @@ public class FieldRenamesTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active,*.c1.address.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active,*.c1.address.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -290,7 +314,7 @@ public class FieldRenamesTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.address.missing=new_missing").createFilters();
+        Filters filters = build.renameFields("*.c1.address.missing:new_missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -300,6 +324,29 @@ public class FieldRenamesTest {
         // then
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameNestedFieldsToExistingNamesForInsertEvent() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("address", new Document()
+                        .append("number", 34L)
+                        .append("street", "Claude Debussylaan")
+                        .append("city", "Amsterdam"))
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+        Filters filters = build.renameFields("*.c1.address.street:city").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
     }
 
     @Test
@@ -313,7 +360,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -343,7 +390,7 @@ public class FieldRenamesTest {
                 .append("phone", 123L)
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.missing=new_missing").createFilters();
+        Filters filters = build.renameFields("*.c1.missing:new_missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -370,7 +417,7 @@ public class FieldRenamesTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active,*.c1.address.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active,*.c1.address.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -409,7 +456,7 @@ public class FieldRenamesTest {
                         .append("city", "Amsterdam"))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.address.missing=new_missing").createFilters();
+        Filters filters = build.renameFields("*.c1.address.missing:new_missing").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -419,6 +466,29 @@ public class FieldRenamesTest {
         // then
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(obj.toJson(WRITER_SETTINGS));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameNestedFieldsToExistingNamesForUpdateEventWithEmbeddedDocument() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("address", new Document()
+                        .append("number", 34L)
+                        .append("street", "Claude Debussylaan")
+                        .append("city", "Amsterdam"))
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+        Filters filters = build.renameFields("*.c1.address.street:city").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
     }
 
     @Test
@@ -441,7 +511,7 @@ public class FieldRenamesTest {
                                 .append("city", "Athens")))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -492,7 +562,7 @@ public class FieldRenamesTest {
                                 .append("city", "Athens"))))
                 .append("active", true)
                 .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -536,7 +606,7 @@ public class FieldRenamesTest {
                 .append("$set", new Document()
                         .append("name", "Sally")
                         .append("phone", 123L));
-        Filters filters = build.renameFields("*.c1.name=new_name").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -554,6 +624,23 @@ public class FieldRenamesTest {
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameFieldsToExistingNamesForSetTopLevelFieldUpdateEvent() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("$set", new Document()
+                        .append("name", "Sally")
+                        .append("phone", 123L));
+        Filters filters = build.renameFields("*.c1.name:phone").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+    }
+
     @Test
     public void shouldRenameFieldsForUnsetTopLevelFieldUpdateEvent() throws InterruptedException {
         // given
@@ -563,7 +650,7 @@ public class FieldRenamesTest {
                 .append("$unset", new Document()
                         .append("name", "")
                         .append("phone", ""));
-        Filters filters = build.renameFields("*.c1.name=new_name").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -581,6 +668,23 @@ public class FieldRenamesTest {
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameFieldsToExistingNamesForUnsetTopLevelFieldUpdateEvent() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("$unset", new Document()
+                        .append("name", "")
+                        .append("phone", ""));
+        Filters filters = build.renameFields("*.c1.name:phone").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+    }
+
     @Test
     public void shouldRenameNestedFieldsForSetTopLevelFieldUpdateEventWithEmbeddedDocument() throws InterruptedException {
         // given
@@ -594,7 +698,7 @@ public class FieldRenamesTest {
                                 .append("number", 34L)
                                 .append("street", "Claude Debussylaan")
                                 .append("city", "Amsterdam")));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.address.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.address.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -635,7 +739,7 @@ public class FieldRenamesTest {
                                         .append("number", 7L)
                                         .append("street", "Fragkokklisias")
                                         .append("city", "Athens"))));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -683,7 +787,7 @@ public class FieldRenamesTest {
                                         .append("number", 7L)
                                         .append("street", "Fragkokklisias")
                                         .append("city", "Athens")))));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -728,7 +832,7 @@ public class FieldRenamesTest {
                         .append("address.number", 34L)
                         .append("address.street", "Claude Debussylaan")
                         .append("address.city", "Amsterdam"));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.address.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.address.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -750,6 +854,18 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -759,7 +875,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.number", 34L)
                         .append("addresses.0.street", "Claude Debussylaan")
                         .append("addresses.0.city", "Amsterdam"));
-        Filters filters = build.renameFields("*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -779,8 +895,41 @@ public class FieldRenamesTest {
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameNestedFieldsToExistingNamesForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("$set", new Document()
+                        .append("name", "Sally")
+                        .append("addresses.0.number", 34L)
+                        .append("addresses.0.street", "Claude Debussylaan")
+                        .append("addresses.0.city", "Amsterdam"));
+        Filters filters = build.renameFields("*.c1.addresses.street:city").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+    }
+
     @Test
     public void shouldNotRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      [
+        //         {
+        //            "number": 34,
+        //            "street": "Claude Debussylaan",
+        //            "city": "Amsterdam"
+        //         }
+        //      ]
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -790,7 +939,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.0.number", 34L)
                         .append("addresses.0.0.street", "Claude Debussylaan")
                         .append("addresses.0.0.city", "Amsterdam"));
-        Filters filters = build.renameFields("*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -804,6 +953,22 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "second": [
+        //            {
+        //               "number": 34,
+        //               "street": "Claude Debussylaan",
+        //               "city": "Amsterdam"
+        //            }
+        //         ]
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -813,7 +978,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.second.0.number", 34L)
                         .append("addresses.0.second.0.street", "Claude Debussylaan")
                         .append("addresses.0.second.0.city", "Amsterdam"));
-        Filters filters = build.renameFields("*.c1.addresses.second.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses.second.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -835,6 +1000,18 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -844,7 +1021,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.number", 34L)
                         .append("addresses.0.street", "Claude Debussylaan")
                         .append("addresses.0.city", "Amsterdam"));
-        Filters filters = build.renameFields("*.c1.addresses=new_addresses").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses:new_addresses").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -866,6 +1043,18 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -876,7 +1065,7 @@ public class FieldRenamesTest {
                                 .append("number", 34L)
                                 .append("street", "Claude Debussylaan")
                                 .append("city", "Amsterdam")));
-        Filters filters = build.renameFields("*.c1.addresses=new_addresses").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses:new_addresses").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -909,7 +1098,7 @@ public class FieldRenamesTest {
                         .append("address.number", "")
                         .append("address.street", "")
                         .append("address.city", ""));
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.address.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.address.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -931,6 +1120,18 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -940,7 +1141,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.number", "")
                         .append("addresses.0.street", "")
                         .append("addresses.0.city", ""));
-        Filters filters = build.renameFields("*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -960,8 +1161,41 @@ public class FieldRenamesTest {
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldNotRenameNestedFieldsToExistingNamesForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // given
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("$unset", new Document()
+                        .append("name", "")
+                        .append("addresses.0.number", "")
+                        .append("addresses.0.street", "")
+                        .append("addresses.0.city", ""));
+        Filters filters = build.renameFields("*.c1.addresses.street:city").createFilters();
+        List<SourceRecord> produced = new ArrayList<>();
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        // when
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+    }
+
     @Test
     public void shouldNotRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      [
+        //         {
+        //            "number": 34,
+        //            "street": "Claude Debussylaan",
+        //            "city": "Amsterdam"
+        //         }
+        //      ]
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -971,7 +1205,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.0.number", "")
                         .append("addresses.0.0.street", "")
                         .append("addresses.0.0.city", ""));
-        Filters filters = build.renameFields("*.c1.addresses.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -985,6 +1219,22 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "second": [
+        //            {
+        //               "number": 34,
+        //               "street": "Claude Debussylaan",
+        //               "city": "Amsterdam"
+        //            }
+        //         ]
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -994,7 +1244,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.second.0.number", "")
                         .append("addresses.0.second.0.street", "")
                         .append("addresses.0.second.0.city", ""));
-        Filters filters = build.renameFields("*.c1.addresses.second.number=new_number").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses.second.number:new_number").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -1016,6 +1266,18 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // source document can have the following structure:
+        // {
+        //   "name": "Sally",
+        //   "addresses": [
+        //      {
+        //         "number": 34,
+        //         "street": "Claude Debussylaan",
+        //         "city": "Amsterdam"
+        //      }
+        //   ]
+        // }
+
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
@@ -1025,7 +1287,7 @@ public class FieldRenamesTest {
                         .append("addresses.0.number", "")
                         .append("addresses.0.street", "")
                         .append("addresses.0.city", ""));
-        Filters filters = build.renameFields("*.c1.addresses=new_addresses").createFilters();
+        Filters filters = build.renameFields("*.c1.addresses:new_addresses").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -1051,7 +1313,7 @@ public class FieldRenamesTest {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
@@ -1073,7 +1335,7 @@ public class FieldRenamesTest {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
         Document obj = new Document("_id", objId);
-        Filters filters = build.renameFields("*.c1.name=new_name,*.c1.active=new_active").createFilters();
+        Filters filters = build.renameFields("*.c1.name:new_name,*.c1.active:new_active").createFilters();
         List<SourceRecord> produced = new ArrayList<>();
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 

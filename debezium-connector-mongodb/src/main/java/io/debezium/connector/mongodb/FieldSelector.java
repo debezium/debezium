@@ -28,6 +28,9 @@ import io.debezium.util.Strings;
 @ThreadSafe
 public final class FieldSelector {
 
+    private static final Pattern DOT = Pattern.compile("\\.");
+    private static final Pattern COLON = Pattern.compile(":");
+
     /**
      * This filter is designed to exclude or rename fields in a document.
      */
@@ -100,13 +103,13 @@ public final class FieldSelector {
         public FieldSelector build() {
             List<Path> result = new ArrayList<>();
             parse(fullyQualifiedFieldNames, name -> {
-                String[] fieldNodes = parseIntoParts(name, name, length -> length < 3, "\\.");
-                return new RemovePath(fieldNodes);
+                String[] nameNodes = parseIntoParts(name, name, length -> length < 3, DOT);
+                return new RemovePath(selectNamespacePartAsPattern(nameNodes), selectFieldPartAsNodes(nameNodes));
             }, result);
             parse(fullyQualifiedFieldReplacements, name -> {
-                String[] renameMapping = parseIntoParts(name, name, length -> length != 2, "=");
-                String[] fieldNodes = parseIntoParts(name, renameMapping[0], length -> length < 3, "\\.");
-                return new RenamePath(fieldNodes, renameMapping[1]);
+                String[] replacement = parseIntoParts(name, name, length -> length != 2, COLON);
+                String[] nameNodes = parseIntoParts(name, replacement[0], length -> length < 3, DOT);
+                return new RenamePath(selectNamespacePartAsPattern(nameNodes), selectFieldPartAsNodes(nameNodes), replacement[1]);
             }, result);
             return new FieldSelector(result);
         }
@@ -117,12 +120,27 @@ public final class FieldSelector {
             }
         }
 
-        private String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, String delimiter) {
-            String[] fieldNodes = value.split(delimiter);
-            if (lengthPredicate.test(fieldNodes.length) || Arrays.stream(fieldNodes).anyMatch(Strings::isNullOrEmpty)) {
+        private String[] parseIntoParts(String name, String value, Predicate<Integer> lengthPredicate, Pattern delimiterPattern) {
+            String[] nodes = delimiterPattern.split(value);
+            if (lengthPredicate.test(nodes.length) || Arrays.stream(nodes).anyMatch(Strings::isNullOrEmpty)) {
                 throw new ConfigException("Invalid format: " + name);
             }
-            return fieldNodes;
+            return nodes;
+        }
+
+        private Pattern selectNamespacePartAsPattern(String[] expressionNodes) {
+            String databaseName = expressionNodes[0];
+            String collectionName = expressionNodes[1];
+            String namespaceRegex = toRegex(databaseName) + "\\." + toRegex(collectionName);
+            return Pattern.compile(namespaceRegex, Pattern.CASE_INSENSITIVE);
+        }
+
+        private String toRegex(String value) {
+            return value.replace("*", ".*");
+        }
+
+        private String[] selectFieldPartAsNodes(String[] expressionNodes) {
+            return Arrays.copyOfRange(expressionNodes, 2, expressionNodes.length);
         }
     }
 
@@ -136,7 +154,7 @@ public final class FieldSelector {
     }
 
     /**
-     * Returns the field filter for a given collection identifier.
+     * Returns the field filter for the given collection identifier.
      *
      * <p>
      * Note that the field filter is completely independent of the collection selection predicate, so it is expected that this
@@ -188,51 +206,37 @@ public final class FieldSelector {
      * Represents a field that should be excluded from or renamed in MongoDB documents.
      */
     @ThreadSafe
-    private static interface Path {
-
-        /**
-         * Whether this path applies to the given collection namespace or not.
-         */
-        boolean matches(String namespace);
-
-        /**
-         * Applies the transformation represented by this path, i.e. removes or renames the represented field.
-         */
-        void modify(Document doc, Document setDoc, Document unsetDoc);
-    }
-
-    @ThreadSafe
-    private static abstract class AbstractPath implements Path {
-
-        final static Pattern DOT = Pattern.compile("\\.");
+    private static abstract class Path {
 
         final Pattern namespacePattern;
         final String[] fieldNodes;
         final String field;
 
-        private AbstractPath(String[] fieldNodes) {
-            this.namespacePattern = namespacePattern(fieldNodes[0], fieldNodes[1]);
-            this.fieldNodes = Arrays.copyOfRange(fieldNodes, 2, fieldNodes.length);
+        private Path(Pattern namespacePattern, String[] fieldNodes) {
+            this.namespacePattern = namespacePattern;
+            this.fieldNodes = fieldNodes;
             StringJoiner field = new StringJoiner(".");
             Arrays.stream(fieldNodes).forEach(field::add);
             this.field = field.toString();
         }
 
-        private Pattern namespacePattern(String databaseName, String collectionName) {
-            String namespaceRegex = toRegex(databaseName) + "\\." + toRegex(collectionName);
-            return Pattern.compile(namespaceRegex, Pattern.CASE_INSENSITIVE);
-        }
-
-        private String toRegex(String value) {
-            return value.replace("*", ".*");
-        }
-
-        @Override
+        /**
+         * Whether this path applies to the given collection namespace or not.
+         *
+         * @param namespace namespace to match
+         * @return {@code true} if this path applies to the given collection namespace
+         */
         public boolean matches(String namespace) {
             return namespacePattern.matcher(namespace).matches();
         }
 
-        @Override
+        /**
+         * Applies the transformation represented by this path, i.e. removes or renames the represented field.
+         *
+         * @param doc      the original document; never {@code null}
+         * @param setDoc   the value of {@code $set} field; may be {@code null}
+         * @param unsetDoc the value of {@code $unset} field; may be {@code null}
+         */
         public void modify(Document doc, Document setDoc, Document unsetDoc) {
             if (setDoc == null && unsetDoc == null) {
                 modifyFields(doc, fieldNodes, 0);
@@ -294,7 +298,8 @@ public final class FieldSelector {
                 modifyFieldWithDotNotation(doc, field);
                 return;
             }
-            List<FieldNameAndValue> deferred = null;
+
+            List<FieldNameAndValue> newFields = null;
             Iterator<Map.Entry<String, Object>> it = doc.entrySet().iterator();
             while (it.hasNext()) {
                 Map.Entry<String, Object> entry = it.next();
@@ -303,7 +308,7 @@ public final class FieldSelector {
                 if (keyNodes.length > fieldNodes.length) {
                     // field is a prefix of key, e.g. field is 'a' and key is 'a.b'
                     if (startsWith(fieldNodes, keyNodes)) {
-                        deferred = modifyFieldDeferred(deferred, originKeyNodes, entry.getValue());
+                        newFields = add(newFields, generateNewFieldName(originKeyNodes, entry.getValue()));
                         it.remove();
                     }
                 }
@@ -323,14 +328,14 @@ public final class FieldSelector {
                 else {
                     // key is equal to field, e.g. field is 'a' and key is 'a'
                     if (Arrays.equals(keyNodes, fieldNodes)) {
-                        deferred = modifyFieldDeferred(deferred, originKeyNodes, entry.getValue());
+                        newFields = add(newFields, generateNewFieldName(originKeyNodes, entry.getValue()));
                         it.remove();
                     }
                 }
             }
 
-            if (deferred != null) {
-                deferred.forEach(entry -> doc.put(checkFieldExists(doc, entry.key), entry.value));
+            if (newFields != null) {
+                newFields.forEach(entry -> doc.put(checkFieldExists(doc, entry.key), entry.value));
             }
         }
 
@@ -345,7 +350,7 @@ public final class FieldSelector {
         }
 
         /**
-         * Excludes numeric items from a given array.
+         * Excludes numeric items from the given array.
          *
          * <p>
          * If the array has consecutive numeric items, like {@code 'a.0.0.b'}, then the numeric items aren't excluded.
@@ -400,6 +405,16 @@ public final class FieldSelector {
             return true;
         }
 
+        private <T> List<T> add(List<T> list, T element) {
+            if (element != null) {
+                if (list == null) {
+                    list = new ArrayList<>();
+                }
+                list.add(element);
+            }
+            return list;
+        }
+
         String checkFieldExists(Document doc, String field) {
             if (doc.containsKey(field)) {
                 throw new IllegalArgumentException("Document already contains field : " + field);
@@ -407,11 +422,31 @@ public final class FieldSelector {
             return field;
         }
 
-        abstract List<FieldNameAndValue> modifyFieldDeferred(List<FieldNameAndValue> deferred, String[] fieldNodes, Object value);
-
+        /**
+         * Modifies the field in the document used for read, insert and full update operations.
+         *
+         * @param doc   the document to modify field
+         * @param field the modified field
+         */
         abstract void modifyField(Document doc, String field);
 
+        /**
+         * Immediately modifies the field that uses the dot notation like {@code 'a.b'} in the document used for set and
+         * unset update operations.
+         *
+         * @param doc   the document to modify field
+         * @param field the modified field
+         */
         abstract void modifyFieldWithDotNotation(Document doc, String field);
+
+        /**
+         * Generates a new field name for the given value.
+         *
+         * @param fieldNodes the field nodes
+         * @param value      the field value
+         * @return a new field name for the given value
+         */
+        abstract FieldNameAndValue generateNewFieldName(String[] fieldNodes, Object value);
 
         @Override
         public String toString() {
@@ -420,16 +455,10 @@ public final class FieldSelector {
     }
 
     @ThreadSafe
-    private static final class RemovePath extends AbstractPath {
+    private static final class RemovePath extends Path {
 
-        private RemovePath(String[] fieldNodes) {
-            super(fieldNodes);
-        }
-
-        @Override
-        List<FieldNameAndValue> modifyFieldDeferred(List<FieldNameAndValue> deferred, String[] fieldNodes, Object value) {
-            // this path doesn't support deferred field modification
-            return deferred;
+        private RemovePath(Pattern namespacePattern, String[] fieldNodes) {
+            super(namespacePattern, fieldNodes);
         }
 
         @Override
@@ -441,18 +470,24 @@ public final class FieldSelector {
         void modifyFieldWithDotNotation(Document doc, String field) {
             doc.remove(field);
         }
+
+        @Override
+        FieldNameAndValue generateNewFieldName(String[] fieldNodes, Object value) {
+            // this path doesn't support new field name generation
+            return null;
+        }
     }
 
     @ThreadSafe
-    private static final class RenamePath extends AbstractPath {
+    private static final class RenamePath extends Path {
 
         // field node that is used to change the old field in document. It can't be nested field
         private final String newFieldNode;
         // field that is used to replace the old field in document. It can be top level or nested field
         private final String newField;
 
-        private RenamePath(String[] oldFieldNodes, String newFieldNode) {
-            super(oldFieldNodes);
+        private RenamePath(Pattern namespacePattern, String[] oldFieldNodes, String newFieldNode) {
+            super(namespacePattern, oldFieldNodes);
             this.newFieldNode = newFieldNode;
             this.newField = replaceLastNameNode(oldFieldNodes, newFieldNode);
         }
@@ -468,13 +503,9 @@ public final class FieldSelector {
         }
 
         @Override
-        List<FieldNameAndValue> modifyFieldDeferred(List<FieldNameAndValue> deferred, String[] fieldNodes, Object value) {
+        FieldNameAndValue generateNewFieldName(String[] fieldNodes, Object value) {
             String newField = rename(fieldNodes);
-            if (deferred == null) {
-                deferred = new ArrayList<>();
-            }
-            deferred.add(new FieldNameAndValue(newField, value));
-            return deferred;
+            return new FieldNameAndValue(newField, value);
         }
 
         /**
@@ -492,6 +523,7 @@ public final class FieldSelector {
                 for (int i = 0; i < nameNodes.length; i++) {
                     newName.add((i == replaceIndex) ? lastNameNode : nameNodes[i]);
                 }
+                return newName.toString();
             }
             return lastNameNode;
         }
