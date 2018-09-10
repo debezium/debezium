@@ -19,6 +19,7 @@ import java.util.function.Function;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Table;
@@ -356,5 +357,18 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("L").defaultValue()).isEqualTo(Date.from(ZonedDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000, ZoneOffset.UTC).toInstant()));
     }
 
+    @Test
+    @FixFor("DBZ-901")
+    public void parseAlterTableTruncatedDefaulDateTime() {
+        String sql = "CREATE TABLE TIME_TABLE (" +
+                "  A datetime(3) NOT NULL DEFAULT '0000-00-00 00:00:00.000'" +
+                ");";
+        String alterSql = "ALTER TABLE TIME_TABLE ADD COLUMN B DATETIME(3) NOT NULL DEFAULT '1970-01-01 00:00:00';";
+        parser.parse(sql, tables);
+        parser.parse(alterSql, tables);
+        Table table = tables.forTable(new TableId(null, null, "TIME_TABLE"));
+        assertThat(table.columnWithName("A").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+        assertThat(table.columnWithName("B").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
+    }
 
 }
