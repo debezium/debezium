@@ -149,7 +149,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE);
         validateField(validatedConfig, PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.PRECISE);
         validateField(validatedConfig, PostgresConnectorConfig.SSL_SOCKET_FACTORY, null);
-        validateField(validatedConfig, PostgresConnectorConfig.TCP_KEEPALIVE, null);
+        validateField(validatedConfig, PostgresConnectorConfig.TCP_KEEPALIVE, true);
    }
 
     @Test
