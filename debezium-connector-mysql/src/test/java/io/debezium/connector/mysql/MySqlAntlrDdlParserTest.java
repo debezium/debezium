@@ -14,6 +14,7 @@ import java.util.List;
 import org.junit.Test;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -269,6 +270,15 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(c2.typeName()).isEqualTo("SMALLINT");
         assertThat(c3.name()).isEqualTo("y");
         assertThat(c3.typeName()).isEqualTo("TINYINT");
+    }
+
+    @Test
+    @FixFor("DBZ-903")
+    public void shouldParseFunctionNamedDatabase() {
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+
+        final String ddl = "SELECT `table_name` FROM `information_schema`.`TABLES` WHERE `table_schema` = DATABASE()";
+        parser.parse(ddl, tables);
     }
 
     @Override
