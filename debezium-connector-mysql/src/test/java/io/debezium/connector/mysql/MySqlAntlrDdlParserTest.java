@@ -7,6 +7,7 @@
 package io.debezium.connector.mysql;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Table;
@@ -243,6 +244,16 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
     }
 
+    @Test
+    @FixFor("DBZ-903")
+    public void shouldParseFunctionNamedDatabase() {
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+
+        final String ddl = "SELECT `table_name` FROM `information_schema`.`TABLES` WHERE `table_schema` = DATABASE()";
+        parser.parse(ddl, tables);
+    }
+
+    @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);
         String commaSeperatedOptions = Strings.join(",", options);
