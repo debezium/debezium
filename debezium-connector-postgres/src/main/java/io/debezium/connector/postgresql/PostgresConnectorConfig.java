@@ -677,6 +677,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
             .withDisplayName("TCP keep-alive probe")
             .withType(Type.BOOLEAN)
+            .withDefault(true)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Enable or disable TCP keep-alive probe to avoid dropping TCP connection")
