@@ -448,7 +448,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (columnNames.size() != messagesCount) {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
-           return true;
+            logger.info("Different column count {} present in the server message as schema in memory contains {}; refreshing table schema", messagesCount, columnNames.size());
+            return true;
         }
 
         // go through the list of columns from the message to figure out if any of them are new or have changed their type based
