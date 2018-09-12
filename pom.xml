@@ -122,7 +122,6 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
-        <module>debezium-microbenchmark</module>
     </modules>
 
     <distributionManagement>
@@ -399,11 +398,6 @@
                     <version>${version.release.plugin}</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>${version.staging.plugin}</version>
-                </plugin>
-                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${version.surefire.plugin}</version>
@@ -484,16 +478,6 @@
                 <configuration>
                     <pushChanges>false</pushChanges>
                     <releaseProfiles>docs,assembly,release-sign-artifacts,release</releaseProfiles>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
                 </configuration>
             </plugin>
             <plugin>
