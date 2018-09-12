@@ -22,9 +22,6 @@ import io.debezium.config.Field.ValidationOutput;
  */
 public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
-    private static final String DATABASE_LIST_NAME = "database.list";
-    private static final String COLLECTION_LIST_NAME = "collection.list";
-
     /**
      * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
      * replica set.
@@ -34,7 +31,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                            .withType(Type.LIST)
                                            .withWidth(Width.LONG)
                                            .withImportance(Importance.HIGH)
-                                           .withDependents(DATABASE_LIST_NAME)
                                            .withValidation(MongoDbConnectorConfig::validateHosts)
                                            .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
                                                    + "of the MongoDB server(s) in the replica set.");
@@ -55,7 +51,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                           .withType(Type.STRING)
                                           .withWidth(Width.SHORT)
                                           .withImportance(Importance.HIGH)
-                                          .withDependents(DATABASE_LIST_NAME)
                                           .withDescription("Database user for connecting to MongoDB, if necessary.");
 
     public static final Field PASSWORD = Field.create("mongodb.password")
@@ -63,7 +58,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                               .withType(Type.PASSWORD)
                                               .withWidth(Width.SHORT)
                                               .withImportance(Importance.HIGH)
-                                              .withDependents(DATABASE_LIST_NAME)
                                               .withDescription("Password to be used when connecting to MongoDB, if necessary.");
 
     public static final Field POLL_INTERVAL_SEC = Field.create("mongodb.poll.interval.sec")
