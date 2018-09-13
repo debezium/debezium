@@ -77,6 +77,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
+    protected final String timezone;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -84,7 +85,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * columns.
      */
     public JdbcValueConverters() {
-        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null);
+        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null);
     }
 
     /**
@@ -103,13 +104,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
      *            {@link BigIntUnsignedMode#PRECISE} is to be used
      */
     public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
-                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode) {
+                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, String timezone) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
         this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
+        this.timezone = timezone;
     }
 
     @Override
@@ -430,7 +432,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return 0L; // return epoch
         }
         try {
-            return Timestamp.toEpochMillis(data, adjuster);
+            return Timestamp.toEpochMillis(data, adjuster, timezone);
         } catch (IllegalArgumentException e) {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -459,7 +461,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return 0L; // return epoch
         }
         try {
-            return MicroTimestamp.toEpochMicros(data, adjuster);
+            return MicroTimestamp.toEpochMicros(data, adjuster, timezone);
         } catch (IllegalArgumentException e) {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -488,7 +490,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return 0L; // return epoch
         }
         try {
-            return NanoTimestamp.toEpochNanos(data, adjuster);
+            return NanoTimestamp.toEpochNanos(data, adjuster, timezone);
         } catch (IllegalArgumentException e) {
             return handleUnknownData(column, fieldDefn, data);
         }
@@ -517,7 +519,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             return new java.util.Date(0L); // return epoch
         }
         try {
-            return new java.util.Date(Timestamp.toEpochMillis(data, adjuster));
+            return new java.util.Date(Timestamp.toEpochMillis(data, adjuster, timezone));
         } catch (IllegalArgumentException e) {
             return handleUnknownData(column, fieldDefn, data);
         }

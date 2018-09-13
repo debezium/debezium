@@ -77,7 +77,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
      *
-     * @param config the connector configuration, which is presumed to be valid
+     * @param configuration the connector configuration, which is presumed to be valid
      * @param gtidFilter the predicate function that should be applied to GTID sets in database history, and which
      *          returns {@code true} if a GTID source is to be included, or {@code false} if a GTID source is to be excluded;
      *          may be null if not needed
@@ -146,7 +146,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
 
-        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
+        String timezone = config.getString("database.serverTimezone");
+        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode, timezone);
     }
 
     protected HistoryRecordComparator historyComparator() {

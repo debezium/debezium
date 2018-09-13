@@ -67,10 +67,19 @@ public class NanoTimestamp {
      * @return the epoch nanoseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
+    public static long toEpochNanos(Object value, TemporalAdjuster adjuster, String timezone) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
-        dateTime = ZonedDateTime.of(dateTime, ZoneId.of("CET")).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        if (adjuster != null) {
+            dateTime = dateTime.with(adjuster);
+        }
+        if (timezone != null) {
+            dateTime = ZonedDateTime.of(dateTime, ZoneId.of(timezone)).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        }
         return Conversions.toEpochNanos(dateTime);
+    }
+
+    public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
+        return toEpochNanos(value, adjuster, null);
     }
 
     private NanoTimestamp() {

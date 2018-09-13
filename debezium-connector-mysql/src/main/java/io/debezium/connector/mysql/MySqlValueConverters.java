@@ -118,8 +118,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode);
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, String timezone) {
+        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, timezone);
     }
 
     /**
@@ -135,8 +135,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset, MySqlValueConverters::adjustTemporal, bigIntUnsignedMode);
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, String timezone) {
+        super(decimalMode, temporalPrecisionMode, defaultOffset, MySqlValueConverters::adjustTemporal, bigIntUnsignedMode, timezone);
     }
 
     @Override
