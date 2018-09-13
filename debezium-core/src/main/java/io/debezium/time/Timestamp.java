@@ -6,6 +6,9 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
@@ -69,9 +72,7 @@ public class Timestamp {
             return (Long)value;
         }
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
-        if (adjuster != null) {
-            dateTime = dateTime.with(adjuster);
-        }
+        dateTime = ZonedDateTime.of(dateTime, ZoneId.of("CET")).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MILLISECOND);
     }

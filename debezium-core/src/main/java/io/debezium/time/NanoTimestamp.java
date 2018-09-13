@@ -6,6 +6,9 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
@@ -66,9 +69,7 @@ public class NanoTimestamp {
      */
     public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
-        if ( adjuster != null) {
-            dateTime = dateTime.with(adjuster);
-        }
+        dateTime = ZonedDateTime.of(dateTime, ZoneId.of("CET")).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         return Conversions.toEpochNanos(dateTime);
     }
 
