@@ -91,7 +91,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private final TypeRegistry typeRegistry;
 
     protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
+        super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode, null);
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
     }
