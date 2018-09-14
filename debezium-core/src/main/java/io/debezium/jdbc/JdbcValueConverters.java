@@ -14,11 +14,7 @@ import java.nio.ByteOrder;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.time.OffsetTime;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
@@ -77,7 +73,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
-    protected final String timezone;
+    protected final ZoneId timezone;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -111,7 +107,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
-        this.timezone = timezone;
+        this.timezone = ZoneId.of(timezone);
     }
 
     @Override

@@ -67,7 +67,7 @@ public class Timestamp {
      * @return the epoch milliseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochMillis(Object value, TemporalAdjuster adjuster, String timezone) {
+    public static long toEpochMillis(Object value, TemporalAdjuster adjuster, ZoneId timezone) {
         if (value instanceof Long) {
             return (Long)value;
         }
@@ -76,7 +76,7 @@ public class Timestamp {
             dateTime = dateTime.with(adjuster);
         }
         if (timezone != null) {
-            dateTime = ZonedDateTime.of(dateTime, ZoneId.of(timezone)).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+            dateTime = ZonedDateTime.of(dateTime, timezone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         }
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MILLISECOND);

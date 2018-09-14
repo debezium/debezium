@@ -67,13 +67,13 @@ public class MicroTimestamp {
      * @return the epoch microseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochMicros(Object value, TemporalAdjuster adjuster, String timezone) {
+    public static long toEpochMicros(Object value, TemporalAdjuster adjuster, ZoneId timezone) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         if (adjuster != null) {
             dateTime = dateTime.with(adjuster);
         }
         if (timezone != null) {
-            dateTime = ZonedDateTime.of(dateTime, ZoneId.of(timezone)).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+            dateTime = ZonedDateTime.of(dateTime, timezone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         }
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MICROSECOND);
