@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -161,14 +162,49 @@ public class FiltersTest {
         assertCollectionIncluded("db2.collectionA");
     }
 
-    protected void assertCollectionIncluded(String fullyQualifiedTableName) {
-        CollectionId id = CollectionId.parse("rs1." + fullyQualifiedTableName);
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldBlacklistDatabaseAndCollectionPartsAreMissing() {
+        build.excludeFields(".name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldBlacklistFieldPartIsMissing() {
+        build.excludeFields("db1.collectionA.").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesDatabaseAndCollectionPartsAreMissing() {
+        build.renameFields(".name=new_name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartIsMissing() {
+        build.renameFields("db1.collectionA.").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesReplacementPartSeparatorIsMissing() {
+        build.renameFields("db1.collectionA.namenew_name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingKeyIsMissing() {
+        build.renameFields("db1.collectionA.=new_name").createFilters();
+    }
+
+    @Test(expected = ConfigException.class)
+    public void shouldThrowExceptionWhenFieldRenamesRenameMappingValueIsMissing() {
+        build.renameFields("db1.collectionA.name=").createFilters();
+    }
+
+    protected void assertCollectionIncluded(String fullyQualifiedCollectionName) {
+        CollectionId id = CollectionId.parse("rs1." + fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.collectionFilter().test(id)).isTrue();
     }
 
-    protected void assertCollectionExcluded(String fullyQualifiedTableName) {
-        CollectionId id = CollectionId.parse("rs1." + fullyQualifiedTableName);
+    protected void assertCollectionExcluded(String fullyQualifiedCollectionName) {
+        CollectionId id = CollectionId.parse("rs1." + fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.collectionFilter().test(id)).isFalse();
     }

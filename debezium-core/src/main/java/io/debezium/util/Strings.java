@@ -833,8 +833,33 @@ public final class Strings {
         }
     }
 
+    /**
+     * Check if the string is empty or null.
+     *
+     * @param str the string to check
+     * @return {@code true} if the string is empty or null
+     */
     public static boolean isNullOrEmpty(String str) {
         return str == null || str.isEmpty();
+    }
+
+    /**
+     * Check if the string contains only digits.
+     *
+     * @param str the string to check
+     * @return {@code true} if only contains digits
+     */
+    public static boolean isNumeric(String str) {
+        if (isNullOrEmpty(str)) {
+            return false;
+        }
+        final int sz = str.length();
+        for (int i = 0; i < sz; i++) {
+            if (!Character.isDigit(str.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

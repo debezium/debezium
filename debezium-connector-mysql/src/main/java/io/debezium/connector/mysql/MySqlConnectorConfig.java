@@ -713,7 +713,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                       .withType(Type.STRING)
                                                       .withWidth(Width.LONG)
                                                       .withImportance(Importance.MEDIUM)
-                                                      .withValidation(MySqlConnectorConfig::validateColumnBlacklist)
                                                       .withDescription("");
 
     /**
@@ -1181,11 +1180,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
         }
 
         // Everything checks out ok.
-        return 0;
-    }
-
-    private static int validateColumnBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        // String blacklist = config.getString(COLUMN_BLACKLIST);
         return 0;
     }
 

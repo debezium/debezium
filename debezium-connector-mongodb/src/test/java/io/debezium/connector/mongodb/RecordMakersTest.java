@@ -43,20 +43,19 @@ public class RecordMakersTest {
     private static final JsonWriterSettings WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact
                                                                                                                // JSON
 
+    private Filters filters;
     private SourceInfo source;
     private RecordMakers recordMakers;
     private TopicSelector<CollectionId> topicSelector;
     private List<SourceRecord> produced;
-    private boolean emitTombstonesOnDelete;
-
 
     @Before
     public void beforeEach() {
+        filters = new Configurator().createFilters();
         source = new SourceInfo(SERVER_NAME);
         topicSelector = MongoDbTopicSelector.defaultSelector(PREFIX, "__debezium-heartbeat");
         produced = new ArrayList<>();
-        emitTombstonesOnDelete = true;
-        recordMakers = new RecordMakers(source, topicSelector, produced::add, emitTombstonesOnDelete);
+        recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
     }
 
     @Test
@@ -169,7 +168,7 @@ public class RecordMakersTest {
     @Test
     @FixFor("DBZ-582")
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
-        RecordMakers recordMakers = new RecordMakers(source, topicSelector, produced::add, false);
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, false);
 
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
