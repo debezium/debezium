@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.0-SNAPSHOT</version>
     <name>Debezium Parent POM</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -122,17 +122,20 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
+        <module>debezium-microbenchmark</module>
     </modules>
 
     <distributionManagement>
-        <repository>
-            <id>s3.release</id>
-            <url>s3://xcaliber-maven-stg/release</url>
-        </repository>
-        <snapshotRepository>
-            <id>s3.snapshot</id>
-            <url>s3://xcaliber-maven-stg/snapshot</url>
-        </snapshotRepository>
+      <repository>
+        <id>ossrh</id>
+        <name>Sonatype Staging Repository</name>
+        <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+      </repository>
+      <snapshotRepository>
+        <id>ossrh</id>
+        <name>OSS Sonatype Nexus Snapshots</name>
+        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      </snapshotRepository>
     </distributionManagement>
 
     <repositories>
@@ -398,6 +401,11 @@
                     <version>${version.release.plugin}</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>${version.staging.plugin}</version>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${version.surefire.plugin}</version>
@@ -478,6 +486,16 @@
                 <configuration>
                     <pushChanges>false</pushChanges>
                     <releaseProfiles>docs,assembly,release-sign-artifacts,release</releaseProfiles>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
                 </configuration>
             </plugin>
             <plugin>
@@ -591,13 +609,6 @@
                 </executions>
             </plugin>
         </plugins>
-        <extensions>
-            <extension>
-                <groupId>org.kuali.maven.wagons</groupId>
-                <artifactId>maven-s3-wagon</artifactId>
-                <version>1.2.1</version>
-            </extension>
-        </extensions>
     </build>
     <profiles>
         <!--
