@@ -6,6 +6,9 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
@@ -64,12 +67,19 @@ public class NanoTimestamp {
      * @return the epoch nanoseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
+    public static long toEpochNanos(Object value, TemporalAdjuster adjuster, ZoneId timezone) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
-        if ( adjuster != null) {
+        if (adjuster != null) {
             dateTime = dateTime.with(adjuster);
         }
+        if (timezone != null) {
+            dateTime = ZonedDateTime.of(dateTime, timezone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        }
         return Conversions.toEpochNanos(dateTime);
+    }
+
+    public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
+        return toEpochNanos(value, adjuster, null);
     }
 
     private NanoTimestamp() {

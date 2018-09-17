@@ -6,6 +6,9 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
@@ -64,13 +67,20 @@ public class MicroTimestamp {
      * @return the epoch microseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochMicros(Object value, TemporalAdjuster adjuster) {
+    public static long toEpochMicros(Object value, TemporalAdjuster adjuster, ZoneId timezone) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         if (adjuster != null) {
             dateTime = dateTime.with(adjuster);
         }
+        if (timezone != null) {
+            dateTime = ZonedDateTime.of(dateTime, timezone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        }
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MICROSECOND);
+    }
+
+    public static long toEpochMicros(Object value, TemporalAdjuster adjuster) {
+        return toEpochMicros(value, adjuster, null);
     }
 
     private MicroTimestamp() {

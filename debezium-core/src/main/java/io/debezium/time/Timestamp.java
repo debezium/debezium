@@ -6,6 +6,9 @@
 package io.debezium.time;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
@@ -64,7 +67,7 @@ public class Timestamp {
      * @return the epoch milliseconds
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
-    public static long toEpochMillis(Object value, TemporalAdjuster adjuster) {
+    public static long toEpochMillis(Object value, TemporalAdjuster adjuster, ZoneId timezone) {
         if (value instanceof Long) {
             return (Long)value;
         }
@@ -72,8 +75,15 @@ public class Timestamp {
         if (adjuster != null) {
             dateTime = dateTime.with(adjuster);
         }
+        if (timezone != null) {
+            dateTime = ZonedDateTime.of(dateTime, timezone).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        }
         long epochNanos = Conversions.toEpochNanos(dateTime);
         return Math.floorDiv(epochNanos, Conversions.NANOSECONDS_PER_MILLISECOND);
+    }
+
+    public static long toEpochMillis(Object value, TemporalAdjuster adjuster) {
+        return toEpochMillis(value, adjuster, null);
     }
 
     private Timestamp() {
