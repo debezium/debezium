@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,7 @@ public class Collect {
      * map will be able to contain no more than {@code maximumNumberOfEntries} entries, but the underlying map will have a
      * capacity that is the next power of larger than the supplied {@code maximumNumberOfEntries} value so that it can hold
      * the required number of entries.
-     * 
+     *
      * @param maximumNumberOfEntries the maximum number of entries allowed in the map; should be a power of 2
      * @return the map that is limited in size by the specified number of entries; never null
      */
@@ -81,6 +82,15 @@ public class Collect {
 
     public static <T> Set<T> unmodifiableSet(Set<T> values) {
         return Collections.unmodifiableSet(values);
+    }
+
+    public static <T> Set<T> unmodifiableSet(Iterator<T> values) {
+        Set<T> set = new HashSet<>();
+        while (values.hasNext()) {
+            set.add(values.next());
+        }
+
+        return Collections.unmodifiableSet(set);
     }
 
     public static <T> List<T> arrayListOf(T[] values) {
@@ -247,7 +257,7 @@ public class Collect {
      * Set the value at the given position in the list, expanding the list as required to accommodate the new position.
      * <p>
      * This is not a thread-safe operation
-     * 
+     *
      * @param list the list to be modified
      * @param index the index position of the new value
      * @param value the value
