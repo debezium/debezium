@@ -691,6 +691,21 @@ public class SnapshotReader extends AbstractReader {
                 }
             }
         } catch (Throwable e) {
+            if (isLocked) {
+                try {
+                    sql.set("UNLOCK TABLES");
+                    mysql.execute(sql.get());
+                }
+                catch (Exception eUnlock) {
+                    logger.error("Removing of table locks not completed successfully", eUnlock);
+                }
+                try {
+                    mysql.connection().rollback();
+                }
+                catch (Exception eRollback) {
+                    logger.error("Execption while rollback is executed", eRollback);
+                }
+            }
             failed(e, "Aborting snapshot due to error when last running '" + sql.get() + "': " + e.getMessage());
         }
     }
