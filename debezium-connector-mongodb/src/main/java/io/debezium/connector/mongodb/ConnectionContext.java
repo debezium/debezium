@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -222,6 +223,7 @@ public class ConnectionContext implements AutoCloseable {
         private final Supplier<MongoClient> primaryConnectionSupplier;
         private final Filters filters;
         private final BiConsumer<String, Throwable> errorHandler;
+        private final AtomicBoolean stop = new AtomicBoolean();
 
         protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, Filters filters, BiConsumer<String, Throwable> errorHandler) {
             this.replicaSet = replicaSet;
@@ -272,6 +274,9 @@ public class ConnectionContext implements AutoCloseable {
                     return;
                 } catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    if (!isRunning()) {
+                        throw new ConnectException("Operation failed and MongoDB primary termination requested", t);
+                    }
                     try {
                         errorMetronome.pause();
                     }
@@ -299,6 +304,9 @@ public class ConnectionContext implements AutoCloseable {
                 }
                 catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    if (!isRunning()) {
+                        throw new ConnectException("Operation failed and MongoDB primary termination requested", t);
+                    }
                     try {
                         errorMetronome.pause();
                     }
@@ -330,6 +338,9 @@ public class ConnectionContext implements AutoCloseable {
                 }
                 catch (Throwable t) {
                     errorHandler.accept(desc, t);
+                    if (!isRunning()) {
+                        throw new ConnectException("Operation failed and MongoDB primary termination requested", t);
+                    }
                     errorMetronome.pause();
                 }
             }
@@ -385,6 +396,17 @@ public class ConnectionContext implements AutoCloseable {
 
                 return collections;
             });
+        }
+
+        private boolean isRunning() {
+            return stop.get();
+        }
+
+        /**
+         * Terminates the execution loop of the current primary
+         */
+        public void stop() {
+            stop.set(true);
         }
     }
 
