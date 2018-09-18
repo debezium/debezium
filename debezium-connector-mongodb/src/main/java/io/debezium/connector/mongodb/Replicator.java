@@ -154,6 +154,9 @@ public class Replicator {
                 onFailure.accept(t);
             }
             finally {
+                if (primaryClient != null) {
+                    primaryClient.stop();
+                }
                 this.running.set(false);
             }
         }
