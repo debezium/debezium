@@ -369,7 +369,8 @@ tableConstraint
     | (CONSTRAINT name=uid?)? 
       FOREIGN KEY index=uid? indexColumnNames 
       referenceDefinition                                           #foreignKeyTableConstraint
-    | CHECK '(' expression ')'                                      #checkTableConstraint
+    | (CONSTRAINT name=uid?)?
+      CHECK '(' expression ')'                                      #checkTableConstraint
     ;
 
 referenceDefinition
@@ -601,6 +602,7 @@ alterSpecification
       indexColumnNames indexOption*                                 #alterByAddSpecialIndex
     | ADD (CONSTRAINT name=uid?)? FOREIGN KEY
       indexName=uid? indexColumnNames referenceDefinition           #alterByAddForeignKey
+    | ADD (CONSTRAINT name=uid?)? CHECK '(' expression ')'          #alterByAddCheckTableConstraint
     | ALGORITHM '='? algType=(DEFAULT | INPLACE | COPY)             #alterBySetAlgorithm
     | ALTER COLUMN? uid
       (SET DEFAULT defaultValue | DROP DEFAULT)                     #alterByChangeDefault
