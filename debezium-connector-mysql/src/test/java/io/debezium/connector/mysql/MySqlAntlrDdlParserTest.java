@@ -261,14 +261,16 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         final String ddl =
                 "CREATE TABLE t1 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CHECK (c2 IN ('A', 'B', 'C')));"
               + "CREATE TABLE t2 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT c1 CHECK (c2 IN ('A', 'B', 'C')));"
+              + "CREATE TABLE t3 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT CHECK (c2 IN ('A', 'B', 'C')));"
               + "ALTER TABLE t1 ADD CONSTRAINT CHECK (c1 IN (1, 2, 3, 4));"
               + "ALTER TABLE t1 ADD CONSTRAINT c2 CHECK (c1 IN (1, 2, 3, 4))"
               + "ALTER TABLE t1 ADD CHECK (c1 IN (1, 2, 3, 4))";
         parser.parse(ddl, tables);
-        assertThat(tables.size()).isEqualTo(2);
+        assertThat(tables.size()).isEqualTo(3);
 
         assertThat(tables.forTable(null, null, "t1").columns()).hasSize(2);
         assertThat(tables.forTable(null, null, "t2").columns()).hasSize(2);
+        assertThat(tables.forTable(null, null, "t3").columns()).hasSize(2);
     }
 
     @Override
