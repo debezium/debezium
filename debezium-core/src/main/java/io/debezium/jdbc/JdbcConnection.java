@@ -32,6 +32,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -53,6 +54,7 @@ import io.debezium.util.Strings;
  *
  * @author Randall Hauch
  */
+@NotThreadSafe
 public class JdbcConnection implements AutoCloseable {
 
     private static final char STATEMENT_DELIMITER = ';';
@@ -1026,7 +1028,7 @@ public class JdbcConnection implements AutoCloseable {
     private PreparedStatement createPreparedStatement(String preparedQueryString) {
         return statementCache.computeIfAbsent(preparedQueryString, query -> {
             try {
-                LOGGER.trace("Inserting prepared statement '{}' removed into the cache", query);
+                LOGGER.trace("Inserting prepared statement '{}' removed from the cache", query);
                 return connection().prepareStatement(query);
             }
             catch (SQLException e) {
