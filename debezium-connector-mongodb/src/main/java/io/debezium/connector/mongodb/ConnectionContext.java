@@ -223,7 +223,7 @@ public class ConnectionContext implements AutoCloseable {
         private final Supplier<MongoClient> primaryConnectionSupplier;
         private final Filters filters;
         private final BiConsumer<String, Throwable> errorHandler;
-        private final AtomicBoolean stop = new AtomicBoolean();
+        private final AtomicBoolean stopped = new AtomicBoolean();
 
         protected MongoPrimary(ConnectionContext context, ReplicaSet replicaSet, Filters filters, BiConsumer<String, Throwable> errorHandler) {
             this.replicaSet = replicaSet;
@@ -399,14 +399,14 @@ public class ConnectionContext implements AutoCloseable {
         }
 
         private boolean isRunning() {
-            return stop.get();
+            return stopped.get();
         }
 
         /**
          * Terminates the execution loop of the current primary
          */
         public void stop() {
-            stop.set(true);
+            stopped.set(true);
         }
     }
 
