@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -43,7 +42,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     private final Filters filters;
 
-    private Map<String, Integer> typeInfo;
     private final TypeRegistry typeRegistry;
 
     /**
@@ -76,10 +74,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * @throws SQLException if there is a problem obtaining the schema from the database server
      */
     protected PostgresSchema refresh(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
-        if (typeInfo == null) {
-            typeInfo = connection.readTypeInfo();
-        }
-
         // read all the information from the DB
         connection.readSchema(tables(), null, null, filters.tableNameFilter(), null, true);
         if (printReplicaIdentityInfo) {
