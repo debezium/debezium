@@ -954,23 +954,6 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
-     * Returns a map which contains information about how a database maps it's data types to JDBC data types.
-     *
-     * @return a {@link Map map of (localTypeName, jdbcType) pairs}
-     * @throws SQLException if anything unexpected fails
-     */
-    public Map<String, Integer> readTypeInfo() throws SQLException {
-        DatabaseMetaData metadata = connection().getMetaData();
-        Map<String, Integer> jdbcTypeByLocalTypeName = new HashMap<>();
-        try (ResultSet rs = metadata.getTypeInfo()) {
-           while (rs.next()) {
-               jdbcTypeByLocalTypeName.put(rs.getString("TYPE_NAME"), rs.getInt("DATA_TYPE"));
-           }
-        }
-        return jdbcTypeByLocalTypeName;
-    }
-
-    /**
      * Use the supplied table editor to create columns for the supplied result set.
      *
      * @param resultSet the query result set; may not be null

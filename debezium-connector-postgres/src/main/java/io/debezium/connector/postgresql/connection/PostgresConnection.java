@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -72,7 +71,7 @@ public class PostgresConnection extends JdbcConnection {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
 
         try {
-            typeRegistry = initTypeRegistry(connection(), readTypeInfo());
+            typeRegistry = initTypeRegistry(connection());
         }
         catch (SQLException e) {
             throw new ConnectException("Could not intialize type registry", e);
@@ -318,8 +317,9 @@ public class PostgresConnection extends JdbcConnection {
         return getTypeRegistry().get(typeName).getOid();
     }
 
-    private static TypeRegistry initTypeRegistry(Connection db, Map<String, Integer> nameToJdbc) {
+    private static TypeRegistry initTypeRegistry(Connection db) {
         final TypeInfo typeInfo = ((BaseConnection)db).getTypeInfo();
+
         TypeRegistry.Builder typeRegistryBuilder = TypeRegistry.create(typeInfo);
         try {
             try (final Statement statement = db.createStatement()) {
@@ -329,10 +329,11 @@ public class PostgresConnection extends JdbcConnection {
                         // Coerce long to int so large unsigned values are represented as signed
                         // Same technique is used in TypeInfoCache
                         final int oid = (int)rs.getLong("oid");
+                        String typeName = rs.getString("name");
                         typeRegistryBuilder.addType(new PostgresType(
-                                rs.getString("name"),
+                                typeName,
                                 oid,
-                                nameToJdbc.get(rs.getString("name")),
+                                typeInfo.getSQLType(typeName),
                                 typeInfo
                         ));
                     }
@@ -343,10 +344,11 @@ public class PostgresConnection extends JdbcConnection {
                     while (rs.next()) {
                         // int2vector and oidvector will not be treated as arrays
                         final int oid = (int)rs.getLong("oid");
+                        String typeName = rs.getString("name");
                         typeRegistryBuilder.addType(new PostgresType(
-                                rs.getString("name"),
+                                typeName,
                                 oid,
-                                nameToJdbc.get(rs.getString("name")),
+                                typeInfo.getSQLType(typeName),
                                 typeInfo,
                                 typeRegistryBuilder.get((int)rs.getLong("element"))
                         ));
