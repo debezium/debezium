@@ -165,7 +165,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertThat(error).isInstanceOf(ConnectException.class);
                 Throwable cause = error.getCause();
                 assertThat(cause).isInstanceOf(SQLException.class);
-                assertThat(PSQLState.CONNECTION_REJECTED).isEqualTo(new PSQLState(((SQLException)cause).getSQLState()));
+                assertThat(PSQLState.CONNECTION_REJECTED.getState().equals(((SQLException)cause).getSQLState()));
             }
         });
         if (TestHelper.shouldSSLConnectionFail()) {
