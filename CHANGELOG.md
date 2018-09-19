@@ -2,6 +2,40 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.8.3.Final
+September 19th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339197)
+
+### New features since 0.8.2.Final
+
+* Ability to rewrite deleted records [DBZ-857](https://issues.jboss.org/browse/DBZ-857)
+* use tcpKeepAlive by default [DBZ-895](https://issues.jboss.org/browse/DBZ-895)
+
+### Breaking changes since 0.8.2.Final
+
+There are no breaking changes in this release.
+
+
+### Fixes since 0.8.2.Final
+
+* Global read lock not release when exception raised during snapshot [DBZ-769](https://issues.jboss.org/browse/DBZ-769)
+* Abort loops in MongoPrimary#execute() if the connector is stopped [DBZ-784](https://issues.jboss.org/browse/DBZ-784)
+* GtidModeEnabled method check gtid mode will always be true [DBZ-820](https://issues.jboss.org/browse/DBZ-820)
+* Sensitive vars CONNECT_CONSUMER_SASL_JAAS_CONFIG and CONNECT_PRODUCER_SASL_JAAS_CONFIG are printed to the log [DBZ-861](https://issues.jboss.org/browse/DBZ-861)
+* A new replication slot waits for all concurrent transactions to finish [DBZ-862](https://issues.jboss.org/browse/DBZ-862)
+* Execution of RecordsStreamProducer.closeConnections() is susceptible to race condition [DBZ-887](https://issues.jboss.org/browse/DBZ-887)
+* PostgresConnection.initTypeRegistry() takes ~24 mins [DBZ-899](https://issues.jboss.org/browse/DBZ-899)
+* java.time.format.DateTimeParseException: Text '1970-01-01 00:00:00' in mysql ALTER [DBZ-901](https://issues.jboss.org/browse/DBZ-901)
+* org.antlr.v4.runtime.NoViableAltException on CREATE DEFINER=`web`@`%` PROCEDURE `... [DBZ-903](https://issues.jboss.org/browse/DBZ-903)
+* RecordsStreamProducer should report refresh of the schema due to different column count [DBZ-907](https://issues.jboss.org/browse/DBZ-907)
+* MongoDbConnector returns obsolete config values during validation [DBZ-908](https://issues.jboss.org/browse/DBZ-908)
+* Can't parse create definition on the mysql connector [DBZ-910](https://issues.jboss.org/browse/DBZ-910)
+
+
+### Other changes since 0.8.2.Final
+
+None
+
+
 ## 0.8.2.Final
 August 30th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338793)
 
@@ -15,7 +49,7 @@ August 30th, 2018 [Detailed release notes](https://issues.jboss.org/secure/Relea
 There are no breaking changes in this release.
 
 
-### Fixes since 0.8.0.Final
+### Fixes since 0.8.1.Final
 
 * Initial synchronization is not interrupted [DBZ-838](https://issues.jboss.org/browse/DBZ-838)
 * DDL parsing in MySQL - default value of primary key is set to null [DBZ-860](https://issues.jboss.org/browse/DBZ-860)
