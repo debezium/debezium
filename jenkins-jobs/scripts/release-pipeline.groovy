@@ -417,7 +417,7 @@ node('Slave') {
 
     stage ('Wait for Central sync') {
         if (!DRY_RUN) {
-            timeout (time: MAVEN_CENTRAL_SYNC_TIMEOUT, unit: java.util.concurrent.TimeUnit.HOURS) {
+            timeout (time: MAVEN_CENTRAL_SYNC_TIMEOUT as int, unit: java.util.concurrent.TimeUnit.HOURS) {
                 while (true) {
                     failed = false
                     for (i = 0; i < CONNECTORS.size(); i++) {
