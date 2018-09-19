@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
-import io.debezium.relational.TableId;
+import io.debezium.relational.Table;
+import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 
 /**
  * {@link SchemaChangeEventEmitter} implementation based on SQL Server.
@@ -21,15 +23,18 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerSchemaChangeEventEmitter.class);
 
     private final SqlServerOffsetContext offsetContext;
-    private final TableId tableId;
+    private final ChangeTable changeTable;
+    private final Table tableSchema;
 
-    public SqlServerSchemaChangeEventEmitter(SqlServerOffsetContext offsetContext, TableId tableId) {
+    public SqlServerSchemaChangeEventEmitter(SqlServerOffsetContext offsetContext, ChangeTable changeTable, Table tableSchema) {
         this.offsetContext = offsetContext;
-        this.tableId = tableId;
+        this.changeTable = changeTable;
+        this.tableSchema = tableSchema;
     }
 
     @Override
     public void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException {
-        throw new UnsupportedOperationException("Schema evolution is not supported yet by the connector");
+        final SchemaChangeEvent event = new SchemaChangeEvent(offsetContext.getPartition(), offsetContext.getOffset(), changeTable.getTableId().catalog(), changeTable.getTableId().schema(), "N/A", tableSchema, SchemaChangeEventType.CREATE, false);
+        receiver.schemaChangeEvent(event);
     }
 }
