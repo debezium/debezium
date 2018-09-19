@@ -8,7 +8,11 @@ package io.debezium.connector.sqlserver;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -43,8 +47,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final SqlServerDatabaseSchema schema;
     private final SqlServerOffsetContext offsetContext;
     private final Duration pollInterval;
+    private final SqlServerConnectorConfig connectorConfig;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext offsetContext, SqlServerConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, SqlServerDatabaseSchema schema) {
+        this.connectorConfig = connectorConfig;
         this.connection = connection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
@@ -58,9 +64,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         try {
-            final TableId[] tables = schema.tableIds().toArray(new TableId[0]);
+            final AtomicReference<ChangeTable[]> tablesSlot = new AtomicReference<ChangeTable[]>(getCdcTablesToQuery());
+
             final Lsn lastProcessedLsnOnStart = offsetContext.getChangeLsn();
             LOGGER.info("Last LSN recorded in offsets is {}", lastProcessedLsnOnStart);
+
             Lsn lastProcessedLsn = offsetContext.getChangeLsn();
             while (context.isRunning()) {
                 final Lsn currentMaxLsn = connection.getMaxLsn();
@@ -83,19 +91,24 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 final Lsn fromLsn = lastProcessedLsn.isAvailable() ? connection.incrementLsn(lastProcessedLsn)
                         : lastProcessedLsn;
 
-                connection.getChangesForTables(tables, fromLsn, currentMaxLsn, resultSets -> {
+                if (!connection.listOfNewChangeTables(fromLsn, currentMaxLsn).isEmpty()) {
+                    tablesSlot.set(getCdcTablesToQuery());
+                }
+                connection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
+
                     final int tableCount = resultSets.length;
-                    final ChangeTable[] changeTables = new ChangeTable[tableCount];
+                    final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
+                    final ChangeTable[] tables = tablesSlot.get();
 
                     for (int i = 0; i < tableCount; i++) {
-                        changeTables[i] = new ChangeTable(tables[i], resultSets[i]);
+                        changeTables[i] = new ChangeTablePointer(tables[i].getTableId(), resultSets[i]);
                         changeTables[i].next();
                     }
 
                     for (;;) {
-                        ChangeTable tableSmallestLsn = null;
+                        ChangeTablePointer tableSmallestLsn = null;
                         for (int i = 0; i < tableCount; i++) {
-                            final ChangeTable changeTable = changeTables[i];
+                            final ChangeTablePointer changeTable = changeTables[i];
                             if (changeTable.isCompleted()) {
                                 continue;
                             }
@@ -157,18 +170,40 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
     }
 
+    private ChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
+        final Set<ChangeTable> cdcEnabledTables = connection.listOfChangeTables();
+        final Set<ChangeTable> newTables = new HashSet<>();
+        final Set<ChangeTable> whitelistedCdcEnabledTables = cdcEnabledTables.stream().filter(changeTable -> {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(changeTable.getTableId())) {
+                if (schema.tableFor(changeTable.getTableId()) == null) {
+                    newTables.add(changeTable);
+                }
+                return true;
+            }
+            return false;
+        }).collect(Collectors.toSet());
+        for (ChangeTable changeTable: newTables) {
+            LOGGER.info("Table {} is new to be monitored", changeTable);
+            // We need to read the source table schema - primary key information cannot be obtained from change table
+            dispatcher.dispatchSchemaChangeEvent(changeTable.getTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, changeTable, connection.getTableSchemaFromTable(changeTable)));
+        }
+
+        final ChangeTable[] tables = whitelistedCdcEnabledTables.toArray(new ChangeTable[whitelistedCdcEnabledTables.size()]);
+        return tables;
+    }
+
     @Override
     public void commitOffset(Map<String, ?> offset) {
     }
 
-    private static class ChangeTable {
+    private static class ChangeTablePointer {
 
         private final TableId tableId;
         private final ResultSet resultSet;
         private boolean completed = false;
         private Lsn currentChangeLsn;
 
-        public ChangeTable(TableId tableId, ResultSet resultSet) {
+        public ChangeTablePointer(TableId tableId, ResultSet resultSet) {
             this.tableId = tableId;
             this.resultSet = resultSet;
         }
@@ -208,7 +243,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             return completed;
         }
 
-        public int compareTo(ChangeTable o) throws SQLException {
+        public int compareTo(ChangeTablePointer o) throws SQLException {
             return getRowLsn().compareTo(o.getRowLsn());
         }
 
