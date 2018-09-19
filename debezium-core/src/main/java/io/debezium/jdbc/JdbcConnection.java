@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -318,6 +319,10 @@ public class JdbcConnection implements AutoCloseable {
         void accept(ResultSet rs) throws SQLException;
     }
 
+    public static interface ResultSetMapper<T> {
+        T apply(ResultSet rs) throws SQLException;
+    }
+
     public static interface BlockingResultSetConsumer {
         void accept(ResultSet rs) throws SQLException, InterruptedException;
     }
@@ -346,6 +351,20 @@ public class JdbcConnection implements AutoCloseable {
      */
     public JdbcConnection query(String query, ResultSetConsumer resultConsumer) throws SQLException {
         return query(query, Connection::createStatement, resultConsumer);
+    }
+
+    /**
+     * Execute a SQL query and map the result set into an expected type.
+     * @param <T> type returned by the mapper
+     *
+     * @param query the SQL query
+     * @param mapper the function processing the query results
+     * @return the result of the mapper calculation
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public <T> T queryAndMap(String query, ResultSetMapper<T> mapper) throws SQLException {
+        return queryAndMap(query, Connection::createStatement, mapper);
     }
 
     /**
@@ -395,6 +414,30 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return this;
+    }
+
+    /**
+     * Execute a SQL query and map the result set into an expected type.
+     * @param <T> type returned by the mapper
+     *
+     * @param query the SQL query
+     * @param statementFactory the function that should be used to create the statement from the connection; may not be null
+     * @param mapper the function processing the query results
+     * @return the result of the mapper calculation
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public <T> T queryAndMap(String query, StatementFactory statementFactory, ResultSetMapper<T> mapper) throws SQLException {
+        Objects.requireNonNull(mapper, "Mapper must be provided");
+        Connection conn = connection();
+        try (Statement statement = statementFactory.createStatement(conn);) {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("running '{}'", query);
+            }
+            try (ResultSet resultSet = statement.executeQuery(query);) {
+                return mapper.apply(resultSet);
+            }
+        }
     }
 
     public JdbcConnection queryWithBlockingConsumer(String query, StatementFactory statementFactory, BlockingResultSetConsumer resultConsumer) throws SQLException, InterruptedException {
@@ -447,6 +490,27 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return this;
+    }
+
+    /**
+     * Execute a SQL prepared query and map the result set into an expected type..
+     * @param <T> type returned by the mapper
+     *
+     * @param preparedQueryString the prepared query string
+     * @param preparer the function that supplied arguments to the prepared statement; may not be null
+     * @param resultConsumer the consumer of the query results
+     * @return the result of the mapper calculation
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
+    public <T> T prepareQueryAndMap(String preparedQueryString, StatementPreparer preparer, ResultSetMapper<T> mapper)
+            throws SQLException {
+        Objects.requireNonNull(mapper, "Mapper must be provided");
+        final PreparedStatement statement = conn.prepareStatement(preparedQueryString);
+        preparer.accept(statement);
+        try (ResultSet resultSet = statement.executeQuery();) {
+            return mapper.apply(resultSet);
+        }
     }
 
     /**
