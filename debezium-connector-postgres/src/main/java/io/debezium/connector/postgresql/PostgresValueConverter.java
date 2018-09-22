@@ -18,18 +18,17 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 
+import java.util.List;
+import java.util.HashMap;
+import java.util.Optional;
 import java.util.Collections;
 import java.util.Date;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.HashMap;
 
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -406,6 +405,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             String temp = ((String) data);
             return HStoreConverter.fromString(temp);
         }
+        if(data instanceof byte[]){
+               byte[] temp = ((byte[]) data);
+               return HStoreConverter.fromString(new String(temp));
+        }
         return handleUnknownData(column,fieldDefn,data) ;
     }
 
@@ -423,6 +426,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
              String plainText =( (String) data);
              return changePlainStringRepresentationToJSONStringRepresentation(plainText);
              }
+        if(data instanceof byte[]){
+            byte[] temp = ((byte[]) data);
+            return changePlainStringRepresentationToJSONStringRepresentation(new String(temp));
+        }
         return handleUnknownData(column,fieldDefn,data);
     }
 

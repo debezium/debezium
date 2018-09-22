@@ -139,7 +139,7 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n, ct) " +
             "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL, 'Hello World')";
 
-    protected static final String INSERT_HSTORE_TYPE_STMT = "INSERT INTO hstore_table (hs) VALUES ('\"key\" => \"val\"')";
+    protected static final String INSERT_HSTORE_TYPE_STMT = "INSERT INTO hstore_table (hs) VALUES ('\"key\" => \"val\"'::hstore)";
 
     protected static final String INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT = "INSERT INTO hstore_table_mul (hs) VALUES ('\"key1\" => \"val1\",\"key2\" => \"val2\",\"key3\" => \"val3\"')";
 
