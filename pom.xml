@@ -571,6 +571,10 @@
                             <name>skipLongRunningTests</name>
                             <value>${skipLongRunningTests}</value>
                         </property>
+                        <property>
+                            <name>decoder.plugin.name</name>
+                            <value>wal2json</value>
+                        </property>
                     </systemProperties>
                     <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
                     <!--runOrder>alphabetical</runOrder-->

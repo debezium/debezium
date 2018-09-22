@@ -126,6 +126,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // custom types + null value
         consumer.expects(1);
         assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
+
     }
 
     @Test(timeout = 30000)
@@ -598,6 +599,110 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForStringEncodedNumericTypes());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithSingleValueAsMap() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_STMT, schemaAndValueFieldForMapEncodedHStoreType());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithMultipleValuesAsMap() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT, schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithNullValuesAsMap() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithSpecialCharactersInValuesAsMap() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeAsJSONString() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_STMT, schemaAndValueFieldForJSONEncodedHStoreType());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithMultipleValuesAsJSONString() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT, schemaAndValueFieldForJSONEncodedHStoreTypeWithMultipleValues());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithSpecialValuesInJSONString() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, schemaAndValueFieldForJSONEncodedHStoreTypeWithSpcialCharacters());
+    }
+
+    @Test
+    public void shouldRecieveHStoreTypeWithNullValuesAsJSONString() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer,blackHole);
+
+        assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, schemaAndValueFieldForJSONEncodedHStoreTypeWithNullValues());
     }
 
     @Test

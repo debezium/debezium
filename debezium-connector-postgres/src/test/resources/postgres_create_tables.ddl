@@ -26,7 +26,10 @@ CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bo
 CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], PRIMARY KEY(pk));
 CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], PRIMARY KEY(pk));
 CREATE TABLE custom_table (pk serial, lt ltree, i isbn, n TEXT, ct CITEXT, PRIMARY KEY(pk));
-
+CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));
+CREATE TABLE hstore_table_mul (pk serial, hs hstore, PRIMARY KEY(pk));
+CREATE TABLE hstore_table_with_null (pk serial, hs hstore, PRIMARY KEY(pk));
+CREATE TABLE hstore_table_with_special (pk serial, hs hstore, PRIMARY KEY(pk));
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";
 -- GRANT ALL ON ALL TABLES IN SCHEMA "Quoted_Schema" TO postgres;
