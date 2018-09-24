@@ -134,18 +134,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             this.value=value;
         }
 
-        public HStoreHandlingMode asHStoreMode(){
-            switch(this){
-                case JSON:
-                    return HStoreHandlingMode.JSON;
-                case MAP:
-                    return HStoreHandlingMode.MAP;
-                default:
-                    return HStoreHandlingMode.MAP;
-            }
-        }
-
-
         @Override
         public String getValue() {
             return value;
@@ -815,7 +803,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
-        this.hStoreHandlingMode = hStoreHandlingMode.asHStoreMode();
+        this.hStoreHandlingMode = hStoreHandlingMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
     }
 

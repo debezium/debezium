@@ -54,7 +54,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
-                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                TestHelper.getSchema(config),
                 selector
         );
     }
@@ -101,7 +101,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
-                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                TestHelper.getSchema(config),
                 selector
         );
 
@@ -194,7 +194,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
-                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                TestHelper.getSchema(config),
                 selector
         );
 
@@ -236,7 +236,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
-                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                TestHelper.getSchema(config),
                 selector
         );
 
@@ -278,7 +278,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
-                new PostgresSchema(config, TestHelper.getTypeRegistry(), selector),
+                TestHelper.getSchema(config),
                 selector
         );
 

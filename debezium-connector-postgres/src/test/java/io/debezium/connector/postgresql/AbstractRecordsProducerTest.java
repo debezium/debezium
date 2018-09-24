@@ -22,14 +22,14 @@ import java.time.LocalTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.HashMap;
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -259,7 +259,7 @@ public abstract class AbstractRecordsProducerTest {
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreType(){
          final Map<String,String> expected = new HashMap<>();
          expected.put("key","val");
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.map(Schema.STRING_SCHEMA,SchemaBuilder.string().optional().build()).optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues(){
@@ -267,43 +267,51 @@ public abstract class AbstractRecordsProducerTest {
         expected.put("key1","val1");
         expected.put("key2","val2");
         expected.put("key3","val3");
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.map(Schema.STRING_SCHEMA,SchemaBuilder.string().optional().build()).optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
         }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues(){
         final Map<String,String> expected = new HashMap<>();
         expected.put("key1","val1");
         expected.put("key2",null);
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.map(Schema.STRING_SCHEMA,SchemaBuilder.string().optional().build()).optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters(){
         final Map<String,String> expected = new HashMap<>();
         expected.put("key_#1","val 1");
         expected.put("key 2"," ##123 78");
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.map(Schema.STRING_SCHEMA,SchemaBuilder.string().optional().build()).optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJSONEncodedHStoreType(){
+    private Schema hstoreMapSchema() {
+        return SchemaBuilder.map(
+                Schema.STRING_SCHEMA,
+                SchemaBuilder.string().optional().build()
+                )
+                .optional()
+                .build();
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreType(){
         final String expected = "{\"key\":\"val\"}";
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.string().optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJSONEncodedHStoreTypeWithMultipleValues(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues(){
         final String expected = "{\"key1\":\"val1\",\"key2\":\"val2\",\"key3\":\"val3\"}";
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.string().optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJSONEncodedHStoreTypeWithNullValues(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues(){
         final String expected = "{\"key1\":\"val1\",\"key2\":null}";
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.string().optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJSONEncodedHStoreTypeWithSpcialCharacters(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters(){
         final String expected = "{\"key_#1\":\"val 1\",\"key 2\":\" ##123 78\"}";
-        return Arrays.asList(new SchemaAndValueField("hs",SchemaBuilder.string().optional().build(),expected));
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
     }
-
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
        return Arrays.asList(new SchemaAndValueField("vc", Schema.OPTIONAL_STRING_SCHEMA, "\u017E\u0161"),

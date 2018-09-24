@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -56,15 +57,17 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
         PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
 
-        // Create type registry
         TypeRegistry typeRegistry;
+        Charset databaseCharset;
+
         try (final PostgresConnection connection = new PostgresConnection(connectorConfig.jdbcConfig())) {
             typeRegistry = connection.getTypeRegistry();
+            databaseCharset = connection.getDatabaseCharset();
         }
 
         // create the task context and schema...
         TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
-        PostgresSchema schema = new PostgresSchema(connectorConfig, typeRegistry, topicSelector);
+        PostgresSchema schema = new PostgresSchema(connectorConfig, typeRegistry, databaseCharset, topicSelector);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
 
         SourceInfo sourceInfo = new SourceInfo(connectorConfig.getLogicalName(), connectorConfig.databaseName());
