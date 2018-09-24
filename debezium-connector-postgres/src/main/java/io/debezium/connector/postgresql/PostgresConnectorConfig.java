@@ -134,18 +134,6 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             this.value=value;
         }
 
-        public HStoreHandlingMode asHStoreMode(){
-            switch(this){
-                case JSON:
-                    return HStoreHandlingMode.JSON;
-                case MAP:
-                    return HStoreHandlingMode.MAP;
-                default:
-                    return HStoreHandlingMode.MAP;
-            }
-        }
-
-
         @Override
         public String getValue() {
             return value;
@@ -741,7 +729,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                           .withImportance(Importance.LOW)
                                                           .withDescription("Specify how HSTORE columns should be represented in change events, including:"
                                                                 + "'json' represents values as json string"
-                                                                + "'map' (default) represents values using java.util.map");
+                                                                + "'map' (default) represents values using java.util.Map");
 
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
                                                           .withDisplayName("Status update interval (ms)")
@@ -815,7 +803,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
         HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
-        this.hStoreHandlingMode = hStoreHandlingMode.asHStoreMode();
+        this.hStoreHandlingMode = hStoreHandlingMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
     }
 

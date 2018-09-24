@@ -172,9 +172,8 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.XML:
             case PgOid.UUID:
             case PgOid.BIT:
-            case PgOid.VARBIT:{
-                LOGGER.warn("Identified as 123456:" +datumMessage.getDatumString());
-                return datumMessage.hasDatumString() ? datumMessage.getDatumString() : null;}
+            case PgOid.VARBIT:
+                return datumMessage.hasDatumString() ? datumMessage.getDatumString() : null;
             case PgOid.DATE:
                 return datumMessage.hasDatumInt32() ? (long) datumMessage.getDatumInt32() : null;
             case PgOid.TIMESTAMP:
@@ -249,8 +248,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
-                if(type.getOid() == typeRegistry.hstoreOid()){
-                    LOGGER.warn("Testing03:" +datumMessage.getDatumBytes().toByteArray());
+                if(type.getOid() == typeRegistry.hstoreOid()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
                 if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() ) {
