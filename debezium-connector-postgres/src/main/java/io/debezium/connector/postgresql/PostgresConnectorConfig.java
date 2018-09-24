@@ -113,6 +113,62 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
+     * The set of predefined HStoreHandlingMode options or aliases
+     */
+    public enum HStoreHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represents HStore value as json
+         */
+        JSON("json"),
+
+        /**
+         * Represents HStore value as map
+         */
+        MAP("map");
+
+
+        private final String value;
+
+        HStoreHandlingMode(String value){
+            this.value=value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static HStoreHandlingMode parse(String value){
+            if (value == null) return null ;
+            value = value.trim();
+            for (HStoreHandlingMode option: HStoreHandlingMode.values()) {
+                if(option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @param defaultValue the default value ; may be null
+         * @return the matching option or null if the match is not found and non-null default is invalid
+         */
+        public static HStoreHandlingMode parse(String value,String defaultValue){
+            HStoreHandlingMode mode = parse(value);
+            if(mode == null && defaultValue != null ) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined SnapshotMode options or aliases.
      */
     public enum SnapshotMode implements EnumeratedValue {
@@ -666,42 +722,51 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                                 + "'string' uses string to represent values (including the special ones like NaN or Infinity); "
                                                                 + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
+                                                          .withDisplayName("HStore Handling")
+                                                          .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
+                                                          .withWidth(Width.MEDIUM)
+                                                          .withImportance(Importance.LOW)
+                                                          .withDescription("Specify how HSTORE columns should be represented in change events, including:"
+                                                                + "'json' represents values as json string"
+                                                                + "'map' (default) represents values using java.util.map");
+
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
-            .withDisplayName("Status update interval (ms)")
-            .withType(Type.INT) // Postgres doesn't accept long for this value
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
-            .withValidation(Field::isPositiveInteger);
+                                                          .withDisplayName("Status update interval (ms)")
+                                                          .withType(Type.INT) // Postgres doesn't accept long for this value
+                                                          .withWidth(Width.SHORT)
+                                                          .withImportance(Importance.MEDIUM)
+                                                          .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
+                                                          .withValidation(Field::isPositiveInteger);
 
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
-            .withDisplayName("TCP keep-alive probe")
-            .withType(Type.BOOLEAN)
-            .withDefault(true)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Enable or disable TCP keep-alive probe to avoid dropping TCP connection")
-            .withValidation(Field::isBoolean);
+                                                            .withDisplayName("TCP keep-alive probe")
+                                                            .withType(Type.BOOLEAN)
+                                                            .withDefault(true)
+                                                            .withWidth(Width.SHORT)
+                                                            .withImportance(Importance.MEDIUM)
+                                                            .withDescription("Enable or disable TCP keep-alive probe to avoid dropping TCP connection")
+                                                            .withValidation(Field::isBoolean);
 
     public static final Field INCLUDE_UNKNOWN_DATATYPES = Field.create("include.unknown.datatypes")
-            .withDisplayName("Include unknown datatypes")
-            .withType(Type.BOOLEAN)
-            .withDefault(false)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed:"
-                    + "'false' (the default) omits the fields; "
-                    + "'true' converts the field into an implementation dependent binary representation.");
+                                                            .withDisplayName("Include unknown datatypes")
+                                                            .withType(Type.BOOLEAN)
+                                                            .withDefault(false)
+                                                            .withWidth(Width.SHORT)
+                                                            .withImportance(Importance.MEDIUM)
+                                                            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed:"
+                                                                    + "'false' (the default) omits the fields; "
+                                                                    + "'true' converts the field into an implementation dependent binary representation.");
 
     public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
-            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.MEDIUM)
-            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
-                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
-                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
-                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
+                                                            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
+                                                            .withType(Type.STRING)
+                                                            .withWidth(Width.LONG)
+                                                            .withImportance(Importance.MEDIUM)
+                                                            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
+                                                                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+                                                                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                                                                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
@@ -715,7 +780,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                      SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE,
-                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,HSTORE_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
@@ -724,7 +789,9 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
     private final Configuration config;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final DecimalMode decimalHandlingMode;
+    private final HStoreHandlingMode  hStoreHandlingMode;
     private final SnapshotMode snapshotMode;
+
 
     protected PostgresConnectorConfig(Configuration config) {
         super(config, getLogicalName(config));
@@ -732,8 +799,11 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         this.config = config;
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         String decimalHandlingModeStr = config.getString(PostgresConnectorConfig.DECIMAL_HANDLING_MODE);
+        String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
+        HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
+        this.hStoreHandlingMode = hStoreHandlingMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
     }
 
@@ -781,6 +851,10 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
 
     protected DecimalMode decimalHandlingMode() {
         return decimalHandlingMode;
+    }
+
+    protected HStoreHandlingMode hStoreHandlingMode() {
+        return hStoreHandlingMode;
     }
 
     protected boolean includeUnknownDatatypes() {
@@ -860,7 +934,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,ROWS_FETCH_SIZE);
         return config;
     }
 

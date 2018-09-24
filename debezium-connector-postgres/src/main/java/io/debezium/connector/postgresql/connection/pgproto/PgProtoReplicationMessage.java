@@ -248,10 +248,12 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
+                if(type.getOid() == typeRegistry.hstoreOid()) {
+                    return datumMessage.getDatumBytes().toByteArray();
+                }
                 if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() ) {
                     return getArray(datumMessage, connection, columnType);
                 }
-
                 // unknown data type is sent by decoder as binary value
                 if (includeUnknownDatatypes && datumMessage.hasDatumBytes()) {
                     return datumMessage.getDatumBytes().toByteArray();

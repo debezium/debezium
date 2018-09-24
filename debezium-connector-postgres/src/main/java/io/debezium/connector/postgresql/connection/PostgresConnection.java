@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -21,6 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.TypeInfo;
+import org.postgresql.jdbc.PgConnection;
 import org.postgresql.jdbc.PgDatabaseMetaData;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
@@ -69,6 +71,8 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
 
+    private final Charset databaseCharset;
+
     /**
      * Creates a Postgres connection using the supplied configuration.
      *
@@ -83,6 +87,8 @@ public class PostgresConnection extends JdbcConnection {
         catch (SQLException e) {
             throw new ConnectException("Could not intialize type registry", e);
         }
+
+        databaseCharset = determineDatabaseCharset();
     }
 
     /**
@@ -305,6 +311,19 @@ public class PostgresConnection extends JdbcConnection {
                   });
         }
         return serverInfo;
+    }
+
+    public Charset getDatabaseCharset() {
+        return databaseCharset;
+    }
+
+    private Charset determineDatabaseCharset() {
+        try {
+            return Charset.forName(((PgConnection) connection()).getEncoding().name());
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Couldn't obtain encoding for database " + database(), e);
+        }
     }
 
     protected static void defaultSettings(Configuration.Builder builder) {

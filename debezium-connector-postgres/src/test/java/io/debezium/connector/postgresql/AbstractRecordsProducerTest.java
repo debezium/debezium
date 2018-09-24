@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +139,14 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_CUSTOM_TYPES_STMT = "INSERT INTO custom_table (lt, i, n, ct) " +
             "VALUES ('Top.Collections.Pictures.Astronomy.Galaxies', '978-0-393-04002-9', NULL, 'Hello World')";
 
+    protected static final String INSERT_HSTORE_TYPE_STMT = "INSERT INTO hstore_table (hs) VALUES ('\"key\" => \"val\"'::hstore)";
+
+    protected static final String INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT = "INSERT INTO hstore_table_mul (hs) VALUES ('\"key1\" => \"val1\",\"key2\" => \"val2\",\"key3\" => \"val3\"')";
+
+    protected static final String INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT = "INSERT INTO hstore_table_with_null (hs) VALUES ('\"key1\" => \"val1\",\"key2\" => NULL')";
+
+    protected static final String INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT = "INSERT INTO hstore_table_with_special (hs) VALUES ('\"key_#1\" => \"val 1\",\"key 2\" =>\" ##123 78\"')";
+
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN,
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
@@ -245,6 +254,63 @@ public abstract class AbstractRecordsProducerTest {
             ));
         }
         return fields;
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreType(){
+         final Map<String,String> expected = new HashMap<>();
+         expected.put("key","val");
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues(){
+        final Map<String,String> expected = new HashMap<>();
+        expected.put("key1","val1");
+        expected.put("key2","val2");
+        expected.put("key3","val3");
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
+        }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues(){
+        final Map<String,String> expected = new HashMap<>();
+        expected.put("key1","val1");
+        expected.put("key2",null);
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters(){
+        final Map<String,String> expected = new HashMap<>();
+        expected.put("key_#1","val 1");
+        expected.put("key 2"," ##123 78");
+        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
+    }
+
+    private Schema hstoreMapSchema() {
+        return SchemaBuilder.map(
+                Schema.STRING_SCHEMA,
+                SchemaBuilder.string().optional().build()
+                )
+                .optional()
+                .build();
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreType(){
+        final String expected = "{\"key\":\"val\"}";
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues(){
+        final String expected = "{\"key1\":\"val1\",\"key2\":\"val2\",\"key3\":\"val3\"}";
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues(){
+        final String expected = "{\"key1\":\"val1\",\"key2\":null}";
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+    }
+
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters(){
+        final String expected = "{\"key_#1\":\"val 1\",\"key 2\":\" ##123 78\"}";
+        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
@@ -538,6 +604,7 @@ public abstract class AbstractRecordsProducerTest {
                                                String envelopeFieldName) {
         Struct content = ((Struct) record.value()).getStruct(envelopeFieldName);
         assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
+
         expectedSchemaAndValuesByColumn.forEach(schemaAndValueField -> schemaAndValueField.assertFor(content));
     }
 

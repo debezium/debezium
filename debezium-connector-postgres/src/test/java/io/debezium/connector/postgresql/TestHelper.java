@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql;
 import static org.junit.Assert.assertNotNull;
 
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -147,6 +148,19 @@ public final class TestHelper {
         try (final PostgresConnection connection = new PostgresConnection(defaultJdbcConfig())) {
             return connection.getTypeRegistry();
         }
+    }
+
+    public static PostgresSchema getSchema(PostgresConnectorConfig config) {
+        return getSchema(config, TestHelper.getTypeRegistry());
+    }
+
+    public static PostgresSchema getSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
+        return new PostgresSchema(
+                config,
+                typeRegistry,
+                Charset.forName("UTF-8"),
+                PostgresTopicSelector.create(config)
+        );
     }
 
     protected static Set<String> schemaNames() throws SQLException {

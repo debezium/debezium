@@ -6,9 +6,11 @@
 
 package io.debezium.connector.postgresql;
 
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -19,7 +21,10 @@ import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -29,9 +34,14 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.postgresql.geometric.PGpoint;
+import org.postgresql.util.HStoreConverter;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+
+import io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -89,11 +99,25 @@ public class PostgresValueConverter extends JdbcValueConverters {
     private final boolean includeUnknownDatatypes;
 
     private final TypeRegistry typeRegistry;
+    private final HStoreHandlingMode hStoreMode;
 
-    protected PostgresValueConverter(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
+    /**
+     * The current database's character encoding.
+     */
+    private final Charset databaseCharset;
+
+    private final JsonFactory jsonFactory;
+
+    protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
+            TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
+            BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
+            HStoreHandlingMode hStoreMode) {
+        super(decimalMode, temporalPrecisionMode, defaultOffset,null, bigIntUnsignedMode);
+        this.databaseCharset = databaseCharset;
+        this.jsonFactory = new JsonFactory();
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
+        this.hStoreMode = hStoreMode;
     }
 
     @Override
@@ -187,6 +211,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
                     return SchemaBuilder.array(Geometry.builder().optional().build());
                 }
+                else if (oidValue == typeRegistry.hstoreOid()){
+                    return hstoreSchema();
+                }
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
                     return SchemaBuilder.array(Geography.builder().optional().build());
                 }
@@ -208,6 +235,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return VariableScaleDecimal.builder();
         }
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
+    }
+
+    private SchemaBuilder hstoreSchema(){
+        if (hStoreMode == PostgresConnectorConfig.HStoreHandlingMode.JSON) {
+            return SchemaBuilder.string();
+        }
+        else {
+            // keys are not nullable, but values are
+            return SchemaBuilder.map(
+                    SchemaBuilder.STRING_SCHEMA,
+                    SchemaBuilder.string().optional().build()
+            );
+        }
     }
 
     @Override
@@ -285,6 +325,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.citextOid()) {
                     return data -> convertCitext(column, fieldDefn, data);
                 }
+                else if (oidValue == typeRegistry.hstoreOid()) {
+                    return data -> convertHStore(column, fieldDefn, data, hStoreMode);
+                }
                 else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
                 }
@@ -358,6 +401,84 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(newDecimal), mode, column.name());
+    }
+
+    protected Object convertHStore(Column column,Field fieldDefn,Object data,HStoreHandlingMode mode) {
+        if (mode == HStoreHandlingMode.JSON) {
+            return convertHstoreToJsonString(column, fieldDefn, data);
+        }
+            return convertHstoreToMap(column,fieldDefn,data);
+        }
+
+    private Object convertHstoreToMap(Column column, Field fieldDefn, Object data){
+        if(data == null) {
+            data = fieldDefn.schema().defaultValue(); }
+            if(data == null) {
+                if (column.isOptional()) {
+                    return null;
+            }
+            return new HashMap<>();
+        }
+        if(data instanceof String) {
+            return HStoreConverter.fromString((String) data);
+        }
+        if(data instanceof byte[]) {
+            return HStoreConverter.fromString(asHstoreString((byte[]) data));
+        }
+
+        return handleUnknownData(column,fieldDefn,data) ;
+    }
+
+    /**
+     * Returns an Hstore field as string in the form of {@code "key 1"=>"value1", "key_2"=>"val 1"}; i.e. the given byte
+     * array is NOT the byte representation returned by {@link HStoreConverter#toBytes(Map,
+     * org.postgresql.core.Encoding))}, but the String based representation
+     */
+    private String asHstoreString(byte[] data) {
+        return new String(data, databaseCharset);
+    }
+
+    private Object convertHstoreToJsonString(Column column,Field fieldDefn, Object data){
+        if(data == null) {
+            data = fieldDefn.schema().defaultValue();
+        }
+        if(data == null) {
+            if(column.isOptional()) {
+                return null;
+            }
+            else {
+                return "{}";
+            }
+        }
+
+        if(data instanceof String) {
+            return changePlainStringRepresentationToJsonStringRepresentation(( (String) data));
+        }
+
+        if(data instanceof byte[]) {
+            return changePlainStringRepresentationToJsonStringRepresentation(asHstoreString((byte[]) data));
+        }
+
+        return handleUnknownData(column,fieldDefn,data);
+    }
+
+    private String changePlainStringRepresentationToJsonStringRepresentation(String text){
+        Map<String, String> map = HStoreConverter.fromString(text);
+
+
+        StringWriter writer = new StringWriter();
+        try (JsonGenerator jsonGenerator = jsonFactory.createGenerator(writer)) {
+            jsonGenerator.writeStartObject();
+            for (Entry<String, String> hstoreEntry : map.entrySet()) {
+                jsonGenerator.writeStringField(hstoreEntry.getKey(), hstoreEntry.getValue());
+            }
+            jsonGenerator.writeEndObject();
+            jsonGenerator.flush();
+            return writer.getBuffer().toString();
+        }
+        catch(Exception e) {
+            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + text, e);
+        }
     }
 
     @Override
