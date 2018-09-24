@@ -10,9 +10,11 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BL
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -236,12 +238,43 @@ public class PostgresSchemaIT {
 
         TestHelper.execute(statements);
         try (PostgresConnection connection = TestHelper.create()) {
-            schema.refresh(connection, TableId.parse(tableId, false));
+            schema.refresh(connection, TableId.parse(tableId, false), false);
             assertTablesIncluded(tableId);
             assertTablesExcluded("public.table1");
             assertTableSchema(tableId, "vc, si",
-                              Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_INT16_SCHEMA);
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_INT16_SCHEMA);
             assertColumnsExcluded(tableId + ".strcol");
+        }
+    }
+
+    @Test
+    public void shouldPopulateToastableColumnsCache() throws Exception {
+        String statements = "CREATE SCHEMA IF NOT EXISTS public;" +
+                "DROP TABLE IF EXISTS table1;" +
+                "CREATE TABLE table1 (pk SERIAL,  toasted text, untoasted int, PRIMARY KEY(pk));";
+        TestHelper.execute(statements);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        schema = TestHelper.getSchema(config);
+        TableId tableId = TableId.parse("public.table1", false);
+
+        // Before refreshing, we should have an empty array for the table
+        assertTrue(schema.getToastableColumnsForTableId(tableId).isEmpty());
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            // Load up initial schema info. This should not populate the toastable columns cache, as the cache is loaded
+            // on-demand per-table refresh.
+            schema.refresh(connection, false);
+            assertTrue(schema.getToastableColumnsForTableId(tableId).isEmpty());
+
+            // After refreshing w/ toastable column refresh disabled, we should still have an empty array
+            schema.refresh(connection, tableId, false);
+            assertTrue(schema.getToastableColumnsForTableId(tableId).isEmpty());
+
+            // After refreshing w/ toastable column refresh enabled, we should have only the 'toasted' column in the cache
+            schema.refresh(connection, tableId, true);
+            List<String> toastableColumns = schema.getToastableColumnsForTableId(tableId);
+            assertTrue(toastableColumns.size() == 1);
+            assertTrue("toasted".equals(toastableColumns.get(0)));
         }
     }
 

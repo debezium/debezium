@@ -419,7 +419,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (refreshSchemaIfChanged && schemaChanged(columns, table, metadataInMessage)) {
             try (final PostgresConnection connection = taskContext.createConnection()) {
                 // Refresh the schema so we get information about primary keys
-                schema().refresh(connection, tableId);
+                schema().refresh(connection, tableId, taskContext.config().skipRefreshSchemaOnMissingToastableData());
                 // Update the schema with metadata coming from decoder message
                 if (metadataInMessage) {
                     schema().refresh(tableFromFromMessage(columns, schema().tableFor(tableId)));
@@ -446,11 +446,15 @@ public class RecordsStreamProducer extends RecordsProducer {
 
     private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
         List<String> columnNames = table.columnNames();
-        int messagesCount = columns.size();
-        if (columnNames.size() != messagesCount) {
+        int tableColumnCount = columnNames.size();
+        int replicationColumnCount = columns.size();
+
+        if (tableColumnCount < replicationColumnCount || (tableColumnCount > replicationColumnCount && (!taskContext.config().skipRefreshSchemaOnMissingToastableData() || untoastedColumnsPresent(table, columns)))) {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
-            logger.info("Different column count {} present in the server message as schema in memory contains {}; refreshing table schema", messagesCount, columnNames.size());
+            logger.info("Different column count {} present in the server message as schema in memory contains {}; refreshing table schema",
+                        replicationColumnCount,
+                        tableColumnCount);
             return true;
         }
 
@@ -491,6 +495,23 @@ public class RecordsStreamProducer extends RecordsProducer {
         }).findFirst().isPresent();
     }
 
+    private boolean untoastedColumnsPresent(Table table, List<ReplicationMessage.Column> columns) {
+        List<String> msgColumnNames = columns.stream().map(ReplicationMessage.Column::getName).collect(Collectors.toList());
+
+        // Compute list of table columns not present in the replication message
+        List<String> missingColumnNames = table.columnNames().stream().filter(name -> !msgColumnNames.contains(name)).collect(Collectors.toList());
+
+        List<String> toastableColumns = schema().getToastableColumnsForTableId(table.id());
+
+        logger.debug("msg columns: '{}' --- missing columns: '{}' --- toastableColumns: '{}",
+                     String.join(",", msgColumnNames),
+                     String.join(",", missingColumnNames),
+                     String.join(",", toastableColumns));
+        // Return `true` if we have some columns not in the replication message that are not toastable or that we do
+        // not recognize
+        return !toastableColumns.containsAll(missingColumnNames);
+    }
+
     private TableSchema tableSchemaFor(TableId tableId) throws SQLException {
         PostgresSchema schema = schema();
         if (schema.isFilteredOut(tableId)) {
@@ -504,7 +525,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // we don't have a schema registered for this table, even though the filters would allow it...
         // which means that is a newly created table; so refresh our schema to get the definition for this table
         try (final PostgresConnection connection = taskContext.createConnection()) {
-            schema.refresh(connection, tableId);
+            schema.refresh(connection, tableId, taskContext.config().skipRefreshSchemaOnMissingToastableData());
         }
         tableSchema = schema.schemaFor(tableId);
         if (tableSchema == null) {
