@@ -223,6 +223,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     }
 
     public List<String> getToastableColumnsForTableId(TableId tableId) {
-        return tableIdToToastableColumns.getOrDefault(tableId, Collections.unmodifiableList(new ArrayList<>()));
+        return tableIdToToastableColumns.getOrDefault(tableId, Collections.emptyList());
     }
 }
