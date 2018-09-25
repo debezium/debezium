@@ -449,7 +449,19 @@ public class RecordsStreamProducer extends RecordsProducer {
         int tableColumnCount = columnNames.size();
         int replicationColumnCount = columns.size();
 
-        if (tableColumnCount < replicationColumnCount || (tableColumnCount > replicationColumnCount && (!taskContext.config().skipRefreshSchemaOnMissingToastableData() || untoastedColumnsPresent(table, columns)))) {
+        boolean msgHasMissingColumns = tableColumnCount > replicationColumnCount;
+
+        if (msgHasMissingColumns && taskContext.config().skipRefreshSchemaOnMissingToastableData()) {
+            // if we are ignoring missing toastable data for the purpose of schema sync, we need to modify the
+            // hasMissingColumns boolean to account for this. If there are untoasted columns missing from the replication
+            // message, we'll still have missing columns and thus require a schema refresh. However, we can /possibly/
+            // avoid the refresh if there are only toastable columns missing from the message.
+            msgHasMissingColumns = hasMissingUntoastedColumns(table, columns);
+        }
+
+        boolean msgHasAdditionalColumns = tableColumnCount < replicationColumnCount;
+
+        if (msgHasMissingColumns || msgHasAdditionalColumns) {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
             logger.info("Different column count {} present in the server message as schema in memory contains {}; refreshing table schema",
@@ -495,7 +507,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }).findFirst().isPresent();
     }
 
-    private boolean untoastedColumnsPresent(Table table, List<ReplicationMessage.Column> columns) {
+    private boolean hasMissingUntoastedColumns(Table table, List<ReplicationMessage.Column> columns) {
         List<String> msgColumnNames = columns.stream().map(ReplicationMessage.Column::getName).collect(Collectors.toList());
 
         // Compute list of table columns not present in the replication message
