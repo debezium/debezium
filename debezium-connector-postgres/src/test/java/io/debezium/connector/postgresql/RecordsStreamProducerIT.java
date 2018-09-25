@@ -694,7 +694,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
         consumer = testConsumer(1);
-        recordsProducer.start(consumer,blackHole);
+        recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters());
     }
@@ -708,7 +708,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
         consumer = testConsumer(1);
-        recordsProducer.start(consumer,blackHole);
+        recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues());
     }

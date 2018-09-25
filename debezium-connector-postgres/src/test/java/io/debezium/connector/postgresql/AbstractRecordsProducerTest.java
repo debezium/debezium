@@ -295,22 +295,22 @@ public abstract class AbstractRecordsProducerTest {
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreType(){
         final String expected = "{\"key\":\"val\"}";
-        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues(){
         final String expected = "{\"key1\":\"val1\",\"key2\":\"val2\",\"key3\":\"val3\"}";
-        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues(){
         final String expected = "{\"key1\":\"val1\",\"key2\":null}";
-        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters(){
         final String expected = "{\"key_#1\":\"val 1\",\"key 2\":\" ##123 78\"}";
-        return Arrays.asList(new SchemaAndValueField("hs", SchemaBuilder.OPTIONAL_STRING_SCHEMA, expected));
+        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
@@ -605,7 +605,9 @@ public abstract class AbstractRecordsProducerTest {
         Struct content = ((Struct) record.value()).getStruct(envelopeFieldName);
         assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
 
-        expectedSchemaAndValuesByColumn.forEach(schemaAndValueField -> schemaAndValueField.assertFor(content));
+        expectedSchemaAndValuesByColumn.forEach(
+                schemaAndValueField -> schemaAndValueField.assertFor(content)
+        );
     }
 
     protected void assertRecordOffset(SourceRecord record, boolean expectSnapshot, boolean expectedLastSnapshotRecord) {
@@ -618,7 +620,8 @@ public abstract class AbstractRecordsProducerTest {
         if (expectSnapshot) {
             Assert.assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
             assertEquals("Last snapshot record marker mismatch", expectedLastSnapshotRecord, lastSnapshotRecord);
-        } else {
+        }
+        else {
             assertNull("Snapshot marker not expected, but found", snapshot);
             assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
         }
