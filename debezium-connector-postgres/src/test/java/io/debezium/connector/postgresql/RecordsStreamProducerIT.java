@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import io.debezium.relational.Table;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -804,6 +806,43 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertHeartBeatRecordInserted();
 
         assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-911")
+    public void shouldNotRefreshSchemaOnUnchangedToastedData() throws Exception {
+        // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
+        // received from Postgres
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, PostgresConnectorConfig.SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
+                .build());
+        setupRecordsProducer(config);
+
+        String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
+
+        // inserting a toasted value should /always/ produce a correct record
+        String statement = "ALTER TABLE test_table ADD COLUMN not_toast integer; INSERT INTO test_table (not_toast, text) values (10, '" + toastedValue + "')";
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+
+        SourceRecord record = consumer.remove();
+
+        // after record should contain the toasted value
+        List<SchemaAndValueField> expectedAfter = Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)
+        );
+        assertRecordSchemaAndValues(expectedAfter, record, Envelope.FieldName.AFTER);
+
+        // now we add another column and update the not_toast column to see that our unchanged toast data
+        // does not trigger a table schema refresh. the after schema should look the same as before.
+        statement = "ALTER TABLE test_table DROP COLUMN text; update test_table set not_toast = 5 where not_toast = 10";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
+        assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.columnNames());
     }
 
     private void assertHeartBeatRecordInserted() {

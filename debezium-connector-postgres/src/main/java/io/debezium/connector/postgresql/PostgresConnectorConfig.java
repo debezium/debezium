@@ -31,6 +31,7 @@ import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.TableId;
 
+
 /**
  * The configuration properties for the {@link PostgresConnector}
  *
@@ -446,6 +447,53 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined SchemaRefreshMode options or aliases.
+     */
+    public enum SchemaRefreshMode implements EnumeratedValue {
+        /**
+         * Refresh the in-memory schema cache whenever there is a discrepancy between it and the schema derived from the
+         * incoming message.
+         */
+        COLUMNS_DIFF("columns_diff"),
+
+        /**
+         * Refresh the in-memory schema cache if there is a discrepancy between it and the schema derived from the
+         * incoming message, unless TOASTable data can account for the discrepancy.
+         *
+         * This setting can improve connector performance significantly if there are frequently-updated tables that
+         * have TOASTed data that are rarely part of these updates. However, it is possible for the in-memory schema to
+         * become outdated if TOASTable columns are dropped from the table.
+         */
+        COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST("columns_diff_exclude_unchanged_toast");
+
+        private final String value;
+
+        SchemaRefreshMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SchemaRefreshMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (SchemaRefreshMode option : SchemaRefreshMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+    }
+
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5432;
     protected static final int DEFAULT_ROWS_FETCH_SIZE = 10240;
@@ -768,6 +816,20 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                                                                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
+
+    public static final Field SCHEMA_REFRESH_MODE = Field.create("schema.refresh.mode")
+            .withDisplayName("Schema refresh mode")
+            .withEnum(SchemaRefreshMode.class, SchemaRefreshMode.COLUMNS_DIFF)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify the conditions that trigger a refresh of the in-memory schema for a table. " +
+                    "'columns_diff' (the default) is the safest mode, ensuring the in-memory schema stays in-sync with " +
+                    "the database table's schema at all times. " +
+                    "'columns_diff_exclude_unchanged_toast' instructs the connector to refresh the in-memory schema cache if there is a discrepancy between it " +
+                    "and the schema derived from the incoming message, unless unchanged TOASTable data fully accounts for the discrepancy. " +
+                    "This setting can improve connector performance significantly if there are frequently-updated tables that " +
+                    "have TOASTed data that are rarely part of these updates. However, it is possible for the in-memory schema to " +
+                    "become outdated if TOASTable columns are dropped from the table.");
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -784,13 +846,14 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 
     private final Configuration config;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final DecimalMode decimalHandlingMode;
     private final HStoreHandlingMode  hStoreHandlingMode;
     private final SnapshotMode snapshotMode;
+    private final SchemaRefreshMode schemaRefreshMode;
 
 
     protected PostgresConnectorConfig(Configuration config) {
@@ -805,6 +868,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         this.decimalHandlingMode = decimalHandlingMode.asDecimalMode();
         this.hStoreHandlingMode = hStoreHandlingMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
+        this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
     }
 
     private static String getLogicalName(Configuration config) {
@@ -924,6 +988,10 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
         return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
     }
 
+    protected boolean skipRefreshSchemaOnMissingToastableData() {
+        return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
+    }
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
@@ -934,7 +1002,8 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,SCHEMA_REFRESH_MODE,ROWS_FETCH_SIZE);
+
         return config;
     }
 
