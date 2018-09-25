@@ -239,13 +239,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private SchemaBuilder hstoreSchema(){
         if (hStoreMode == PostgresConnectorConfig.HStoreHandlingMode.JSON) {
-            return SchemaBuilder.string();
+            return Json.builder();
         }
         else {
             // keys are not nullable, but values are
             return SchemaBuilder.map(
                     SchemaBuilder.STRING_SCHEMA,
-                    SchemaBuilder.string().optional().build()
+                    SchemaBuilder.OPTIONAL_STRING_SCHEMA
             );
         }
     }
@@ -443,7 +443,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return new String(data, databaseCharset);
     }
 
-    private Object convertHstoreToJsonString(Column column,Field fieldDefn, Object data){
+    private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data){
         if(data == null) {
             data = fieldDefn.schema().defaultValue();
         }
@@ -458,7 +458,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         if(data instanceof String) {
-            return changePlainStringRepresentationToJsonStringRepresentation(( (String) data));
+            return changePlainStringRepresentationToJsonStringRepresentation(((String) data));
         }
 
         if(data instanceof byte[]) {
