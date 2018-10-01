@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import io.debezium.relational.Table;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -40,6 +39,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 
@@ -835,7 +835,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         );
         assertRecordSchemaAndValues(expectedAfter, record, Envelope.FieldName.AFTER);
 
-        // now we add another column and update the not_toast column to see that our unchanged toast data
+        // now we remove the toast column and update the not_toast column to see that our unchanged toast data
         // does not trigger a table schema refresh. the after schema should look the same as before.
         statement = "ALTER TABLE test_table DROP COLUMN text; update test_table set not_toast = 5 where not_toast = 10";
 

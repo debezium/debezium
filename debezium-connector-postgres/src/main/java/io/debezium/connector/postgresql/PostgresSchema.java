@@ -9,18 +9,12 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.ZoneOffset;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.relational.RelationalDatabaseSchema;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.TableSchemaBuilder;
-import io.debezium.relational.Tables;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -30,6 +24,11 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.relational.Tables;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -204,9 +203,11 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                     toastableColumns.add(rs.getString(1));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unable to refresh toastable columns mapping", e);
         }
+
         tableIdToToastableColumns.put(tableId, Collections.unmodifiableList(toastableColumns));
     }
 

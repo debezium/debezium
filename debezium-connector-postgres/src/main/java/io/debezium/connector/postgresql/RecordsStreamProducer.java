@@ -478,7 +478,8 @@ public class RecordsStreamProducer extends RecordsProducer {
             if (column == null) {
                 logger.info("found new column '{}' present in the server message which is not part of the table metadata; refreshing table schema", columnName);
                 return true;
-            } else {
+            }
+            else {
                 final int localType = column.nativeType();
                 final int incomingType = message.getType().getOid();
                 if (localType != incomingType) {
@@ -508,10 +509,15 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     private boolean hasMissingUntoastedColumns(Table table, List<ReplicationMessage.Column> columns) {
-        List<String> msgColumnNames = columns.stream().map(ReplicationMessage.Column::getName).collect(Collectors.toList());
+        List<String> msgColumnNames = columns.stream()
+                .map(ReplicationMessage.Column::getName)
+                .collect(Collectors.toList());
 
         // Compute list of table columns not present in the replication message
-        List<String> missingColumnNames = table.columnNames().stream().filter(name -> !msgColumnNames.contains(name)).collect(Collectors.toList());
+        List<String> missingColumnNames = table.columnNames()
+                .stream()
+                .filter(name -> !msgColumnNames.contains(name))
+                .collect(Collectors.toList());
 
         List<String> toastableColumns = schema().getToastableColumnsForTableId(table.id());
 

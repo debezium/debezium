@@ -14,7 +14,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -272,9 +271,7 @@ public class PostgresSchemaIT {
 
             // After refreshing w/ toastable column refresh enabled, we should have only the 'toasted' column in the cache
             schema.refresh(connection, tableId, true);
-            List<String> toastableColumns = schema.getToastableColumnsForTableId(tableId);
-            assertTrue(toastableColumns.size() == 1);
-            assertTrue("toasted".equals(toastableColumns.get(0)));
+            assertThat(schema.getToastableColumnsForTableId(tableId)).containsOnly("toasted");
         }
     }
 
