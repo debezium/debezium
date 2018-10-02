@@ -11,18 +11,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import io.debezium.jdbc.JdbcConnection;
 import org.junit.After;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
+import org.postgresql.jdbc.PgConnection;
 
 /**
  * Integration test for {@link PostgresConnection}
@@ -109,6 +112,32 @@ public class PostgresConnectionIT {
             // try to drop the previous slot
             assertTrue(connection.dropReplicationSlot("test"));
         }
+    }
+
+    @Test
+    public void temporaryReplicationSlotsShouldGetDroppedAutomatically() throws Exception {
+        try(ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
+            PgConnection pgConnection = getUnderlyingConnection(replicationConnection);
+
+            // temporary replication slots are not supported by Postgres < 10
+            if (pgConnection.getServerMajorVersion() < 10) {
+                return;
+            }
+
+            // simulate ungraceful shutdown by closing underlying database connection
+            pgConnection.close();
+
+            try (PostgresConnection connection = TestHelper.create()) {
+                assertFalse("postgres did not drop replication slot", connection.dropReplicationSlot("test"));
+            }
+        }
+    }
+
+    private PgConnection getUnderlyingConnection(ReplicationConnection connection) throws Exception {
+        Field connField = JdbcConnection.class.getDeclaredField("conn");
+        connField.setAccessible(true);
+
+        return (PgConnection) connField.get(connection);
     }
 
     @Test
