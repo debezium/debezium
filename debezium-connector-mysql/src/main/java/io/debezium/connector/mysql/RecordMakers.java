@@ -46,6 +46,7 @@ public class RecordMakers {
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
+    private Map<String, ?> restartOffset = null;
 
     /**
      * Create the record makers using the supplied components.
@@ -69,6 +70,18 @@ public class RecordMakers {
                                                     .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
                                                     .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
                                                     .build();
+    }
+
+    /**
+     * @param restartOffset the offset to publish blah blah TODO
+     */
+    public RecordMakers(MySqlSchema schema,
+                        SourceInfo source,
+                        TopicSelector topicSelector,
+                        boolean emitTombstoneOnDelete,
+                        Map<String, ?> restartOffset) {
+        this(schema, source, topicSelector, emitTombstoneOnDelete);
+        this.restartOffset = restartOffset;
     }
 
     /**
@@ -160,6 +173,21 @@ public class RecordMakers {
         });
     }
 
+    private Map<String, ?> getSourceRecordOffset(Map<String, ?> sourceOffset) {
+        if (restartOffset == null) {
+            return sourceOffset;
+        }
+        else {
+            // I don't like this, but oh well?
+            Map<String, Object> offset = (Map<String, Object>) sourceOffset;
+            for(String key : restartOffset.keySet()){
+                StringBuilder sb = new StringBuilder(SourceInfo.RESTART_PREFIX);
+                offset.put(sb.append(key).toString(), restartOffset.get(key));
+            }
+            return offset;
+        }
+    }
+
     /**
      * Assign the given table number to the table with the specified {@link TableId table ID}.
      *
@@ -196,7 +224,7 @@ public class RecordMakers {
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
-                    SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
+                    SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
                     consumer.accept(record);
                     return 1;
@@ -215,7 +243,7 @@ public class RecordMakers {
                     Map<String, ?> partition = source.partition();
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
-                    SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
+                    SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
                     consumer.accept(record);
                     return 1;
@@ -242,26 +270,26 @@ public class RecordMakers {
                         // The key has changed, so we need to deal with both the new key and old key.
                         // Consumers may push the events into a system that won't allow both records to exist at the same time,
                         // so we first want to send the delete event for the old key...
-                        SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
+                        SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, oldKey, envelope.schema(), envelope.delete(valueBefore, origin, ts));
                         consumer.accept(record);
                         ++count;
 
                         if (emitTombstoneOnDelete) {
                             // Next send a tombstone event for the old key ...
-                            record = new SourceRecord(partition, offset, topicName, partitionNum, keySchema, oldKey, null, null);
+                            record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum, keySchema, oldKey, null, null);
                             consumer.accept(record);
                             ++count;
                         }
 
                         // And finally send the create event ...
-                        record = new SourceRecord(partition, offset, topicName, partitionNum,
+                        record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts));
                         consumer.accept(record);
                         ++count;
                     } else {
                         // The key has not changed, so a simple update is fine ...
-                        SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
+                        SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, key, envelope.schema(), envelope.update(valueBefore, valueAfter, origin, ts));
                         consumer.accept(record);
                         ++count;
@@ -283,14 +311,14 @@ public class RecordMakers {
                     Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
                     // Send a delete message ...
-                    SourceRecord record = new SourceRecord(partition, offset, topicName, partitionNum,
+                    SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.delete(value, origin, ts));
                     consumer.accept(record);
                     ++count;
 
                     // And send a tombstone ...
                     if (emitTombstoneOnDelete) {
-                        record = new SourceRecord(partition, offset, topicName, partitionNum,
+                        record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, key, null, null);
                         consumer.accept(record);
                         ++count;

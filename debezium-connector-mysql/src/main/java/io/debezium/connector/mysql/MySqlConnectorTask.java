@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,10 +69,10 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             boolean startWithSnapshot = false;
             boolean snapshotEventsAreInserts = true;
             Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
-            Map<String, ?> offsets = context.offsetStorageReader().offset(partition);
+            Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition)); // todo here we are
             final SourceInfo source;
             if (offsets != null) {
-                logger.info("MOST RECENT OFFSET IS: {}", offsets);
+                logger.info("RESTART OFFSET IS: {}", offsets);
                 Filters filters = SourceInfo.offsetsHaveFilterInfo(offsets) ? getOldFilters(offsets, config) : getAllFilters(config);
                 this.taskContext = createAndStartTaskContext(config, filters);
                 this.connectionContext = taskContext.getConnectionContext();
@@ -218,13 +219,13 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     // and we are configured to run a parallel snapshot
                     if (taskContext.snapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
                         ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config, taskContext, getNewFilters(offsets, config));
-                        ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader();
+
                         MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
-                        // take any final steps requires for reconciling the parallel readers
-                        // TODO this is going to be a bit of a problem because this .uponCompletion is going to be trampled by the ChainedReader, which uses
-                        // .uponCompletion to trigger the start of the next reader (unifiedBinlogReader in this case).
-                        reconcilingBinlogReader.uponCompletion(new CompleteReconciliation(unifiedTaskContext, reconcilingBinlogReader, source, config));
-                        BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null);
+                        long newTablesBinlogReaderServerId = unifiedTaskContext.serverId() + 30000;
+                        // todo: here and other places: this is a bit more fragile than I would like. fixme?
+                        BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null, newTablesBinlogReaderServerId);
+                        ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader(unifiedBinlogReader);
+
                         chainedReaderBuilder.addReader(parallelSnapshotReader);
                         chainedReaderBuilder.addReader(reconcilingBinlogReader);
                         chainedReaderBuilder.addReader(unifiedBinlogReader);
@@ -264,47 +265,66 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, ?> getRestartOffset(Map<String, ?> storedOffset) {
+        Map<String, Object> restartOffset = new HashMap<>();
+        if (storedOffset != null) {
+            for (String key : storedOffset.keySet()){
+                if (key.startsWith(SourceInfo.RESTART_PREFIX)) {
+                    String newKey = key.substring(SourceInfo.RESTART_PREFIX.length());
+                    restartOffset.put(newKey, storedOffset.get(key));
+                }
+            }
+        }
+        return restartOffset.isEmpty()? storedOffset : restartOffset;
+    }
+
+    // todo remove me
     private static class CompleteReconciliation implements Runnable {
 
-        private final MySqlTaskContext unifiedBinlogReaderContext;
         private final ReconcilingBinlogReader reconcilingBinlogReader;
         private final SourceInfo sourceInfo;
         private final Configuration config;
+        private final BinlogReader unifiedReader;
 
         private static final Logger logger = LoggerFactory.getLogger(CompleteReconciliation.class);
 
         /**
          * Create a runnable to complete the Reconciliation process:
-         *  - update the context the final binlog reader will run in to the binlog offset
-         *    the Reconciling Reader reached.
+         *  - update the context of the unified binlog reader to the binlog offset the Reconciling
+         *    Reader reached.
          *  - update the sourceInfo filter data to the config filter data, to signal the unification
          *    of the new and old filter info into the connector.
-         * @param unifiedBinlogReaderContext the context the final, unified binlog reader will run in.
+         *  - start the final, unified reader. (Since we are hijacking uponCompletion, we can't use
+         *    the ChainedReader to do this.)
          * @param reconcilingBinlogReader the {@link ReconcilingBinlogReader}
          * @param sourceInfo the source info
+         * @param unifiedReader the
          * @param config the configuration
          */
-        CompleteReconciliation(MySqlTaskContext unifiedBinlogReaderContext,
-                               ReconcilingBinlogReader reconcilingBinlogReader,
+        CompleteReconciliation(ReconcilingBinlogReader reconcilingBinlogReader,
                                SourceInfo sourceInfo,
-                               Configuration config) {
-            this.unifiedBinlogReaderContext = unifiedBinlogReaderContext;
+                               Configuration config,
+                               BinlogReader unifiedReader) {
             this.reconcilingBinlogReader = reconcilingBinlogReader;
             this.sourceInfo = sourceInfo;
             this.config = config;
+            this.unifiedReader = unifiedReader;
         }
 
         @Override
         public void run() {
-            unifiedBinlogReaderContext.loadHistory(reconcilingBinlogReader.getLeadingReader().context.source());
+            unifiedReader.context.loadHistory(reconcilingBinlogReader.getLeadingReader().context.source());
             sourceInfo.setFilterDataFromConfig(config);
-            logger.info("Completed Reconciliation of Parallel Readers");
+            logger.info("Completed Reconciliation of Parallel Readers (and starting the unified reader)");
+            unifiedReader.start();
         }
     }
 
     private static MySqlTaskContext createAndStartTaskContext(Configuration config,
                                                               Filters filters) {
         MySqlTaskContext taskContext = new MySqlTaskContext(config, filters);
+        // taskContext.source().setBinlogStartPoint(); this doesn't go here but I'm leaving it for reference.
         taskContext.start();
         return taskContext;
     }

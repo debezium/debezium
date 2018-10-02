@@ -116,6 +116,7 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
     public static final String TABLE_WHITELIST_KEY = "table_whitelist";
     public static final String TABLE_BLACKLIST_KEY = "table_blacklist";
+    public static final String RESTART_PREFIX = "RESTART_";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
@@ -300,7 +301,7 @@ final class SourceInfo extends AbstractSourceInfo {
             map.put(SNAPSHOT_KEY, true);
         }
         else {
-            throw new RuntimeException("SNAPSHOT IS NOT IN EFFECT!");
+            //throw new RuntimeException("SNAPSHOT IS NOT IN EFFECT!");
         }
         map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
         map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
@@ -376,12 +377,6 @@ final class SourceInfo extends AbstractSourceInfo {
         if (currentQuery != null) {
             result.put(QUERY_KEY, currentQuery);
         }
-        /*
-        result.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
-        result.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
-        result.put(TABLE_WHITELIST_KEY, tableWhitelist);
-        result.put(TABLE_BLACKLIST_KEY, tableBlacklist);
-        */ // I think I don't want these here. These are what ends up in the kafka messages, which I don't care about...
         return result;
     }
 

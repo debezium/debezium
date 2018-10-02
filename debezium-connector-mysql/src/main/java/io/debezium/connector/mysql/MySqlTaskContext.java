@@ -51,11 +51,14 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     private final boolean tableIdCaseInsensitive;
 
     public MySqlTaskContext(Configuration config, Filters filters) {
-        this(config, filters, null);
+        this(config, filters, null, null);
     }
 
-    public MySqlTaskContext(Configuration config, Filters filters, Boolean tableIdCaseInsensitive) {
-        // MySQL now calculates JMX binlog reader metrics on its own
+    public MySqlTaskContext(Configuration config, Filters filters, Map<String, ?> restartOffset) {
+        this(config, filters, null, restartOffset);
+    }
+
+    public MySqlTaskContext(Configuration config, Filters filters, Boolean tableIdCaseInsensitive, Map<String, ?> restartOffset) {
         super("MySQL", config.getString(MySqlConnectorConfig.SERVER_NAME), Collections::emptyList);
 
         this.config = config;
@@ -87,7 +90,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.dbSchema = new MySqlSchema(connectorConfig, this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector, filters);
 
         // Set up the record processor ...
-        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE));
+        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE), restartOffset);
 
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);

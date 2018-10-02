@@ -36,7 +36,7 @@ public class ParallelSnapshotReaderTest {
 
         parallelSnapshotReader.start();
 
-        Assert.assertTrue(parallelSnapshotReader.state() == Reader.State.RUNNING);
+        Assert.assertSame(parallelSnapshotReader.state(), Reader.State.RUNNING);
 
         verify(mockOldBinlogReader).start();
         verify(mockNewSnapshotReader).start();
@@ -159,69 +159,75 @@ public class ParallelSnapshotReaderTest {
         // verify that halting predicate does nothing and changes no state if the
         // document's timestamp is outside of the time range.
 
-        AtomicBoolean thisReaderBoolean = new AtomicBoolean(false);
-        AtomicBoolean otherReaderBoolean = new AtomicBoolean(false);
+        AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
+        AtomicBoolean otherReaderNearEnd = new AtomicBoolean(false);
 
-        long durationMs = 5 * 60 * 1000; // five minutes
-        Duration duration = Duration.ofMillis(durationMs); // five minutes
+        long durationSec = 5 * 60; // five minutes
+        Duration duration = Duration.ofSeconds(durationSec);
 
-        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, duration);
+        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
-        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis() - (durationMs * 2)));
+        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()/1000 - (durationSec * 2)));
 
-        Assert.assertFalse(testResult);
+        Assert.assertTrue(testResult);
 
-        Assert.assertFalse(thisReaderBoolean.get());
-        Assert.assertFalse(otherReaderBoolean.get());
+        Assert.assertFalse(thisReaderNearEnd.get());
+        Assert.assertFalse(otherReaderNearEnd.get());
     }
 
     @Test
-    public void testHaltingPredicateFlipsThisReaderBoolean() {
+    public void testHaltingPredicateFlipsthisReaderNearEnd() {
         // verify that the halting predicate flips the `this reader` boolean if the
         // document's timestamp is within the time range, but still returns false.
 
-        AtomicBoolean thisReaderBoolean = new AtomicBoolean(false);
-        AtomicBoolean otherReaderBoolean = new AtomicBoolean(false);
 
-        Duration duration = Duration.ofMillis(5 * 60 * 1000); // five minutes
+        AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
+        AtomicBoolean otherReaderNearEnd = new AtomicBoolean(false);
 
-        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, duration);
+        Duration duration = Duration.ofSeconds(5 * 60); // five minutes
 
-        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()));
+        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
-        Assert.assertFalse(testResult);
+        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()/1000));
 
-        Assert.assertTrue(thisReaderBoolean.get());
-        Assert.assertFalse(otherReaderBoolean.get());
+        Assert.assertTrue(testResult);
+
+        Assert.assertTrue(thisReaderNearEnd.get());
+        Assert.assertFalse(otherReaderNearEnd.get());
     }
 
     @Test
     public void testHaltingPredicateHalts() {
-        // verify that the halting predicate returns true if both the `this` and
-        // `other` reader booleans are true.
+        // verify that the halting predicate returns false if both the 'this' and
+        // 'other' reader are near the end of the binlog.
 
-        AtomicBoolean thisReaderBoolean = new AtomicBoolean(false);
-        AtomicBoolean otherReaderBoolean = new AtomicBoolean(true);
+        AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
+        AtomicBoolean otherReaderNearEnd = new AtomicBoolean(true);
 
-        Duration duration = Duration.ofMillis(5 * 60 * 1000); // five minutes
+        Duration duration = Duration.ofSeconds(5 * 60); // five minutes
 
-        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderBoolean, otherReaderBoolean, duration);
+        ParallelHaltingPredicate parallelHaltingPredicate =
+            new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
-        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()));
+        boolean testResult =
+            parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()/1000));
 
-        Assert.assertTrue(testResult);
-
-        Assert.assertTrue(thisReaderBoolean.get());
-        Assert.assertTrue(otherReaderBoolean.get());
+        Assert.assertFalse(testResult);
+        
+        Assert.assertTrue(thisReaderNearEnd.get());
+        Assert.assertTrue(otherReaderNearEnd.get());
     }
 
     /**
      * Create an "offset" containing a single timestamp element with the given value.
-     * @param tsMs the timestamp in the resulting offset.
+     * @param tsSec the timestamp (in seconds) in the resulting offset.
      * @return an "offset" containing the given timestamp.
      */
-    private SourceRecord createSourceRecordWithTimestamp(long tsMs) {
-        Map<String, ?> offset = Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, tsMs);
+    private SourceRecord createSourceRecordWithTimestamp(long tsSec) {
+        // TODO :
+        // [x] CHANCE ME TO SECONDS (that was easy)
+        // [] AND MAKE EVERYTHING THAT CALLS ME USE SECONDS
+        Map<String, ?> offset = Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, tsSec);
         return new SourceRecord(null, offset, null, null, null);
     }
 }

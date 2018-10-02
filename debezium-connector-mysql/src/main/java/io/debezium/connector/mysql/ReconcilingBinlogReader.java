@@ -16,6 +16,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import static io.debezium.connector.mysql.SourceInfo.BINLOG_FILENAME_OFFSET_KEY;
+import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
+
 /**
  * A reader that unifies the binlog positions of two binlog readers.
  *
@@ -30,6 +33,7 @@ public class ReconcilingBinlogReader implements Reader {
 
     private final BinlogReader binlogReaderA;
     private final BinlogReader binlogReaderB;
+    private final BinlogReader unifiedReader;
 
     private BinlogReader reconcilingReader;
 
@@ -39,13 +43,21 @@ public class ReconcilingBinlogReader implements Reader {
     private final AtomicBoolean completed = new AtomicBoolean();
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
+    private static final long RECONCILLING_READER_SERVER_ID_OFFSET = 20000;
+
     /**
-     * Create a catch up reader.
+     * Create a reconciling Binlog Reader.
+     *
+     * @param binlogReaderA the first binlog reader to unify.
+     * @param binlogReaderB the second binlog reader to unify.
+     * @param unifiedReader the final, unified binlog reader that will run once the reconciliation is complete.
      */
     public ReconcilingBinlogReader(BinlogReader binlogReaderA,
-                                   BinlogReader binlogReaderB) {
+                                   BinlogReader binlogReaderB,
+                                   BinlogReader unifiedReader) {
         this.binlogReaderA = binlogReaderA;
         this.binlogReaderB = binlogReaderB;
+        this.unifiedReader = unifiedReader;
     }
 
     @Override
@@ -77,11 +89,15 @@ public class ReconcilingBinlogReader implements Reader {
             OffsetLimitPredicate offsetLimitPredicate =
                 new OffsetLimitPredicate(getLeadingReader().getLastOffset(),
                                          laggingReaderContext.gtidSourceFilter());
+
+            long newTablesBinlogReaderServerId = laggingReaderContext.serverId() + RECONCILLING_READER_SERVER_ID_OFFSET;
+
             // create our actual reader
             logger.info("CREATING INNER RBR with offset {}", laggingReaderContext.source().offset());
             reconcilingReader = new BinlogReader("innerReconcilingReader",
                                                  laggingReaderContext,
-                                                 offsetLimitPredicate);
+                                                 offsetLimitPredicate,
+                                                 newTablesBinlogReaderServerId);
             reconcilingReader.start();
         }
     }
@@ -108,11 +124,31 @@ public class ReconcilingBinlogReader implements Reader {
     private void completeSuccessfully() {
         // if both readers have stopped, we need to stop.
         logger.info("PARALLEL SNAPSHOT READER IS DONE! NEXT UP IS {}", this.uponCompletion.get().getClass());
-        running.compareAndSet(true, false);
+        setupUnifiedReader();
+        logger.info("Completed Reconciliation of Parallel Readers.");
+
         Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
         if (completionHandler != null) {
             completionHandler.run();
         }
+    }
+
+    private void setupUnifiedReader() {
+        unifiedReader.context.loadHistory(getLeadingReader().context.source());
+        unifiedReader.context.source().setFilterDataFromConfig(unifiedReader.context.config());
+        // ^^ I think this is needed even though imo it's kind of weirdo
+        Map<String, ?> keyedOffset =
+            reconcilingReader.getLastOffset() == null ?
+                getLeadingReader().getLastOffset() :
+                reconcilingReader.getLastOffset();
+        logger.info("STARTING UNIFIED READER AT OFFSET {}", keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));
+        unifiedReader.context.source()
+            .setBinlogStartPoint((String) keyedOffset.get(BINLOG_FILENAME_OFFSET_KEY),
+                                 (Long) keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));
+        // note: this seems to dupe -one- event in my tests.
+        // I don't totally understand why that's happening (that is, I don't understand
+        // why the lastOffset seems to be before the actual last record) but this seems
+        // like a very minor issue to me.
     }
 
     private void determineLeadingReader() {
@@ -186,19 +222,15 @@ public class ReconcilingBinlogReader implements Reader {
         @Override
         public boolean test(SourceRecord sourceRecord) {
             Document offsetDocument = SourceInfo.createDocumentFromOffset(sourceRecord.sourceOffset());
-            boolean positionAtOrBefore = SourceInfo.isPositionAtOrBefore(leadingReaderFinalOffsetDocument,
-                                                                    offsetDocument,
-                                                                    gtidFilter);
-            logger.info("{} VERSUS {} :OFFSETLIMITPREDICATE RETURNS {}", leadingReaderFinalOffset, sourceRecord.sourceOffset(), positionAtOrBefore);
-            return positionAtOrBefore;
-            // TODO obviously this isn't actually functional for real life but should hopefully be sufficient for me getting past some stuff for now.
-            // another option would be to use binlog position. But at this point I'm getting into fixing the issues with isPositionAtOrBefore and I don't
-            // really want to do that.
-            //long leadingReaderFinalOffsetTsSec = (Long) leadingReaderFinalOffset.get(SourceInfo.TIMESTAMP_KEY);
-            //long sourceRecordTsSec = (Long) sourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
-            //boolean result = sourceRecordTsSec < leadingReaderFinalOffsetTsSec;
-            //logger.info("OFFSETLIMITPREDICATE RETURNING {}", result);
-            //return result;
+            // .isPositionAtOrBefore is true IFF leadingReaderFinalOffsetDocument <= offsetDocument
+            // we should stop (return false) IFF leadingReaderFinalOffsetDocument <= offsetDocument
+            boolean stop =
+                ! SourceInfo.isPositionAtOrBefore(leadingReaderFinalOffsetDocument,
+                                                  offsetDocument,
+                                                  gtidFilter);
+
+            logger.info("{} VERSUS {} :OFFSETLIMITPREDICATE RETURNS {}", leadingReaderFinalOffset, sourceRecord.sourceOffset(), stop);
+            return stop;
         }
     }
 }

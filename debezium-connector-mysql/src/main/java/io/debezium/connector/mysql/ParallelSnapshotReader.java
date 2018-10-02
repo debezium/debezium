@@ -57,7 +57,9 @@ public class ParallelSnapshotReader implements Reader {
                                                 noSnapshotContext,
                                                 oldTablesReaderHaltingPredicate);
 
-        MySqlTaskContext newTablesContext = new MySqlTaskContext(config, snapshotFilters);
+        MySqlTaskContext newTablesContext = new MySqlTaskContext(config,
+                                                                 snapshotFilters,
+                                                                 noSnapshotContext.source().offset());
         newTablesContext.start();
         SnapshotReader newTablesSnapshotReader = new SnapshotReader("newSnapshot", newTablesContext);
 
@@ -83,8 +85,8 @@ public class ParallelSnapshotReader implements Reader {
      * ParallelSnapshotReader.
      * @return a {@link ReconcilingBinlogReader}
      */
-    public ReconcilingBinlogReader createReconcilingBinlogReader() {
-        return new ReconcilingBinlogReader(oldTablesReader, newTablesBinlogReader);
+    public ReconcilingBinlogReader createReconcilingBinlogReader(BinlogReader unifiedReader) {
+        return new ReconcilingBinlogReader(oldTablesReader, newTablesBinlogReader, unifiedReader);
     }
 
     @Override
@@ -160,7 +162,10 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     private void completeSuccessfully() {
+        // trying something: stop the inner readers?
+        logger.info("COMPLETING THE PARALLELSNAPSHOTREADER SUCCESSFULLY");
         stop();
+
         Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
         if (completionHandler != null) {
             completionHandler.run();
@@ -175,11 +180,8 @@ public class ParallelSnapshotReader implements Reader {
     /**
      * A Halting Predicate for the parallel snapshot reader
      *
-     * This halting predicate assumes that there is another reader also running with a complementary halting predicate.
-     * The lagging reader's halting predicate is the only predicate that will return true, but it will signal for the
-     * other reader to halt at the same time.
+     * TODO: more documentation (that is correct)
      */
-
     /*package local*/ static class ParallelHaltingPredicate implements Predicate<SourceRecord> {
 
         private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -208,10 +210,19 @@ public class ParallelSnapshotReader implements Reader {
 
         @Override
         public boolean test(SourceRecord ourSourceRecord) {
-            logger.info("TESTING PARALLEL HALTING PREDICATE");
+            logger.info("TESTING PARALLEL HALTING PREDICATE: {}", ourSourceRecord.sourceOffset().toString());
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
-                Instant recordTimestamp = Instant.ofEpochSecond((Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY));
+                //ourSourceRecord.value()
+                Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
+                if (sourceRecordTimestamp == null) {
+                    // TODO timestamp is null because it's not the -real- offset!!
+                    // it's the fake, previous offset from the other reader
+                    // in this case, it's from a snapshot. So that's why it has no timestamp.
+                    logger.info ("TIMESTAMP IS NULL! (FOR SOME REASON?!)");
+                    return true;
+                }
+                Instant recordTimestamp = Instant.ofEpochSecond(sourceRecordTimestamp);
                 Instant now = Instant.now();
                 Duration durationToEnd =
                     Duration.between(recordTimestamp,
