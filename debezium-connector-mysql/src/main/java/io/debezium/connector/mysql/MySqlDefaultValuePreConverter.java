@@ -33,9 +33,10 @@ import io.debezium.relational.Column;
 @Immutable
 public class MySqlDefaultValuePreConverter  {
 
-    private static final Pattern ALL_ZERO_TIMESTAMP = Pattern.compile("0000-00-00 00:00:00(\\.\\d{1,6})?");
 
-    private static final String ALL_ZERO_DATE = "0000-00-00";
+    private static final Pattern EPOCH_EQUIVALENT_TIMESTAMP = Pattern.compile("(\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}) (00:00:00(\\.\\d{1,6})?)");
+
+    private static final Pattern EPOCH_EQUIVALENT_DATE = Pattern.compile("\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}");
 
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
 
@@ -97,7 +98,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToLocalDate(Column column, String value) {
-        final boolean zero = ALL_ZERO_DATE.equals(value) || "0".equals(value);
+        final boolean zero = EPOCH_EQUIVALENT_DATE.matcher(value).matches() || "0".equals(value);
         if (zero && column.isOptional()) {
             return null;
         }
@@ -117,7 +118,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToLocalDateTime(Column column, String value) {
-        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || "0".equals(value);
+        final boolean matches = EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches() || "0".equals(value);
         if (matches) {
             if (column.isOptional()) {
                 return null;
@@ -139,7 +140,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToTimestamp(Column column, String value) {
-        final boolean matches = ALL_ZERO_TIMESTAMP.matcher(value).matches() || "0".equals(value) || EPOCH_TIMESTAMP.equals(value);
+        final boolean matches = EPOCH_EQUIVALENT_TIMESTAMP.matcher(value).matches() || "0".equals(value) || EPOCH_TIMESTAMP.equals(value);
         if (matches) {
             if (column.isOptional()) {
                 return null;
