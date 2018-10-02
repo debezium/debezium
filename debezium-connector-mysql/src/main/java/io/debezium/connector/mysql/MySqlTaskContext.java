@@ -307,10 +307,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      * This method does not mutate any state in the context.
      *
      * @param availableServerGtidSet the GTID set currently available in the MySQL server
+     * @param purgedServerGtid the GTID set already purged by the MySQL server
      * @return A GTID set meant for consuming from a MySQL binlog; may return null if the SourceInfo has no GTIDs and therefore
      *         none were filtered
      */
-    public GtidSet filterGtidSet(GtidSet availableServerGtidSet) {
+    public GtidSet filterGtidSet(GtidSet availableServerGtidSet, GtidSet purgedServerGtid) {
         String gtidStr = source.gtidSet();
         if (gtidStr == null) {
             return null;
@@ -324,7 +325,19 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
             LOGGER.info("GTID set after applying GTID source includes/excludes to previous recorded offset: {}", filteredGtidSet);
         }
         LOGGER.info("GTID set available on server: {}", availableServerGtidSet);
-        GtidSet mergedGtidSet = availableServerGtidSet.with(filteredGtidSet);
+
+        GtidSet mergedGtidSet;
+
+        if (this.config.getBoolean(MySqlConnectorConfig.GTID_SOURCE_START_FROM_LATEST)) {
+            mergedGtidSet = availableServerGtidSet.with(filteredGtidSet);
+        } else {
+            LOGGER.info("Using first available positions for new GTID channels");
+            mergedGtidSet = availableServerGtidSet
+                    .getGTIDSetBeginning()
+                    .with(purgedServerGtid)
+                    .with(filteredGtidSet);
+        }
+
         LOGGER.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
         return mergedGtidSet;
     }
