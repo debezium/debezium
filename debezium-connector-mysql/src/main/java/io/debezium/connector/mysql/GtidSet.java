@@ -114,6 +114,21 @@ public final class GtidSet {
         return new GtidSet(newSet);
     }
 
+    /**
+     * Returns a copy with all intervals set to beginning
+     * @return
+     */
+    public GtidSet getGTIDSetBeginning() {
+        Map<String, UUIDSet> newSet = new HashMap<>();
+
+        for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
+            newSet.put(uuidSet.getUUID(), uuidSet.asIntervalBeginning());
+        }
+
+
+        return new GtidSet(newSet);
+    }
+
     @Override
     public int hashCode() {
         return uuidSetsByServerId.keySet().hashCode();
@@ -164,6 +179,15 @@ public final class GtidSet {
                     }
                 }
             }
+        }
+        protected UUIDSet(String uuid, Interval interval) {
+            this.uuid = uuid;
+            this.intervals.add(interval);
+        }
+
+        public UUIDSet asIntervalBeginning() {
+            Interval start = new Interval(intervals.get(0).getStart(), intervals.get(0).getStart());
+            return new UUIDSet(this.uuid, start);
         }
 
         /**

@@ -279,7 +279,13 @@ public class BinlogReader extends AbstractReader {
 
             // Now look at the GTID set from the server and what we've previously seen ...
             GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
-            GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet);
+
+            // also take into account purged GTID logs
+            String purgedServerGtidStr = connectionContext.purgedGtidSet();
+            GtidSet purgedServerGtidSet = new GtidSet(purgedServerGtidStr);
+            logger.info("GTID set purged on server: {}", purgedServerGtidSet);
+
+            GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet, purgedServerGtidSet);
             if (filteredGtidSet != null) {
                 // We've seen at least some GTIDs, so start reading from the filtered GTID set ...
                 logger.info("Registering binlog reader with GTID set: {}", filteredGtidSet);

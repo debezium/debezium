@@ -178,6 +178,27 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     /**
+     * Get the purged gtid values from MySQL (gtid_purged value)
+     *
+     * @return string representation of GTID set or empty string
+     */
+    public String purgedGtidSet() {
+        AtomicReference<String> gtidSetStr = new AtomicReference<String>();
+        try {
+            jdbc.query("SHOW GLOBAL VARIABLES LIKE \"gtid_purged\"", rs -> {
+                if (rs.next() && rs.getMetaData().getColumnCount() > 1) {
+                    gtidSetStr.set(rs.getString(2));// GTID set, may be null, blank, or contain a GTID set
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at gtid_purged variable: ", e);
+        }
+
+        String result = gtidSetStr.get();
+        return result != null ? result : "";
+    }
+
+    /**
      * Determine if the current user has the named privilege. Note that if the user has the "ALL" privilege this method
      * returns {@code true}.
      *
