@@ -304,6 +304,12 @@
             </properties>
         </profile>
         <profile>
+            <id>postgres-10</id>
+            <properties>
+                <version.postgres.server>10</version.postgres.server>
+            </properties>
+        </profile>
+        <profile>
             <id>wal2json-decoder</id>
             <properties>
                 <decoder.plugin.name>wal2json</decoder.plugin.name>

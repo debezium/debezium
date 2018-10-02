@@ -10,12 +10,13 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.PGConnection;
+import org.postgresql.jdbc.PgConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -99,13 +100,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         try {
             if (shouldCreateSlot) {
                 LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
+
                 // there's no info for this plugin and slot so create a new slot
-                pgConnection().getReplicationAPI()
-                              .createReplicationSlot()
-                              .logical()
-                              .withSlotName(slotName)
-                              .withOutputPlugin(postgresPluginName)
-                              .make();
+                try (Statement stmt = pgConnection().createStatement()) {
+                    stmt.execute(String.format(
+                            "CREATE_REPLICATION_SLOT %s %s LOGICAL %s",
+                            slotName,
+                            dropSlotOnClose && pgConnection().getServerMajorVersion() >= 10 ?
+                                    "TEMPORARY" : "",
+                            postgresPluginName
+                    ));
+                }
+
             } else if (slotInfo.active()) {
                 LOGGER.error(
                         "A logical replication slot named '{}' for plugin '{}' and database '{}' is already active on the server." +
@@ -162,8 +168,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return createReplicationStream(lsn);
     }
 
-    protected PGConnection pgConnection() throws SQLException {
-        return (PGConnection) connection(false);
+    protected PgConnection pgConnection() throws SQLException {
+        return (PgConnection) connection(false);
     }
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
