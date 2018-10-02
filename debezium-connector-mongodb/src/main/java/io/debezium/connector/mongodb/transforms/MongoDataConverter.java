@@ -50,10 +50,12 @@ public class MongoDataConverter {
         Object colValue = null;
         String key = keyvalueforStruct.getKey();
         BsonType type = keyvalueforStruct.getValue().getBsonType();
+
+        if (type == BsonType.NULL) {
+            LOG.warn("Field of type NULL is not added to the struct");
+            return;
+        }
         switch (type) {
-        case NULL:
-            colValue = null;
-            break;
 
         case STRING:
             colValue = keyvalueforStruct.getValue().asString().getValue().toString();
