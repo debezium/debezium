@@ -22,6 +22,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.postgresql.jdbc.PgConnection;
+import org.postgresql.replication.LogSequenceNumber;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -149,15 +150,21 @@ public class RecordsStreamProducer extends RecordsProducer {
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
             if (replicationStream != null) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Flushing LSN to server: {}", LogSequenceNumber.valueOf(lsn));
+                }
+
                 // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
-                logger.debug("flushing offsets to server...");
                 replicationStream.flushLsn(lsn);
-            } else {
-                logger.debug("streaming has already stopped, ignoring commit callback...");
             }
-        } catch (SQLException e) {
+            else {
+                logger.debug("Streaming has already stopped, ignoring commit callback...");
+            }
+        }
+        catch (SQLException e) {
             throw new ConnectException(e);
-        } finally {
+        }
+        finally {
             previousContext.restore();
         }
     }
