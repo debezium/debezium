@@ -24,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope.ArrayEncoding;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit test for {@code MongoDataConverter}.
@@ -127,6 +128,48 @@ public class MongoDataConverterTest {
         return new String(
                 Files.readAllBytes(Paths.get(jsonResource.toURI())),
                 StandardCharsets.UTF_8
+        );
+    }
+
+    @Test
+    @FixFor("DBZ-928")
+    public void shouldProcessNullValue() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : ObjectId(\"51e5619ee4b01f9fbdfba9fc\"),\n"+ 
+                "    \"delivery\" : {\n" +
+                "        \"hour\" : null,\n" +
+                "        \"hourId\" : 10\n" +
+                "    }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withnull");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.addFieldSchema(entry, builder);
+        }
+        Schema finalSchema = builder.build();
+        Struct struct = new Struct(finalSchema);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.convertRecord(entry, finalSchema, struct);
+        }
+
+        assertThat(finalSchema).isEqualTo(
+            SchemaBuilder.struct().name("withnull")
+                .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("delivery", SchemaBuilder.struct().name("withnull.delivery").optional()
+                        .field("hourId", Schema.OPTIONAL_INT32_SCHEMA)
+                        .build()
+                )
+                .build()
+        );
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{"
+                + "_id=51e5619ee4b01f9fbdfba9fc,"
+                  + "delivery=Struct{"
+                    + "hourId=10"
+                  + "}"
+              + "}"
         );
     }
 }
