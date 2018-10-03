@@ -32,6 +32,6 @@ public class SourceInfoTest {
 
     @Test
     public void connectorIsPresent() {
-        assertThat(source.source().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(SourceInfo.DEBEZIUM_CONNECTOR);
+        assertThat(source.source().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 }

@@ -573,7 +573,7 @@ public class SourceInfoTest {
     @Test
     public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(SourceInfo.DEBEZIUM_CONNECTOR);
+        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     protected Document positionWithGtids(String gtids) {

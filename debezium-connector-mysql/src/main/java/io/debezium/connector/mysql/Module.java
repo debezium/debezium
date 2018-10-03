@@ -21,4 +21,8 @@ public class Module {
     public static String version() {
         return INFO.getProperty("version");
     }
+
+    public static String name() {
+        return "mysql";
+    }
 }

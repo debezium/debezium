@@ -3,7 +3,6 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.postgresql;
 
 import java.util.Properties;
@@ -21,5 +20,9 @@ public final class Module {
 
     public static String version() {
         return INFO.getProperty("version");
+    }
+
+    public static String name() {
+        return "postgresql";
     }
 }
