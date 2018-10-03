@@ -78,6 +78,8 @@ public final class SourceInfo extends AbstractSourceInfo {
     public static final String OPERATION_ID = "h";
     public static final String INITIAL_SYNC = "initsync";
 
+    public static final String DEBEZIUM_CONNECTOR = "mongodb";
+
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null);
 
@@ -161,6 +163,11 @@ public final class SourceInfo extends AbstractSourceInfo {
     @Override
     public Schema schema() {
         return SOURCE_SCHEMA;
+    }
+
+    @Override
+    protected String connector() {
+        return DEBEZIUM_CONNECTOR;
     }
 
     /**

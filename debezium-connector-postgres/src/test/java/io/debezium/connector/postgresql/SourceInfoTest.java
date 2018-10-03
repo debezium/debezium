@@ -11,8 +11,6 @@ import io.debezium.relational.TableId;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.AbstractSourceInfo;
-
 /**
  * @author Jiri Pechanec
  *
@@ -29,6 +27,11 @@ public class SourceInfoTest {
 
     @Test
     public void versionIsPresent() {
-        assertThat(source.source().getString(AbstractSourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.source().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+    }
+
+    @Test
+    public void connectorIsPresent() {
+        assertThat(source.source().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(SourceInfo.DEBEZIUM_CONNECTOR);
     }
 }

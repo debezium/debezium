@@ -87,6 +87,8 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
+    public static final String DEBEZIUM_CONNECTOR = "postgresql";
+
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
@@ -217,6 +219,11 @@ final class SourceInfo extends AbstractSourceInfo {
     @Override
     protected Schema schema() {
         return SCHEMA;
+    }
+
+    @Override
+    protected String connector() {
+        return DEBEZIUM_CONNECTOR;
     }
 
     /**
