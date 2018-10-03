@@ -17,8 +17,6 @@ import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.AbstractSourceInfo;
-
 /**
  * @author Randall Hauch
  *
@@ -214,6 +212,11 @@ public class SourceInfoTest {
 
     @Test
     public void versionIsPresent() {
-        assertThat(source.offsetStructForEvent("rs", null).getString(AbstractSourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.offsetStructForEvent("rs", null).getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+    }
+
+    @Test
+    public void connectorIsPresent() {
+        assertThat(source.offsetStructForEvent("rs", null).getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(SourceInfo.DEBEZIUM_CONNECTOR);
     }
 }

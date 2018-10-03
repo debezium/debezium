@@ -22,7 +22,6 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 import io.confluent.connect.avro.AvroData;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 
@@ -568,7 +567,13 @@ public class SourceInfoTest {
     @Test
     public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.struct().getString(AbstractSourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+    }
+
+    @Test
+    public void connectorIsPresent() {
+        sourceWith(offset(100, 5, true));
+        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(SourceInfo.DEBEZIUM_CONNECTOR);
     }
 
     protected Document positionWithGtids(String gtids) {

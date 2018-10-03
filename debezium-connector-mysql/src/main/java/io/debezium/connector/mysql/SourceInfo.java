@@ -112,6 +112,8 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String TABLE_NAME_KEY = "table";
     public static final String QUERY_KEY = "query";
 
+    public static final String DEBEZIUM_CONNECTOR = "mysql";
+
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
@@ -295,6 +297,11 @@ final class SourceInfo extends AbstractSourceInfo {
     @Override
     public Schema schema() {
         return SCHEMA;
+    }
+
+    @Override
+    protected String connector() {
+        return DEBEZIUM_CONNECTOR;
     }
 
     /**
