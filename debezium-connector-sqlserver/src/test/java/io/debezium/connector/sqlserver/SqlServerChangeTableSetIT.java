@@ -102,6 +102,50 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(RECORDS_PER_TABLE);
     }
 
+    @Test
+    public void removeTable() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START_1 = 10;
+        final int ID_START_2 = 100;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_1 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+        }
+
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+
+        // Disable CDC for a table
+        connection.disableTableCdc("tableb");
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_2 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a2')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b2')"
+            );
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNullOrEmpty();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
