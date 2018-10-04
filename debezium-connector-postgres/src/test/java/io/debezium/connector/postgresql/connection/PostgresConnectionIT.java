@@ -18,18 +18,19 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import io.debezium.jdbc.JdbcConnection;
 import org.junit.After;
 import org.junit.Test;
+import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
-import org.postgresql.jdbc.PgConnection;
 
 /**
  * Integration test for {@link PostgresConnection}
- * 
+ *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class PostgresConnectionIT {
@@ -45,7 +46,7 @@ public class PostgresConnectionIT {
             connection.connect();
             assertTrue(connection.currentTransactionId() > 0);
         }
-        
+
         try (PostgresConnection connection = TestHelper.create()) {
             connection.connect();
             connection.setAutoCommit(false);
@@ -115,6 +116,7 @@ public class PostgresConnectionIT {
     }
 
     @Test
+    @FixFor("DBZ-934")
     public void temporaryReplicationSlotsShouldGetDroppedAutomatically() throws Exception {
         try(ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
             PgConnection pgConnection = getUnderlyingConnection(replicationConnection);
