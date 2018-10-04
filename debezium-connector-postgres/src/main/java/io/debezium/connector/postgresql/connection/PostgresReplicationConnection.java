@@ -98,21 +98,32 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
         try {
+            // there's no info for this plugin and slot so create a new slot
             if (shouldCreateSlot) {
                 LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
 
-                // there's no info for this plugin and slot so create a new slot
-                try (Statement stmt = pgConnection().createStatement()) {
-                    stmt.execute(String.format(
-                            "CREATE_REPLICATION_SLOT %s %s LOGICAL %s",
-                            slotName,
-                            dropSlotOnClose && pgConnection().getServerMajorVersion() >= 10 ?
-                                    "TEMPORARY" : "",
-                            postgresPluginName
-                    ));
+                // creating a temporary slot if it should be dropped an we're on 10 or newer;
+                // this is not supported through the API yet
+                // see https://github.com/pgjdbc/pgjdbc/issues/1305
+                if (dropSlotOnClose && pgConnection().getServerMajorVersion() >= 10) {
+                    try (Statement stmt = pgConnection().createStatement()) {
+                        stmt.execute(String.format(
+                                "CREATE_REPLICATION_SLOT %s TEMPORARY LOGICAL %s",
+                                slotName,
+                                postgresPluginName
+                        ));
+                    }
                 }
-
-            } else if (slotInfo.active()) {
+                else {
+                    pgConnection().getReplicationAPI()
+                        .createReplicationSlot()
+                        .logical()
+                        .withSlotName(slotName)
+                        .withOutputPlugin(postgresPluginName)
+                        .make();
+                }
+            }
+            else if (slotInfo.active()) {
                 LOGGER.error(
                         "A logical replication slot named '{}' for plugin '{}' and database '{}' is already active on the server." +
                         "You cannot have multiple slots with the same name active for the same database",
