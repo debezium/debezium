@@ -81,7 +81,6 @@ public class ReconcilingBinlogReader implements Reader {
     @Override
     public void start() {
         if (running.compareAndSet(false, true)) {
-            logger.info("RECONCILING-BINLOG-READER START");
             completed.set(false);
             determineLeadingReader();
 
@@ -93,7 +92,6 @@ public class ReconcilingBinlogReader implements Reader {
             long newTablesBinlogReaderServerId = laggingReaderContext.serverId() + RECONCILLING_READER_SERVER_ID_OFFSET;
 
             // create our actual reader
-            logger.info("CREATING INNER RBR with offset {}", laggingReaderContext.source().offset());
             reconcilingReader = new BinlogReader("innerReconcilingReader",
                                                  laggingReaderContext,
                                                  offsetLimitPredicate,
@@ -123,7 +121,6 @@ public class ReconcilingBinlogReader implements Reader {
 
     private void completeSuccessfully() {
         // if both readers have stopped, we need to stop.
-        logger.info("PARALLEL SNAPSHOT READER IS DONE! NEXT UP IS {}", this.uponCompletion.get().getClass());
         setupUnifiedReader();
         logger.info("Completed Reconciliation of Parallel Readers.");
 
@@ -141,14 +138,13 @@ public class ReconcilingBinlogReader implements Reader {
             reconcilingReader.getLastOffset() == null ?
                 getLeadingReader().getLastOffset() :
                 reconcilingReader.getLastOffset();
-        logger.info("STARTING UNIFIED READER AT OFFSET {}", keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));
         unifiedReader.context.source()
             .setBinlogStartPoint((String) keyedOffset.get(BINLOG_FILENAME_OFFSET_KEY),
                                  (Long) keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));
         // note: this seems to dupe -one- event in my tests.
         // I don't totally understand why that's happening (that is, I don't understand
         // why the lastOffset seems to be before the actual last record) but this seems
-        // like a very minor issue to me.
+        // like a minor issue to me.
     }
 
     private void determineLeadingReader() {
@@ -177,9 +173,9 @@ public class ReconcilingBinlogReader implements Reader {
         }
 
         if (aReaderLeading) {
-            logger.info("OLD TABLES LEADING; READING ONLY FROM NEW TABLES");
+            logger.info("old tables leading; reading only from new tables");
         } else {
-            logger.info("NEW TABLES LEADING; READING ONLY FROM OLD TABLES");
+            logger.info("new tables leading; reading only from old tables");
         }
     }
 
@@ -224,13 +220,10 @@ public class ReconcilingBinlogReader implements Reader {
             Document offsetDocument = SourceInfo.createDocumentFromOffset(sourceRecord.sourceOffset());
             // .isPositionAtOrBefore is true IFF leadingReaderFinalOffsetDocument <= offsetDocument
             // we should stop (return false) IFF leadingReaderFinalOffsetDocument <= offsetDocument
-            boolean stop =
+            return
                 ! SourceInfo.isPositionAtOrBefore(leadingReaderFinalOffsetDocument,
                                                   offsetDocument,
                                                   gtidFilter);
-
-            logger.info("{} VERSUS {} :OFFSETLIMITPREDICATE RETURNS {}", leadingReaderFinalOffset, sourceRecord.sourceOffset(), stop);
-            return stop;
         }
     }
 }

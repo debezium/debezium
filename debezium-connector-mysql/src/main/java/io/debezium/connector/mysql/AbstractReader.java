@@ -96,7 +96,6 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public void start() {
-        logger.info("ATTEMPTING TO START READER {}", name);
         if (this.running.compareAndSet(false, true)) {
             this.failure.set(null);
             this.success.set(false);
@@ -106,7 +105,6 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public void stop() {
-        logger.info("ATTEMPTING TO STOP READER {}", name);
         try {
             // Emptying the queue so to make sure that enqueue() won't block indefinitely when adding records after
             // poll() isn't called anymore but before the binlog reader is stopped; note there's still a tiny chance for
@@ -237,7 +235,6 @@ public abstract class AbstractReader implements Reader {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        logger.info("POLLING IN READER {}", this.name);
         // Before we do anything else, determine if there was a failure and throw that exception ...
         failureException = this.failure.get();
         if (failureException != null) {
@@ -324,7 +321,7 @@ public abstract class AbstractReader implements Reader {
                 return true;
             } else {
                 // if we found a record we should not accept, we are done.
-                logger.info("TEST RETURNED FALSE; COMPLETING READER {} SUCCESSFULLY", this.name);
+                logger.info("predicate returned false; completing reader {}", this.name);
                 completeSuccessfully();
             }
         }

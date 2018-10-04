@@ -20,23 +20,25 @@ import java.util.Map;
 public class ReconcilingBinlogReaderTest {
 
     @Test
-    public void haltAfterPredicateFalse() {
+    public void haltAfterPredicateTrue() {
         List<Map<String, ?>> offsets = createOrderedOffsets(2);
         ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate =
             new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(1), (x) -> true);
 
         SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(0));
-        Assert.assertFalse(offsetLimitPredicate.test(testSourceRecord));
+        // tested record (0) is before limit (1), so we should return true.
+        Assert.assertTrue(offsetLimitPredicate.test(testSourceRecord));
     }
 
     @Test
-    public void haltAfterPredicateTrue() {
+    public void haltAfterPredicateFalse() {
         List<Map<String, ?>> offsets = createOrderedOffsets(2);
         ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate =
             new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(0), (x) -> true);
 
         SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(1));
-        Assert.assertTrue(offsetLimitPredicate.test(testSourceRecord));
+        // tested record (1) is beyond limit (0), so we should return false.
+        Assert.assertFalse(offsetLimitPredicate.test(testSourceRecord));
     }
 
     private final int SERVER_ID = 0;
