@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.time.Instant;
 
+import io.debezium.annotation.NotThreadSafe;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
@@ -19,6 +20,7 @@ import io.debezium.connector.AbstractSourceInfo;
  * @author Jiri Pechanec
  *
  */
+@NotThreadSafe
 public class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
@@ -91,6 +93,11 @@ public class SourceInfo extends AbstractSourceInfo {
     @Override
     protected Schema schema() {
         return SCHEMA;
+    }
+
+    @Override
+    protected String connector() {
+        return Module.name();
     }
 
     /**
