@@ -49,6 +49,7 @@ public class SqlServerConnection extends JdbcConnection {
             + "EXEC sys.sp_cdc_disable_db";
     private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
             + "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
+    private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
     private static final String CDC_WRAPPERS_DML;
     private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
     private static final String LOCK_TABLE = "SELECT * FROM # WITH (TABLOCKX)";
@@ -127,6 +128,19 @@ public class SqlServerConnection extends JdbcConnection {
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
         execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
+    }
+
+    /**
+     * Disables CDC for a table for which it was enabled before.
+     *
+     * @param name
+     *            the name of the table, may not be {@code null}
+     * @throws SQLException if anything unexpected fails
+     */
+    public void disableTableCdc(String name) throws SQLException {
+        Objects.requireNonNull(name);
+        String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
+        execute(disableCdcForTableStmt);
     }
 
     /**
@@ -322,12 +336,18 @@ public class SqlServerConnection extends JdbcConnection {
             cols = rs.next() ? readTableColumns(rs, changeTable.getTableId(), null).stream().map(ColumnEditor::create).collect(Collectors.toList()) : Collections.emptyList();
         }
 
-        List<String> pkColumnNames = Collections.singletonList("id");
+        List<String> pkColumnNames = readPrimaryKeyNames(metadata, changeTable.getTableId());
         Collections.sort(cols);
         return Table.editor()
             .tableId(changeTable.getTableId())
             .addColumns(cols)
             .setPrimaryKeyNames(pkColumnNames)
             .create();
+    }
+
+    public synchronized void rollback() throws SQLException {
+        if (isConnected()) {
+            connection().rollback();
+        }
     }
 }

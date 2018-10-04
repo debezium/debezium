@@ -91,6 +91,12 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 .subset("database.", true);
 
         jdbcConnection = new SqlServerConnection(jdbcConfig);
+        try {
+            jdbcConnection.setAutoCommit(false);
+        }
+        catch (SQLException e) {
+            throw new ConnectException(e);
+        }
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
 
         this.schema = new SqlServerDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);

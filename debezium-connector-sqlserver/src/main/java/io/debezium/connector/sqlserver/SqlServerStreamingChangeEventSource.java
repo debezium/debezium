@@ -8,10 +8,13 @@ package io.debezium.connector.sqlserver;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -37,6 +40,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private static final int COL_ROW_LSN = 2;
     private static final int COL_OPERATION = 3;
     private static final int COL_DATA = 5;
+
+    private static final Pattern MISSING_CDC_FUNCTION_CHANGES_ERROR = Pattern.compile("Invalid object name 'cdc.fn_cdc_get_all_changes_(.*)'\\.");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerStreamingChangeEventSource.class);
 
@@ -94,80 +99,99 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 if (!connection.listOfNewChangeTables(fromLsn, currentMaxLsn).isEmpty()) {
                     tablesSlot.set(getCdcTablesToQuery());
                 }
-                connection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
+                try {
+                    connection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
 
-                    final int tableCount = resultSets.length;
-                    final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
-                    final ChangeTable[] tables = tablesSlot.get();
+                        final int tableCount = resultSets.length;
+                        final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
+                        final ChangeTable[] tables = tablesSlot.get();
 
-                    for (int i = 0; i < tableCount; i++) {
-                        changeTables[i] = new ChangeTablePointer(tables[i].getTableId(), resultSets[i]);
-                        changeTables[i].next();
-                    }
-
-                    for (;;) {
-                        ChangeTablePointer tableSmallestLsn = null;
                         for (int i = 0; i < tableCount; i++) {
-                            final ChangeTablePointer changeTable = changeTables[i];
-                            if (changeTable.isCompleted()) {
+                            changeTables[i] = new ChangeTablePointer(tables[i].getTableId(), resultSets[i]);
+                            changeTables[i].next();
+                        }
+
+                        for (;;) {
+                            ChangeTablePointer tableSmallestLsn = null;
+                            for (int i = 0; i < tableCount; i++) {
+                                final ChangeTablePointer changeTable = changeTables[i];
+                                if (changeTable.isCompleted()) {
+                                    continue;
+                                }
+                                if (tableSmallestLsn == null || changeTable.compareTo(tableSmallestLsn) < 0) {
+                                    tableSmallestLsn = changeTable;
+                                }
+                            }
+                            if (tableSmallestLsn == null) {
+                                // No more LSNs available
+                                break;
+                            }
+
+                            if (tableSmallestLsn.getRowLsn().compareTo(lastProcessedLsnOnStart) <= 0) {
+                                LOGGER.info("Skipping change {} as its LSN is smaller than the last recorded LSN {}", tableSmallestLsn, lastProcessedLsnOnStart);
+                                tableSmallestLsn.next();
                                 continue;
                             }
-                            if (tableSmallestLsn == null || changeTable.compareTo(tableSmallestLsn) < 0) {
-                                tableSmallestLsn = changeTable;
-                            }
-                        }
-                        if (tableSmallestLsn == null) {
-                            // No more LSNs available
-                            break;
-                        }
+                            LOGGER.trace("Processing change {}", tableSmallestLsn);
+                            final TableId tableId = tableSmallestLsn.getTableId();
+                            final Lsn commitLsn = tableSmallestLsn.getCommitLsn();
+                            final Lsn rowLsn = tableSmallestLsn.getRowLsn();
+                            final int operation = tableSmallestLsn.getOperation();
+                            final Object[] data = tableSmallestLsn.getData();
 
-                        if (tableSmallestLsn.getRowLsn().compareTo(lastProcessedLsnOnStart) <= 0) {
-                            LOGGER.info("Skipping change {} as its LSN is smaller than the last recorded LSN {}", tableSmallestLsn, lastProcessedLsnOnStart);
+                            // UPDATE consists of two consecutive events, first event contains
+                            // the row before it was updated and the second the row after
+                            // it was updated
+                            if (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) {
+                                if (!tableSmallestLsn.next() || tableSmallestLsn.getOperation() != SqlServerChangeRecordEmitter.OP_UPDATE_AFTER) {
+                                    throw new IllegalStateException("The update before event at " + rowLsn + " for table " + tableId + " was not followed by after event.\n Please report this as a bug together with a events around given LSN.");
+                                }
+                            }
+                            final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableSmallestLsn.getData() : null;
+
+                            offsetContext.setChangeLsn(rowLsn);
+                            offsetContext.setCommitLsn(commitLsn);
+                            offsetContext.setSourceTime(connection.timestampOfLsn(commitLsn));
+
+                            dispatcher
+                                    .dispatchDataChangeEvent(
+                                            tableId,
+                                            new SqlServerChangeRecordEmitter(
+                                                    offsetContext,
+                                                    operation,
+                                                    data,
+                                                    dataNext,
+                                                    schema.tableFor(tableId),
+                                                    clock
+                                            )
+                                    );
                             tableSmallestLsn.next();
-                            continue;
                         }
-                        LOGGER.trace("Processing change {}", tableSmallestLsn);
-                        final TableId tableId = tableSmallestLsn.getTableId();
-                        final Lsn commitLsn = tableSmallestLsn.getCommitLsn();
-                        final Lsn rowLsn = tableSmallestLsn.getRowLsn();
-                        final int operation = tableSmallestLsn.getOperation();
-                        final Object[] data = tableSmallestLsn.getData();
-
-                        // UPDATE consists of two consecutive events, first event contains
-                        // the row before it was updated and the second the row after
-                        // it was updated
-                        if (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) {
-                            if (!tableSmallestLsn.next() || tableSmallestLsn.getOperation() != SqlServerChangeRecordEmitter.OP_UPDATE_AFTER) {
-                                throw new IllegalStateException("The update before event at " + rowLsn + " for table " + tableId + " was not followed by after event.\n Please report this as a bug together with a events around given LSN.");
-                            }
-                        }
-                        final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableSmallestLsn.getData() : null;
-
-                        offsetContext.setChangeLsn(rowLsn);
-                        offsetContext.setCommitLsn(commitLsn);
-                        offsetContext.setSourceTime(connection.timestampOfLsn(commitLsn));
-
-                        dispatcher
-                                .dispatchDataChangeEvent(
-                                        tableId,
-                                        new SqlServerChangeRecordEmitter(
-                                                offsetContext,
-                                                operation,
-                                                data,
-                                                dataNext,
-                                                schema.tableFor(tableId),
-                                                clock
-                                        )
-                                );
-                        tableSmallestLsn.next();
-                    }
-                });
-                lastProcessedLsn = currentMaxLsn;
+                    });
+                    lastProcessedLsn = currentMaxLsn;
+                    // Terminate the transaction otherwise CDC could not be disabled for tables 
+                    connection.rollback();
+                }
+                catch (SQLException e) {
+                    tablesSlot.set(processErrorFromChangeTableQuery(e, tablesSlot.get()));
+                }
             }
         }
         catch (Exception e) {
             throw new ConnectException(e);
         }
+    }
+
+    private ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, ChangeTable[] currentChangeTables) throws Exception {
+        final Matcher m = MISSING_CDC_FUNCTION_CHANGES_ERROR.matcher(exception.getMessage());
+        if (m.matches()) {
+            final String captureName = m.group(1);
+            LOGGER.info("Table is no longer captured with capture instance {}", captureName);
+            return Arrays.asList(currentChangeTables).stream()
+                    .filter(x -> !x.getCaptureInstance().equals(captureName))
+                    .collect(Collectors.toList()).toArray(new ChangeTable[0]);
+        }
+        throw exception;
     }
 
     private ChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
@@ -236,6 +260,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         public boolean next() throws SQLException {
             completed = !resultSet.next();
             currentChangeLsn = completed ? Lsn.NULL : Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN));
+            if (completed) {
+                LOGGER.trace("Closing result set of change table for table {}", tableId);
+                resultSet.close();
+            }
             return !completed;
         }
 
