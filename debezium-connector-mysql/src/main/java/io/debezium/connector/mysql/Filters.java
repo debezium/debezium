@@ -59,46 +59,6 @@ public class Filters {
     private final Predicate<TableId> isBuiltInTable;
     private final Predicate<ColumnId> columnFilter;
 
-    /**
-     * @param config the configuration; may not be null
-     */
-    public Filters(Configuration config) {
-        this.isBuiltInDb = Filters::isBuiltInDatabase;
-        this.isBuiltInTable = Filters::isBuiltInTable;
-
-        String dbWhitelist = config.getString(MySqlConnectorConfig.DATABASE_WHITELIST);
-        String dbBlacklist = config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST);
-        String tableWhitelist = config.getString(MySqlConnectorConfig.TABLE_WHITELIST);
-        String tableBlacklist = config.getString(MySqlConnectorConfig.TABLE_BLACKLIST);
-
-        // Define the filter used for database names ...
-        Predicate<String> dbFilter = Selectors.databaseSelector()
-            .includeDatabases(dbWhitelist)
-            .excludeDatabases(dbBlacklist)
-            .build();
-
-        // Define the filter using the whitelists and blacklists for tables and database names ...
-        Predicate<TableId> tableFilter = Selectors.tableSelector()
-            .includeDatabases(dbWhitelist)
-            .excludeDatabases(dbBlacklist)
-            .includeTables(tableWhitelist)
-            .excludeTables(tableBlacklist)
-            .build();
-
-        // Ignore built-in databases and tables ...
-        if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
-            this.tableFilter = tableFilter.and(isBuiltInTable.negate());
-            this.dbFilter = dbFilter.and(isBuiltInDb.negate());
-        } else {
-            this.tableFilter = tableFilter;
-            this.dbFilter = dbFilter;
-        }
-
-        // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-        this.columnFilter = Selectors.excludeColumns(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
-
-    }
-
     private Filters(Predicate<String> dbFilter,
                     Predicate<TableId> tableFilter,
                     Predicate<String> isBuiltInDb,
@@ -157,6 +117,9 @@ public class Filters {
                                   config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST),
                                   config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
                                   config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+
+            // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
+            this.columnFilter = Selectors.excludeColumns(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
         }
 
         /**

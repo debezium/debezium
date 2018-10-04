@@ -90,8 +90,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         super(
                 configuration,
                 topicSelector,
-                TableFilter.fromPredicate(new Filters(configuration.getConfig()).tableFilter()),
-                new Filters(configuration.getConfig()).columnFilter(),
+                TableFilter.fromPredicate(new Filters.Builder(configuration.getConfig()).build().tableFilter()),
+                new Filters.Builder(configuration.getConfig()).build().columnFilter(),
                 new TableSchemaBuilder(
                         getValueConverters(configuration), SchemaNameAdjuster.create(logger), SourceInfo.SCHEMA)
                 ,
