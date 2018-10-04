@@ -2,6 +2,80 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.9.0.Alpha2
+October 4th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338766)
+
+### New features since 0.9.0.Alpha2
+
+* Build Alpine Linux versions of the PostgreSQL containers [DBZ-705](https://issues.jboss.org/browse/DBZ-705)
+* Refactor methods to read MySQL sytem variables [DBZ-849](https://issues.jboss.org/browse/DBZ-849)
+* Correct param name for excludeColumns(String fullyQualifiedTableNames) [DBZ-854](https://issues.jboss.org/browse/DBZ-854)
+* Make BinlogReader#informAboutUnknownTableIfRequired() log with tableId [DBZ-855](https://issues.jboss.org/browse/DBZ-855)
+* MySQL identifier with dot or space could not be parsed [DBZ-878](https://issues.jboss.org/browse/DBZ-878)
+* Use postgres:10 instead of postgres:10.0 as base docker image [DBZ-929](https://issues.jboss.org/browse/DBZ-929)
+* Support temporary replication slots with Postgres >= 10 [DBZ-934](https://issues.jboss.org/browse/DBZ-934)
+* Support white/black-listing Mongo fields [DBZ-633](https://issues.jboss.org/browse/DBZ-633)
+* Postgres connector - add database, schema and table names to "source" section of records [DBZ-866](https://issues.jboss.org/browse/DBZ-866)
+* Support renaming Mongo fields [DBZ-881](https://issues.jboss.org/browse/DBZ-881)
+* use tcpKeepAlive by default [DBZ-895](https://issues.jboss.org/browse/DBZ-895)
+* Hstore support in Postgresql-connector [DBZ-898](https://issues.jboss.org/browse/DBZ-898)
+* Add connector type to source info [DBZ-918](https://issues.jboss.org/browse/DBZ-918)
+
+
+### Breaking changes since 0.9.0.Alpha2
+
+MySQL JDBC driver was [upgraded](https://issues.jboss.org/browse/DBZ-763) to version 8.x.
+Kafka has been [upgraded](https://issues.jboss.org/browse/DBZ-858) to version 2.0.0.
+
+
+### Fixes since 0.9.0.Alpha2
+
+* Global read lock not release when exception raised during snapshot [DBZ-769](https://issues.jboss.org/browse/DBZ-769)
+* Abort loops in MongoPrimary#execute() if the connector is stopped [DBZ-784](https://issues.jboss.org/browse/DBZ-784)
+* Initial synchronization is not interrupted [DBZ-838](https://issues.jboss.org/browse/DBZ-838)
+* Kafka database history miscounting attempts even if there are more database history records to consume [DBZ-853](https://issues.jboss.org/browse/DBZ-853)
+* Schema_only snapshot on idle server - offsets not stored after snapshot [DBZ-859](https://issues.jboss.org/browse/DBZ-859)
+* DDL parsing in MySQL - default value of primary key is set to null [DBZ-860](https://issues.jboss.org/browse/DBZ-860)
+* Antlr DDL parser exception for "create database ... CHARSET=..." [DBZ-864](https://issues.jboss.org/browse/DBZ-864)
+* Error when MongoDB collection contains characters not compatible with kafka topic naming [DBZ-865](https://issues.jboss.org/browse/DBZ-865)
+* AlterTableParserListener does not remove column definition listeners [DBZ-869](https://issues.jboss.org/browse/DBZ-869)
+* MySQL parser does not recognize 0 as default value for date/time [DBZ-870](https://issues.jboss.org/browse/DBZ-870)
+* Antlr parser ignores table whitelist filter [DBZ-872](https://issues.jboss.org/browse/DBZ-872)
+* A new column might not be added with ALTER TABLE antlr parser [DBZ-877](https://issues.jboss.org/browse/DBZ-877)
+* MySQLConnectorTask always reports it has the required Binlog file from MySQL [DBZ-880](https://issues.jboss.org/browse/DBZ-880)
+* Execution of RecordsStreamProducer.closeConnections() is susceptible to race condition [DBZ-887](https://issues.jboss.org/browse/DBZ-887)
+* Watch-topic command in docker image uses unsupported parameter [DBZ-890](https://issues.jboss.org/browse/DBZ-890)
+* SQLServer should use only schema and table name in table naming [DBZ-894](https://issues.jboss.org/browse/DBZ-894)
+* Prevent resending of duplicate change events after restart [DBZ-897](https://issues.jboss.org/browse/DBZ-897)
+* PostgresConnection.initTypeRegistry() takes ~24 mins [DBZ-899](https://issues.jboss.org/browse/DBZ-899)
+* java.time.format.DateTimeParseException: Text '1970-01-01 00:00:00' in mysql ALTER [DBZ-901](https://issues.jboss.org/browse/DBZ-901)
+* org.antlr.v4.runtime.NoViableAltException on CREATE DEFINER=`web`@`%` PROCEDURE `... [DBZ-903](https://issues.jboss.org/browse/DBZ-903)
+* MySQL default port is wrong in tutorial link [DBZ-904](https://issues.jboss.org/browse/DBZ-904)
+* RecordsStreamProducer should report refresh of the schema due to different column count [DBZ-907](https://issues.jboss.org/browse/DBZ-907)
+* MongoDbConnector returns obsolete config values during validation [DBZ-908](https://issues.jboss.org/browse/DBZ-908)
+* Can't parse create definition on the mysql connector [DBZ-910](https://issues.jboss.org/browse/DBZ-910)
+* RecordsStreamProducer#columnValues() does not take into account unchanged TOASTed columns, refreshing table schemas unnecessarily [DBZ-911](https://issues.jboss.org/browse/DBZ-911)
+* Wrong type in timeout call for Central wait release [DBZ-914](https://issues.jboss.org/browse/DBZ-914)
+* Exception while parsing table schema with invalid default value for timestamp field [DBZ-927](https://issues.jboss.org/browse/DBZ-927)
+* Discard null fields in MongoDB event flattening SMT [DBZ-928](https://issues.jboss.org/browse/DBZ-928)
+
+
+### Other changes since 0.9.0.Alpha2
+
+* Create Travis CI build for debezium-incubator repository [DBZ-817](https://issues.jboss.org/browse/DBZ-817)
+* Cache prepared statements in JdbcConnection [DBZ-819](https://issues.jboss.org/browse/DBZ-819)
+* Upgrade to Kafka 2.0.0 [DBZ-858](https://issues.jboss.org/browse/DBZ-858)
+* Upgrad SQL Server image to CU9 GDR2 release [DBZ-873](https://issues.jboss.org/browse/DBZ-873)
+* Speed-up Travis builds using parallel build [DBZ-874](https://issues.jboss.org/browse/DBZ-874)
+* Add version format check into the release pipeline [DBZ-884](https://issues.jboss.org/browse/DBZ-884)
+* Handle non-complete list of plugins [DBZ-885](https://issues.jboss.org/browse/DBZ-885)
+* Parametrize wait time for Maven central sync [DBZ-889](https://issues.jboss.org/browse/DBZ-889)
+* Assert non-empty release in release script [DBZ-891](https://issues.jboss.org/browse/DBZ-891)
+* Upgrade Postgres driver to 42.2.5 [DBZ-912](https://issues.jboss.org/browse/DBZ-912)
+* Upgrade MySQL JDBC driver to version 8.0.x [DBZ-763](https://issues.jboss.org/browse/DBZ-763)
+* Upgrade MySQL binlog connector [DBZ-764](https://issues.jboss.org/browse/DBZ-764)
+
+
 ## 0.8.3.Final
 September 19th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339197)
 
