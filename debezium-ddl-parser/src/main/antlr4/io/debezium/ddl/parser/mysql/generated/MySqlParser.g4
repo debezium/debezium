@@ -609,6 +609,7 @@ alterSpecification
     | CHANGE COLUMN? oldColumn=uid
       newColumn=uid columnDefinition 
       (FIRST | AFTER afterColumn=uid)?                              #alterByChangeColumn
+    | RENAME COLUMN oldColumn=uid TO newColumn=uid                 #alterByRenameColumn
     | LOCK '='? lockType=(DEFAULT | NONE | SHARED | EXCLUSIVE)      #alterByLock
     | MODIFY COLUMN?
       uid columnDefinition (FIRST | AFTER uid)?                     #alterByModifyColumn

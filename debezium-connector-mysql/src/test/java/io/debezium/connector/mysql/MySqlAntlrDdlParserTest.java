@@ -301,6 +301,28 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(tables.forTable(null, null, "t3").columns()).hasSize(2);
     }
 
+    @Test
+    @FixFor("DBZ-780")
+    public void shouldRenameColumnWithoutDefinition() {
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+
+        final String ddl = "CREATE TABLE foo (id int primary key, old INT);" + System.lineSeparator()
+                + "ALTER TABLE foo RENAME COLUMN old to new ";
+        parser.parse(ddl, tables);
+        assertThat(((MysqlDdlParserWithSimpleTestListener)parser).getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(tables.size()).isEqualTo(1);
+
+        final Table t1 = tables.forTable(null, null, "foo");
+        assertThat(t1.columns()).hasSize(2);
+
+        final Column c1 = t1.columns().get(0);
+        final Column c2 = t1.columns().get(1);
+        assertThat(c1.name()).isEqualTo("id");
+        assertThat(c1.typeName()).isEqualTo("INT");
+        assertThat(c2.name()).isEqualTo("new");
+        assertThat(c2.typeName()).isEqualTo("INT");
+    }
+
     @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);
