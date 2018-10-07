@@ -346,6 +346,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "geography":
                 return rawValue.asString();
 
+            case "citext":
             case "bit":
             case "bit varying":
             case "varbit":
