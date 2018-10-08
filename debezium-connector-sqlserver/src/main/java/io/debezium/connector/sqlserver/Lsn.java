@@ -147,4 +147,16 @@ public class Lsn implements Comparable<Lsn> {
         }
         return 0;
     }
+
+    /**
+     * Verifies whether the LSN falls into a LSN interval 
+     *
+     * @param from start of the interval (included)
+     * @param to end of the interval (excluded)
+     *
+     * @return true if the LSN falls into the interval
+     */
+    public boolean isBetween(Lsn from, Lsn to) {
+        return this.compareTo(from) >= 0 && this.compareTo(to) < 0;
+    }
 }

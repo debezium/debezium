@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -49,6 +50,7 @@ public class SqlServerConnection extends JdbcConnection {
             + "EXEC sys.sp_cdc_disable_db";
     private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
             + "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
+    private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0";
     private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
     private static final String CDC_WRAPPERS_DML;
     private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
@@ -58,7 +60,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM cdc.fn_cdc_get_all_changes_#(ISNULL(?,sys.fn_cdc_get_min_lsn('#')), ?, N'all update old')";
     private static final String GET_LIST_OF_CDC_ENABLED_TABLES = "EXEC sys.sp_cdc_help_change_data_capture";
     private static final String GET_LIST_OF_NEW_CDC_ENABLED_TABLES = "SELECT * FROM cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
-    private static final String CDC_SCHEMA = "cdc";
+    private static final String GET_LIST_OF_KEY_COLUMNS = "SELECT * FROM cdc.index_columns WHERE object_id=?";
+
+    private static final int CHANGE_TABLE_DATA_COLUMN_OFFSET = 5;
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "};databaseName=${" + JdbcConfiguration.DATABASE + "}";
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
@@ -128,6 +132,21 @@ public class SqlServerConnection extends JdbcConnection {
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
         execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
+    }
+
+    /**
+     * Enables CDC for a table with a custom capture name
+     * functions for that table.
+     *
+     * @param name
+     *            the name of the table, may not be {@code null}
+     * @throws SQLException if anything unexpected fails
+     */
+    public void enableTableCdc(String tableName, String captureName) throws SQLException {
+        Objects.requireNonNull(tableName);
+        Objects.requireNonNull(captureName);
+        String enableCdcForTableStmt = String.format(ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, tableName, captureName);
+        execute(enableCdcForTableStmt);
     }
 
     /**
@@ -300,7 +319,9 @@ public class SqlServerConnection extends JdbcConnection {
             while (rs.next()) {
                 changeTables.add(
                         new ChangeTable(
-                                new TableId(database(), rs.getString(1), rs.getString(2)), rs.getString(3),
+                                new TableId(database(), rs.getString(1), rs.getString(2)),
+                                rs.getString(3),
+                                rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
                                 Lsn.valueOf(rs.getBytes(7))
                         )
@@ -321,7 +342,12 @@ public class SqlServerConnection extends JdbcConnection {
                 rs -> {
                     final Set<ChangeTable> changeTables = new HashSet<>();
                     while (rs.next()) {
-                        changeTables.add(new ChangeTable(rs.getString(4), Lsn.valueOf(rs.getBytes(5)), Lsn.valueOf(rs.getBytes(6))));
+                        changeTables.add(new ChangeTable(
+                                            rs.getString(4),
+                                            rs.getInt(1),
+                                            Lsn.valueOf(rs.getBytes(5)),
+                                            Lsn.valueOf(rs.getBytes(6))
+                                        ));
                     }
                     return changeTables;
                 }
@@ -329,18 +355,55 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     public Table getTableSchemaFromTable(ChangeTable changeTable) throws SQLException {
-        DatabaseMetaData metadata = connection().getMetaData();
+        final DatabaseMetaData metadata = connection().getMetaData();
 
-        List<Column> cols;
-        try (ResultSet rs = metadata.getColumns(database(), changeTable.getTableId().schema(), changeTable.getTableId().table(), null)) {
-            cols = rs.next() ? readTableColumns(rs, changeTable.getTableId(), null).stream().map(ColumnEditor::create).collect(Collectors.toList()) : Collections.emptyList();
+        List<Column> columns = new ArrayList<>();
+        try (ResultSet rs = metadata.getColumns(
+                database(),
+                changeTable.getSourceTableId().schema(),
+                changeTable.getSourceTableId().table(),
+                null)
+            ) {
+            while (rs.next()) {
+                readTableColumn(rs, changeTable.getSourceTableId(), null).ifPresent(ce -> columns.add(ce.create()));
+            }
         }
 
-        List<String> pkColumnNames = readPrimaryKeyNames(metadata, changeTable.getTableId());
-        Collections.sort(cols);
+        final List<String> pkColumnNames = readPrimaryKeyNames(metadata, changeTable.getSourceTableId());
+        Collections.sort(columns);
         return Table.editor()
-            .tableId(changeTable.getTableId())
-            .addColumns(cols)
+                .tableId(changeTable.getSourceTableId())
+                .addColumns(columns)
+                .setPrimaryKeyNames(pkColumnNames)
+                .create();
+    }
+
+    public Table getTableSchemaFromChangeTable(ChangeTable changeTable) throws SQLException {
+        final DatabaseMetaData metadata = connection().getMetaData();
+        final TableId changeTableId = changeTable.getChangeTableId();
+
+        List<ColumnEditor> columnEditors = new ArrayList<>();
+        try (ResultSet rs = metadata.getColumns(database(), changeTableId.schema(), changeTableId.table(), null)) {
+            while (rs.next()) {
+                readTableColumn(rs, changeTableId, null).ifPresent(columnEditors::add);
+            }
+        }
+
+        // The first 5 columns and the last column of the change table are CDC metadata
+        final List<Column> columns = columnEditors.subList(CHANGE_TABLE_DATA_COLUMN_OFFSET, columnEditors.size() - 1).stream()
+                .map(c -> c.position(c.position() - CHANGE_TABLE_DATA_COLUMN_OFFSET).create())
+                .collect(Collectors.toList());
+
+        final List<String> pkColumnNames = new ArrayList<>();
+        prepareQuery(GET_LIST_OF_KEY_COLUMNS, ps -> ps.setInt(1, changeTable.getChangeTableObjectId()), rs -> {
+            while (rs.next()) {
+                pkColumnNames.add(rs.getString(2));
+            }
+        });
+        Collections.sort(columns);
+        return Table.editor()
+            .tableId(changeTable.getSourceTableId())
+            .addColumns(columns)
             .setPrimaryKeyNames(pkColumnNames)
             .create();
     }
@@ -349,5 +412,9 @@ public class SqlServerConnection extends JdbcConnection {
         if (isConnected()) {
             connection().rollback();
         }
+    }
+
+    public String getNameOfChangeTable(String captureName) {
+        return captureName + "_CT";
     }
 }
