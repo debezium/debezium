@@ -22,13 +22,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -960,14 +960,18 @@ public class JdbcConnection implements AutoCloseable {
                     continue;
                 }
                 if (tableFilter == null || tableFilter.isIncluded(tableId)) {
-                    final List<Column> cols = readTableColumns(rs, tableId, columnFilter).stream().map(ColumnEditor::create).collect(Collectors.toList());
-                    final List<Column> oldCols = columnsByTable.get(tableId);
-                    if (oldCols == null) {
-                        columnsByTable.put(tableId, cols);
-                    }
-                    else {
-                        oldCols.addAll(cols);
-                    }
+                    final Optional<ColumnEditor> columnEditor = readTableColumn(rs, tableId, columnFilter);
+                    columnEditor.ifPresent(column -> {
+                        final List<Column> oldCols = columnsByTable.get(tableId);
+                        if (oldCols == null) {
+                            final List<Column> cols = new ArrayList<>();
+                            cols.add(column.create());
+                            columnsByTable.put(tableId, cols);
+                        }
+                        else {
+                            oldCols.add(column.create());
+                        }
+                    });
                 }
             }
         }
@@ -991,11 +995,10 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
-    protected List<ColumnEditor> readTableColumns(ResultSet rs, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
-        final List<ColumnEditor> cols = new ArrayList<>();
+    protected Optional<ColumnEditor> readTableColumn(ResultSet rs, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
         final String columnName = rs.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
-            ColumnEditor column = Column.editor().name(columnName);
+            final ColumnEditor column = Column.editor().name(columnName);
             column.jdbcType(rs.getInt(5));
             column.type(rs.getString(6));
             column.length(rs.getInt(7));
@@ -1016,9 +1019,9 @@ public class JdbcConnection implements AutoCloseable {
 
             column.nativeType(resolveNativeType(column.typeName()));
 
-            cols.add(column);
+            return Optional.of(column);
         }
-        return cols;
+        return Optional.empty();
     }
 
     protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
