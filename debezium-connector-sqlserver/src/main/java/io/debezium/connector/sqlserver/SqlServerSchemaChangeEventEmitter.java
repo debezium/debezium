@@ -34,7 +34,7 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
 
     @Override
     public void emitSchemaChangeEvent(Receiver receiver) throws InterruptedException {
-        final SchemaChangeEvent event = new SchemaChangeEvent(offsetContext.getPartition(), offsetContext.getOffset(), changeTable.getTableId().catalog(), changeTable.getTableId().schema(), "N/A", tableSchema, SchemaChangeEventType.CREATE, false);
+        final SchemaChangeEvent event = new SchemaChangeEvent(offsetContext.getPartition(), offsetContext.getOffset(), changeTable.getSourceTableId().catalog(), changeTable.getSourceTableId().schema(), "N/A", tableSchema, SchemaChangeEventType.CREATE, false);
         receiver.schemaChangeEvent(event);
     }
 }

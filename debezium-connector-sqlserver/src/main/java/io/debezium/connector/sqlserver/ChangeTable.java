@@ -8,21 +8,28 @@ package io.debezium.connector.sqlserver;
 import io.debezium.relational.TableId;
 
 public class ChangeTable {
-    private final String captureInstance;
-    private final TableId tableId;
-    private final Lsn startLsn;
-    private final Lsn stopLsn;
+    private static final String CDC_SCHEMA = "cdc";
 
-    public ChangeTable(TableId tableId, String captureInstance, Lsn startLsn, Lsn stopLsn) {
+    private final String captureInstance;
+    private final TableId sourceTableId;
+    private final TableId changeTableId;
+    private final Lsn startLsn;
+    private final int changeTableObjectId;
+    private Lsn stopLsn;
+    private ChangeTable nextVersionOfTable;
+
+    public ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
         super();
+        this.sourceTableId = sourceTableId;
         this.captureInstance = captureInstance;
+        this.changeTableObjectId = changeTableObjectId;
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
-        this.tableId = tableId;
+        this.changeTableId = sourceTableId != null ? new TableId(sourceTableId.catalog(), CDC_SCHEMA, captureInstance + "_CT") : null;
     }
 
-    public ChangeTable(String captureInstance, Lsn startLsn, Lsn stopLsn) {
-        this(null, captureInstance, startLsn, stopLsn);
+    public ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
+        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn);
     }
 
     public String getCaptureInstance() {
@@ -35,13 +42,34 @@ public class ChangeTable {
         return stopLsn;
     }
 
-    public TableId getTableId() {
-        return tableId;
+    public void setStopLsn(Lsn stopLsn) {
+        this.stopLsn = stopLsn;
+    }
+
+    public TableId getSourceTableId() {
+        return sourceTableId;
+    }
+
+    public TableId getChangeTableId() {
+        return changeTableId;
+    }
+
+    public int getChangeTableObjectId() {
+        return changeTableObjectId;
+    }
+
+    public ChangeTable getNextVersionOfTable() {
+        return nextVersionOfTable;
+    }
+
+    public void setNextVersionOfTable(ChangeTable nextVersionOfTable) {
+        this.nextVersionOfTable = nextVersionOfTable;
     }
 
     @Override
     public String toString() {
-        return "ChangeTable [captureInstance=" + captureInstance + ", tableId=" + tableId + ", startLsn=" + startLsn
-                + ", stopLsn=" + stopLsn + "]";
+        return "ChangeTable [captureInstance=" + captureInstance + ", sourceTableId=" + sourceTableId
+                + ", changeTableId=" + changeTableId + ", startLsn=" + startLsn + ", changeTableObjectId="
+                + changeTableObjectId + ", stopLsn=" + stopLsn + "]";
     }
 }

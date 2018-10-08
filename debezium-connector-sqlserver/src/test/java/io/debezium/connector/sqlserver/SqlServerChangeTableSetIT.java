@@ -8,8 +8,11 @@ package io.debezium.connector.sqlserver;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Assertions;
+import org.fest.util.Collections;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -100,6 +103,28 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablec")).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.dbo.tablec").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tablec.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colc", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()
+            );
+        });
+        records.recordsForTopic("server1.dbo.tabled").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tabled.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("cold", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()
+            );
+        });
     }
 
     @Test
@@ -146,7 +171,98 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).isNullOrEmpty();
     }
 
-    private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
-        expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    @Test
+    public void addColumnToTable() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START_1 = 10;
+        final int ID_START_2 = 100;
+        final int ID_START_3 = 1000;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_1 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+        }
+
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()
+            );
+        });
+
+        // Enable a second capture instance
+        connection.execute("ALTER TABLE dbo.tableb ADD newcol INT");
+        connection.enableTableCdc("tableb", "after_change");
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_2 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a2')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b2', 2)"
+            );
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        // TODO - Optional flag is lost here as it is not carrie dover to the CDC table
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("newcol", Schema.OPTIONAL_INT32_SCHEMA)
+                        .build()
+            );
+        });
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_3 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a3')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b3', 3)"
+            );
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("newcol", Schema.OPTIONAL_INT32_SCHEMA)
+                        .build()
+            );
+        });
     }
- }
+}
