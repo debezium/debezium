@@ -177,9 +177,32 @@ public interface Testing {
          * @return the reference to the existing readable and writable directory
          */
         public static File createTestingDirectory(String relativePath) {
-            Path dirPath = Paths.get("target/data", relativePath).toAbsolutePath();
+            Path dirPath = createTestingPath(relativePath);
             return IoUtil.createDirectory(dirPath);
         }
+
+        /**
+         * Returns the name of the directory where tests are storing their data. Default value is {@code 'target/data'}.
+         * This value can be overridden by value of the {@code DBZ_TEST_DATA_DIR} system or environment variable.
+         */
+        static String dataDir() {
+            if (DATA_DIR[0] != null) {
+                return DATA_DIR[0];
+            }
+
+            String value = System.getProperty("DBZ_TEST_DATA_DIR");
+            if (value != null && (value = value.trim()).length() > 0) {
+                return DATA_DIR[0] = value;
+            }
+
+            value = System.getenv("DBZ_TEST_DATA_DIR");
+            if (value != null && (value = value.trim()).length() > 0) {
+                return DATA_DIR[0] = value;
+            }
+
+            return DATA_DIR[0] = "target/data"; // default value
+        }
+        String[] DATA_DIR = {null};
 
         /**
          * Create a randomly-named file within the test data directory.
@@ -197,7 +220,7 @@ public interface Testing {
          * @return the reference to the existing readable and writable file
          */
         public static File createTestingFile(String relativePath) {
-            Path path = Paths.get("target/data", relativePath).toAbsolutePath();
+            Path path = createTestingPath(relativePath);
             return IoUtil.createFile(path);
         }
 
@@ -209,7 +232,7 @@ public interface Testing {
          */
         public static File createTestingFile(Path relativePath) {
             Path path = relativePath.toAbsolutePath();
-            if ( !inTargetDir(path) ) {
+            if ( !inTestDataDir(path) ) {
                 throw new IllegalStateException("Expecting '" + relativePath + "' to be within the testing directory");
             }
             return IoUtil.createFile(path);
@@ -222,7 +245,7 @@ public interface Testing {
          * @return the reference to the existing readable and writable file
          */
         public static Path createTestingPath(String relativePath) {
-            return Paths.get("target/data", relativePath).toAbsolutePath();
+            return Paths.get(dataDir(), relativePath).toAbsolutePath();
         }
 
         /**
@@ -234,7 +257,7 @@ public interface Testing {
          * @throws IOException if there is a problem deleting the files at this path
          */
         public static File createTestingDirectory(String relativePath, boolean removeExistingContent) throws IOException {
-            Path dirPath = Paths.get("target/data", relativePath).toAbsolutePath();
+            Path dirPath = createTestingPath(relativePath);
             return IoUtil.createDirectory(dirPath, removeExistingContent);
         }
 
@@ -267,36 +290,36 @@ public interface Testing {
         public static void delete(Path path) {
             if (path != null) {
                 path = path.toAbsolutePath();
-                if (inTargetDir(path)) {
+                if (inTestDataDir(path)) {
                     try {
                         IoUtil.delete(path);
                     } catch (IOException e) {
                         printError("Unable to remove '" + path.toAbsolutePath() + "'", e);
                     }
                 } else {
-                    printError("Will not remove directory that is outside test target area: " + path);
+                    printError("Will not remove directory that is outside test data area: " + path);
                 }
             }
         }
 
         /**
-         * Verify that the supplied file or directory is within the target directory.
+         * Verify that the supplied file or directory is within the test data directory.
          * 
          * @param file the file or directory; may not be null
-         * @return true if inside the target directory, or false otherwise
+         * @return true if inside the test data directory, or false otherwise
          */
-        public static boolean inTargetDir(File file) {
-            return inTargetDir(file.toPath());
+        public static boolean inTestDataDir(File file) {
+            return inTestDataDir(file.toPath());
         }
 
         /**
-         * Verify that the supplied file or directory is within the target directory.
+         * Verify that the supplied file or directory is within the test data directory.
          * 
          * @param path the path to the file or directory; may not be null
-         * @return true if inside the target directory, or false otherwise
+         * @return true if inside the test data directory, or false otherwise
          */
-        public static boolean inTargetDir(Path path) {
-            Path target = FileSystems.getDefault().getPath("target").toAbsolutePath();
+        public static boolean inTestDataDir(Path path) {
+            Path target = FileSystems.getDefault().getPath(dataDir()).toAbsolutePath();
             return path.toAbsolutePath().startsWith(target);
         }
     }
@@ -359,5 +382,4 @@ public interface Testing {
         @Override
         public Void call() throws InterruptedException;
     }
-
 }

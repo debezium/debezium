@@ -16,17 +16,20 @@ import static org.fest.assertions.Assertions.assertThat;
 public class TestingTest implements Testing {
     
     @Test
-    public void shouldKnowDirectoriesInsideTarget() {
-        assertThat(Testing.Files.inTargetDir(new File("target/classes").toPath())).isTrue();
-        assertThat(Testing.Files.inTargetDir(new File("../debezium").toPath())).isFalse();
+    public void shouldKnowDirectoriesInsideTestData() {
+        assertThat(Testing.Files.inTestDataDir(new File("target/data/somefile").toPath())).isTrue();
+        assertThat(Testing.Files.inTestDataDir(new File("../debezium").toPath())).isFalse();
     }
     
     @Test
     public void shouldRemoveDirectory() throws Exception {
-        Path path = Paths.get("target/test-dir");
-        path.toFile().mkdir();
-        Path file = Paths.get("target/test-dir/file.txt");
-        file.toFile().createNewFile();
+        Path path = Paths.get("target/data/test-dir");
+        assertThat(path.toFile().mkdirs()).isTrue();
+
+        Path file = Paths.get("target/data/test-dir/file.txt");
+        assertThat(file.toFile().createNewFile()).isTrue();
+
         Testing.Files.delete(path);
+        // todo: assert that 'target/data/test-dir' is removed
     }
 }
