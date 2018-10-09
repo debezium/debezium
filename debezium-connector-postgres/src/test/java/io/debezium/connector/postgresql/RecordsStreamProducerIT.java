@@ -70,7 +70,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                 .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
                 .build());
         setupRecordsProducer(config);
@@ -124,9 +124,21 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // timezone range types
         consumer.expects(1);
         assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
+    }
+
+    @Test
+    public void shouldReceiveChangesForInsertsCustomTypes() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
 
         // custom types + null value
-        consumer.expects(1);
         assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
 
     }
