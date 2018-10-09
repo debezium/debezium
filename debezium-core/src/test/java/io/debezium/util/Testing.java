@@ -177,8 +177,24 @@ public interface Testing {
          * @return the reference to the existing readable and writable directory
          */
         public static File createTestingDirectory(String relativePath) {
-            Path dirPath = Paths.get("target/data", relativePath).toAbsolutePath();
+            Path dirPath = createTestingPath(relativePath);
             return IoUtil.createDirectory(dirPath);
+        }
+
+        /**
+         * <p><b>Returns 'target' in current version</b></p>
+         * <p>Returns the name of the <i>$buildDir</i> directory (in mvn=target, in gradle=build).</p>
+         * <p><b>todo:</b> how to find out that the build-step is running in gradle or maven ...? and return 'build' or 'target' ...</p>
+         */
+        static String buildDir() {
+            return "target";
+        }
+
+        /**
+         * Returns the name of the <i>$buildDir/data</i> directory
+         */
+        static String dataDir() {
+            return buildDir() + "/data";
         }
 
         /**
@@ -197,7 +213,7 @@ public interface Testing {
          * @return the reference to the existing readable and writable file
          */
         public static File createTestingFile(String relativePath) {
-            Path path = Paths.get("target/data", relativePath).toAbsolutePath();
+            Path path = createTestingPath(relativePath);
             return IoUtil.createFile(path);
         }
 
@@ -222,7 +238,7 @@ public interface Testing {
          * @return the reference to the existing readable and writable file
          */
         public static Path createTestingPath(String relativePath) {
-            return Paths.get("target/data", relativePath).toAbsolutePath();
+            return Paths.get(dataDir(), relativePath).toAbsolutePath();
         }
 
         /**
@@ -234,7 +250,7 @@ public interface Testing {
          * @throws IOException if there is a problem deleting the files at this path
          */
         public static File createTestingDirectory(String relativePath, boolean removeExistingContent) throws IOException {
-            Path dirPath = Paths.get("target/data", relativePath).toAbsolutePath();
+            Path dirPath = Paths.get(dataDir(), relativePath).toAbsolutePath();
             return IoUtil.createDirectory(dirPath, removeExistingContent);
         }
 
@@ -296,7 +312,7 @@ public interface Testing {
          * @return true if inside the target directory, or false otherwise
          */
         public static boolean inTargetDir(Path path) {
-            Path target = FileSystems.getDefault().getPath("target").toAbsolutePath();
+            Path target = FileSystems.getDefault().getPath(buildDir()).toAbsolutePath();
             return path.toAbsolutePath().startsWith(target);
         }
     }
