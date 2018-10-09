@@ -390,6 +390,20 @@ public interface Testing {
      * Returns true if the build-step is running in gradle
      */
     static boolean inGradle() {
-        return false;
+        if (inGradle.value == null) {
+            inGradle.value = false;
+            try {
+                throw new RuntimeException();
+            } catch (RuntimeException e) {
+                for (StackTraceElement s : e.getStackTrace()) {
+                    if (s.getClassName().startsWith("org.gradle.")) {
+                        inGradle.value = true;
+                        break;
+                    }
+                }
+            }
+        }
+        return inGradle.value;
     }
+    Holder<Boolean> inGradle = new Holder<>();
 }
