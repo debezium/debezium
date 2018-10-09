@@ -26,6 +26,8 @@ import static org.fest.assertions.Fail.fail;
 import io.debezium.util.Stopwatch.Statistics;
 import io.debezium.util.Stopwatch.StopwatchSet;
 
+import javax.xml.ws.Holder;
+
 /**
  * A set of utility methods for test cases.
  * 
@@ -187,8 +189,16 @@ public interface Testing {
          * <p><b>todo:</b> how to find out that the build-step is running in gradle or maven ...? and return 'build' or 'target' ...</p>
          */
         static String buildDir() {
-            return "target";
+            if (buildDir.value == null) {
+                if (inGradle()) {
+                    buildDir.value = "build";
+                } else {
+                    buildDir.value = "target";
+                }
+            }
+            return buildDir.value;
         }
+        Holder<String> buildDir = new Holder<>();
 
         /**
          * Returns the name of the <i>$buildDir/data</i> directory
@@ -376,4 +386,10 @@ public interface Testing {
         public Void call() throws InterruptedException;
     }
 
+    /**
+     * Returns true if the build-step is running in gradle
+     */
+    static boolean inGradle() {
+        return false;
+    }
 }
