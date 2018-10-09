@@ -395,7 +395,8 @@ public interface Testing {
             try {
                 throw new RuntimeException();
             } catch (RuntimeException e) {
-                for (StackTraceElement s : e.getStackTrace()) {
+                for (int i = e.getStackTrace().length - 1; i >= 0; i--) {
+                    StackTraceElement s = e.getStackTrace()[i];
                     if (s.getClassName().startsWith("org.gradle.")) {
                         inGradle.value = true;
                         break;
