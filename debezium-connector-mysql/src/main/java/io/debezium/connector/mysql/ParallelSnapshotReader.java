@@ -137,12 +137,8 @@ public class ParallelSnapshotReader implements Reader {
 
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
-        logger.info("POLLING PARALLEL SNAPSHOT READER");
         List<SourceRecord> allRecords = oldTablesReader.poll();
         List<SourceRecord> newTablesRecords = newTablesReader.poll();
-        logger.info("INNER READERS POLL SIZES: {}, {}",
-                    allRecords == null? -1 : allRecords.size(),
-                    newTablesRecords == null? -1 : newTablesRecords.size());
         if (newTablesRecords != null) {
             if (allRecords == null) {
                 allRecords = newTablesRecords;
@@ -161,8 +157,6 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     private void completeSuccessfully() {
-        // trying something: stop the inner readers?
-        logger.info("COMPLETING THE PARALLELSNAPSHOTREADER SUCCESSFULLY");
         stop();
 
         Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
