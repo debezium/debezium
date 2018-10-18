@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.junit.Assert.assertThat;
+
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Schema;
@@ -458,6 +460,111 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                         .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
             );
+        });
+    }
+
+    @Test
+    public void changeColumn() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START_1 = 10;
+        final int ID_START_2 = 100;
+        final int ID_START_3 = 1000;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_1 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", '" + id + "')"
+            );
+        }
+
+        SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()
+            );
+            final Struct value = ((Struct)record.value()).getStruct("after");
+            final int id = value.getInt32("id");
+            final String colb = value.getString("colb");
+            Assertions.assertThat(Integer.toString(id)).isEqualTo(colb);
+        });
+
+        // Enable a second capture instance
+        connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb INT");
+        connection.enableTableCdc("tableb", "after_change");
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_2 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a2')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", '" + id + " ')"
+            );
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_INT32_SCHEMA)
+                        .build()
+            );
+            final Struct value = ((Struct)record.value()).getStruct("after");
+            final int id = value.getInt32("id");
+            final int colb = value.getInt32("colb");
+            Assertions.assertThat(id).isEqualTo(colb);
+        });
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_3 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a3')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", '" + id + " ')"
+            );
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_INT32_SCHEMA)
+                        .build()
+            );
+            final Struct value = ((Struct)record.value()).getStruct("after");
+            final int id = value.getInt32("id");
+            final int colb = value.getInt32("colb");
+            Assertions.assertThat(id).isEqualTo(colb);
         });
     }
 }
