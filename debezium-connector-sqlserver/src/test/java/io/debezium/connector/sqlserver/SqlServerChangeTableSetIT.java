@@ -169,7 +169,16 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void addColumnToTable() throws Exception {
+    public void addColumnToTableEndOfBatch() throws Exception {
+        addColumnToTable(true);
+    }
+
+    @Test
+    public void addColumnToTableMiddleOfBatch() throws Exception {
+        addColumnToTable(false);
+    }
+
+    public void addColumnToTable(boolean pauseAfterCaptureChange) throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;
@@ -208,8 +217,11 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         });
 
         // Enable a second capture instance
-        connection.execute("ALTER TABLE dbo.tableb ADD newcol INT");
+        connection.execute("ALTER TABLE dbo.tableb ADD newcol INT NOT NULL DEFAULT 0");
         connection.enableTableCdc("tableb", "after_change");
+        if (pauseAfterCaptureChange) {
+            Thread.sleep(5_000);
+        }
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_2 + i;
@@ -223,16 +235,16 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
-        // TODO - Optional flag is lost here as it is not carrie dover to the CDC table
+
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.testDB.dbo.tableb.Value")
-                        .field("id", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("newcol", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("newcol", Schema.INT32_SCHEMA)
                         .build()
             );
         });
@@ -255,9 +267,9 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.testDB.dbo.tableb.Value")
-                        .field("id", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("newcol", Schema.OPTIONAL_INT32_SCHEMA)
+                        .field("newcol", Schema.INT32_SCHEMA)
                         .build()
             );
         });
