@@ -99,7 +99,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 final Lsn fromLsn = lastProcessedLsn.isAvailable() ? connection.incrementLsn(lastProcessedLsn)
                         : lastProcessedLsn;
 
-                schemaChangeCheckpoints.clear();
+                while (!schemaChangeCheckpoints.isEmpty()) {
+                    migrateTable(schemaChangeCheckpoints);
+                }
                 if (!connection.listOfNewChangeTables(fromLsn, currentMaxLsn).isEmpty()) {
                     final ChangeTable[] tables = getCdcTablesToQuery();
                     tablesSlot.set(tables);
@@ -151,10 +153,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             LOGGER.trace("Processing change {}", tableSmallestLsn);
                             if (!schemaChangeCheckpoints.isEmpty()) {
                                 if (tableSmallestLsn.getRowLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) > 0) {
-                                    final ChangeTable oldTable = schemaChangeCheckpoints.poll();
-                                    final ChangeTable newTable = oldTable.getNextVersionOfTable();
-                                    LOGGER.info("Migrating schema from {} to {}", oldTable, newTable);
-                                    dispatcher.dispatchSchemaChangeEvent(oldTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, connection.getTableSchemaFromChangeTable(newTable)));
+                                    migrateTable(schemaChangeCheckpoints);
                                 }
                             }
                             final TableId tableId = tableSmallestLsn.getChangeTable().getSourceTableId();
@@ -204,6 +203,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
+    }
+
+    private void migrateTable(final Queue<ChangeTable> schemaChangeCheckpoints)
+            throws InterruptedException, SQLException {
+        final ChangeTable oldTable = schemaChangeCheckpoints.poll();
+        final ChangeTable newTable = oldTable.getNextVersionOfTable();
+        LOGGER.info("Migrating schema from {} to {}", oldTable, newTable);
+        dispatcher.dispatchSchemaChangeEvent(oldTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, connection.getTableSchemaFromTable(newTable)));
     }
 
     private ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, ChangeTable[] currentChangeTables) throws Exception {
