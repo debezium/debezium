@@ -64,7 +64,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = offsetContext;
-        this.pollInterval = Duration.ofSeconds(1);
+        this.pollInterval = connectorConfig.getPollInterval();
     }
 
     @Override
