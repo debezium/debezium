@@ -106,7 +106,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     final ChangeTable[] tables = getCdcTablesToQuery();
                     tablesSlot.set(tables);
                     for (ChangeTable table: tables) {
-                        if (table.getStopLsn().isBetween(fromLsn, currentMaxLsn)) {
+                        if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
                         }
@@ -152,7 +152,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             }
                             LOGGER.trace("Processing change {}", tableSmallestLsn);
                             if (!schemaChangeCheckpoints.isEmpty()) {
-                                if (tableSmallestLsn.getRowLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) > 0) {
+                                if (tableSmallestLsn.getRowLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) >= 0) {
                                     migrateTable(schemaChangeCheckpoints);
                                 }
                             }
@@ -207,10 +207,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private void migrateTable(final Queue<ChangeTable> schemaChangeCheckpoints)
             throws InterruptedException, SQLException {
-        final ChangeTable oldTable = schemaChangeCheckpoints.poll();
-        final ChangeTable newTable = oldTable.getNextVersionOfTable();
-        LOGGER.info("Migrating schema from {} to {}", oldTable, newTable);
-        dispatcher.dispatchSchemaChangeEvent(oldTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, connection.getTableSchemaFromTable(newTable)));
+        final ChangeTable newTable = schemaChangeCheckpoints.poll();
+        LOGGER.info("Migrating schema to {}", newTable);
+        dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, connection.getTableSchemaFromTable(newTable)));
     }
 
     private ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, ChangeTable[] currentChangeTables) throws Exception {
@@ -246,12 +245,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             if (captures.size() > 1) {
                 if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
                     captures.get(0).setStopLsn(captures.get(1).getStartLsn());
-                    captures.get(0).setNextVersionOfTable(captures.get(1));
                     tables.add(captures.get(1));
                 }
                 else {
                     captures.get(1).setStopLsn(captures.get(0).getStartLsn());
-                    captures.get(1).setNextVersionOfTable(captures.get(0));
                     changeTable = captures.get(1);
                     tables.add(captures.get(0));
                 }

@@ -16,7 +16,6 @@ public class ChangeTable {
     private final Lsn startLsn;
     private final int changeTableObjectId;
     private Lsn stopLsn;
-    private ChangeTable nextVersionOfTable;
 
     public ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
         super();
@@ -56,14 +55,6 @@ public class ChangeTable {
 
     public int getChangeTableObjectId() {
         return changeTableObjectId;
-    }
-
-    public ChangeTable getNextVersionOfTable() {
-        return nextVersionOfTable;
-    }
-
-    public void setNextVersionOfTable(ChangeTable nextVersionOfTable) {
-        this.nextVersionOfTable = nextVersionOfTable;
     }
 
     @Override
