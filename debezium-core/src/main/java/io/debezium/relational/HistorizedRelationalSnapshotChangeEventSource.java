@@ -90,6 +90,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             connection = jdbcConnection.connection();
             connection.setAutoCommit(false);
+            connectionCreated(ctx);
 
             LOGGER.info("Snapshot step 2 - Determining captured tables");
 
@@ -162,6 +163,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
     protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
+
+    /**
+     * Executes steps which have to be taken just after the database connection is created.
+     */
+    protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
+    }
 
     private void determineCapturedTables(SnapshotContext ctx) throws Exception {
         Set<TableId> allTableIds = getAllTableIds(ctx);
