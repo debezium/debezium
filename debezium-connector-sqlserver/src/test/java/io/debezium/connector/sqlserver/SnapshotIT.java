@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_LOCKING_MODE;
 import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -73,8 +75,24 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void takeSnapshot() throws Exception {
-        final Configuration config = TestHelper.defaultConfig().build();
+    public void takeSnapshotInExclusiveMode() throws Exception {
+        takeSnapshot(SnapshotLockingMode.EXCLUSIVE);
+    }
+
+    @Test
+    public void takeSnapshotInSnapshotMode() throws Exception {
+        takeSnapshot(SnapshotLockingMode.SNAPSHOT);
+    }
+
+    @Test
+    public void takeSnapshotInNoneMode() throws Exception {
+        takeSnapshot(SnapshotLockingMode.NONE);
+    }
+
+    private void takeSnapshot(SnapshotLockingMode lockingMode) throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+            .with(SNAPSHOT_LOCKING_MODE.name(), lockingMode.getValue())
+            .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();

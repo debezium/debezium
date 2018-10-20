@@ -32,6 +32,11 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerSnapshotChangeEventSource.class);
 
+    /**
+     * Code 4096 corresponds to SNAPSHOT isolation level, which is not a part of the standard but SQL Server specific.
+     */
+    private static final int TRANSACTION_SNAPSHOT = 4096;
+
     private final SqlServerConnectorConfig connectorConfig;
     private final SqlServerConnection jdbcConnection;
 
@@ -72,6 +77,16 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     }
 
     @Override
+    protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
+        if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.SNAPSHOT) {
+            // With one exception, you can switch from one isolation level to another at any time during a transaction.
+            // The exception occurs when changing from any isolation level to SNAPSHOT isolation.
+            // That is why SNAPSHOT isolation level has to be set at the very beginning of the transaction.
+            jdbcConnection.connection().setTransactionIsolation(TRANSACTION_SNAPSHOT);
+        }
+    }
+
+    @Override
     protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
         return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"});
     }
@@ -82,22 +97,29 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
             LOGGER.info("Schema locking was disabled in connector configuration");
-            return;
         }
-        LOGGER.info("Executing schema locking");
+        else if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.EXCLUSIVE) {
+            LOGGER.info("Executing schema locking");
 
-        ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+            ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
-        try (Statement statement = jdbcConnection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
-            for (TableId tableId : snapshotContext.capturedTables) {
-                if (!sourceContext.isRunning()) {
-                    throw new InterruptedException("Interrupted while locking table " + tableId);
+            try (Statement statement = jdbcConnection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+                for (TableId tableId : snapshotContext.capturedTables) {
+                    if (!sourceContext.isRunning()) {
+                        throw new InterruptedException("Interrupted while locking table " + tableId);
+                    }
+
+                    LOGGER.info("Locking table {}", tableId);
+
+                    statement.executeQuery("SELECT * FROM " + tableId.table() + " WITH (TABLOCKX)").close();
                 }
-
-                LOGGER.info("Locking table {}", tableId);
-
-                statement.executeQuery("SELECT * FROM " + tableId.table() + " WITH (TABLOCKX)").close();
             }
+        }
+        else if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.SNAPSHOT) {
+            ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+        }
+        else {
+            throw new IllegalStateException("Unknown locking mode specified.");
         }
     }
 
@@ -125,7 +147,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
             }
 
-            LOGGER.info("Reading stucture of schema '{}'", snapshotContext.catalogName);
+            LOGGER.info("Reading structure of schema '{}'", snapshotContext.catalogName);
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     snapshotContext.catalogName,
