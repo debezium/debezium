@@ -117,6 +117,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         EXCLUSIVE("exclusive"),
 
         /**
+         * This mode uses SNAPSHOT isolation level.  This way reads and writes are not blocked for the entire duration
+         * of the snapshot.  Snapshot consistency is guaranteed as long as DDL statements are not executed at the time.
+         */
+        SNAPSHOT("snapshot"),
+
+        /**
          * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
          * set to schema_only or schema_only_recovery.
          */

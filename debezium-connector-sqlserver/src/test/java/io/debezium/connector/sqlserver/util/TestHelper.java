@@ -77,11 +77,12 @@ public class TestHelper {
                     + "CREATE DATABASE testDB\n";
             connection.execute(sql);
             connection.execute("USE testDB");
+            connection.execute("ALTER DATABASE testDB SET ALLOW_SNAPSHOT_ISOLATION ON");
             // NOTE: you cannot enable CDC on master
             connection.enableDbCdc("testDB");
         }
         catch (SQLException e) {
-            throw new IllegalStateException("Error while initating test database", e);
+            throw new IllegalStateException("Error while initiating test database", e);
         }
     }
 
