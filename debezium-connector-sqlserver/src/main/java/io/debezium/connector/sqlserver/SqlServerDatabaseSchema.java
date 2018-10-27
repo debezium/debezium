@@ -12,6 +12,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -37,7 +38,9 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, SqlServerConnection connection) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), null,
-                new TableSchemaBuilder(new SqlServerValueConverters(), schemaNameAdjuster, SourceInfo.SCHEMA),
+                new TableSchemaBuilder(new SqlServerValueConverters(DecimalHandlingMode
+                        .parse(connectorConfig.getConfig().getString(SqlServerConnectorConfig.DECIMAL_HANDLING_MODE))
+                        .asDecimalMode()), schemaNameAdjuster, SourceInfo.SCHEMA),
                 false);
         try {
             this.capturedTables = determineCapturedTables(connectorConfig, connection);

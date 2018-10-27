@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.ZonedTimestamp;
@@ -29,6 +30,22 @@ import microsoft.sql.DateTimeOffset;
 public class SqlServerValueConverters extends JdbcValueConverters {
 
     public SqlServerValueConverters() {
+    }
+
+    /**
+     * Create a new instance that always uses UTC for the default time zone when
+     * converting values without timezone information to values that require
+     * timezones.
+     * <p>
+     *
+     * @param decimalMode
+     *            how {@code DECIMAL} and {@code NUMERIC} values should be
+     *            treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE}
+     *            is to be used
+     */
+    public SqlServerValueConverters(DecimalMode decimalMode) {
+        super(decimalMode, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, ZoneOffset.UTC, null, null);
     }
 
     @Override
