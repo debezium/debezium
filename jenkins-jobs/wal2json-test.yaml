@@ -30,7 +30,7 @@
           timeout: 45
     triggers:
       - reverse:
-          jobs: 'debezium-postgresql-10-test'
+          jobs: 'debezium-postgresql-11-test'
     builders:
       - maven-target:
           maven-version: (Default)

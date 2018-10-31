@@ -1,4 +1,4 @@
-# Job definition to test PostgreSQL connector against PostgreSQL 10
+# Job definition to test PostgreSQL connector against PostgreSQL 9.6
 ---
 - job:
     project-type: freestyle

@@ -3,8 +3,8 @@
 - job:
     project-type: freestyle
     name: debezium-postgresql-alpine-10-test
-    display-name: Debezium PostgreSQL 10.0 Test (Alpine)
-    description: Executes tests for PostgreSQL Connector with PostgreSQL 10.0 based on Alpine image
+    display-name: Debezium PostgreSQL 10 Test (Alpine)
+    description: Executes tests for PostgreSQL Connector with PostgreSQL 10 based on Alpine image
     node: Slave
     properties:
       - build-discarder:
@@ -34,7 +34,7 @@
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=10.0-alpine -Dpostgres.config.file=/usr/local/share/postgresql/postgresql.conf.sample
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=10-alpine -Dpostgres.config.file=/usr/local/share/postgresql/postgresql.conf.sample
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
