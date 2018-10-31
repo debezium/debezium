@@ -40,6 +40,7 @@ VERSION_PARTS = RELEASE_VERSION.split('\\.')
 VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
 
+POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine']
 CORE_CONNECTORS_PER_VERSION = [
     '0.8': ['mongodb','mysql','postgres'],
     '0.9': ['mongodb','mysql','postgres']
@@ -455,11 +456,10 @@ node('Slave') {
             }
         }
         dir ("$IMAGES_DIR") {
-            modifyFile('postgres/9.6/Dockerfile') {
-                it.replaceFirst('PLUGIN_VERSION=\\S+', "PLUGIN_VERSION=$VERSION_TAG")
-            }
-            modifyFile('postgres/10/Dockerfile') {
-                it.replaceFirst('PLUGIN_VERSION=\\S+', "PLUGIN_VERSION=$VERSION_TAG")
+            for (tag in POSTGRES_TAGS) {
+                modifyFile("postgres/$tag/Dockerfile") {
+                    it.replaceFirst('PLUGIN_VERSION=\\S+', "PLUGIN_VERSION=$VERSION_TAG")
+                }
             }
         }
     }
