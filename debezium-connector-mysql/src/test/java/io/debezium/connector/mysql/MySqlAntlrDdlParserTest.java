@@ -323,6 +323,26 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(c2.typeName()).isEqualTo("INT");
     }
 
+    @Test
+    @FixFor("DBZ-959")
+    public void parseAddPartition() {
+        String ddl =
+                "CREATE TABLE flat_view_request_log (" +
+                "  id INT NOT NULL, myvalue INT DEFAULT -10," +
+                "  PRIMARY KEY (`id`)" +
+                ")" +
+                "ENGINE=InnoDB DEFAULT CHARSET=latin1 " +
+                "PARTITION BY RANGE (to_days(`CreationDate`)) " +
+                "(PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17') ENGINE = InnoDB, " +
+                "PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18') ENGINE = InnoDB, " +
+                "PARTITION p_max VALUES LESS THAN MAXVALUE ENGINE = InnoDB);"
+            + "ALTER TABLE flat_view_request_log ADD PARTITION (PARTITION p201901 VALUES LESS THAN (737425) ENGINE = InnoDB);";
+
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(tables.forTable(new TableId(null, null, "flat_view_request_log"))).isNotNull();
+    }
+
     @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);
