@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static org.junit.Assert.assertThat;
-
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.data.Schema;
