@@ -404,6 +404,58 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
+     * The set of predefined Gtid New Channel Position options.
+     */
+    public static enum GtidNewChannelPosition implements EnumeratedValue {
+
+        /**
+         * This mode will start reading new gtid channel from mysql servers last_executed position
+         */
+        LATEST("latest"),
+
+        /**
+         * This mode will start reading new gtid channel from earliest available position in server.
+         * This is needed when during active-passive failover the new gtid channel becomes active and receiving writes. #DBZ-923
+         */
+        EARLIEST("earliest");
+
+        private final String value;
+
+        private GtidNewChannelPosition(String value) { this.value = value; }
+
+        @Override
+        public String getValue() { return value; }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static GtidNewChannelPosition parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (GtidNewChannelPosition option : GtidNewChannelPosition.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static GtidNewChannelPosition parse(String value, String defaultValue) {
+            GtidNewChannelPosition mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined modes for dealing with failures during binlog event processing.
      */
     public static enum EventProcessingFailureHandlingMode implements EnumeratedValue {
@@ -770,13 +822,12 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
      *
      * When true, either {@link #GTID_SOURCE_INCLUDES} or {@link #GTID_SOURCE_EXCLUDES} must be set.
      */
-    public static final Field GTID_SOURCE_START_FROM_LATEST = Field.create("gtid.source.start.from.latest")
+    public static final Field GTID_NEW_CHANNEL_POSITION = Field.create("gtid.new.channel.position")
             .withDisplayName("GTID start position")
-            .withType(Type.BOOLEAN)
+            .withEnum(GtidNewChannelPosition.class, GtidNewChannelPosition.LATEST)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(true)
-            .withDescription("If set to true, when connector sees new GTID set, it will start consuming from server latest executed gtid position. If false, starts reading from earliest available (not purged) gtid position on server.");
+            .withDescription("If set to 'latest', when connector sees new GTID, it will start consuming gtid channel from the server latest executed gtid position. If 'earliest' connector starts reading channel from first available (not purged) gtid position on the server.");
 
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")

@@ -18,6 +18,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.document.Document;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.HistoryRecord;
@@ -247,7 +248,7 @@ public class MySqlTaskContextTest {
 
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
                 "036d85a9-64e5-11e6-9b48-42010af0000c")
-                .with(MySqlConnectorConfig.GTID_SOURCE_START_FROM_LATEST, false)
+                .with(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION, GtidNewChannelPosition.EARLIEST)
                 .build();
 
         context = new MySqlTaskContext(config, false);
