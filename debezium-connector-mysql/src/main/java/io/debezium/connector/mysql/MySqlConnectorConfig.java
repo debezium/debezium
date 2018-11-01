@@ -347,10 +347,14 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         private final String value;
 
-        private GtidNewChannelPosition(String value) { this.value = value; }
+        private GtidNewChannelPosition(String value) {
+            this.value = value;
+        }
 
         @Override
-        public String getValue() { return value; }
+        public String getValue() {
+            return value;
+        }
 
         /**
          * Determine if the supplied value is one of the predefined options.
