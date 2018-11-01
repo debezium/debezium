@@ -814,13 +814,11 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                           .withDescription("If set to true, we will only produce DML events into Kafka for transactions that were written on mysql servers with UUIDs matching the filters defined by the gtid.source.includes or gtid.source.excludes configuration options, if they are specified.");
 
     /**
-     * If set to true, connector when encountering new GTID channel after job restart will start reading it from the
-     * latest executed position (default). When set to false the connector will try to read this GTID channel from the first available offset.
-     * This is useful when in active-passive mysql setup during failover new GTID channel gets used, see #DBZ-923
+     * If set to 'latest', connector when encountering new GTID channel after job restart will start reading it from the
+     * latest executed position (default). When set to 'earliest' the connector will start reading new GTID channels from the first available position.
+     * This is useful when in active-passive mysql setup during failover new GTID channel starts receiving writes, see #DBZ-923
      *
-     * Defaults to true.
-     *
-     * When true, either {@link #GTID_SOURCE_INCLUDES} or {@link #GTID_SOURCE_EXCLUDES} must be set.
+     * Defaults to latest.
      */
     public static final Field GTID_NEW_CHANNEL_POSITION = Field.create("gtid.new.channel.position")
             .withDisplayName("GTID start position")
