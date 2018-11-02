@@ -10,10 +10,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
+import io.debezium.pipeline.metrics.Metrics;
+
 /**
  * @author Randall Hauch
  */
-class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
+class BinlogReaderMetrics extends Metrics<MySqlTaskContext> implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;

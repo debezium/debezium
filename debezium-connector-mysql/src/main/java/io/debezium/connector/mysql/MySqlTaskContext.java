@@ -9,9 +9,6 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +35,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     private final MySqlJdbcContext connectionContext;
     private final Configuration config;
-    private final MySqlConnectorConfig connectorConfig;
+    public final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
     private final TopicSelector<TableId> topicSelector;
@@ -279,17 +276,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
      */
     public void temporaryLoggingContext(String contextName, Runnable operation) {
         LoggingContext.temporarilyForConnector("MySQL", connectorConfig.getLogicalName(), contextName, operation);
-    }
-
-    /**
-     * Create a JMX metric name for the given metric.
-     * @param contextName the name of the context
-     * @return the JMX metric name
-     * @throws MalformedObjectNameException if the name is invalid
-     */
-    public ObjectName metricName(String contextName) throws MalformedObjectNameException {
-        //return new ObjectName("debezium.mysql:type=connector-metrics,connector=" + serverName() + ",name=" + contextName);
-        return new ObjectName("debezium.mysql:type=connector-metrics,context=" + contextName + ",server=" + connectorConfig.getLogicalName());
     }
 
     /**

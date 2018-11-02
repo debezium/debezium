@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.common;
 
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.util.Clock;
@@ -44,5 +47,15 @@ public class CdcSourceTaskContext {
      */
     public Clock getClock() {
         return clock;
+    }
+
+    /**
+     * Create a JMX metric name for the given metric.
+     * @param contextName the name of the context
+     * @return the JMX metric name
+     * @throws MalformedObjectNameException if the name is invalid
+     */
+    public ObjectName metricName(String contextName) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connectorType.toLowerCase() + ":type=connector-metrics,context=" + contextName + ",server=" + connectorName);
     }
 }

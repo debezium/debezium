@@ -10,13 +10,14 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.debezium.pipeline.metrics.Metrics;
 import io.debezium.util.Clock;
 
 /**
  * @author Randall Hauch
  *
  */
-class SnapshotReaderMetrics extends Metrics implements SnapshotReaderMetricsMXBean {
+class SnapshotReaderMetrics extends Metrics<MySqlTaskContext> implements SnapshotReaderMetricsMXBean {
 
     private final AtomicLong tableCount = new AtomicLong();
     private final AtomicLong remainingTableCount = new AtomicLong();

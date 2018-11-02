@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mysql;
+package io.debezium.pipeline.metrics;
 
 import java.lang.management.ManagementFactory;
 
@@ -13,11 +13,13 @@ import javax.management.ObjectName;
 
 import org.slf4j.Logger;
 
+import io.debezium.connector.common.CdcSourceTaskContext;
+
 /**
- * @author Randall Hauch
+ * @author Randall Hauch, Jiri Pechanec
  *
  */
-abstract class Metrics {
+public abstract class Metrics<T extends CdcSourceTaskContext> {
 
     private final String contextName;
     private ObjectName name;
@@ -26,7 +28,7 @@ abstract class Metrics {
         this.contextName = contextName;
     }
     
-    public void register(MySqlTaskContext context, Logger logger) {
+    public void register(T context, Logger logger) {
         try {
             this.name = context.metricName(this.contextName);
             MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
