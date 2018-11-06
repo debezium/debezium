@@ -97,10 +97,11 @@ public class OracleConnectorTask extends BaseSourceTask {
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig.getLogicalName(),
-                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema)
+                new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema),
+                dispatcher
         );
 
-        coordinator.start();
+        coordinator.start(taskContext);
     }
 
     @Override
