@@ -60,7 +60,7 @@ public class ZookeeperServerTest {
         assertThat(dir.isDirectory()).isTrue();
         assertThat(dir.canWrite()).isTrue();
         assertThat(dir.canRead()).isTrue();
-        assertThat(Testing.Files.inTargetDir(dir)).isTrue();
+        assertThat(Testing.Files.inTestDataDir(dir)).isTrue();
     }
 
     protected void assertDoesNotExist(File dir) {
