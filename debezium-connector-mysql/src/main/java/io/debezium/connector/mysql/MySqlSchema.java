@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
@@ -90,7 +89,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 TableFilter.fromPredicate(new Filters(configuration.getConfig()).tableFilter()),
                 new Filters(configuration.getConfig()).columnFilter(),
                 new TableSchemaBuilder(
-                        getValueConverters(configuration.getConfig()), SchemaNameAdjuster.create(logger), SourceInfo.SCHEMA)
+                        getValueConverters(configuration), SchemaNameAdjuster.create(logger), SourceInfo.SCHEMA)
                 ,
                 tableIdCaseInsensitive
         );
@@ -109,7 +108,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
 
         this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(
-                getValueConverters(config),
+                getValueConverters(configuration),
                 storeOnlyMonitoredTablesDdl ? getTableFilter() : TableFilter.includeAll()
         );
         this.ddlChanges = this.ddlParser.getDdlChanges();
@@ -132,17 +131,15 @@ public class MySqlSchema extends RelationalDatabaseSchema {
 
     }
 
-    private static MySqlValueConverters getValueConverters(Configuration config) {
+    private static MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
         // Use MySQL-specific converters and schemas for values ...
 
-        String timePrecisionModeStr = config.getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
+        String timePrecisionModeStr = configuration.getConfig().getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
         TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
 
-        String decimalHandlingModeStr = config.getString(MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
-        DecimalHandlingMode decimalHandlingMode = DecimalHandlingMode.parse(decimalHandlingModeStr);
-        DecimalMode decimalMode = decimalHandlingMode.asDecimalMode();
+        DecimalMode decimalMode = configuration.getDecimalMode();
 
-        String bigIntUnsignedHandlingModeStr = config.getString(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE);
+        String bigIntUnsignedHandlingModeStr = configuration.getConfig().getString(MySqlConnectorConfig.BIGINT_UNSIGNED_HANDLING_MODE);
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
 

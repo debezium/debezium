@@ -5,14 +5,18 @@
  */
 package io.debezium.relational;
 
+import java.math.BigDecimal;
+
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
@@ -22,6 +26,80 @@ import io.debezium.relational.Tables.TableFilter;
  * @author Gunnar Morling
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
+
+    /**
+     * The set of predefined DecimalHandlingMode options or aliases.
+     */
+    public enum DecimalHandlingMode implements EnumeratedValue {
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
+         * represented in change events in a binary form. This is precise but difficult to use.
+         */
+        PRECISE("precise"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as a string values. This is precise, it supports also special values
+         * but the type information is lost.
+         */
+        STRING("string"),
+
+        /**
+         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
+         * but is far easier to use.
+         */
+        DOUBLE("double");
+
+        private final String value;
+
+        private DecimalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public DecimalMode asDecimalMode() {
+            switch (this) {
+                case DOUBLE:
+                    return DecimalMode.DOUBLE;
+                case STRING:
+                    return DecimalMode.STRING;
+                case PRECISE:
+                default:
+                    return DecimalMode.PRECISE;
+            }
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static DecimalHandlingMode parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static DecimalHandlingMode parse(String value, String defaultValue) {
+            DecimalHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
@@ -59,16 +137,42 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isBoolean)
             .withDescription("Flag specifying whether built-in tables should be ignored.");
 
+    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
+            .withDisplayName("Decimal Handling")
+            .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
+                    + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
+                    + "'string' uses string to represent values; "
+                    + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
+
     private final RelationalTableFilters tableFilters;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         super(config, logicalName);
 
-        this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
+        if (systemTablesFilter != null && tableIdMapper != null) {
+            this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
+        }
+        // handled by sub-classes for the time being
+        else {
+            this.tableFilters = null;
+        }
     }
 
     public RelationalTableFilters getTableFilters() {
         return tableFilters;
+    }
+
+    /**
+     * Returns the Decimal mode Enum for {@code decimal.handling.mode}
+     * configuration. This defaults to {@code precise} if nothing is provided.
+     */
+    public DecimalMode getDecimalMode() {
+        return DecimalHandlingMode
+                .parse(this.getConfig().getString(DECIMAL_HANDLING_MODE))
+                .asDecimalMode();
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
