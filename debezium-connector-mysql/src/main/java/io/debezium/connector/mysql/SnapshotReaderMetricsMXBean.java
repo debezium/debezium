@@ -5,19 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.Map;
+import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetricsMXBean;
 
 /**
  * @author Randall Hauch
  */
-public interface SnapshotReaderMetricsMXBean extends ReaderMetricsMXBean {
+public interface SnapshotReaderMetricsMXBean extends SnapshotChangeEventSourceMetricsMXBean {
 
-    int getTotalTableCount();
-    int getRemainingTableCount();
     boolean getHoldingGlobalLock();
-    boolean getSnapshotRunning();
-    boolean getSnapshotAborted();
-    boolean getSnapshotCompleted();
-    long getSnapshotDurationInSeconds();
-    Map<String, Long> getRowsScanned();
 }

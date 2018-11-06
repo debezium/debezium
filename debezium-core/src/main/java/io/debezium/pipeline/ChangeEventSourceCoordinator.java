@@ -15,6 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -41,30 +44,42 @@ public class ChangeEventSourceCoordinator {
     private final ErrorHandler errorHandler;
     private final ChangeEventSourceFactory changeEventSourceFactory;
     private final ExecutorService executor;
+    private final EventDispatcher<?> eventDispatcher;
 
     private volatile boolean running;
     private volatile StreamingChangeEventSource streamingSource;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory) {
+    private SnapshotChangeEventSourceMetrics snapshotMetrics;
+    private StreamingChangeEventSourceMetrics streamingMetrics;
+
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.executor = Threads.newSingleThreadExecutor(connectorType, logicalName, "change-event-source-coordinator");
+        this.eventDispatcher = eventDispatcher;
     }
 
-    public synchronized void start() {
+    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext) {
+        this.snapshotMetrics = new SnapshotChangeEventSourceMetrics(taskContext);
+        this.streamingMetrics = new StreamingChangeEventSourceMetrics(taskContext);
         running = true;
 
         // run the snapshot source on a separate thread so start() won't block
         executor.submit(() -> {
             try {
+                snapshotMetrics.register(LOGGER);
+                streamingMetrics.register(LOGGER);
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
 
                 SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset);
+                snapshotSource.setSnapshotProgressListener(snapshotMetrics);
+                eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
 
                 if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
+                    eventDispatcher.setEventListener(streamingMetrics);
                     streamingSource.execute(context);
                 }
             }
@@ -100,6 +115,8 @@ public class ChangeEventSourceCoordinator {
             executor.shutdownNow();
             executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
         }
+        snapshotMetrics.unregister(LOGGER);
+        streamingMetrics.unregister(LOGGER);
     }
 
     private class ChangeEventSourceContextImpl implements ChangeEventSourceContext {

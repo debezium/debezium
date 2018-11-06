@@ -22,6 +22,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
+import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -57,6 +58,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     private final HistorizedRelationalDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
+    private SnapshotProgressListener snapshotProgressListener = SnapshotProgressListener.NO_OP;
 
     public HistorizedRelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
             OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
@@ -81,6 +83,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         Connection connection = null;
 
+        snapshotProgressListener.startSnapshot();
+
         try (SnapshotContext ctx = prepare(context)) {
             LOGGER.info("Snapshot step 1 - Preparing");
 
@@ -97,6 +101,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
+            snapshotProgressListener.setMonitoredTables(ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables");
 
@@ -133,16 +138,20 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             }
 
             dispatcher.dispatchHeartbeatEvent(ctx.offset);
+            snapshotProgressListener.completeSnapshot();
             return SnapshotResult.completed(ctx.offset);
         }
         catch(InterruptedException e) {
             LOGGER.warn("Snapshot was interrupted before completion");
+            snapshotProgressListener.abortSnapshot();
             throw e;
         }
         catch(RuntimeException e) {
+            snapshotProgressListener.abortSnapshot();
             throw e;
         }
         catch(Exception e) {
+            snapshotProgressListener.abortSnapshot();
             throw new RuntimeException(e);
         }
         finally {
@@ -272,7 +281,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             Column[] columns = getColumnsForResultSet(table, rs);
             final int numColumns = table.columns().size();
-            int rows = 0;
+            long rows = 0;
             Timer logTimer = getTableScanLogTimer();
 
             while (rs.next()) {
@@ -290,6 +299,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                     long stop = clock.currentTimeInMillis();
                     LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
                             Strings.duration(stop - exportStart));
+                    snapshotProgressListener.setRowsScanned(table.id(), rows);
                     logTimer = getTableScanLogTimer();
                 }
 
@@ -299,6 +309,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
+            snapshotProgressListener.completeTable(table.id(), rows);
         }
         catch(SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
@@ -417,5 +428,10 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
     protected Clock getClock() {
         return clock;
+    }
+
+    @Override
+    public void setSnapshotProgressListener(SnapshotProgressListener listener) {
+        snapshotProgressListener = listener;
     }
 }

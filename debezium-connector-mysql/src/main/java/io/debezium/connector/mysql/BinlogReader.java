@@ -232,14 +232,14 @@ public class BinlogReader extends AbstractReader {
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...
-        metrics = new BinlogReaderMetrics(client, context.dbSchema());
+        metrics = new BinlogReaderMetrics(client, context);
         heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
                 context.getConnectorConfig().getLogicalName());
     }
 
     @Override
     protected void doInitialize() {
-        metrics.register(context, logger);
+        metrics.register(logger);
     }
 
     @Override
