@@ -23,12 +23,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig.DecimalHandlingMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 
