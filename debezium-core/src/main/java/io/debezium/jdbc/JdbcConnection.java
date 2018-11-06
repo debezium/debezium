@@ -442,7 +442,7 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
-     * Execute multiple SQL prepared queries where each query is executed with the same set of parameters..
+     * Execute multiple SQL prepared queries where each query is executed with the same set of parameters.
      *
      * @param multiQuery the array of prepared queries
      * @param preparer the function that supplies arguments to the prepared statement; may not be null
@@ -458,7 +458,7 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
-     * Execute multiple SQL prepared queries where each query is executed with the same set of parameters..
+     * Execute multiple SQL prepared queries where each query is executed with the same set of parameters.
      *
      * @param multiQuery the array of prepared queries
      * @param preparer the array of functions that supply arguments to the prepared statements; may not be null
@@ -1025,12 +1025,9 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
-        List<String> pkColumnNames = null;
+        final List<String> pkColumnNames = new ArrayList<>();
         try (ResultSet rs = metadata.getPrimaryKeys(id.catalog(), id.schema(), id.table())) {
             while (rs.next()) {
-                if (pkColumnNames == null) {
-                    pkColumnNames = new ArrayList<>();
-                }
                 String columnName = rs.getString(4);
                 int columnIndex = rs.getInt(5);
                 Collect.set(pkColumnNames, columnIndex - 1, columnName, null);
