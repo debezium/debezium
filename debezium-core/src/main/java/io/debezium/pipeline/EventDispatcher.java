@@ -18,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.pipeline.source.spi.ArrivedEventListener;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -50,6 +51,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
     private final Heartbeat heartbeat;
+    private ArrivedEventListener eventListener = ArrivedEventListener.NO_OP;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -79,7 +81,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     public void dispatchSnapshotEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, SnapshotReceiver receiver) throws InterruptedException {
         // TODO Handle Heartbeat
 
-        // TODO Handle JMX
+        eventListener.onEvent();
 
         DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
@@ -103,12 +105,12 @@ public class EventDispatcher<T extends DataCollectionId> {
      * {@link ChangeEventCreator} for converting them into data change events.
      */
     public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
-        // TODO Handle JMX
 
         if(!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Skipping data change event for {}", dataCollectionId);
         }
         else {
+            eventListener.onEvent();
             DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
             // TODO handle as per inconsistent schema info option
@@ -234,5 +236,14 @@ public class EventDispatcher<T extends DataCollectionId> {
         public void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException {
             historizedSchema.applySchemaChange(event);
         }
+    }
+
+    /**
+     * Provide a listener that is invoked for every incoming event to be processed.
+     *
+     * @param eventListener
+     */
+    public void setEventListener(ArrivedEventListener eventListener) {
+        this.eventListener = eventListener;
     }
 }

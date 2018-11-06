@@ -15,7 +15,7 @@ import io.debezium.pipeline.metrics.Metrics;
 /**
  * @author Randall Hauch
  */
-class BinlogReaderMetrics extends Metrics<MySqlTaskContext> implements BinlogReaderMetricsMXBean {
+class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
@@ -26,11 +26,11 @@ class BinlogReaderMetrics extends Metrics<MySqlTaskContext> implements BinlogRea
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
 
-    public BinlogReaderMetrics(BinaryLogClient client, MySqlSchema schema) {
-        super("binlog");
+    public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext) {
+        super(taskContext, "binlog");
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
-        this.schema = schema;
+        this.schema = taskContext.dbSchema();
     }
 
     @Override

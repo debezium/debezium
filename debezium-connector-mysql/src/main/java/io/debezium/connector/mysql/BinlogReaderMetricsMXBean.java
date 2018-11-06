@@ -5,24 +5,21 @@
  */
 package io.debezium.connector.mysql;
 
+import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
+
 /**
  * @author Randall Hauch
  *
  */
-public interface BinlogReaderMetricsMXBean extends ReaderMetricsMXBean {
+public interface BinlogReaderMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean {
 
-    boolean isConnected();
     String getBinlogFilename();
     long getBinlogPosition();
     String getGtidSet();
     
-    String getLastEvent();
-    long getSecondsSinceLastEvent();
     long getSecondsBehindMaster();
-    long getTotalNumberOfEventsSeen();
     long getNumberOfSkippedEvents();
     long getNumberOfDisconnects();
-    void reset();
 
     long getNumberOfCommittedTransactions();
     long getNumberOfRolledBackTransactions();

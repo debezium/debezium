@@ -27,4 +27,11 @@ public interface SnapshotChangeEventSource extends ChangeEventSource {
      *             in case the snapshot was aborted before completion
      */
     SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException;
+
+    /**
+     * Set a listener that is invoked for important events that happens during snapshot process, like start, stop, table completed etc.
+     *
+     * @param listener
+     */
+    public void setSnapshotProgressListener(SnapshotProgressListener listener);
 }
