@@ -17,15 +17,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig.DecimalHandlingMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Testing;
 
 /**
  * Tests for numeric/decimal columsn with precise, string and decimal options
- * 
+ *
  * @author Pradeep Mamillapalli
  *
  */
@@ -37,7 +37,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * precision and 4 scale colb: Decimal - Default precision(18) and default
      * scale(0) colc: numeric(7,1) - 7 precision and 1 scale cold: numeric-
      * Default precision(18) and default scale(0)
-     * 
+     *
      * @throws SQLException
      */
     @Before
@@ -70,7 +70,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * mode Assertions: - Connector is running - 1 Record are streamed out of
      * cdc - Assert cola, colb, colc, cold are exactly equal to the input
      * values.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -100,7 +100,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * mode Assertions: - Connector is running - 1 Record are streamed out of
      * cdc - Assert cola, colb, colc, cold are exactly equal to the input values
      * in double format
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -129,7 +129,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
      * Insert 1 Record into tablenumc with {@code DecimalHandlingMode.PRECISE}
      * mode Assertions: - Connector is running - 1 Record are streamed out of
      * cdc - Assert cola, colb, colc, cold are bytes
-     * 
+     *
      * @throws Exception
      */
     @Test

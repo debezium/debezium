@@ -17,7 +17,6 @@ import io.debezium.config.Field;
 import io.debezium.document.Document;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -209,14 +208,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 + "which means that the connector does not hold any locks for all monitored tables."
                 + "Using a value of '" + SnapshotLockingMode.EXCLUSIVE.getValue() + "' ensures that the connector holds the exlusive lock (and thus prevents any reads and updates) for all monitored tables.");
 
-    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
-            .withDisplayName("Decimal Handling").withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
-            .withWidth(Width.SHORT).withImportance(Importance.MEDIUM).withDescription(
-                    "Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
-                            + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
-                            + "'string' uses string to represent values; "
-                            + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
-
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -294,101 +285,5 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                         .compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
             }
         };
-    }
-   
-    /**
-     * Returns the Decimal mode Enum for {@code decimal.handling.mode}
-     * configuration This defaults to {@code precise} if nothing is provided.
-     * 
-     * @return
-     */
-    public DecimalMode getDecimalModeConfig() {
-        return DecimalHandlingMode
-                .parse(this.getConfig().getString(DECIMAL_HANDLING_MODE))
-                .asDecimalMode();
-    }
-    
-    /**
-     * The set of predefined DecimalHandlingMode options or aliases.
-     */
-    public enum DecimalHandlingMode implements EnumeratedValue {
-        /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise
-         * {@link BigDecimal} values, which are represented in change events in
-         * a binary form. This is precise but difficult to use.
-         */
-        PRECISE("precise"),
-
-        /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as a string
-         * values. This is precise, it supports also special values but the type
-         * information is lost.
-         */
-        STRING("string"),
-
-        /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise
-         * {@code double} values. This may be less precise but is far easier to
-         * use.
-         */
-        DOUBLE("double");
-
-        private final String value;
-
-        private DecimalHandlingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public DecimalMode asDecimalMode() {
-            switch (this) {
-            case DOUBLE:
-                return DecimalMode.DOUBLE;
-            case STRING:
-                return DecimalMode.STRING;
-            case PRECISE:
-            default:
-                return DecimalMode.PRECISE;
-            }
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value
-         *            the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static DecimalHandlingMode parse(String value) {
-            if (value == null)
-                return null;
-            value = value.trim();
-            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value))
-                    return option;
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value
-         *            the configuration property value; may not be null
-         * @param defaultValue
-         *            the default value; may be null
-         * @return the matching option, or null if no match is found and the
-         *         non-null default is invalid
-         */
-        public static DecimalHandlingMode parse(String value, String defaultValue) {
-            DecimalHandlingMode mode = parse(value);
-            if (mode == null && defaultValue != null)
-                mode = parse(defaultValue);
-            return mode;
-        }
     }
 }
