@@ -23,8 +23,8 @@ import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
-import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
@@ -33,81 +33,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 /**
  * The configuration properties.
  */
-public class MySqlConnectorConfig extends CommonConnectorConfig {
-
-    /**
-     * The set of predefined DecimalHandlingMode options or aliases.
-     */
-    public enum DecimalHandlingMode implements EnumeratedValue {
-        /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@link BigDecimal} values, which are
-         * represented in change events in a binary form. This is precise but difficult to use.
-         */
-        PRECISE("precise"),
-
-        /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as a string values. This is precise, it supports also special values
-         * but the type information is lost.
-         */
-        STRING("string"),
-
-        /**
-         * Represent {@code DECIMAL} and {@code NUMERIC} values as precise {@code double} values. This may be less precise
-         * but is far easier to use.
-         */
-        DOUBLE("double");
-
-        private final String value;
-
-        private DecimalHandlingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public DecimalMode asDecimalMode() {
-            switch (this) {
-                case DOUBLE:
-                    return DecimalMode.DOUBLE;
-                case STRING:
-                    return DecimalMode.STRING;
-                case PRECISE:
-                default:
-                    return DecimalMode.PRECISE;
-            }
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static DecimalHandlingMode parse(String value) {
-            if (value == null) return null;
-            value = value.trim();
-            for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static DecimalHandlingMode parse(String value, String defaultValue) {
-            DecimalHandlingMode mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
-            return mode;
-        }
-    }
+public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
@@ -905,16 +831,6 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                  + "which uses millisecond precision regardless of the database columns' precision.");
 
-    public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
-                                                           .withDisplayName("Decimal Handling")
-                                                           .withEnum(DecimalHandlingMode.class, DecimalHandlingMode.PRECISE)
-                                                           .withWidth(Width.SHORT)
-                                                           .withImportance(Importance.MEDIUM)
-                                                           .withDescription("Specify how DECIMAL and NUMERIC columns should be represented in change events, including:"
-                                                                   + "'precise' (the default) uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
-                                                                   + "'string' uses string to represent values; "
-                                                                   + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
-
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
                                                            .withDisplayName("BIGINT UNSIGNED Handling")
                                                            .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.LONG)
@@ -1021,7 +937,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
-                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                                                     TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
@@ -1049,7 +965,12 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
     private final DdlParsingMode ddlParsingMode;
 
     public MySqlConnectorConfig(Configuration config) {
-        super(config, config.getString(SERVER_NAME));
+        super(
+                config,
+                config.getString(SERVER_NAME),
+                null, // TODO whitelist handling is still done locally here
+                null
+        );
 
         // If deprecated snapshot.minimal.locking property is explicitly configured
         if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {
@@ -1092,7 +1013,7 @@ public class MySqlConnectorConfig extends CommonConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }
