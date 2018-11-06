@@ -26,7 +26,9 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.SchemaNameAdjuster;
@@ -85,9 +87,10 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
 
-        final Configuration jdbcConfig = config.subset("database.", true);
+        final Configuration jdbcConfig = config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
+                .subset("database.", true);
 
-        jdbcConnection = new SqlServerConnection(jdbcConfig, new SqlServerConnectionFactory());
+        jdbcConnection = new SqlServerConnection(jdbcConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
 
         this.schema = new SqlServerDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
@@ -119,6 +122,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     /**
      * Loads the connector's persistent offset (if present) via the given loader.
      */
+    @Override
     protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
         Map<String, ?> partition = loader.getPartition();
 

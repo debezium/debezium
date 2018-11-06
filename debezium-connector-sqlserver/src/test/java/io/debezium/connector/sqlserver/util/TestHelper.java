@@ -11,7 +11,6 @@ import java.sql.SQLException;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnection;
-import io.debezium.connector.sqlserver.SqlServerConnectionFactory;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -105,11 +104,10 @@ public class TestHelper {
     }
 
     public static SqlServerConnection adminConnection() {
-        return new SqlServerConnection(TestHelper.adminJdbcConfig(), new SqlServerConnectionFactory());
+        return new SqlServerConnection(TestHelper.adminJdbcConfig());
     }
 
     public static SqlServerConnection testConnection() {
-        return new SqlServerConnection(TestHelper.defaultJdbcConfig(), new SqlServerConnectionFactory());
+        return new SqlServerConnection(TestHelper.defaultJdbcConfig());
     }
-
 }
