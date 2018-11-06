@@ -6,12 +6,14 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -33,6 +35,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDatabaseSchema.class);
 
+    @ThreadSafe
     private final Set<TableId> capturedTables;
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, SqlServerConnection connection) {
@@ -44,7 +47,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                 ),
                 false);
         try {
-            this.capturedTables = determineCapturedTables(connectorConfig, connection);
+            this.capturedTables = Collections.unmodifiableSet(determineCapturedTables(connectorConfig, connection));
         }
         catch (SQLException e) {
             throw new IllegalStateException("Could not obtain the list of captured tables", e);
