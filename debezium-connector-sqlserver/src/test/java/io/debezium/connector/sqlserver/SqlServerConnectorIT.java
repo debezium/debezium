@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
 import java.sql.SQLException;
@@ -19,10 +20,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.base.Throwables;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
@@ -316,6 +320,28 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
 
         stopConnector();
+    }
+
+    /**
+     * If integratedSecurity and authenticationScheme are propagated to the driver as expected, an exception
+     * will be raised due to the lack of Kerberos infrastructure
+     */
+    @Test
+    @FixFor("DBZ-964")
+    public void shouldPropagateDatabaseDriverProperties() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with("database.integratedSecurity", "true")
+                .with("database.authenticationScheme", "JavaKerberos")
+                .build();
+
+        start(SqlServerConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(Throwables.getRootCause(error))
+                .hasMessage("Invalid name provided (Mechanism level: KrbException: Cannot locate default realm)");
+        });
+
+        assertConnectorNotRunning();
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {

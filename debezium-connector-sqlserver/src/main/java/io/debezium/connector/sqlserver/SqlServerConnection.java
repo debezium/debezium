@@ -15,7 +15,10 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.microsoft.sqlserver.jdbc.SQLServerDriver;
+
 import io.debezium.config.Configuration;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
 import io.debezium.util.IoUtil;
@@ -44,6 +47,11 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String INCREMENT_LSN = "SELECT sys.fn_cdc_increment_lsn(?)";
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT * FROM cdc.fn_cdc_get_all_changes_#(ISNULL(?,sys.fn_cdc_get_min_lsn('#')), ?, N'all update old')";
 
+    private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "};databaseName=${" + JdbcConfiguration.DATABASE + "}";
+    private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
+            SQLServerDriver.class.getName(),
+            SqlServerConnection.class.getClassLoader());
+
     static {
         try {
             ClassLoader classLoader = SqlServerConnection.class.getClassLoader();
@@ -63,10 +71,9 @@ public class SqlServerConnection extends JdbcConnection {
      *
      * @param config
      *            {@link Configuration} instance, may not be null.
-     * @param factory a factory building the connection string
      */
-    public SqlServerConnection(Configuration config, ConnectionFactory factory) {
-        super(config, factory);
+    public SqlServerConnection(Configuration config) {
+        super(config, FACTORY);
     }
 
     /**
@@ -140,7 +147,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     /**
      * Provides all changes recorder by the SQL Server CDC capture process for a set of tables.
-     * 
+     *
      * @param tableIds - the requested tables to obtain changes for
      * @param fromLsn - closed lower bound of interval of changes to be provided
      * @param toLsn  - closed upper bound of interval  of changes to be provided
@@ -164,7 +171,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     /**
      * Obtain the next available position in the database log.
-     * 
+     *
      * @param lsn - LSN of the current position
      * @return LSN of the next position in the database
      * @throws SQLException
@@ -182,7 +189,7 @@ public class SqlServerConnection extends JdbcConnection {
 
     /**
      * Map a commit LSN to a point in time when the commit happened.
-     * 
+     *
      * @param lsn - LSN of the commit
      * @return time when the commit was recorded into the database log
      * @throws SQLException
