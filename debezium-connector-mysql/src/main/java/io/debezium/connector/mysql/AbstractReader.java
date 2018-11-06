@@ -98,7 +98,7 @@ public abstract class AbstractReader implements Reader {
     @Override
     public void stop() {
         try {
-            logger.warn("MySQL discard record queue when stopping, queue size: {}",records.size());
+            logger.warn("MySQL discard record when stopping, queue size: {}",records.size());
             records.clear();
             doStop();
             running.set(false);
