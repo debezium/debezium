@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import io.debezium.util.DelayStrategy;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -79,7 +81,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         // MDC should be in inherited from parent to child threads
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            CompletableFuture.runAsync(() -> this.takeSnapshot(eventConsumer), executorService)
+            CompletableFuture.runAsync(this::delaySnapshot, executorService)
+                             .thenRun(() -> this.takeSnapshot(eventConsumer))
                              .thenRun(() -> this.startStreaming(eventConsumer, failureConsumer))
                              .exceptionally(e -> {
                                  logger.error("unexpected exception", e.getCause() != null ? e.getCause() : e);
@@ -91,6 +94,14 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                              });
         } finally {
             previousContext.restore();
+        }
+    }
+
+    private void delaySnapshot() {
+        Duration delay = taskContext.getConfig().getSnapshotDelay();
+        if (!delay.isZero() && !delay.isNegative()) {
+            logger.info("The connector will wait for " + delay.toMillis() + " ms before proceeding");
+            DelayStrategy.constant(delay.toMillis()).sleepWhen(true);
         }
     }
 
