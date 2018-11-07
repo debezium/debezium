@@ -68,6 +68,15 @@ public class CommonConnectorConfig {
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
 
+    public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
+        .withDisplayName("Snapshot Delay (milliseconds)")
+        .withType(Type.LONG)
+        .withWidth(Width.MEDIUM)
+        .withImportance(Importance.LOW)
+        .withDescription("The number of milliseconds to delay before a snapshot will begin.")
+        .withDefault(0L)
+        .withValidation(Field::isNonNegativeLong);
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -75,6 +84,7 @@ public class CommonConnectorConfig {
     private final Duration pollInterval;
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
+    private final Duration snapshotDelayMs;
 
     protected CommonConnectorConfig(Configuration config, String logicalName) {
         this.config = config;
@@ -84,6 +94,7 @@ public class CommonConnectorConfig {
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+        this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
     }
 
     /**
@@ -118,6 +129,9 @@ public class CommonConnectorConfig {
         return heartbeatTopicsPrefix;
     }
 
+    public Duration getSnapshotDelay() {
+        return snapshotDelayMs;
+    }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);
