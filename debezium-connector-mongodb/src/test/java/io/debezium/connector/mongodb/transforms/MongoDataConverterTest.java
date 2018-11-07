@@ -158,6 +158,7 @@ public class MongoDataConverterTest {
             SchemaBuilder.struct().name("withnull")
                 .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("delivery", SchemaBuilder.struct().name("withnull.delivery").optional()
+                        .field("hour", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("hourId", Schema.OPTIONAL_INT32_SCHEMA)
                         .build()
                 )
