@@ -270,8 +270,14 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
         }
 
-        heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
-                r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
+        if (message.isLastEventForLsn()) {
+            heartbeat.forcedBeat(sourceInfo.partition(), sourceInfo.offset(),
+                    r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
+        }
+        else {
+            heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
+                    r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
+        }
     }
 
     protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
