@@ -940,15 +940,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
-    public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
-            .withDisplayName("Snapshot Delay (milliseconds)")
-            .withType(Type.LONG)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withDescription("The number of milliseconds to delay before a snapshot will begin.")
-            .withDefault(0L)
-            .withValidation(Field::isNonNegativeLong);
-
     public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
             .withDisplayName("DDL parser mode")
             .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
@@ -1014,7 +1005,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
-                                                     SNAPSHOT_DELAY_MS,
+                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
                                                      DDL_PARSER_MODE,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE);
 

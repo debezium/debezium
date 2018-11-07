@@ -167,9 +167,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
                 if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
 
-                if (!taskContext.snapshotDelay().isZero()) {
+                if (!taskContext.getConnectorConfig().getSnapshotDelay().isZero()) {
                     // Adding a timed blocking reader to delay the snapshot, can help to avoid initial rebalancing interruptions
-                    chainedReaderBuilder.addReader(new TimedBlockingReader("timed-blocker", taskContext.snapshotDelay()));
+                    chainedReaderBuilder.addReader(new TimedBlockingReader("timed-blocker", taskContext.getConnectorConfig().getSnapshotDelay()));
                 }
                 chainedReaderBuilder.addReader(snapshotReader);
 
