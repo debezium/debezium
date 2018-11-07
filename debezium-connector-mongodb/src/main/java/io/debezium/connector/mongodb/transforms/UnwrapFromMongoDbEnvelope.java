@@ -20,6 +20,7 @@ import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.bson.BsonDocument;
+import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +129,8 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         }
         SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
         SchemaBuilder keySchemabuilder = SchemaBuilder.struct();
-        BsonDocument valueDocument = null;
+        BsonDocument document;
+        BsonDocument valueDocument;
 
         final R afterRecord = afterExtractor.apply(r);
         final R key = keyExtractor.apply(r);
@@ -139,8 +141,22 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
             // update
             if (patchRecord.value() != null) {
-                valueDocument = BsonDocument.parse(patchRecord.value().toString());
-                valueDocument = valueDocument.getDocument("$set");
+                document = BsonDocument.parse(patchRecord.value().toString());
+                valueDocument = document.getDocument("$set");
+
+                if (document.containsKey("$unset")) {
+                    Set<Entry<String, BsonValue>> unsetDocumentEntry = document.getDocument("$unset").entrySet();
+
+                    for (Entry<String, BsonValue> valueEntry : unsetDocumentEntry) {
+                        // In case unset of a key is false we don't have to do anything with it,
+                        // if it's true we want to set the value to null
+                        if (!valueEntry.getValue().asBoolean().getValue()) {
+                            continue;
+                        }
+                        valueDocument.append(valueEntry.getKey(), new BsonNull());
+                    }
+                }
+
                 if (!valueDocument.containsKey("id")) {
                     valueDocument.append("id", keyDocument.get("id"));
                 }
