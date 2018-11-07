@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
+import io.debezium.util.DelayStrategy;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +84,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         }
 
         Connection connection = null;
+
+        delaySnapshot();
 
         try (SnapshotContext ctx = prepare(context)) {
             LOGGER.info("Snapshot step 1 - Preparing");
@@ -160,6 +163,17 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             LOGGER.info("Snapshot step 8 - Finalizing");
 
             complete();
+        }
+    }
+
+    /**
+     * Delays snapshot execution.
+     */
+    protected void delaySnapshot() {
+        Duration delay = connectorConfig.getSnapshotDelay();
+        if (!delay.isZero() && !delay.isNegative()) {
+            LOGGER.info("The connector will wait for " + delay.toMillis() + " ms before proceeding");
+            DelayStrategy.constant(delay.toMillis()).sleepWhen(true);
         }
     }
 
