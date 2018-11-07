@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -17,6 +18,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.util.DelayStrategy;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -255,6 +258,8 @@ public class Replicator {
      * @return {@code true} if the initial sync was completed, or {@code false} if it was stopped for any reason
      */
     protected boolean performInitialSync() {
+        delaySnapshot();
+
         logger.info("Beginning initial sync of '{}' at {}", rsName, source.lastOffset(rsName));
         source.startInitialSync(replicaSet.replicaSetName());
 
@@ -339,6 +344,14 @@ public class Replicator {
         logger.info("Initial sync of {} collections with a total of {} documents completed in {}",
                     collections.size(), numDocumentsCopied.get(), Strings.duration(syncDuration));
         return true;
+    }
+
+    private void delaySnapshot() {
+        Duration delay = Duration.ofMillis(context.getConnectionContext().config.getLong(CommonConnectorConfig.SNAPSHOT_DELAY_MS));
+        if (!delay.isZero() && !delay.isNegative()) {
+            logger.info("The connector will wait for " + delay.toMillis() + " ms before proceeding");
+            DelayStrategy.constant(delay.toMillis()).sleepWhen(true);
+        }
     }
 
     /**
