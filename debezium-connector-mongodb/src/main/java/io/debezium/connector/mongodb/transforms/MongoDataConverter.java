@@ -51,11 +51,11 @@ public class MongoDataConverter {
         String key = keyvalueforStruct.getKey();
         BsonType type = keyvalueforStruct.getValue().getBsonType();
 
-        if (type == BsonType.NULL) {
-            LOG.warn("Field of type NULL is not added to the struct");
-            return;
-        }
         switch (type) {
+
+        case NULL:
+            colValue = null;
+            break;
 
         case STRING:
             colValue = keyvalueforStruct.getValue().asString().getValue().toString();
@@ -233,9 +233,6 @@ public class MongoDataConverter {
         switch (type) {
 
         case NULL:
-            LOG.warn("Data type {} not currently supported", type);
-            break;
-
         case STRING:
         case JAVASCRIPT:
         case OBJECT_ID:
@@ -321,9 +318,6 @@ public class MongoDataConverter {
 
                     switch (valueType) {
                         case NULL:
-                            LOG.warn("Data type {} not currently supported", valueType);
-                            break;
-
                         case STRING:
                         case JAVASCRIPT:
                         case OBJECT_ID:
