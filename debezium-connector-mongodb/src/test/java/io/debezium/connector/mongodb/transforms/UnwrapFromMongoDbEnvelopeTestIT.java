@@ -136,6 +136,26 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataStr")).isEqualTo("bye");
 
+        // Test Update Multiple Fields
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+                    RawBsonDocument.parse("{'$set': {'newStr': 'hello', 'dataInt': 456}}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+
+        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
+        final SourceRecord updateMultipleRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        final SourceRecord transformedMultipleUpdate = transformation.apply(updateMultipleRecord);
+        final Struct transformedMultipleUpdateValue = (Struct)transformedMultipleUpdate.value();
+
+        assertThat(transformedMultipleUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedMultipleUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(transformedMultipleUpdate.valueSchema().field("dataInt").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedMultipleUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedMultipleUpdateValue.get("newStr")).isEqualTo("hello");
+        assertThat(transformedMultipleUpdateValue.get("dataInt")).isEqualTo(456);
+
         // Test update
         primary().execute("delete", client -> {
             client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
@@ -150,7 +170,7 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         assertThat(transformedDeleteValue).isNull();
         assertThat(records.recordsForTopic(TOPIC_NAME).get(1).value()).isNull();
-}
+    }
 
     private MongoPrimary primary() {
         ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
