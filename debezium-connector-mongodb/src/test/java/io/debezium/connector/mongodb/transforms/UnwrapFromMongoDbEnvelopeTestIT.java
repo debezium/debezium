@@ -156,6 +156,24 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         assertThat(transformedMultipleUpdateValue.get("newStr")).isEqualTo("hello");
         assertThat(transformedMultipleUpdateValue.get("dataInt")).isEqualTo(456);
 
+        // Test Update with $unset operation
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+                    RawBsonDocument.parse("{'$unset': {'newStr': ''}}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+
+        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
+        final SourceRecord updateUnsetRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        final SourceRecord transformedUnsetUpdate = transformation.apply(updateUnsetRecord);
+        final Struct transformedUnsetUpdateValue = (Struct)transformedUnsetUpdate.value();
+
+        assertThat(transformedUnsetUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(transformedUnsetUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedUnsetUpdateValue.get("newStr")).isEqualTo(null);
+
         // Test update
         primary().execute("delete", client -> {
             client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));

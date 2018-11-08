@@ -244,6 +244,40 @@ public class UnwrapFromMongoDbEnvelopeTest {
     }
 
     @Test
+    public void shouldGenerateRecordForUnsetOnlyUpdateEvent() throws InterruptedException {
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("$unset", new Document().append("phone", true).append("active", false))
+                ;
+
+        // given
+        Document event = new Document().append("o", obj)
+                .append("o2", objId)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "u");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        Struct value = (Struct) transformed.value();
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("phone")).isEqualTo(null);
+
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(2);
+    }
+
+    @Test
     @FixFor("DBZ-582")
     public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, false);

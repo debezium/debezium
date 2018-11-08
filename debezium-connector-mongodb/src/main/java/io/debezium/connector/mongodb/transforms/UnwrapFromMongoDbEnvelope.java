@@ -142,7 +142,16 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             // update
             if (patchRecord.value() != null) {
                 document = BsonDocument.parse(patchRecord.value().toString());
-                valueDocument = document.getDocument("$set");
+
+                if (!document.containsKey("$set") && !document.containsKey("$unset")) {
+                    throw new ConnectException("Unable to process Mongo Operation, a '$set' or '$unset' is necessary.");
+                }
+
+                valueDocument = new BsonDocument();
+
+                if (document.containsKey("$set")) {
+                    valueDocument = document.getDocument("$set");
+                }
 
                 if (document.containsKey("$unset")) {
                     Set<Entry<String, BsonValue>> unsetDocumentEntry = document.getDocument("$unset").entrySet();
