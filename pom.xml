@@ -565,11 +565,15 @@
                     <systemProperties combine.children="append">
                         <property>
                             <name>java.io.tmpdir</name>
-                            <value>${basedir}/target</value>
+                            <value>${project.build.directory}</value>
                         </property>
                         <property>
                             <name>skipLongRunningTests</name>
                             <value>${skipLongRunningTests}</value>
+                        </property>
+                        <property>
+                            <name>dbz.test.data.dir</name>
+                            <value>${project.build.directory}/data</value>
                         </property>
                     </systemProperties>
                     <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>

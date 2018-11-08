@@ -5,6 +5,9 @@
  */
 package io.debezium.util;
 
+import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.Fail.fail;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,16 +22,12 @@ import java.util.function.Consumer;
 import org.fest.assertions.Fail;
 import org.junit.Before;
 
-import static org.fest.assertions.Assertions.assertThat;
-
-import static org.fest.assertions.Fail.fail;
-
 import io.debezium.util.Stopwatch.Statistics;
 import io.debezium.util.Stopwatch.StopwatchSet;
 
 /**
  * A set of utility methods for test cases.
- * 
+ *
  * @author Randall Hauch
  */
 public interface Testing {
@@ -118,7 +117,7 @@ public interface Testing {
         /**
          * Find a port that is available. This method starts a {@link ServerSocket} and obtains the port on which the socket is
          * listening, and then shuts down the socket so the port becomes available.
-         * 
+         *
          * @return the number of the now-available port
          */
         public static int getAvailablePort() {
@@ -132,9 +131,28 @@ public interface Testing {
      */
     public static interface Files {
 
+        public static final String DBZ_TEST_DATA_DIR_ENV_VAR_NAME = "DBZ_TEST_DATA_DIR";
+        public static final String DBZ_TEST_DATA_DIR_SYSTEM_PROPERTY_KEY = "dbz.test.data.dir";
+
+        static final String DATA_DIR = determineTestDataDir();
+
+        static String determineTestDataDir() {
+            String value = System.getProperty(DBZ_TEST_DATA_DIR_SYSTEM_PROPERTY_KEY);
+            if (value != null && (value = value.trim()).length() > 0) {
+                return value;
+            }
+
+            value = System.getenv(DBZ_TEST_DATA_DIR_ENV_VAR_NAME);
+            if (value != null && (value = value.trim()).length() > 0) {
+                return value;
+            }
+
+            return "target/data"; // default value
+        }
+
         /**
          * Obtain an InputStream to a named resource on the given classpath.
-         * 
+         *
          * @param pathOnClasspath the path of the resource on the classpath
          * @param testClass the test class, used for accessing the class loader
          * @return the string representation
@@ -147,7 +165,7 @@ public interface Testing {
 
         /**
          * Obtain an InputStream to a named resource on the classpath used to load this {@link Testing} class.
-         * 
+         *
          * @param pathOnClasspath the path of the resource on the classpath
          * @return the string representation
          */
@@ -157,7 +175,7 @@ public interface Testing {
 
         /**
          * Read a classpath resource into a string.
-         * 
+         *
          * @param pathOnClasspath the path of the resource on the classpath
          * @return the string representation
          */
@@ -172,7 +190,7 @@ public interface Testing {
 
         /**
          * Create a directory within the test data directory at the given relative path.
-         * 
+         *
          * @param relativePath the path of the directory within the test data directory; may not be null
          * @return the reference to the existing readable and writable directory
          */
@@ -186,27 +204,12 @@ public interface Testing {
          * This value can be overridden by value of the {@code DBZ_TEST_DATA_DIR} system or environment variable.
          */
         static String dataDir() {
-            if (DATA_DIR[0] != null) {
-                return DATA_DIR[0];
-            }
-
-            String value = System.getProperty("DBZ_TEST_DATA_DIR");
-            if (value != null && (value = value.trim()).length() > 0) {
-                return DATA_DIR[0] = value;
-            }
-
-            value = System.getenv("DBZ_TEST_DATA_DIR");
-            if (value != null && (value = value.trim()).length() > 0) {
-                return DATA_DIR[0] = value;
-            }
-
-            return DATA_DIR[0] = "target/data"; // default value
+            return DATA_DIR;
         }
-        String[] DATA_DIR = {null};
 
         /**
          * Create a randomly-named file within the test data directory.
-         * 
+         *
          * @return the reference to the existing readable and writable file
          */
         public static File createTestingFile() {
@@ -215,7 +218,7 @@ public interface Testing {
 
         /**
          * Create a file within the test data directory at the given relative path.
-         * 
+         *
          * @param relativePath the path of the file within the test data directory; may not be null
          * @return the reference to the existing readable and writable file
          */
@@ -226,7 +229,7 @@ public interface Testing {
 
         /**
          * Create a file within the test data directory at the given relative path.
-         * 
+         *
          * @param relativePath the path of the file within the test data directory; may not be null
          * @return the reference to the existing readable and writable file
          */
@@ -240,7 +243,7 @@ public interface Testing {
 
         /**
          * Create the path to a file within the test data directory at the given relative path.
-         * 
+         *
          * @param relativePath the path of the file within the test data directory; may not be null
          * @return the reference to the existing readable and writable file
          */
@@ -250,7 +253,7 @@ public interface Testing {
 
         /**
          * Create a directory within the test data directory at the given relative path.
-         * 
+         *
          * @param relativePath the path of the directory within the test data directory; may not be null
          * @param removeExistingContent true if any existing content should be removed
          * @return the reference to the existing readable and writable directory
@@ -264,7 +267,7 @@ public interface Testing {
         /**
          * A method that will delete a file or folder only if it is within the 'target' directory (for safety).
          * Folders are removed recursively.
-         * 
+         *
          * @param path the path to the file or folder in the target directory
          */
         public static void delete(String path) {
@@ -274,7 +277,7 @@ public interface Testing {
         /**
          * A method that will delete a file or folder only if it is within the 'target' directory (for safety).
          * Folders are removed recursively.
-         * 
+         *
          * @param fileOrFolder the file or folder in the target directory
          */
         public static void delete(File fileOrFolder) {
@@ -284,7 +287,7 @@ public interface Testing {
         /**
          * A method that will delete a file or folder only if it is within the 'target' directory (for safety).
          * Folders are removed recursively.
-         * 
+         *
          * @param path the path to the file or folder in the target directory
          */
         public static void delete(Path path) {
@@ -304,7 +307,7 @@ public interface Testing {
 
         /**
          * Verify that the supplied file or directory is within the test data directory.
-         * 
+         *
          * @param file the file or directory; may not be null
          * @return true if inside the test data directory, or false otherwise
          */
@@ -314,7 +317,7 @@ public interface Testing {
 
         /**
          * Verify that the supplied file or directory is within the test data directory.
-         * 
+         *
          * @param path the path to the file or directory; may not be null
          * @return true if inside the test data directory, or false otherwise
          */
