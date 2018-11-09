@@ -29,8 +29,7 @@
       - timeout:
           timeout: 45
     triggers:
-      - pollscm:
-          cron: "H 04 * * *"
+      - timed: "H 04 * * 1-5"
     builders:
       - maven-target:
           maven-version: (Default)

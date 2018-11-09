@@ -35,8 +35,7 @@
       - timeout:
           timeout: 45
     triggers:
-      - pollscm:
-          cron: "H 03 * * *"
+      - timed: "H 03 * * 1-5"
     publishers:
       - email:
           recipients: jpechane@redhat.com
