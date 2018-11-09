@@ -806,12 +806,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                            "INSERT INTO s1.b (bb) VALUES (22);";
 
         // expecting two heartbeat records and one actual change record
-        consumer = testConsumer(3);
+        consumer = testConsumer(DecoderDifferences.singleHeartbeatPerTranasaction() ? 2 : 3);
         recordsProducer.start(consumer, blackHole);
         executeAndWait(statement);
 
-        // expecting no change record for s1.a but a heartbeat
-        assertHeartBeatRecordInserted();
+        if (!DecoderDifferences.singleHeartbeatPerTranasaction()) {
+            // expecting no change record for s1.a but a heartbeat
+            assertHeartBeatRecordInserted();
+        }
 
         // and then a change record for s1.b and a heartbeat
         assertRecordInserted("s1.b", PK_FIELD, 1);

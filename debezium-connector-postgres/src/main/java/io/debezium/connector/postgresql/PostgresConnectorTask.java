@@ -40,7 +40,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
     private PostgresTaskContext taskContext;
     private RecordsProducer producer;
-    private volatile long lastProcessedLsn;
+    private volatile Long lastProcessedLsn;
 
     /**
      * A queue with change events filled by the snapshot and streaming producers, consumed
@@ -140,7 +140,9 @@ public class PostgresConnectorTask extends BaseSourceTask {
     @Override
     public void commit() throws InterruptedException {
         if (running.get()) {
-            producer.commit(lastProcessedLsn);
+            if (lastProcessedLsn != null) {
+                producer.commit(lastProcessedLsn);
+            }
         }
     }
 
@@ -149,14 +151,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         List<ChangeEvent> events = changeEventQueue.poll();
 
         if (events.size() > 0) {
-            for (int i = events.size() - 1; i >= 0; i--) {
-                SourceRecord r = events.get(i).getRecord();
-                if (events.get(i).isLastOfLsn()) {
-                    Map<String, ?> offset = r.sourceOffset();
-                    lastProcessedLsn = (Long)offset.get(SourceInfo.LSN_KEY);
-                    break;
-                }
-            }
+            lastProcessedLsn = events.get(events.size() - 1).getlastProcessedLsn();
         }
         return events.stream().map(ChangeEvent::getRecord).collect(Collectors.toList());
     }

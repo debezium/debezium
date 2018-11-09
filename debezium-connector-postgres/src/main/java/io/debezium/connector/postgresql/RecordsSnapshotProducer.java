@@ -100,7 +100,6 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             streamProducer.ifPresent(producer -> {
                 logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
                 producer.start(consumer, failureConsumer);
-
             });
         } finally {
             // always cleanup our local data
@@ -164,9 +163,6 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             //now that we have the locks, refresh the schema
             schema.refresh(connection, false);
 
-            // get the current position in the log, from which we'll continue streaming once the snapshot it finished
-            // If rows are being inserted while we're doing the snapshot, the xlog pos should increase and so when
-            // we start streaming, we should get back those changes
             long xlogStart = connection.currentXLogLocation();
             long txId = connection.currentTransactionId().longValue();
             logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
@@ -227,7 +223,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 .forcedBeat(
                     sourceInfo.partition(),
                     sourceInfo.offset(),
-                    r -> consumer.accept(new ChangeEvent(r)
+                    r -> consumer.accept(new ChangeEvent(r, sourceInfo.lsn())
                 )
             );
         }
@@ -350,7 +346,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             logger.debug("sending read event '{}'", record);
         }
         //send the last generated record
-        consumer.accept(new ChangeEvent(record));
+        consumer.accept(new ChangeEvent(record, sourceInfo.lsn()));
     }
 
     /**

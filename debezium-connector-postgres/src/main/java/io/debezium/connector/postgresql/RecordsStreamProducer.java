@@ -58,6 +58,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     private final AtomicReference<ReplicationStream> replicationStream;
     private final AtomicBoolean cleanupExecuted = new AtomicBoolean();
     private PgConnection typeResolverConnection = null;
+    private Long lastProcessedLsn;
 
     private final Heartbeat heartbeat;
 
@@ -109,6 +110,8 @@ public class RecordsStreamProducer extends RecordsProducer {
 
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
+
+            this.lastProcessedLsn = sourceInfo.lsn();
 
             // the new thread will inherit it's parent MDC
             executorService.submit(() -> streamChanges(eventConsumer, failureConsumer));
@@ -228,6 +231,9 @@ public class RecordsStreamProducer extends RecordsProducer {
             // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN
             return;
         }
+        if (message.isLastEventForLsn()) {
+            lastProcessedLsn = lsn;
+        }
 
         TableId tableId = PostgresSchema.parse(message.getTable());
         assert tableId != null;
@@ -250,18 +256,18 @@ public class RecordsStreamProducer extends RecordsProducer {
             switch (operation) {
                 case INSERT: {
                     Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
-                    generateCreateRecord(tableId, row, message.isLastEventForLsn(), consumer);
+                    generateCreateRecord(tableId, row, consumer);
                     break;
                 }
                 case UPDATE: {
                     Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
                     Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
-                    generateUpdateRecord(tableId, oldRow, newRow, message.isLastEventForLsn(), consumer);
+                    generateUpdateRecord(tableId, oldRow, newRow, consumer);
                     break;
                 }
                 case DELETE: {
                     Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
-                    generateDeleteRecord(tableId, row, message.isLastEventForLsn(), consumer);
+                    generateDeleteRecord(tableId, row, consumer);
                     break;
                 }
                 default: {
@@ -271,16 +277,12 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
 
         if (message.isLastEventForLsn()) {
-            heartbeat.forcedBeat(sourceInfo.partition(), sourceInfo.offset(),
-                    r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
-        }
-        else {
             heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
-                    r -> consumer.accept(new ChangeEvent(r, message.isLastEventForLsn())));
+                    r -> consumer.accept(new ChangeEvent(r, lsn)));
         }
     }
 
-    protected void generateCreateRecord(TableId tableId, Object[] rowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
+    protected void generateCreateRecord(TableId tableId, Object[] rowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (rowData == null || rowData.length == 0) {
             logger.warn("no new values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -303,10 +305,10 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (logger.isDebugEnabled()) {
             logger.debug("sending create event '{}' to topic '{}'", record, topicName);
         }
-        recordConsumer.accept(new ChangeEvent(record, isLastEventForLsn));
+        recordConsumer.accept(new ChangeEvent(record, lastProcessedLsn));
     }
 
-    protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData, boolean isLastEventForLsn,
+    protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData,
                                         BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (newRowData == null || newRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
@@ -343,7 +345,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                     new SourceRecord(
                             partition, offset, topicName, null, oldKeySchema, oldKey, envelope.schema(),
                             envelope.delete(oldValue, source, clock().currentTimeInMillis())),
-                    isLastEventForLsn);
+                    lastProcessedLsn);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending delete event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
@@ -353,7 +355,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 // send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
                 changeEvent = new ChangeEvent(
                         new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null),
-                        isLastEventForLsn);
+                        lastProcessedLsn);
                 if (logger.isDebugEnabled()) {
                     logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
                 }
@@ -365,7 +367,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                     new SourceRecord(
                             partition, offset, topicName, null, newKeySchema, newKey, envelope.schema(),
                             envelope.create(newValue, source, clock().currentTimeInMillis())),
-                    isLastEventForLsn);
+                    lastProcessedLsn);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending create event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
@@ -374,11 +376,11 @@ public class RecordsStreamProducer extends RecordsProducer {
             SourceRecord record = new SourceRecord(partition, offset, topicName, null,
                                                    newKeySchema, newKey, envelope.schema(),
                                                    envelope.update(oldValue, newValue, source, clock().currentTimeInMillis()));
-            recordConsumer.accept(new ChangeEvent(record, isLastEventForLsn));
+            recordConsumer.accept(new ChangeEvent(record, lastProcessedLsn));
         }
     }
 
-    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, boolean isLastEventForLsn, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
+    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (oldRowData == null || oldRowData.length == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
@@ -402,7 +404,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                         partition, offset, topicName, null,
                         keySchema, key, envelope.schema(),
                         envelope.delete(value, sourceInfo.source(), clock().currentTimeInMillis())),
-                isLastEventForLsn);
+                lastProcessedLsn);
         if (logger.isDebugEnabled()) {
             logger.debug("sending delete event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
         }
@@ -412,7 +414,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (taskContext.config().isEmitTombstoneOnDelete()) {
             changeEvent = new ChangeEvent(
                     new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null),
-                    isLastEventForLsn);
+                    lastProcessedLsn);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
