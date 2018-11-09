@@ -376,6 +376,11 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             public MessageDecoder messageDecoder() {
                 return new StreamingWal2JsonMessageDecoder();
             }
+
+            @Override
+            public String getPostgresPluginName() {
+                return "wal2json";
+            }
         },
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
