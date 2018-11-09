@@ -19,32 +19,28 @@ public class ChangeEvent {
      * source record to be sent
      */
     private final SourceRecord record;
+
     /**
-     * true if the originating decoder event is the last one in a batch of events with the same LSN
+     * The last LSN of that was completely processed. Depending on the batching it is either
+     * LSN of a current record or LSN of the previous transaction.
      */
-    private final boolean isLastOfLsn;
+    private final Long lastProcessedLsn;
 
-    public ChangeEvent(SourceRecord record, boolean isLastOfLsn) {
+    public ChangeEvent(SourceRecord record, Long lastProcessedLsn) {
         this.record = record;
-        this.isLastOfLsn = isLastOfLsn;
-    }
-
-    public ChangeEvent(SourceRecord record) {
-        this.record = record;
-        this.isLastOfLsn = true;
+        this.lastProcessedLsn = lastProcessedLsn;
     }
 
     public SourceRecord getRecord() {
         return record;
     }
 
-    public boolean isLastOfLsn() {
-        return isLastOfLsn;
+    public Long getlastProcessedLsn() {
+        return lastProcessedLsn;
     }
 
     @Override
     public String toString() {
-        return "ChangeEvent [record=" + record + ", isLastOfLsn=" + isLastOfLsn + "]";
+        return "ChangeEvent [record=" + record + ", lastProcessedLsn=" + lastProcessedLsn + "]";
     }
-
 }

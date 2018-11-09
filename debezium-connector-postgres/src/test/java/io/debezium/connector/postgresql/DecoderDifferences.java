@@ -40,6 +40,17 @@ public class DecoderDifferences {
         }
     }
 
+    /**
+     * wal2json plugin sends heartbeat only at the end of transaction as the changes in a single transaction
+     * are under the same LSN.
+     *
+     * @author Jiri Pechanec
+     *
+     */
+    public static boolean singleHeartbeatPerTranasaction() {
+        return wal2Json();
+    }
+
     private static boolean wal2Json() {
         return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON
                 || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS
