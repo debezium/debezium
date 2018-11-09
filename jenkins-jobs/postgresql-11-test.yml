@@ -31,6 +31,7 @@
     triggers:
       - reverse:
           jobs: 'debezium-postgresql-10-test'
+          result: 'failure'
     builders:
       - maven-target:
           maven-version: (Default)

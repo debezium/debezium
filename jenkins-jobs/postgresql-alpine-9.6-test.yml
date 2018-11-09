@@ -31,6 +31,7 @@
     triggers:
       - reverse:
           jobs: "debezium-postgresql-test-wal2json"
+          result: 'failure'
     builders:
       - maven-target:
           maven-version: (Default)
