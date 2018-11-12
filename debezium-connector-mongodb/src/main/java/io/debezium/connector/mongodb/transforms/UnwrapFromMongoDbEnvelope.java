@@ -88,9 +88,9 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withEnum(ArrayEncoding.class, ArrayEncoding.ARRAY)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("The arrays can be encoded using 'array' schema type (the default) ar as a 'struct' (similar to how BSON encodes arrays). "
+            .withDescription("The arrays can be encoded using 'array' schema type (the default) or as a 'document' (similar to how BSON encodes arrays). "
                     + "'array' is easier to consume but requires all elements in the array to be of the same type. "
-                    + "Use 'struct' if the arrays in data source mix different types together.");
+                    + "Use 'document' if the arrays in data source mix different types together.");
 
     private static final Field FLATTEN_STRUCT = Field.create("flatten.struct")
             .withDisplayName("Flatten struct")
