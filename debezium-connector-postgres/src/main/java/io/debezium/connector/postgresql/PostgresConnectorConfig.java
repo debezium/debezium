@@ -370,6 +370,11 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             public MessageDecoder messageDecoder() {
                 return new PgProtoMessageDecoder();
             }
+
+            @Override
+            public String getPostgresPluginName() {
+                return getValue();
+            }
         },
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
@@ -447,9 +452,7 @@ public class PostgresConnectorConfig extends CommonConnectorConfig {
             return decoderName;
         }
 
-        public String getPostgresPluginName() {
-            return getValue();
-        }
+        public abstract String getPostgresPluginName();
     }
 
     /**
