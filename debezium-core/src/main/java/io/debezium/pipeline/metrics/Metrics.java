@@ -41,16 +41,14 @@ public abstract class Metrics implements ArrivedEventListener, ChangeEventSource
     /**
      * Registers a metrics MBean into the platform MBean server.
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
-     *
-     * @param context
-     * @param logger
      */
     public synchronized <T extends CdcSourceTaskContext> void register(Logger logger) {
         try {
             name = taskContext.metricName(this.contextName);
             final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
             mBeanServer.registerMBean(this, name);
-        } catch (JMException e) {
+        }
+        catch (JMException e) {
             logger.warn("Error while register the MBean '{}': {}", name, e.getMessage());
         }
     }
@@ -58,18 +56,17 @@ public abstract class Metrics implements ArrivedEventListener, ChangeEventSource
     /**
      * Unregisters a metrics MBean from the platform MBean server.
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
-     *
-     * @param context
-     * @param logger
      */
     public final void unregister(Logger logger) {
         if (this.name != null) {
             try {
                 final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
                 mBeanServer.unregisterMBean(name);
-            } catch (JMException e) {
+            }
+            catch (JMException e) {
                 logger.error("Unable to unregister the MBean '{}'", name);
-            } finally {
+            }
+            finally {
                 this.name = null;
             }
         }

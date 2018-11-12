@@ -13,49 +13,41 @@ import io.debezium.relational.TableId;
  * A class invoked by {@link SnapshotChangeEventSource} whenever an important event or change of state happens.
  *
  * @author Jiri Pechanec
- *
  */
 public interface SnapshotProgressListener {
 
-    public void completeTable(TableId tableId, long numRows);
+    void snapshotStarted();
+    void monitoredTablesDetermined(Set<TableId> tableIds);
+    void snapshotCompleted();
+    void snapshotAborted();
 
-    public void startSnapshot();
-
-    public void completeSnapshot();
-
-    public void abortSnapshot();
-
-    public void setRowsScanned(TableId tableId, long numRows);
-
-    public void setMonitoredTables(Set<TableId> tableIds);
+    void tableSnapshotCompleted(TableId tableId, long numRows);
+    void rowsScanned(TableId tableId, long numRows);
 
     public static SnapshotProgressListener NO_OP = new SnapshotProgressListener() {
 
         @Override
-        public void startSnapshot() {
+        public void snapshotStarted() {
         }
 
         @Override
-        public void setRowsScanned(TableId tableId, long numRows) {
-
+        public void rowsScanned(TableId tableId, long numRows) {
         }
 
         @Override
-        public void setMonitoredTables(Set<TableId> tableIds) {
-
+        public void monitoredTablesDetermined(Set<TableId> tableIds) {
         }
 
         @Override
-        public void completeTable(TableId tableId, long numRows) {
-
+        public void tableSnapshotCompleted(TableId tableId, long numRows) {
         }
 
         @Override
-        public void completeSnapshot() {
+        public void snapshotCompleted() {
         }
 
         @Override
-        public void abortSnapshot() {
+        public void snapshotAborted() {
         }
     };
 }
