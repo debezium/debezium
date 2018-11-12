@@ -83,10 +83,9 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         Connection connection = null;
 
-        snapshotProgressListener.startSnapshot();
-
         try (SnapshotContext ctx = prepare(context)) {
             LOGGER.info("Snapshot step 1 - Preparing");
+            snapshotProgressListener.snapshotStarted();
 
             if (previousOffset != null && previousOffset.isSnapshotRunning()) {
                 LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
@@ -100,7 +99,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
-            snapshotProgressListener.setMonitoredTables(ctx.capturedTables);
+            snapshotProgressListener.monitoredTablesDetermined(ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables");
 
@@ -137,20 +136,20 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             }
 
             dispatcher.dispatchHeartbeatEvent(ctx.offset);
-            snapshotProgressListener.completeSnapshot();
+            snapshotProgressListener.snapshotCompleted();
             return SnapshotResult.completed(ctx.offset);
         }
         catch(InterruptedException e) {
             LOGGER.warn("Snapshot was interrupted before completion");
-            snapshotProgressListener.abortSnapshot();
+            snapshotProgressListener.snapshotAborted();
             throw e;
         }
         catch(RuntimeException e) {
-            snapshotProgressListener.abortSnapshot();
+            snapshotProgressListener.snapshotAborted();
             throw e;
         }
         catch(Exception e) {
-            snapshotProgressListener.abortSnapshot();
+            snapshotProgressListener.snapshotAborted();
             throw new RuntimeException(e);
         }
         finally {
@@ -292,7 +291,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                     long stop = clock.currentTimeInMillis();
                     LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
                             Strings.duration(stop - exportStart));
-                    snapshotProgressListener.setRowsScanned(table.id(), rows);
+                    snapshotProgressListener.rowsScanned(table.id(), rows);
                     logTimer = getTableScanLogTimer();
                 }
 
@@ -302,7 +301,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
-            snapshotProgressListener.completeTable(table.id(), rows);
+            snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
         }
         catch(SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);

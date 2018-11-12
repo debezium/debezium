@@ -80,7 +80,7 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
-    public void setMonitoredTables(Set<TableId> tableIds) {
+    public void monitoredTablesDetermined(Set<TableId> tableIds) {
         this.tableCount.set(tableIds.size());
         tableIds.stream().forEach(x -> {
             this.remainingTables.put(x.toString(), "");
@@ -89,13 +89,13 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
-    public void completeTable(TableId tableId, long numRows) {
+    public void tableSnapshotCompleted(TableId tableId, long numRows) {
         rowsScanned.put(tableId.toString(), numRows);
         this.remainingTables.remove(tableId.toString());
     }
 
     @Override
-    public void startSnapshot() {
+    public void snapshotStarted() {
         this.snapshotRunning.set(true);
         this.snapshotCompleted.set(false);
         this.snapshotAborted.set(false);
@@ -104,7 +104,7 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
-    public void completeSnapshot() {
+    public void snapshotCompleted() {
         this.snapshotCompleted.set(true);
         this.snapshotAborted.set(false);
         this.snapshotRunning.set(false);
@@ -112,7 +112,7 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
-    public void abortSnapshot() {
+    public void snapshotAborted() {
         this.snapshotCompleted.set(false);
         this.snapshotAborted.set(true);
         this.snapshotRunning.set(false);
@@ -120,7 +120,7 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
-    public void setRowsScanned(TableId tableId, long numRows) {
+    public void rowsScanned(TableId tableId, long numRows) {
         rowsScanned.put(tableId.toString(), numRows);
     }
 
