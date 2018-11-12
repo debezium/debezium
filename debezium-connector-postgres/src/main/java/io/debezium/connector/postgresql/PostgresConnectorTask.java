@@ -40,7 +40,12 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
     private PostgresTaskContext taskContext;
     private RecordsProducer producer;
-    private volatile Long lastProcessedLsn;
+
+    /**
+     * In case of wal2json, all records of one TX will be sent with the same LSN. This is the last LSN that was
+     * completely processed, i.e. we've seen all events originating from that TX.
+     */
+    private volatile Long lastCompletelyProcessedLsn;
 
     /**
      * A queue with change events filled by the snapshot and streaming producers, consumed
@@ -140,8 +145,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
     @Override
     public void commit() throws InterruptedException {
         if (running.get()) {
-            if (lastProcessedLsn != null) {
-                producer.commit(lastProcessedLsn);
+            if (lastCompletelyProcessedLsn != null) {
+                producer.commit(lastCompletelyProcessedLsn);
             }
         }
     }
@@ -151,7 +156,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         List<ChangeEvent> events = changeEventQueue.poll();
 
         if (events.size() > 0) {
-            lastProcessedLsn = events.get(events.size() - 1).getLastCompletelyProcessedLsn();
+            lastCompletelyProcessedLsn = events.get(events.size() - 1).getLastCompletelyProcessedLsn();
         }
         return events.stream().map(ChangeEvent::getRecord).collect(Collectors.toList());
     }

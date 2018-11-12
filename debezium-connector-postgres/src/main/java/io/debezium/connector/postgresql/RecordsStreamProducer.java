@@ -58,7 +58,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     private final AtomicReference<ReplicationStream> replicationStream;
     private final AtomicBoolean cleanupExecuted = new AtomicBoolean();
     private PgConnection typeResolverConnection = null;
-    private Long lastProcessedLsn;
+    private Long lastCompletelyProcessedLsn;
 
     private final Heartbeat heartbeat;
 
@@ -111,7 +111,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
 
-            this.lastProcessedLsn = sourceInfo.lsn();
+            this.lastCompletelyProcessedLsn = sourceInfo.lsn();
 
             // the new thread will inherit it's parent MDC
             executorService.submit(() -> streamChanges(eventConsumer, failureConsumer));
@@ -232,7 +232,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             return;
         }
         if (message.isLastEventForLsn()) {
-            lastProcessedLsn = lsn;
+            lastCompletelyProcessedLsn = lsn;
         }
 
         TableId tableId = PostgresSchema.parse(message.getTable());
@@ -305,7 +305,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (logger.isDebugEnabled()) {
             logger.debug("sending create event '{}' to topic '{}'", record, topicName);
         }
-        recordConsumer.accept(new ChangeEvent(record, lastProcessedLsn));
+        recordConsumer.accept(new ChangeEvent(record, lastCompletelyProcessedLsn));
     }
 
     protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData,
@@ -345,7 +345,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                     new SourceRecord(
                             partition, offset, topicName, null, oldKeySchema, oldKey, envelope.schema(),
                             envelope.delete(oldValue, source, clock().currentTimeInMillis())),
-                    lastProcessedLsn);
+                    lastCompletelyProcessedLsn);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending delete event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
@@ -355,7 +355,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                 // send a tombstone event (null value) for the old key so it can be removed from the Kafka log eventually...
                 changeEvent = new ChangeEvent(
                         new SourceRecord(partition, offset, topicName, null, oldKeySchema, oldKey, null, null),
-                        lastProcessedLsn);
+                        lastCompletelyProcessedLsn);
                 if (logger.isDebugEnabled()) {
                     logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
                 }
@@ -367,7 +367,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                     new SourceRecord(
                             partition, offset, topicName, null, newKeySchema, newKey, envelope.schema(),
                             envelope.create(newValue, source, clock().currentTimeInMillis())),
-                    lastProcessedLsn);
+                    lastCompletelyProcessedLsn);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending create event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
@@ -376,7 +376,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             SourceRecord record = new SourceRecord(partition, offset, topicName, null,
                                                    newKeySchema, newKey, envelope.schema(),
                                                    envelope.update(oldValue, newValue, source, clock().currentTimeInMillis()));
-            recordConsumer.accept(new ChangeEvent(record, lastProcessedLsn));
+            recordConsumer.accept(new ChangeEvent(record, lastCompletelyProcessedLsn));
         }
     }
 
@@ -404,7 +404,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                         partition, offset, topicName, null,
                         keySchema, key, envelope.schema(),
                         envelope.delete(value, sourceInfo.source(), clock().currentTimeInMillis())),
-                lastProcessedLsn);
+                lastCompletelyProcessedLsn);
         if (logger.isDebugEnabled()) {
             logger.debug("sending delete event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
         }
@@ -414,7 +414,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (taskContext.config().isEmitTombstoneOnDelete()) {
             changeEvent = new ChangeEvent(
                     new SourceRecord(partition, offset, topicName, null, keySchema, key, null, null),
-                    lastProcessedLsn);
+                    lastCompletelyProcessedLsn);
             if (logger.isDebugEnabled()) {
                 logger.debug("sending tombstone event '{}' to topic '{}'", changeEvent.getRecord(), topicName);
             }
