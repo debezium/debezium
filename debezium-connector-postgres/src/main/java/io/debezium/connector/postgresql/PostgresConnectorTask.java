@@ -151,7 +151,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         List<ChangeEvent> events = changeEventQueue.poll();
 
         if (events.size() > 0) {
-            lastProcessedLsn = events.get(events.size() - 1).getlastProcessedLsn();
+            lastProcessedLsn = events.get(events.size() - 1).getLastCompletelyProcessedLsn();
         }
         return events.stream().map(ChangeEvent::getRecord).collect(Collectors.toList());
     }
