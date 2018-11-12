@@ -47,7 +47,7 @@ public class DecoderDifferences {
      * @author Jiri Pechanec
      *
      */
-    public static boolean singleHeartbeatPerTranasaction() {
+    public static boolean singleHeartbeatPerTransaction() {
         return wal2Json();
     }
 

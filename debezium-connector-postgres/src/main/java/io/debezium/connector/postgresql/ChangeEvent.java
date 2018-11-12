@@ -24,23 +24,23 @@ public class ChangeEvent {
      * The last LSN of that was completely processed. Depending on the batching it is either
      * LSN of a current record or LSN of the previous transaction.
      */
-    private final Long lastProcessedLsn;
+    private final Long lastCompletelyProcessedLsn;
 
-    public ChangeEvent(SourceRecord record, Long lastProcessedLsn) {
+    public ChangeEvent(SourceRecord record, Long lastCompletelyProcessedLsn) {
         this.record = record;
-        this.lastProcessedLsn = lastProcessedLsn;
+        this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
     }
 
     public SourceRecord getRecord() {
         return record;
     }
 
-    public Long getlastProcessedLsn() {
-        return lastProcessedLsn;
+    public Long getLastCompletelyProcessedLsn() {
+        return lastCompletelyProcessedLsn;
     }
 
     @Override
     public String toString() {
-        return "ChangeEvent [record=" + record + ", lastProcessedLsn=" + lastProcessedLsn + "]";
+        return "ChangeEvent [record=" + record + ", lastCompletelyProcessedLsn=" + lastCompletelyProcessedLsn + "]";
     }
 }
