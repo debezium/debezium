@@ -18,7 +18,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.pipeline.source.spi.ArrivedEventListener;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -51,7 +51,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
     private final Heartbeat heartbeat;
-    private ArrivedEventListener eventListener = ArrivedEventListener.NO_OP;
+    private DataChangeEventListener eventListener = DataChangeEventListener.NO_OP;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -243,7 +243,7 @@ public class EventDispatcher<T extends DataCollectionId> {
      *
      * @param eventListener
      */
-    public void setEventListener(ArrivedEventListener eventListener) {
+    public void setEventListener(DataChangeEventListener eventListener) {
         this.eventListener = eventListener;
     }
 }

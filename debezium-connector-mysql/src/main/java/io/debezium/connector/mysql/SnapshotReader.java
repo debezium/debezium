@@ -224,7 +224,7 @@ public class SnapshotReader extends AbstractReader {
         boolean isTxnStarted = false;
         boolean tableLocks = false;
         try {
-            metrics.startSnapshot();
+            metrics.snapshotStarted();
 
             // ------
             // STEP 0
@@ -568,7 +568,7 @@ public class SnapshotReader extends AbstractReader {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
                                                             stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
-                                                metrics.setRowsScanned(tableId.toString(), rowNum);
+                                                metrics.rowsScanned(tableId, rowNum);
                                             }
                                         }
 
@@ -577,7 +577,7 @@ public class SnapshotReader extends AbstractReader {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
-                                            metrics.setRowsScanned(tableId.toString(), rowNum);
+                                            metrics.rowsScanned(tableId, rowNum);
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
@@ -632,7 +632,7 @@ public class SnapshotReader extends AbstractReader {
                         logger.info("Step {}: rolling back transaction after abort", step++);
                         sql.set("ROLLBACK");
                         mysql.execute(sql.get());
-                        metrics.abortSnapshot();
+                        metrics.snapshotAborted();
                         rolledBack = true;
                     }
                     else {
@@ -640,7 +640,7 @@ public class SnapshotReader extends AbstractReader {
                         logger.info("Step {}: committing transaction", step++);
                         sql.set("COMMIT");
                         mysql.execute(sql.get());
-                        metrics.completeSnapshot();
+                        metrics.snapshotCompleted();
                     }
                 }
 

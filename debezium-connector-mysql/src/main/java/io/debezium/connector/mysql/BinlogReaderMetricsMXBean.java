@@ -16,7 +16,8 @@ public interface BinlogReaderMetricsMXBean extends StreamingChangeEventSourceMet
     String getBinlogFilename();
     long getBinlogPosition();
     String getGtidSet();
-    
+
+    long getSecondsSinceLastEvent();
     long getSecondsBehindMaster();
     long getNumberOfSkippedEvents();
     long getNumberOfDisconnects();

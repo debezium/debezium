@@ -72,8 +72,7 @@ public class ChangeEventSourceCoordinator {
                 streamingMetrics.register(LOGGER);
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
 
-                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset);
-                snapshotSource.setSnapshotProgressListener(snapshotMetrics);
+                SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
                 eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
 

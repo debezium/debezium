@@ -22,7 +22,7 @@ import io.debezium.relational.TableId;
  */
 public class SnapshotChangeEventSourceMetrics extends Metrics implements SnapshotChangeEventSourceMetricsMXBean, SnapshotProgressListener {
 
-    private final AtomicLong tableCount = new AtomicLong();
+    protected final AtomicLong tableCount = new AtomicLong();
     private final AtomicBoolean snapshotRunning = new AtomicBoolean();
     private final AtomicBoolean snapshotCompleted = new AtomicBoolean();
     private final AtomicBoolean snapshotAborted = new AtomicBoolean();

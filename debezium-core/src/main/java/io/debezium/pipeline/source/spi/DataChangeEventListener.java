@@ -11,9 +11,9 @@ package io.debezium.pipeline.source.spi;
  * @author Jiri Pechanec
  *
  */
-public interface ArrivedEventListener {
+public interface DataChangeEventListener {
 
     void onEvent();
 
-    static ArrivedEventListener NO_OP = () -> {};
+    static DataChangeEventListener NO_OP = () -> {};
 }
