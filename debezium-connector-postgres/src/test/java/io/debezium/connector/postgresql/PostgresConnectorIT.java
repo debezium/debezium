@@ -17,7 +17,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +32,9 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -41,6 +45,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -437,6 +442,61 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         String sourceTable = ((Struct)record.value()).getStruct("source").getString("table");
         assertThat(sourceTable).isEqualTo("dbz_878_some|test@data");
+    }
+
+    @Test
+    @FixFor("DBZ-965")
+    public void shouldRegularlyFlushLsn() throws InterruptedException, SQLException {
+        final int recordCount = 10;
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
+                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                                         .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
+                                         .with(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "1000")
+                                         .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        final Set<String> flushLsn = new HashSet<>();
+        try (final PostgresConnection connection = TestHelper.create()) {
+            flushLsn.add(getConfirmedFlushLsn(connection));
+            for (int i = 2; i <= recordCount + 2; i++) {
+                TestHelper.execute(INSERT_STMT);
+
+                final SourceRecords actualRecords = consumeRecordsByTopic(1);
+                assertThat(actualRecords.topics().size()).isEqualTo(1);
+                assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
+
+                TimeUnit.MILLISECONDS.sleep(1_100);
+                flushLsn.add(getConfirmedFlushLsn(connection));
+            }
+        }
+        // Theoretically the LSN should change for each record but in reality there can be
+        // unfrotunate timings so let's suppose the chane will hapeni in 75 % of cases
+        Assertions.assertThat(flushLsn.size()).isGreaterThan((recordCount * 3) / 4);
+    }
+
+    private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
+        return connection.prepareQueryAndMap(
+                "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                    statement.setString(1, "debezium");
+                    statement.setString(2, "postgres");
+                    statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
+                },
+                rs -> {
+                    if (rs.next()) {
+                        return rs.getString("confirmed_flush_lsn");
+                    }
+                    else {
+                        fail("No replication slot info available");
+                    }
+                    return null;
+                }
+           );
     }
 
     private void assertFieldAbsent(SourceRecord record, String fieldName) {
