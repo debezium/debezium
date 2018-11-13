@@ -9,6 +9,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
+import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
@@ -34,9 +35,9 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext) {
+    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
         return new OracleSnapshotChangeEventSource(configuration, (OracleOffsetContext) offsetContext, jdbcConnection,
-                schema, dispatcher, clock);
+                schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
