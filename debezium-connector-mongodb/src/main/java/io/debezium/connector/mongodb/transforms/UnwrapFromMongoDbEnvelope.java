@@ -39,6 +39,8 @@ import io.debezium.config.Field;
  */
 public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    final static String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
+
     public static enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
         DOCUMENT("document");
@@ -111,6 +113,15 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
+    private static final Field OPERATION_HEADER = Field.create("operation.header")
+            .withDisplayName("Adds a message header representing the applied operation")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Adds the operation {@link FieldName#OPERATION operation} as a header." +
+                    "Its key is '" + DEBEZIUM_OPERATION_HEADER_KEY +"'");
+
     private static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
             .withDisplayName("Drop tombstones")
             .withType(ConfigDef.Type.BOOLEAN)
@@ -128,6 +139,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     private MongoDataConverter converter;
     private final Flatten<R> recordFlattener = new Flatten.Value<R>();
 
+    private boolean addOperationHeader;
     private boolean flattenStruct;
     private String delimiter;
 
@@ -158,6 +170,10 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public R apply(R r) {
+        if (addOperationHeader) {
+            r.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) r.value()).get("op").toString());
+        }
+
         // Tombstone message
         if (r.value() == null) {
             if (dropTombstones) {
@@ -281,9 +297,8 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         }
 
         if (flattenStruct) {
-           final R flattenRecord = recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
+            return recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
                finalKeyStruct, finalValueSchema, finalValueStruct, r.timestamp(), r.headers()));
-           return flattenRecord;
         }
         else {
             if (finalValueSchema.fields().isEmpty()) {
@@ -311,13 +326,15 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     @Override
     public void configure(final Map<String, ?> map) {
         final Configuration config = Configuration.from(map);
-        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER, DROP_TOMBSTONES);
+        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER, OPERATION_HEADER, DROP_TOMBSTONES);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
         converter = new MongoDataConverter(ArrayEncoding.parse(config.getString(ARRAY_ENCODING)));
+
+        addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);

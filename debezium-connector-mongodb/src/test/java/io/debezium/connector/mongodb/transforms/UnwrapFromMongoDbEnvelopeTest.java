@@ -7,8 +7,15 @@ package io.debezium.connector.mongodb.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
+import io.debezium.data.Envelope;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -44,6 +51,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private static final String SERVER_NAME = "serverX";
     private static final String FLATTEN_STRUCT = "flatten.struct";
     private static final String DELIMITER = "flatten.struct.delimiter";
+    private static final String OPERATION_HEADER = "operation.header";
 
     private Filters filters;
     private SourceInfo source;
@@ -92,9 +100,19 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        transformation.configure(props);
+
         // when
         SourceRecord transformed = transformation.apply(record);
 
+        // then assert operation header is insert
+        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
+
+        // acquire key and value Structs
         Struct key = (Struct) transformed.key();
         Struct value = (Struct) transformed.value();
 
@@ -182,9 +200,19 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        transformation.configure(props);
+
         // when
         SourceRecord transformed = transformation.apply(record);
 
+        // then assert operation header is update
+        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.UPDATE.code());
+
+        // acquire key and value Structs
         Struct key = (Struct) transformed.key();
         Struct value = (Struct) transformed.value();
 
@@ -328,9 +356,19 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         SourceRecord record = produced.get(0);
 
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        transformation.configure(props);
+
         // when
         SourceRecord transformed = transformation.apply(record);
 
+        // then assert operation header is delete
+        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
+
+        // acquire key and value Structs
         Struct key = (Struct) transformed.key();
         Struct value = (Struct) transformed.value();
 
