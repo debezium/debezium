@@ -8,11 +8,13 @@ package io.debezium.transforms;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
@@ -216,6 +218,25 @@ public class UnwrapFromEnvelopeTest {
 
             final SourceRecord unnamedSchemaRecord = createUnknownUnnamedSchemaRecord();
             assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
+        }
+    }
+
+    @Test
+    public void testUnwrapPropagatesRecordHeaders() {
+        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
+            final Map<String, String> props = new HashMap<>();
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            createRecord.headers().addString("application/debezium-test-header", "shouldPropagatePreviousRecordHeaders");
+
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct)unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+
+            assertThat(unwrapped.headers()).hasSize(1);
+            Iterator<Header> headers = unwrapped.headers().allWithName("application/debezium-test-header");
+            assertThat(headers.hasNext()).isTrue();
+            assertThat(headers.next().value().toString()).isEqualTo("shouldPropagatePreviousRecordHeaders");
         }
     }
 }
