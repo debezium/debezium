@@ -282,17 +282,17 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
         if (flattenStruct) {
            final R flattenRecord = recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
-               finalKeyStruct, finalValueSchema, finalValueStruct,r.timestamp()));
+               finalKeyStruct, finalValueSchema, finalValueStruct, r.timestamp(), r.headers()));
            return flattenRecord;
         }
         else {
             if (finalValueSchema.fields().isEmpty()) {
-                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, null, null,
-                            r.timestamp());
+                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
+                            finalKeyStruct, null, null, r.timestamp(), r.headers());
                 }
                 else {
-                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema, finalKeyStruct, finalValueSchema, finalValueStruct,
-                            r.timestamp());
+                    return r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
+                            finalKeyStruct, finalValueSchema, finalValueStruct, r.timestamp());
                 }
         }
     }
