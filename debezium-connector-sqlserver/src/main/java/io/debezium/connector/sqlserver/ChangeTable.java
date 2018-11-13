@@ -7,15 +7,46 @@ package io.debezium.connector.sqlserver;
 
 import io.debezium.relational.TableId;
 
+/**
+ * A logical representation of change table containing changes for a given source table.
+ * There is usually one change table for each source table. When the schema of the source table
+ * is changed then two change tables could be present.
+ *
+ * @author Jiri Pechanec
+ *
+ */
 public class ChangeTable {
     private static final String CDC_SCHEMA = "cdc";
 
+    /**
+     * The logical name of the change capture process
+     */
     private final String captureInstance;
+
+    /**
+     * The table from which the changes are captured
+     */
     private final TableId sourceTableId;
+
+    /**
+     * The table that contains the changes for the source table
+     */
     private final TableId changeTableId;
+
+    /**
+     * A LSN from which the data in the change table are relevant
+     */
     private final Lsn startLsn;
-    private final int changeTableObjectId;
+
+    /**
+     * A LSN to which the data in the change table are relevant
+     */
     private Lsn stopLsn;
+
+    /**
+     * Numeric identifier of change table in SQL Server schema
+     */
+    private final int changeTableObjectId;
 
     public ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
         super();
