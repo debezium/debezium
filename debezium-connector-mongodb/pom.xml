@@ -130,7 +130,7 @@
                   </image>
                   <!-- A container that initiates the data replica set and adds it as shard to router -->
                   <image>
-                    <name>debezium/mongo-initiator:3.2</name>
+                    <name>debezium/mongo-initiator:${version.mongo.server}</name>
                     <run>
                       <namingStrategy>none</namingStrategy>
                       <env>
