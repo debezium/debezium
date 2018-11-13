@@ -23,10 +23,12 @@ public interface ChangeEventSourceFactory {
      *
      * @param offsetContext
      *            A context representing a restored offset from an earlier run of this connector. May be {@code null}.
+     * @param snapshotProgressListener
+     *            A listener called for changes in the state of snapshot. May be {@code null}.
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext);
+    SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.

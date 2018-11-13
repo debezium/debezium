@@ -58,17 +58,18 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     private final HistorizedRelationalDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
-    private SnapshotProgressListener snapshotProgressListener = SnapshotProgressListener.NO_OP;
+    private final SnapshotProgressListener snapshotProgressListener;
 
     public HistorizedRelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
             OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
-            EventDispatcher<TableId> dispatcher, Clock clock) {
+            EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
         this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
         this.schema = schema;
         this.dispatcher = dispatcher;
         this.clock = clock;
+        this.snapshotProgressListener = snapshotProgressListener;
     }
 
     @Override
@@ -427,10 +428,5 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
     protected Clock getClock() {
         return clock;
-    }
-
-    @Override
-    public void setSnapshotProgressListener(SnapshotProgressListener listener) {
-        snapshotProgressListener = listener;
     }
 }

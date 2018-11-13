@@ -15,14 +15,14 @@ import javax.management.ObjectName;
 import org.slf4j.Logger;
 
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.pipeline.source.spi.ArrivedEventListener;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.util.Clock;
 
 /**
  * @author Randall Hauch, Jiri Pechanec
  *
  */
-public abstract class Metrics implements ArrivedEventListener, ChangeEventSourceMetricsMXBean {
+public abstract class Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
 
     protected AtomicLong totalEumberOfEventsSeen = new AtomicLong();
     protected AtomicLong lastEventTimestamp = new AtomicLong(-1);
@@ -84,8 +84,8 @@ public abstract class Metrics implements ArrivedEventListener, ChangeEventSource
     }
 
     @Override
-    public long getSecondsSinceLastEvent() {
-        return (lastEventTimestamp.get() == -1) ? -1 : (clock.currentTimeInMillis() - lastEventTimestamp.get()) / 1_000;
+    public long getTimeSinceLastEvent() {
+        return (lastEventTimestamp.get() == -1) ? -1 : (clock.currentTimeInMillis() - lastEventTimestamp.get());
     }
 
     @Override

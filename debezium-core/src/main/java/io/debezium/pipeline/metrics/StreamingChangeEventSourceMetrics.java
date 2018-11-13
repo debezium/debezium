@@ -8,12 +8,12 @@ package io.debezium.pipeline.metrics;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.pipeline.source.spi.ArrivedEventListener;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 
 /**
  * @author Randall Hauch, Jiri Pechanec
  */
-public class StreamingChangeEventSourceMetrics extends Metrics implements StreamingChangeEventSourceMetricsMXBean, ArrivedEventListener {
+public class StreamingChangeEventSourceMetrics extends Metrics implements StreamingChangeEventSourceMetricsMXBean, DataChangeEventListener {
 
     private AtomicBoolean connected = new AtomicBoolean();
 

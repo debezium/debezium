@@ -14,7 +14,7 @@ package io.debezium.pipeline.metrics;
 public interface ChangeEventSourceMetricsMXBean {
 
     String getLastEvent();
-    long getSecondsSinceLastEvent();
+    long getTimeSinceLastEvent();
     long getTotalNumberOfEventsSeen();
     String[] getMonitoredTables();
     void reset();
