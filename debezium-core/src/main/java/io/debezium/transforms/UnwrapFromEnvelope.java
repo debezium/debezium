@@ -9,8 +9,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import io.debezium.config.EnumeratedValue;
+import io.debezium.data.Envelope;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
@@ -38,6 +40,8 @@ import io.debezium.config.Field;
  * @author Jiri Pechanec
  */
 public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
+
+    final String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
 
     public static enum DeleteHandling implements EnumeratedValue {
         DROP("drop"),
@@ -115,9 +119,19 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                     + "drop - records are removed,"
                     + "rewrite - __deleted field is added to records.");
 
+    private static final Field OPERATION_HEADER = Field.create("operation.header")
+            .withDisplayName("Adds the debezium operation into the message header")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Adds the applied operation as in {@link FieldName#OPERATION operation} to the message header." +
+                    "Its key is 'application/debezium-operation'");
+
     private boolean dropTombstones;
     private boolean dropDeletes;
     private DeleteHandling handleDeletes;
+    private boolean addOperationHeader;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
@@ -143,6 +157,8 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             }
         }
 
+        addOperationHeader = config.getBoolean(OPERATION_HEADER);
+
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
         beforeDelegate.configure(delegateConfig);
@@ -164,13 +180,30 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
 
     @Override
     public R apply(final R record) {
+        Envelope.Operation operation;
         if (record.value() == null) {
             if (dropTombstones) {
                 logger.trace("Tombstone {} arrived and requested to be dropped", record.key());
                 return null;
             }
+            operation = Envelope.Operation.DELETE;
+            if (addOperationHeader) {
+                record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, operation.toString());
+            }
             return record;
         }
+
+        if (addOperationHeader) {
+            String operationString = ((Struct) record.value()).getString("op");
+            operation = Envelope.Operation.forCode(operationString);
+
+            if (operationString.isEmpty() || operation == null) {
+                logger.warn("Unknown operation thus unable to add the operation header into the message");
+            } else {
+                record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, operation.code());
+            }
+        }
+
         if (record.valueSchema() == null ||
                 record.valueSchema().name() == null ||
                 !record.valueSchema().name().endsWith(ENVELOPE_SCHEMA_NAME_SUFFIX)) {
@@ -206,7 +239,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, DROP_TOMBSTONES, DROP_DELETES, HANDLE_DELETES);
+        Field.group(config, null, DROP_TOMBSTONES, DROP_DELETES, HANDLE_DELETES, OPERATION_HEADER);
         return config;
     }
 
