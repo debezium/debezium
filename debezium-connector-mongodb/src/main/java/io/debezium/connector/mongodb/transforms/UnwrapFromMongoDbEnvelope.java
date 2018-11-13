@@ -38,6 +38,8 @@ import io.debezium.config.Field;
  */
 public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    final String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
+
     public static enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
         DOCUMENT("document");
@@ -110,6 +112,15 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
+    private static final Field OPERATION_HEADER = Field.create("operation.header")
+            .withDisplayName("Adds a message header representing the applied operation")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Adds the debezium operation as in {@link FieldName#OPERATION operation} to the message header." +
+                    "Its key is 'application/debezium-operation'");
+
     private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<R>();
@@ -117,6 +128,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     private MongoDataConverter converter;
     private final Flatten<R> recordFlattener = new Flatten.Value<R>();
 
+    private boolean addOperationHeader;
     private boolean flattenStruct;
     private String delimiter;
 
@@ -126,6 +138,11 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         if (newValueSchemaName.endsWith(".Envelope")) {
             newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
         }
+
+        if (addOperationHeader) {
+            r.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) r.value()).get("op").toString());
+        }
+
         SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
         SchemaBuilder keySchemabuilder = SchemaBuilder.struct();
         BsonDocument valueDocument = null;
@@ -205,9 +222,8 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
         }
 
         if (flattenStruct) {
-           final R flattenRecord = recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
+            return recordFlattener.apply(r.newRecord(r.topic(), r.kafkaPartition(), finalKeySchema,
                finalKeyStruct, finalValueSchema, finalValueStruct, r.timestamp(), r.headers()));
-           return flattenRecord;
         }
         else {
             if (finalValueSchema.fields().isEmpty()) {
@@ -235,13 +251,15 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     @Override
     public void configure(final Map<String, ?> map) {
         final Configuration config = Configuration.from(map);
-        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER);
+        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER, OPERATION_HEADER);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
         converter = new MongoDataConverter(ArrayEncoding.parse(config.getString(ARRAY_ENCODING)));
+
+        addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);
