@@ -21,12 +21,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -949,43 +948,38 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
 
-        ConcurrentMap<TableId, List<Column>> columnsByTable = new ConcurrentHashMap<>();
-        try (ResultSet rs = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
-            while (rs.next()) {
-                String catalogName = rs.getString(1);
-                String schemaName = rs.getString(2);
-                String tableName = rs.getString(3);
+        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
+            while (columnMetadata.next()) {
+                String catalogName = columnMetadata.getString(1);
+                String schemaName = columnMetadata.getString(2);
+                String tableName = columnMetadata.getString(3);
                 TableId tableId = new TableId(catalogName, schemaName, tableName);
-                if (viewIds.contains(tableId)) {
+
+                // exclude views and non-whitelisted tables
+                if (viewIds.contains(tableId) ||
+                        (tableFilter != null && !tableFilter.isIncluded(tableId))) {
                     continue;
                 }
-                if (tableFilter == null || tableFilter.isIncluded(tableId)) {
-                    final Optional<ColumnEditor> columnEditor = readTableColumn(rs, tableId, columnFilter);
-                    columnEditor.ifPresent(column -> {
-                        final List<Column> oldCols = columnsByTable.get(tableId);
-                        if (oldCols == null) {
-                            final List<Column> cols = new ArrayList<>();
-                            cols.add(column.create());
-                            columnsByTable.put(tableId, cols);
-                        }
-                        else {
-                            oldCols.add(column.create());
-                        }
-                    });
-                }
+
+                // add all whitelisted columns
+                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
+                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
+                        .add(column.create());
+                });
             }
         }
 
         // Read the metadata for the primary keys ...
-        for (TableId id : columnsByTable.keySet()) {
+        for (Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
             // First get the primary key information, which must be done for *each* table ...
-            List<String> pkColumnNames = readPrimaryKeyNames(metadata, id);
+            List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
 
             // Then define the table ...
-            List<Column> columns = columnsByTable.get(id);
+            List<Column> columns = tableEntry.getValue();
             Collections.sort(columns);
             String defaultCharsetName = null; // JDBC does not expose character sets
-            tables.overwriteTable(id, columns, pkColumnNames, defaultCharsetName);
+            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName);
         }
 
         if (removeTablesNotFoundInJdbc) {
@@ -995,22 +989,26 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
-    protected Optional<ColumnEditor> readTableColumn(ResultSet rs, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
-        final String columnName = rs.getString(4);
+    /**
+     * Returns a {@link ColumnEditor} representing the current record of the given result set of column metadata, if
+     * included in the column whitelist.
+     */
+    protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
-            column.jdbcType(rs.getInt(5));
-            column.type(rs.getString(6));
-            column.length(rs.getInt(7));
-            if (rs.getObject(9) != null) {
-                column.scale(rs.getInt(9));
+            column.jdbcType(columnMetadata.getInt(5));
+            column.type(columnMetadata.getString(6));
+            column.length(columnMetadata.getInt(7));
+            if (columnMetadata.getObject(9) != null) {
+                column.scale(columnMetadata.getInt(9));
             }
-            column.optional(isNullable(rs.getInt(11)));
-            column.position(rs.getInt(17));
-            column.autoIncremented("YES".equalsIgnoreCase(rs.getString(23)));
+            column.optional(isNullable(columnMetadata.getInt(11)));
+            column.position(columnMetadata.getInt(17));
+            column.autoIncremented("YES".equalsIgnoreCase(columnMetadata.getString(23)));
             String autogenerated = null;
             try {
-                autogenerated = rs.getString(24);
+                autogenerated = columnMetadata.getString(24);
             }
             catch (SQLException e) {
                 // ignore, some drivers don't have this index - e.g. Postgres
@@ -1021,6 +1019,7 @@ public class JdbcConnection implements AutoCloseable {
 
             return Optional.of(column);
         }
+
         return Optional.empty();
     }
 
