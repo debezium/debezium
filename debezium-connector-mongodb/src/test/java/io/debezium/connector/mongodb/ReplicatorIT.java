@@ -58,7 +58,7 @@ public class ReplicatorIT extends AbstractMongoIT {
             MongoCollection<Document> contacts = db.getCollection("contacts");
             InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
             contacts.insertOne(Document.parse("{ \"name\":\"Jon Snow\"}"), insertOptions);
-            assertThat(db.getCollection("contacts").count()).isEqualTo(1);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(1);
 
             // Read the collection to make sure we can find our document ...
             Bson filter = Filters.eq("name", "Jon Snow");
@@ -92,7 +92,7 @@ public class ReplicatorIT extends AbstractMongoIT {
             MongoCollection<Document> contacts = db.getCollection("contacts");
             InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
             contacts.insertOne(Document.parse("{ \"name\":\"Sally Hamm\"}"), insertOptions);
-            assertThat(db.getCollection("contacts").count()).isEqualTo(2);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
 
             // Read the collection to make sure we can find our documents ...
             FindIterable<Document> movieResults = db.getCollection("contacts").find();
