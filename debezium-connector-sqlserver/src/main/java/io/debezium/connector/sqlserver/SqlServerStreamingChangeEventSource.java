@@ -274,6 +274,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     public void commitOffset(Map<String, ?> offset) {
     }
 
+    /**
+     * The logical representation of a position for the change in the transaction log.
+     * During each sourcing cycle it is necessary to query all change tables and then
+     * make a total order of changes across all tables.<br>
+     * This class represents an open database cursor over the change table that is
+     * able to move the cursor forward and report the LSN for the change to which the cursor
+     * now points.
+     *
+     * @author Jiri Pechanec
+     *
+     */
     private static class ChangeTablePointer {
 
         private final ChangeTable changeTable;
@@ -331,7 +342,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         @Override
         public String toString() {
-            return "ChangeTable [changeTable=" + changeTable + ", resultSet=" + resultSet + ", completed=" + completed + "]";
+            return "ChangeTablePointer [changeTable=" + changeTable + ", resultSet=" + resultSet + ", completed="
+                    + completed + ", currentChangeLsn=" + currentChangeLsn + "]";
         }
     }
 }
