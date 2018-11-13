@@ -72,7 +72,7 @@ public class ConnectionIT extends AbstractMongoIT {
                 MongoCollection<Document> movies = collection;
                 InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
                 movies.insertOne(Document.parse("{ \"name\":\"Starter Wars\"}"), insertOptions);
-                assertThat(collection.count()).isEqualTo(1);
+                assertThat(collection.countDocuments()).isEqualTo(1);
 
                 // Read the collection to make sure we can find our document ...
                 Bson filter = Filters.eq("name", "Starter Wars");
