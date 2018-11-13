@@ -32,7 +32,6 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
@@ -453,7 +452,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                          .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
                                          .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                                          .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
-                                         .with(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "1000")
                                          .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -471,7 +469,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertThat(actualRecords.topics().size()).isEqualTo(1);
                 assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
 
-                TimeUnit.MILLISECONDS.sleep(1_100);
+                TimeUnit.MILLISECONDS.sleep(20);
                 flushLsn.add(getConfirmedFlushLsn(connection));
             }
         }
