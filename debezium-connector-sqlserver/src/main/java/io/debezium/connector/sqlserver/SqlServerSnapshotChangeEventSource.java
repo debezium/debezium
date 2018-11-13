@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.HistorizedRelationalSnapshotChangeEventSource;
@@ -40,8 +41,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     private final SqlServerConnectorConfig connectorConfig;
     private final SqlServerConnection jdbcConnection;
 
-    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock) {
-        super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock);
+    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+        super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
     }
