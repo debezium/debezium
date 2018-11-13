@@ -19,6 +19,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Jiri Pechanec
@@ -28,6 +29,7 @@ public class UnwrapFromEnvelopeTest {
     private static final String DROP_DELETES = "drop.deletes";
     private static final String DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
+    private static final String OPERATION_HEADER = "operation.header";
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -108,6 +110,15 @@ public class UnwrapFromEnvelopeTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
     }
 
+    private String getSourceRecordHeaderByKey(SourceRecord record, String headerKey) {
+        Iterator<Header> operationHeader = record.headers().allWithName(headerKey);
+        if (!operationHeader.hasNext()) {
+            return null;
+        }
+
+        return operationHeader.next().value().toString();
+    }
+
     @Test
     public void testDeleteDroppedByDefault() {
         try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
@@ -124,6 +135,7 @@ public class UnwrapFromEnvelopeTest {
         try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(DROP_DELETES, "true");
+            props.put(OPERATION_HEADER, "true");
             transform.configure(props);
 
             final SourceRecord deleteRecord = createDeleteRecord();
@@ -132,15 +144,19 @@ public class UnwrapFromEnvelopeTest {
     }
 
     @Test
-    public void testDeleteFrowardConfigured() {
+    public void testDeleteForwardConfigured() {
         try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(DROP_DELETES, "false");
+            props.put(OPERATION_HEADER, "true");
             transform.configure(props);
 
             final SourceRecord deleteRecord = createDeleteRecord();
             final SourceRecord tombstone = transform.apply(deleteRecord);
             assertThat(tombstone.value()).isNull();
+            assertThat(tombstone.headers()).hasSize(1);
+            String headerValue = getSourceRecordHeaderByKey(tombstone, transform.DEBEZIUM_OPERATION_HEADER_KEY);
+            assertThat(headerValue).isEqualTo(Envelope.Operation.DELETE.code());
         }
     }
 
@@ -187,11 +203,15 @@ public class UnwrapFromEnvelopeTest {
         try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_DELETES, "rewrite");
+            props.put(OPERATION_HEADER, "true");
             transform.configure(props);
 
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct)unwrapped.value()).getString("__deleted")).isEqualTo("false");
+            assertThat(unwrapped.headers()).hasSize(1);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, transform.DEBEZIUM_OPERATION_HEADER_KEY);
+            assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
         }
     }
 
@@ -222,6 +242,7 @@ public class UnwrapFromEnvelopeTest {
     }
 
     @Test
+    @FixFor("DBZ-971")
     public void testUnwrapPropagatesRecordHeaders() {
         try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
             final Map<String, String> props = new HashMap<>();
