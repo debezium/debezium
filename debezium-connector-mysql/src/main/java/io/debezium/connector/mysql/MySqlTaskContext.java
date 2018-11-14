@@ -35,7 +35,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     private final MySqlJdbcContext connectionContext;
     private final Configuration config;
-    public final MySqlConnectorConfig connectorConfig;
+    private final MySqlConnectorConfig connectorConfig;
     private final SourceInfo source;
     private final MySqlSchema dbSchema;
     private final TopicSelector<TableId> topicSelector;
