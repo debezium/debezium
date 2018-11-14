@@ -5,32 +5,40 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
 
 /**
- * @author Randall Hauch, Jiri Pechanec
+ * Metrics related to the initial snapshot of a connector.
  *
+ * @author Randall Hauch, Jiri Pechanec
  */
+@ThreadSafe
 public class SnapshotChangeEventSourceMetrics extends Metrics implements SnapshotChangeEventSourceMetricsMXBean, SnapshotProgressListener {
 
-    protected final AtomicLong tableCount = new AtomicLong();
     private final AtomicBoolean snapshotRunning = new AtomicBoolean();
     private final AtomicBoolean snapshotCompleted = new AtomicBoolean();
     private final AtomicBoolean snapshotAborted = new AtomicBoolean();
     private final AtomicLong startTime = new AtomicLong();
     private final AtomicLong stopTime = new AtomicLong();
     private final ConcurrentMap<String, Long> rowsScanned = new ConcurrentHashMap<String, Long>();
+
+    // TODO DBZ-978 what's the purpose of the value here? It's never updated.
     private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
-    private Set<String> monitoredTables = new HashSet<>();
+
+    // TODO DBZ-978 Pull up to Metrics
+    private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
 
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext) {
         super(taskContext, "snapshot");
@@ -38,7 +46,7 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
 
     @Override
     public int getTotalTableCount() {
-        return this.tableCount.intValue();
+        return this.monitoredTables.size();
     }
 
     @Override
@@ -80,18 +88,20 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     }
 
     @Override
-    public void monitoredTablesDetermined(Set<TableId> tableIds) {
-        this.tableCount.set(tableIds.size());
-        tableIds.stream().forEach(x -> {
-            this.remainingTables.put(x.toString(), "");
-            monitoredTables.add(x.toString());
-        });
+    public void monitoredTablesDetermined(Iterable<TableId> tableIds) {
+        Iterator<TableId> it = tableIds.iterator();
+        while (it.hasNext()) {
+            TableId tableId = it.next();
+
+            this.remainingTables.put(tableId.toString(), "");
+            monitoredTables.add(tableId.toString());
+        }
     }
 
     @Override
     public void tableSnapshotCompleted(TableId tableId, long numRows) {
         rowsScanned.put(tableId.toString(), numRows);
-        this.remainingTables.remove(tableId.toString());
+        remainingTables.remove(tableId.toString());
     }
 
     @Override

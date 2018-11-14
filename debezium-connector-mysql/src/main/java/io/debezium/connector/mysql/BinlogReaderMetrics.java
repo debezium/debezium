@@ -64,7 +64,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     }
 
     @Override
-    public long getTimeSinceLastEvent() {
+    public long getMilliSecondsSinceLastEvent() {
         return this.stats.getSecondsSinceLastEvent() * 1000;
     }
 

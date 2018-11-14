@@ -7,15 +7,18 @@ package io.debezium.pipeline.metrics;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 
 /**
  * @author Randall Hauch, Jiri Pechanec
  */
+@ThreadSafe
 public class StreamingChangeEventSourceMetrics extends Metrics implements StreamingChangeEventSourceMetricsMXBean, DataChangeEventListener {
 
-    private AtomicBoolean connected = new AtomicBoolean();
+    // DBZ-978 Toggle when losing the connection
+    private final AtomicBoolean connected = new AtomicBoolean();
 
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext) {
         super(taskContext, "streaming");
@@ -26,6 +29,7 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
         return this.connected.get();
     }
 
+    // TODO DBZ-978
     @Override
     public String[] getMonitoredTables() {
         return new String[] {};

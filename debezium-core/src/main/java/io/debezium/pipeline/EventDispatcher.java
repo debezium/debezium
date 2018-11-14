@@ -105,12 +105,12 @@ public class EventDispatcher<T extends DataCollectionId> {
      * {@link ChangeEventCreator} for converting them into data change events.
      */
     public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
+        eventListener.onEvent();
 
         if(!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Skipping data change event for {}", dataCollectionId);
         }
         else {
-            eventListener.onEvent();
             DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
             // TODO handle as per inconsistent schema info option

@@ -9,12 +9,11 @@ package io.debezium.pipeline.metrics;
  * Metrics that are common for both snapshot and streaming change event sources
  *
  * @author Jiri Pechanec
- *
  */
 public interface ChangeEventSourceMetricsMXBean {
 
     String getLastEvent();
-    long getTimeSinceLastEvent();
+    long getMilliSecondsSinceLastEvent();
     long getTotalNumberOfEventsSeen();
     String[] getMonitoredTables();
     void reset();
