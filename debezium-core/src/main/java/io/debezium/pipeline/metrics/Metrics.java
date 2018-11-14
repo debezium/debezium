@@ -14,23 +14,26 @@ import javax.management.ObjectName;
 
 import org.slf4j.Logger;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.util.Clock;
 
 /**
- * @author Randall Hauch, Jiri Pechanec
+ * Base for metrics implementations.
  *
+ * @author Randall Hauch, Jiri Pechanec
  */
+@ThreadSafe
 public abstract class Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
 
-    protected AtomicLong totalEumberOfEventsSeen = new AtomicLong();
-    protected AtomicLong lastEventTimestamp = new AtomicLong(-1);
+    protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
+    protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
 
     private final String contextName;
     protected final Clock clock;
     private final CdcSourceTaskContext taskContext;
-    private ObjectName name;
+    private volatile ObjectName name;
 
     protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName) {
         this.contextName = contextName;
@@ -74,28 +77,29 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
 
     @Override
     public void onEvent() {
-        totalEumberOfEventsSeen.incrementAndGet();
+        totalNumberOfEventsSeen.incrementAndGet();
         lastEventTimestamp.set(clock.currentTimeInMillis());
     }
 
+    // TODO DBZ-978
     @Override
     public String getLastEvent() {
         return "not implemented";
     }
 
     @Override
-    public long getTimeSinceLastEvent() {
+    public long getMilliSecondsSinceLastEvent() {
         return (lastEventTimestamp.get() == -1) ? -1 : (clock.currentTimeInMillis() - lastEventTimestamp.get());
     }
 
     @Override
     public long getTotalNumberOfEventsSeen() {
-        return totalEumberOfEventsSeen.get();
+        return totalNumberOfEventsSeen.get();
     }
 
     @Override
     public void reset() {
-        totalEumberOfEventsSeen.set(0);
+        totalNumberOfEventsSeen.set(0);
         lastEventTimestamp.set(-1);
     }
 }

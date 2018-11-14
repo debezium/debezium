@@ -6,8 +6,9 @@
 package io.debezium.pipeline.metrics;
 
 /**
- * @author Randall Hauch, Jiri Pechanec
+ * Metrics specific to streaming change event sources
  *
+ * @author Randall Hauch, Jiri Pechanec
  */
 public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
 

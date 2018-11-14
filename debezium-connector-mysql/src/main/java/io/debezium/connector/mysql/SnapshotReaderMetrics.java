@@ -6,7 +6,6 @@
 package io.debezium.connector.mysql;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 
@@ -16,7 +15,6 @@ import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
  */
 class SnapshotReaderMetrics extends SnapshotChangeEventSourceMetrics implements SnapshotReaderMetricsMXBean {
 
-    private final AtomicLong remainingTableCount = new AtomicLong();
     private final AtomicBoolean holdingGlobalLock = new AtomicBoolean();
 
     private final MySqlSchema schema;
@@ -37,15 +35,6 @@ class SnapshotReaderMetrics extends SnapshotChangeEventSourceMetrics implements 
 
     public void globalLockReleased() {
         holdingGlobalLock.set(false);
-    }
-
-    public void setTableCount(int tableCount) {
-        this.tableCount.set(tableCount);
-        this.remainingTableCount.set(tableCount);
-    }
-
-    public void completeTable() {
-        remainingTableCount.decrementAndGet();
     }
 
     @Override

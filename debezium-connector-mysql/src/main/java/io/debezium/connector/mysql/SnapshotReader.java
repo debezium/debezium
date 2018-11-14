@@ -491,7 +491,7 @@ public class SnapshotReader extends AbstractReader {
 
                     // Dump all of the tables and generate source records ...
                     logger.info("Step {}: scanning contents of {} tables while still in transaction", step, tableIds.size());
-                    metrics.setTableCount(tableIds.size());
+                    metrics.monitoredTablesDetermined(tableIds);
 
                     long startScan = clock.currentTimeInMillis();
                     AtomicLong totalRowCount = new AtomicLong();
@@ -501,6 +501,7 @@ public class SnapshotReader extends AbstractReader {
                     Iterator<TableId> tableIdIter = tableIds.iterator();
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
+                        AtomicLong rowNum = new AtomicLong();
                         if (!isRunning()) break;
 
                         // Obtain a record maker for this table, which knows about the schema ...
@@ -546,7 +547,6 @@ public class SnapshotReader extends AbstractReader {
                             try {
                                 int stepNum = step;
                                 mysql.query(sql.get(), statementFactory, rs -> {
-                                    long rowNum = 0;
                                     try {
                                         // The table is included in the connector's filters, so process all of the table records
                                         // ...
@@ -559,25 +559,25 @@ public class SnapshotReader extends AbstractReader {
                                                 row[i] = readField(rs, j, actualColumn);
                                             }
                                             recorder.recordRow(recordMaker, row, ts); // has no row number!
-                                            ++rowNum;
-                                            if (rowNum % 100 == 0 && !isRunning()) {
+                                            rowNum.incrementAndGet();
+                                            if (rowNum.get() % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
                                                 break;
                                             }
-                                            if (rowNum % 10_000 == 0) {
+                                            if (rowNum.get() % 10_000 == 0) {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
                                                             stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
-                                                metrics.rowsScanned(tableId, rowNum);
+                                                metrics.rowsScanned(tableId, rowNum.get());
                                             }
                                         }
 
-                                        totalRowCount.addAndGet(rowNum);
+                                        totalRowCount.addAndGet(rowNum.get());
                                         if (isRunning()) {
                                             long stop = clock.currentTimeInMillis();
                                             logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
                                                         stepNum, rowNum, tableId, Strings.duration(stop - start));
-                                            metrics.rowsScanned(tableId, rowNum);
+                                            metrics.rowsScanned(tableId, rowNum.get());
                                         }
                                     } catch (InterruptedException e) {
                                         Thread.interrupted();
@@ -586,8 +586,9 @@ public class SnapshotReader extends AbstractReader {
                                         interrupted.set(true);
                                     }
                                 });
-                            } finally {
-                                metrics.completeTable();
+                            }
+                            finally {
+                                metrics.tableSnapshotCompleted(tableId, rowNum.get());
                                 if (interrupted.get()) break;
                             }
                         }

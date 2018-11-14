@@ -5,8 +5,6 @@
  */
 package io.debezium.pipeline.source.spi;
 
-import java.util.Set;
-
 import io.debezium.relational.TableId;
 
 /**
@@ -17,7 +15,7 @@ import io.debezium.relational.TableId;
 public interface SnapshotProgressListener {
 
     void snapshotStarted();
-    void monitoredTablesDetermined(Set<TableId> tableIds);
+    void monitoredTablesDetermined(Iterable<TableId> tableIds);
     void snapshotCompleted();
     void snapshotAborted();
 
@@ -35,7 +33,7 @@ public interface SnapshotProgressListener {
         }
 
         @Override
-        public void monitoredTablesDetermined(Set<TableId> tableIds) {
+        public void monitoredTablesDetermined(Iterable<TableId> tableIds) {
         }
 
         @Override
