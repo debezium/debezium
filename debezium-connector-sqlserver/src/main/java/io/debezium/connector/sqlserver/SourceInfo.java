@@ -7,14 +7,14 @@ package io.debezium.connector.sqlserver;
 
 import java.time.Instant;
 
-import io.debezium.annotation.NotThreadSafe;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
 
 /**
- * Coordinates from the database log to establis relation between the change streamed and the source log position.
+ * Coordinates from the database log to establish the relation between the change streamed and the source log position.
  * Maps to {@code source} field in {@code Envelope}.
  *
  * @author Jiri Pechanec

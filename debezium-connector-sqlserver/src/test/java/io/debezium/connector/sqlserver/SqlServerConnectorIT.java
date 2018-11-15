@@ -46,8 +46,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 "CREATE TABLE tableb (id int primary key, colb varchar(30))",
                 "INSERT INTO tablea VALUES(1, 'a')"
         );
-        connection.enableTableCdc("tablea");
-        connection.enableTableCdc("tableb");
+        TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);

@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -26,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
@@ -60,7 +60,7 @@ public class SnapshotIT extends AbstractConnectorTest {
             );
         }
 
-        connection.enableTableCdc("table1");
+        TestHelper.enableTableCdc(connection, "table1");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
