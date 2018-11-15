@@ -197,7 +197,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         }
                     });
                     lastProcessedLsn = currentMaxLsn;
-                    // Terminate the transaction otherwise CDC could not be disabled for tables 
+                    // Terminate the transaction otherwise CDC could not be disabled for tables
                     connection.rollback();
                 }
                 catch (SQLException e) {
@@ -326,7 +326,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             completed = !resultSet.next();
             currentChangeLsn = completed ? Lsn.NULL : Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN));
             if (completed) {
-                LOGGER.trace("Closing result set of change table for table {}", changeTable);
+                LOGGER.trace("Closing result set of change tables for table {}", changeTable);
                 resultSet.close();
             }
             return !completed;

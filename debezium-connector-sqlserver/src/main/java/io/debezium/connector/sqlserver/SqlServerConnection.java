@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,7 +30,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.util.IoUtil;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -44,15 +42,6 @@ public class SqlServerConnection extends JdbcConnection {
     private static Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
-    private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=0)\n"
-            + "EXEC sys.sp_cdc_enable_db";
-    private static final String DISABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=1)\n"
-            + "EXEC sys.sp_cdc_disable_db";
-    private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
-            + "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
-    private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0";
-    private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
-    private static final String CDC_WRAPPERS_DML;
     private static final String GET_MAX_LSN = "SELECT sys.fn_cdc_get_max_lsn()";
     private static final String LOCK_TABLE = "SELECT * FROM # WITH (TABLOCKX)";
     private static final String LSN_TO_TIMESTAMP = "SELECT sys.fn_cdc_map_lsn_to_time(?)";
@@ -69,16 +58,6 @@ public class SqlServerConnection extends JdbcConnection {
             SQLServerDriver.class.getName(),
             SqlServerConnection.class.getClassLoader());
 
-    static {
-        try {
-            ClassLoader classLoader = SqlServerConnection.class.getClassLoader();
-            CDC_WRAPPERS_DML = IoUtil.read(classLoader.getResourceAsStream("generate_cdc_wrappers.sql"));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Cannot load SQL Server statements", e);
-        }
-    }
-
     private static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
     }
@@ -93,74 +72,7 @@ public class SqlServerConnection extends JdbcConnection {
         super(config, FACTORY);
     }
 
-    /**
-     * Enables CDC for a given database, if not already enabled.
-     *
-     * @param name
-     *            the name of the DB, may not be {@code null}
-     * @throws SQLException
-     *             if anything unexpected fails
-     */
-    public void enableDbCdc(String name) throws SQLException {
-        Objects.requireNonNull(name);
-        execute(ENABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
-    }
 
-    /**
-     * Disables CDC for a given database, if not already disabled.
-     *
-     * @param name
-     *            the name of the DB, may not be {@code null}
-     * @throws SQLException
-     *             if anything unexpected fails
-     */
-    public void disableDbCdc(String name) throws SQLException {
-        Objects.requireNonNull(name);
-        execute(DISABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
-    }
-
-    /**
-     * Enables CDC for a table if not already enabled and generates the wrapper
-     * functions for that table.
-     *
-     * @param name
-     *            the name of the table, may not be {@code null}
-     * @throws SQLException if anything unexpected fails
-     */
-    public void enableTableCdc(String name) throws SQLException {
-        Objects.requireNonNull(name);
-        String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
-        String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
-        execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
-    }
-
-    /**
-     * Enables CDC for a table with a custom capture name
-     * functions for that table.
-     *
-     * @param name
-     *            the name of the table, may not be {@code null}
-     * @throws SQLException if anything unexpected fails
-     */
-    public void enableTableCdc(String tableName, String captureName) throws SQLException {
-        Objects.requireNonNull(tableName);
-        Objects.requireNonNull(captureName);
-        String enableCdcForTableStmt = String.format(ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, tableName, captureName);
-        execute(enableCdcForTableStmt);
-    }
-
-    /**
-     * Disables CDC for a table for which it was enabled before.
-     *
-     * @param name
-     *            the name of the table, may not be {@code null}
-     * @throws SQLException if anything unexpected fails
-     */
-    public void disableTableCdc(String name) throws SQLException {
-        Objects.requireNonNull(name);
-        String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
-        execute(disableCdcForTableStmt);
-    }
 
     /**
      * @return the current largest log sequence number

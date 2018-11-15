@@ -39,8 +39,8 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                 "CREATE TABLE tableb (id int primary key, colb varchar(30))",
                 "CREATE TABLE tablec (id int primary key, colc varchar(30))"
         );
-        connection.enableTableCdc("tablea");
-        connection.enableTableCdc("tableb");
+        TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.enableTableCdc(connection, "tableb");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -80,13 +80,13 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         // Enable CDC for already existing table
-        connection.enableTableCdc("tablec");
+        TestHelper.enableTableCdc(connection, "tablec");
 
         // CDC for newly added table
         connection.execute(
                 "CREATE TABLE tabled (id int primary key, cold varchar(30))"
         );
-        connection.enableTableCdc("tabled");
+        TestHelper.enableTableCdc(connection, "tabled");
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -152,7 +152,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
 
         // Disable CDC for a table
-        connection.disableTableCdc("tableb");
+        TestHelper.disableTableCdc(connection, "tableb");
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_2 + i;
@@ -245,7 +245,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             );
         });
 
-        connection.enableTableCdc("tableb", "after_change");
+        TestHelper.enableTableCdc(connection, "tableb", "after_change");
         if (pauseAfterCaptureChange) {
             Thread.sleep(5_000);
         }
@@ -343,7 +343,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         // Enable a second capture instance
         connection.execute("ALTER TABLE dbo.tableb DROP COLUMN colb");
-        connection.enableTableCdc("tableb", "after_change");
+        TestHelper.enableTableCdc(connection, "tableb", "after_change");
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_2 + i;
@@ -433,10 +433,10 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         });
 
         // CDC must be disabled, otherwise rename fails
-        connection.disableTableCdc("tableb");
+        TestHelper.disableTableCdc(connection, "tableb");
         // Enable a second capture instance
         connection.execute("exec sp_rename 'tableb.colb', 'newcolb';");
-        connection.enableTableCdc("tableb", "after_change");
+        TestHelper.enableTableCdc(connection, "tableb", "after_change");
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_2 + i;
@@ -533,7 +533,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         // Enable a second capture instance
         connection.execute("ALTER TABLE dbo.tableb ALTER COLUMN colb INT");
-        connection.enableTableCdc("tableb", "after_change");
+        TestHelper.enableTableCdc(connection, "tableb", "after_change");
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_2 + i;

@@ -51,10 +51,10 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
                 "CREATE TABLE tablenumb (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
                 "CREATE TABLE tablenumc (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
                 "CREATE TABLE tablenumd (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)");
-        connection.enableTableCdc("tablea");
-        connection.enableTableCdc("tableb");
-        connection.enableTableCdc("tablec");
-        connection.enableTableCdc("tabled");
+        TestHelper.enableTableCdc(connection, "tablea");
+        TestHelper.enableTableCdc(connection, "tableb");
+        TestHelper.enableTableCdc(connection, "tablec");
+        TestHelper.enableTableCdc(connection, "tabled");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
