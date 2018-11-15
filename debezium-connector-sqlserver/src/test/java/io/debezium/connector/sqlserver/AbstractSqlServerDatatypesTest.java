@@ -160,7 +160,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         try (SqlServerConnection connection = TestHelper.testConnection()) {
             connection.execute(ALL_DDLS);
             for (String table: ALL_TABLES) {
-                connection.enableTableCdc(table);
+                TestHelper.enableTableCdc(connection, table);
             }
             connection.execute(
                     "INSERT INTO type_int VALUES (0, 1, 22, 333, 4444, 55555)",

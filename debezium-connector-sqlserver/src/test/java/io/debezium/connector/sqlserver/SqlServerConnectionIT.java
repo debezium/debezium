@@ -34,7 +34,7 @@ public class SqlServerConnectionIT {
             connection.execute("CREATE DATABASE testDB");
             connection.execute("USE testDB");
             // NOTE: you cannot enable CDC on master
-            connection.enableDbCdc("testDB");
+            TestHelper.enableDbCdc(connection, "testDB");
         }
     }
 
@@ -45,7 +45,7 @@ public class SqlServerConnectionIT {
             connection.execute("CREATE DATABASE testDB");
             connection.execute("USE testDB");
             // NOTE: you cannot enable CDC on master
-            connection.enableDbCdc("testDB");
+            TestHelper.enableDbCdc(connection, "testDB");
 
             // create table if exists
             String sql = "IF EXISTS (select 1 from sys.objects where name = 'testTable' and type = 'u')\n"
@@ -54,7 +54,7 @@ public class SqlServerConnectionIT {
             connection.execute(sql);
 
             // then enable CDC and wrapper functions
-            connection.enableTableCdc("testTable");
+            TestHelper.enableTableCdc(connection, "testTable");
             // insert some data
 
             connection.execute("INSERT INTO testTable (NUMBER, TEXT) values (1, 'aaa')\n"
