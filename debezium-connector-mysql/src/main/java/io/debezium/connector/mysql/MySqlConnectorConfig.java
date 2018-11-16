@@ -881,13 +881,13 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
             .withDisplayName("DDL parser mode")
-            .withEnum(DdlParsingMode.class, DdlParsingMode.LEGACY)
+            .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("MySQL DDL statements can be parsed in different ways:" +
-                    "'legacy' (the default) parsing is creating a TokenStream and comparing token by token with an expected values." +
+                    "'legacy' parsing is creating a TokenStream and comparing token by token with an expected values." +
                     "The decisions are made by matched token values." +
-                    "'antlr' uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
+                    "'antlr' (the default) uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
                     "This parser creates a parsing tree for DDL statement, then walks trough it and apply changes by node types in parsed tree.");
 
     /**

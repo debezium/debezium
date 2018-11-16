@@ -5,20 +5,16 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 
 /**
  * @author laomei
  */
 public class MysqlDefaultValueTest extends AbstractMysqlDefaultValueTest {
 
-    private SimpleDdlParserListener listener;
     {
         parserProducer = (converters) -> {
-            MySqlDdlParser parser = new MySqlDdlParser(false, converters);
-            listener = new SimpleDdlParserListener();
-            parser.addListener(listener);
-            return parser;
+            return new MySqlAntlrDdlParser(converters);
         };
     }
 }

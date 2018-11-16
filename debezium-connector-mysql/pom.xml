@@ -543,12 +543,12 @@
       </profile>
 
       <profile>
-        <id>parser-antlr</id>
+        <id>parser-legacy</id>
         <activation>
           <activeByDefault>false</activeByDefault>
         </activation>
         <properties>
-          <ddl.parser.mode>antlr</ddl.parser.mode>
+          <ddl.parser.mode>legacy</ddl.parser.mode>
         </properties>
       </profile>
     </profiles>
