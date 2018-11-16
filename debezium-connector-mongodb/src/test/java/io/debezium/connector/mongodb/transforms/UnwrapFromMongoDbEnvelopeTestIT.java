@@ -119,8 +119,8 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         });
 
         records = consumeRecordsByTopic(1);
-        final SourceRecord candidateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
-        if (((Struct)candidateRecord.value()).get("op").equals("c")) {
+        final SourceRecord candidateUpdateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        if (((Struct)candidateUpdateRecord.value()).get("op").equals("c")) {
             // MongoDB is not providing really consistent snapshot, so the initial insert
             // can arrive both in initial sync snapshot and in oplog
             records = consumeRecordsByTopic(1);
@@ -173,6 +173,30 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         assertThat(transformedUnsetUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedUnsetUpdateValue.get("newStr")).isEqualTo(null);
+
+        // Test FullUpdate
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+                    RawBsonDocument.parse("{'dataStr': 'Hi again'}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+        final SourceRecord candidateFullUpdateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        if (((Struct)candidateFullUpdateRecord.value()).get("op").equals("c")) {
+            // MongoDB is not providing really consistent snapshot, so the initial insert
+            // can arrive both in initial sync snapshot and in oplog
+            records = consumeRecordsByTopic(1);
+        }
+
+        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
+        final SourceRecord FullUpdateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        final SourceRecord transformedFullUpdate = transformation.apply(FullUpdateRecord);
+        final Struct transformedFullUpdateValue = (Struct)transformedFullUpdate.value();
+
+        assertThat(transformedFullUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(transformedFullUpdate.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(transformedFullUpdateValue.get("id")).isEqualTo(1);
+        assertThat(transformedFullUpdateValue.get("dataStr")).isEqualTo("Hi again");
 
         // Test update
         primary().execute("delete", client -> {
