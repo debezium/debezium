@@ -143,10 +143,6 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             if (patchRecord.value() != null) {
                 document = BsonDocument.parse(patchRecord.value().toString());
 
-                if (!document.containsKey("$set") && !document.containsKey("$unset")) {
-                    throw new ConnectException("Unable to process Mongo Operation, a '$set' or '$unset' is necessary.");
-                }
-
                 valueDocument = new BsonDocument();
 
                 if (document.containsKey("$set")) {
@@ -164,6 +160,17 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
                         }
                         valueDocument.append(valueEntry.getKey(), new BsonNull());
                     }
+                }
+
+                if (!document.containsKey("$set") && !document.containsKey("$unset")) {
+                    if (!document.containsKey("_id")) {
+                        throw new ConnectException("Unable to process Mongo Operation, a '$set' or '$unset' is necessary " +
+                                "for partial update or '_id' is expected for full Document replaces.");
+                    }
+                    // In case of a full update we can use the whole Document as it is
+                    // see https://docs.mongodb.com/manual/reference/method/db.collection.update/#replace-a-document-entirely
+                    valueDocument = document;
+                    valueDocument.remove("_id");
                 }
 
                 if (!valueDocument.containsKey("id")) {
