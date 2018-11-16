@@ -5,6 +5,17 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.temporal.TemporalAdjuster;
+
+import org.apache.kafka.connect.data.Field;
+import org.junit.Test;
+
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -12,16 +23,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
-import org.apache.kafka.connect.data.Field;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Month;
-import java.time.temporal.TemporalAdjuster;
-
-import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -76,7 +77,7 @@ public class MySqlValueConvertersTest {
             TemporalPrecisionMode.CONNECT,
             JdbcValueConverters.BigIntUnsignedMode.LONG);
 
-        DdlParser parser = new MySqlDdlParser();
+        DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "JSON_TABLE"));
