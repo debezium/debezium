@@ -80,6 +80,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     @Override
     protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
         if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.SNAPSHOT) {
+            // Terminate any transaction in progress so we can change the isolation level
+            jdbcConnection.connection().rollback();
             // With one exception, you can switch from one isolation level to another at any time during a transaction.
             // The exception occurs when changing from any isolation level to SNAPSHOT isolation.
             // That is why SNAPSHOT isolation level has to be set at the very beginning of the transaction.
