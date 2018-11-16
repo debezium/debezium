@@ -20,8 +20,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.base.Throwables;
-
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
@@ -323,25 +321,28 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     /**
-     * If integratedSecurity and authenticationScheme are propagated to the driver as expected, an exception
-     * will be raised due to the lack of Kerberos infrastructure
+     * Passing the "applicationName" property which can be asserted from the connected sessions".
      */
     @Test
     @FixFor("DBZ-964")
     public void shouldPropagateDatabaseDriverProperties() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
-                .with("database.integratedSecurity", "true")
-                .with("database.authenticationScheme", "JavaKerberos")
+                .with("database.applicationName", "Debezium App DBZ-964")
                 .build();
 
-        start(SqlServerConnector.class, config, (success, msg, error) -> {
-            assertThat(success).isFalse();
-            assertThat(Throwables.getRootCause(error))
-                .hasMessage("Invalid name provided (Mechanism level: KrbException: Cannot locate default realm)");
-        });
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
 
-        assertConnectorNotRunning();
+        // consuming one record to make sure the connector establishes the DB connection which happens asynchronously
+        // after the start() call
+        connection.execute("INSERT INTO tablea VALUES(964, 'a')");
+        consumeRecordsByTopic(1);
+
+        connection.query("select count(1) from sys.dm_exec_sessions where program_name = 'Debezium App DBZ-964'", rs -> {
+            rs.next();
+            assertThat(rs.getInt(1)).isEqualTo(1);
+        });
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
