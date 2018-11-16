@@ -208,10 +208,10 @@ and in your fork:
 
 The project currently builds its jobs in two environments:
 
-- Travis CI for Pull Requests - https://travis-ci.org/debezium/debezium/builds
-  - Test only the current version of the adapters databases
+- Travis CI for pull requests: https://travis-ci.org/debezium/debezium/builds
+  - Tests run only against the current version of each supported database
 - Jenkins CI for tests matrix, deployment, release, etc - http://ci.hibernate.org/view/Debezium/
-  - Test multiple versions of the adapters databases
+  - Test run against all database versions supported by the individual connectors
   - Test Kafka versions
   - Deploy and release
 
