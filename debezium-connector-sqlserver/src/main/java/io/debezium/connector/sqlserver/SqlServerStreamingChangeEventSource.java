@@ -58,7 +58,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
         try {
-            final TableId[] tables = schema.getCapturedTables().toArray(new TableId[schema.getCapturedTables().size()]);
+            final TableId[] tables = schema.tableIds().toArray(new TableId[0]);
             final Lsn lastProcessedLsnOnStart = offsetContext.getChangeLsn();
             LOGGER.info("Last LSN recorded in offsets is {}", lastProcessedLsnOnStart);
             Lsn lastProcessedLsn = offsetContext.getChangeLsn();
