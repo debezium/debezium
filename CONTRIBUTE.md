@@ -22,6 +22,7 @@ The Debezium community welcomes anyone that wants to help out in any way, whethe
   - [Rebasing](#rebasing)
 - Proposing the changes
   - [Creating a pull request](#creating-a-pull-request)
+  - [Continuous Integration](#continuous-integration)
   - [Summary](#summary)
 
 ### Talk to us
@@ -203,6 +204,16 @@ and in your fork:
 
 (This last command is a bit strange, but it basically is pushing an empty branch (the space before the `:` character) to the named branch. Pushing an empty branch is the same thing as removing it.)
 
+### Continuous Integration
+
+The project currently builds its jobs in two environments:
+
+- Travis CI for Pull Requests - https://travis-ci.org/debezium/debezium/builds
+  - Test only the current version of the adapters databases
+- Jenkins CI for tests matrix, deployment, release, etc - http://ci.hibernate.org/view/Debezium/
+  - Test multiple versions of the adapters databases
+  - Test Kafka versions
+  - Deploy and release
 
 ### Summary
 
