@@ -678,6 +678,7 @@ public final class EmbeddedEngine implements Runnable {
                                 return offsetReader;
                             }
 
+                            @Override
                             public Map<String, String> configs() {
                                 // TODO Auto-generated method stub
                                 return null;
@@ -901,7 +902,7 @@ public final class EmbeddedEngine implements Runnable {
 
     @Override
     public String toString() {
-        return "EmbeddedConnector{id=" + config.getString(ENGINE_NAME) + '}';
+        return "EmbeddedEngine{id=" + config.getString(ENGINE_NAME) + '}';
     }
 
     protected static class EmbeddedConfig extends WorkerConfig {
