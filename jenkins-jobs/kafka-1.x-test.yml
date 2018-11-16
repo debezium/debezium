@@ -30,7 +30,7 @@
           timeout: 45
     triggers:
       - reverse:
-          jobs: 'debezium-postgresql-alpine-11-test'
+          jobs: 'debezium-postgresql-matrix-test'
           result: 'failure'
     builders:
       - maven-target:
