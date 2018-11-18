@@ -10,6 +10,8 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
@@ -45,6 +47,8 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
     private static final String DB_NAME = "transform";
     private static final String COLLECTION_NAME = "source";
     private static final String TOPIC_NAME = "mongo.transform.source";
+
+    private static final String CONFIG_DROP_TOMBSTONES = "drop.tombstones";
 
     private Configuration config;
     private MongoDbTaskContext context;
@@ -90,6 +94,10 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
+
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put(CONFIG_DROP_TOMBSTONES, "false");
+        transformation.configure(transformationConfig);
 
         // Test insert
         primary().execute("insert", client -> {

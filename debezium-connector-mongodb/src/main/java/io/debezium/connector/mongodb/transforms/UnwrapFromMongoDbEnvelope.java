@@ -111,6 +111,16 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
 
+    private static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
+            .withDisplayName("Drop tombstones")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(true)
+            .withDescription("Debezium by default generates a tombstone record to enable Kafka compaction after "
+                    + "a delete record was generated. This record is usually filtered out to avoid duplicates "
+                    + "as a delete record is converted to a tombstone record, too");
+
     private final ExtractField<R> afterExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<R>();
     private final ExtractField<R> keyExtractor = new ExtractField.Key<R>();
@@ -120,6 +130,8 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     private boolean flattenStruct;
     private String delimiter;
+
+    private boolean dropTombstones;
 
     private R getTombstoneRecord(R r) {
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
@@ -148,6 +160,10 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     public R apply(R r) {
         // Tombstone message
         if (r.value() == null) {
+            if (dropTombstones) {
+                LOGGER.trace("Tombstone {} arrived and requested to be dropped", r.key());
+                return null;
+            }
             return getTombstoneRecord(r);
         }
 
@@ -295,7 +311,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
     @Override
     public void configure(final Map<String, ?> map) {
         final Configuration config = Configuration.from(map);
-        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER);
+        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER, DROP_TOMBSTONES);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -305,6 +321,8 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);
+
+        dropTombstones = config.getBoolean(DROP_TOMBSTONES);
 
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", "after");
