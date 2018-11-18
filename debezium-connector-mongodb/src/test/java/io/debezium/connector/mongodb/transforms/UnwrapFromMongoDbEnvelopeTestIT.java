@@ -10,6 +10,8 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
@@ -91,6 +93,10 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
+
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("drop.tombstones", "false");
+        transformation.configure(transformationConfig);
 
         // Test insert
         primary().execute("insert", client -> {
