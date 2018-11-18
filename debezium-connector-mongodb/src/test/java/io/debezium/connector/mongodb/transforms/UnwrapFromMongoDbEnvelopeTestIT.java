@@ -17,6 +17,7 @@ import java.util.function.BiConsumer;
 
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -73,6 +74,51 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
             if (context != null) context.getConnectionContext().shutdown();
         }
         transformation.close();
+    }
+
+    @Test
+    @FixFor("DBZ-563")
+    public void shouldDropTombstoneByDefault() throws InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "transform.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), DB_NAME);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // First insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+                    .insertOne(Document.parse("{'_id': 1, 'dataStr': 'hello', 'dataInt': 123, 'dataLong': 80000000000}"));
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
+
+        // Test Delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
+        });
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(2);
+
+        // Test tombstone record is dropped
+        // Note we're getting the second record which is the tombstone
+        final SourceRecord tombstoneRecord = records.recordsForTopic(TOPIC_NAME).get(1);
+        final SourceRecord transformedTombstone = transformation.apply(tombstoneRecord);
+
+        assertThat(transformedTombstone).isNull();
     }
 
     @Test
