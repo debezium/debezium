@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
+import io.debezium.data.SchemaUtil;
+import io.debezium.data.VerifyRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -198,21 +200,31 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         assertThat(transformedFullUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedFullUpdateValue.get("dataStr")).isEqualTo("Hi again");
 
-        // Test update
+        // Test Delete
         primary().execute("delete", client -> {
             client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
         });
 
         records = consumeRecordsByTopic(2);
-
         assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(2);
+
+        // Test mongo Deletion operation
         final SourceRecord deleteRecord = records.recordsForTopic(TOPIC_NAME).get(0);
         final SourceRecord transformedDelete = transformation.apply(deleteRecord);
         final Struct transformedDeleteValue = (Struct)transformedDelete.value();
 
         assertThat(transformedDeleteValue).isNull();
-        assertThat(records.recordsForTopic(TOPIC_NAME).get(1).value()).isNull();
-    }
+
+        // Test tombstone record
+        final SourceRecord tombstoneRecord = records.recordsForTopic(TOPIC_NAME).get(1);
+        final SourceRecord transformedTombstone = transformation.apply(tombstoneRecord);
+
+        assertThat(transformedTombstone.value()).isNull();
+
+        // Assert deletion preserves key
+        assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
+        assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
+}
 
     private MongoPrimary primary() {
         ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
