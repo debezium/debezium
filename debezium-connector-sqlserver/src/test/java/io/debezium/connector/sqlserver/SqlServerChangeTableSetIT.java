@@ -184,6 +184,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         final int ID_START_1 = 10;
         final int ID_START_2 = 100;
         final int ID_START_3 = 1000;
+        final int ID_START_4 = 10000;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .build();
@@ -218,10 +219,6 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         // Enable a second capture instance
         connection.execute("ALTER TABLE dbo.tableb ADD newcol INT NOT NULL DEFAULT 0");
-        connection.enableTableCdc("tableb", "after_change");
-        if (pauseAfterCaptureChange) {
-            Thread.sleep(5_000);
-        }
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_2 + i;
@@ -244,10 +241,14 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                         .name("server1.testDB.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("newcol", Schema.INT32_SCHEMA)
                         .build()
             );
         });
+
+        connection.enableTableCdc("tableb", "after_change");
+        if (pauseAfterCaptureChange) {
+            Thread.sleep(5_000);
+        }
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_3 + i;
@@ -256,6 +257,32 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             );
             connection.execute(
                     "INSERT INTO tableb VALUES(" + id + ", 'b3', 3)"
+            );
+        }
+        records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
+
+        records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
+            assertSchemaMatchesStruct(
+                    (Struct)((Struct)record.value()).get("after"),
+                    SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.testDB.dbo.tableb.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("newcol", Schema.INT32_SCHEMA)
+                        .build()
+            );
+        });
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START_4 + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a4')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b4', 4)"
             );
         }
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
