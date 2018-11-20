@@ -2,10 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.9.0.Beta1
+November 20th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339372)
+
+### New features since 0.9.0.Alpha2
+
+* Add STATUS_STORAGE_TOPIC environment variable to container images [DBZ-893](https://issues.jboss.org/browse/DBZ-893)
+* Support Postgres 11 in Decoderbufs [DBZ-955](https://issues.jboss.org/browse/DBZ-955)
+* Define the data directory where tests are storing their data [DBZ-963](https://issues.jboss.org/browse/DBZ-963)
+* Upgrade Kafka to 2.0.1 [DBZ-979](https://issues.jboss.org/browse/DBZ-979)
+* Implement unified metrics across connectors [DBZ-776](https://issues.jboss.org/browse/DBZ-776)
+* Initial snapshot using snapshot isolation level [DBZ-941](https://issues.jboss.org/browse/DBZ-941)
+* Add decimal.handling.mode for SQLServer Configuration [DBZ-953](https://issues.jboss.org/browse/DBZ-953)
+* Support pass-through of "database." properties to JDBC driver [DBZ-964](https://issues.jboss.org/browse/DBZ-964)
+* Handle changes of table definitions and tables created while streaming [DBZ-812](https://issues.jboss.org/browse/DBZ-812)
+
+
+### Breaking changes since 0.9.0.Alpha2
+
+MySQL Connector now uses Antlr parser as [the default](https://issues.jboss.org/browse/DBZ-990).
+
+
+### Fixes since 0.9.0.Alpha2
+
+* Error while parsing JSON column type for MySQL [DBZ-935](https://issues.jboss.org/browse/DBZ-935)
+* wal2json CITEXT columns set to empty strings [DBZ-937](https://issues.jboss.org/browse/DBZ-937)
+* Base docker image is deprecated [DBZ-939](https://issues.jboss.org/browse/DBZ-939)
+* Mysql connector failed to parse add partition statement [DBZ-959](https://issues.jboss.org/browse/DBZ-959)
+* PostgreSQL replication slots not updated in transactions [DBZ-965](https://issues.jboss.org/browse/DBZ-965)
+* wal2json_streaming decoder does not provide the right plugin name [DBZ-970](https://issues.jboss.org/browse/DBZ-970)
+* Create topics command doesn't work in Kafka docker image [DBZ-976](https://issues.jboss.org/browse/DBZ-976)
+* Antlr parser: support quoted engine names in DDL [DBZ-990](https://issues.jboss.org/browse/DBZ-990)
+
+
+### Other changes since 0.9.0.Alpha2
+
+* Switch to Antlr-based parser implementation by default [DBZ-757](https://issues.jboss.org/browse/DBZ-757)
+* Support RENAME column syntax from MySQL 8.0 [DBZ-780](https://issues.jboss.org/browse/DBZ-780)
+* Fix documentation of 'array.encoding' option [DBZ-925](https://issues.jboss.org/browse/DBZ-925)
+* Support MongoDB 4.0 [DBZ-974](https://issues.jboss.org/browse/DBZ-974)
+
+
 ## 0.9.0.Alpha2
 October 4th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12338766)
 
-### New features since 0.9.0.Alpha2
+### New features since 0.9.0.Alpha1
 
 * Build Alpine Linux versions of the PostgreSQL containers [DBZ-705](https://issues.jboss.org/browse/DBZ-705)
 * Refactor methods to read MySQL sytem variables [DBZ-849](https://issues.jboss.org/browse/DBZ-849)
@@ -22,13 +63,13 @@ October 4th, 2018 [Detailed release notes](https://issues.jboss.org/secure/Relea
 * Add connector type to source info [DBZ-918](https://issues.jboss.org/browse/DBZ-918)
 
 
-### Breaking changes since 0.9.0.Alpha2
+### Breaking changes since 0.9.0.Alpha1
 
 MySQL JDBC driver was [upgraded](https://issues.jboss.org/browse/DBZ-763) to version 8.x.
 Kafka has been [upgraded](https://issues.jboss.org/browse/DBZ-858) to version 2.0.0.
 
 
-### Fixes since 0.9.0.Alpha2
+### Fixes since 0.9.0.Alpha1
 
 * Global read lock not release when exception raised during snapshot [DBZ-769](https://issues.jboss.org/browse/DBZ-769)
 * Abort loops in MongoPrimary#execute() if the connector is stopped [DBZ-784](https://issues.jboss.org/browse/DBZ-784)
@@ -60,7 +101,7 @@ Kafka has been [upgraded](https://issues.jboss.org/browse/DBZ-858) to version 2.
 * Discard null fields in MongoDB event flattening SMT [DBZ-928](https://issues.jboss.org/browse/DBZ-928)
 
 
-### Other changes since 0.9.0.Alpha2
+### Other changes since 0.9.0.Alpha1
 
 * Create Travis CI build for debezium-incubator repository [DBZ-817](https://issues.jboss.org/browse/DBZ-817)
 * Cache prepared statements in JdbcConnection [DBZ-819](https://issues.jboss.org/browse/DBZ-819)
