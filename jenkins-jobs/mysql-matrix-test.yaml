@@ -1,20 +1,18 @@
-# Job definition to test MongoDB connector against MongoDB
+# Job definition to test MySQL connector against different MySQL versions
 ---
 - job:
     project-type: matrix
-    name: debezium-mongodb-matrix-test
-    display-name: Debezium MongoDB Test Matrix
-    description: Executes tests for MongoDB Connector with MongoDB matrix
+    name: debezium-mysql-matrix-test
+    display-name: Debezium MySQL Test Matrix
+    description: Executes tests for MySQL Connector with MySQL matrix
     execution-strategy:
       sequential: true
     axes:
       - axis:
           type: user-defined
-          name: MONGODB_VERSION
+          name: MYSQL_VERSION
           values:
-            - 3.2
-            - 3.4
-            - 4.0
+            - 8.0.13
     node: Slave
     properties:
       - build-discarder:
@@ -40,12 +38,12 @@
           timeout: 45
     triggers:
       - reverse:
-          jobs: 'debezium-mysql-matrix-test'
+          jobs: 'debezium-postgresql-matrix-test'
           result: 'failure'
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mongodb -am -fae -Dmaven.test.failure.ignore=true -Dversion.mongo.server=$MONGODB_VERSION
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae -Dmaven.test.failure.ignore=true -Dversion.mysql.server=$MYSQL_VERSION
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
