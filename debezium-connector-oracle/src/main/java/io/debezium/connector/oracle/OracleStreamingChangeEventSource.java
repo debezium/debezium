@@ -40,6 +40,8 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     private final OracleOffsetContext offsetContext;
     private final String xStreamServerName;
     private volatile XStreamOut xsOut;
+    private final boolean tablenameCaseInsensitive;
+    private final int posVersion;
 
     public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
         this.jdbcConnection = jdbcConnection;
@@ -49,6 +51,8 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
         this.schema = schema;
         this.offsetContext = offsetContext;
         this.xStreamServerName = connectorConfig.getXoutServerName();
+        this.tablenameCaseInsensitive = connectorConfig.getTablenameCaseInsensitive();
+        this.posVersion = connectorConfig.getOracleVersion().getPosVersion();
     }
 
     @Override
@@ -58,7 +62,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
                     convertScnToPosition(offsetContext.getScn()), 1, 1, XStreamOut.DEFAULT_MODE);
 
-            LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext);
+            LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive);
 
             // 2. receive events while running
             while(context.isRunning()) {
@@ -104,7 +108,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
 
     private byte[] convertScnToPosition(long scn) {
         try {
-            return XStreamUtility.convertSCNToPosition(new NUMBER(scn), XStreamUtility.POS_VERSION_V2);
+            return XStreamUtility.convertSCNToPosition(new NUMBER(scn), this.posVersion);
         }
         catch (StreamsException e) {
             throw new RuntimeException(e);

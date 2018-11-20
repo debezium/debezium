@@ -37,13 +37,15 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final Clock clock;
     private final RelationalDatabaseSchema schema;
     private final OracleOffsetContext offsetContext;
+    private final boolean tablenameCaseInsensitive;
 
-    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext) {
+    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext,boolean tablenameCaseInsensitive) {
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = offsetContext;
+        this.tablenameCaseInsensitive = tablenameCaseInsensitive;
     }
 
     @Override
@@ -117,7 +119,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private TableId getTableId(LCR lcr) {
-        return new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName());
+        if (!this.tablenameCaseInsensitive) {
+            return new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName());
+        }
+        else {
+            return new TableId(lcr.getSourceDatabaseName().toLowerCase(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
+        }
+        
     }
 
     @Override

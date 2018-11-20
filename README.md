@@ -34,22 +34,43 @@ In order to build the Debezium Oracle connector, the following prerequisites mus
 (Running Oracle in VirtualBox is not a requirement, but we found it to be the easiest in terms of set-up)
 * The Instant Client is downloaded (e.g. [from here](http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html) for Linux) and unpacked
 * The _xstream.jar_ and _ojdbc8.jar_ from the Instant Client directory must be installed to the local Maven repository:
-  * mvn install:install-file \
+
+```bash
+mvn install:install-file \
   -DgroupId=com.oracle.instantclient \
   -DartifactId=ojdbc8 \
   -Dversion=12.1.0.2 \
   -Dpackaging=jar \
-  -Dfile=ojdbc8.jar`
-  * mvn install:install-file \
+  -Dfile=ojdbc8.jar
+
+mvn install:install-file \
   -DgroupId=com.oracle.instantclient \
   -DartifactId=xstreams \
   -Dversion=12.1.0.2 \
   -Dpackaging=jar \
   -Dfile=xstreams.jar
+```
 
 Then the Oracle connector can be built like so:
 
     $ mvn clean install -pl debezium-connector-oracle -am -Poracle -Dinstantclient.dir=/path/to/instant-client-dir
+
+## For Oracle 11g
+
+To run Debezium oracle connector with Oracle 11g, add these additional parameters. If run with Oralce 12c+, leave these parameters to default.
+
+```json
+"database.tablename.case.insensitive": "true"
+"database.oracle.version": "11"
+```
+
+By default, DBZ will ignore some admin tables in oracle 12c, but those tables are different in oracle 11g, by now, DBZ will report error on those tables. So when use DBZ on oracle 11g, use table white list, remember to use lower case.
+
+Example:
+
+```json
+"table.whitelist":"orcl\\.debezium\\.(.*)"
+```
 
 ## Contributing
 

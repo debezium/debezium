@@ -1,3 +1,5 @@
+.vscode/**
+
 activemq-data/
 .idea/
 *.iml
