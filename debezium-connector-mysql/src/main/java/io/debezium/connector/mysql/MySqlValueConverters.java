@@ -160,6 +160,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || matches(typeName, "MULTIPOINT")
                 || matches(typeName, "MULTILINESTRING")
                 || matches(typeName, "MULTIPOLYGON")
+                || matches(typeName, "GEOMCOLLECTION")
                 || matches(typeName, "GEOMETRYCOLLECTION")) {
             return io.debezium.data.geometry.Geometry.builder();
         }
@@ -211,6 +212,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || matches(typeName, "MULTIPOINT")
                 || matches(typeName, "MULTILINESTRING")
                 || matches(typeName, "MULTIPOLYGON")
+                || matches(typeName, "GEOMCOLLECTION")
                 || matches(typeName, "GEOMETRYCOLLECTION")) {
             return (data -> convertGeometry(column, fieldDefn, data));
         }

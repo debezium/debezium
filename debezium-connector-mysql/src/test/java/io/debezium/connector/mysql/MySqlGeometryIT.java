@@ -72,12 +72,12 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         //Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 2;
-        int numDataRecords = 4 + 2;
+        int numDataRecords = 3 + 2;
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(3);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_507_geometry")).size()).isEqualTo(2);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
@@ -114,7 +114,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         //Testing.Debug.enable();
         int numTables = 2;
-        int numDataRecords = 4 + 2;
+        int numDataRecords = 3 + 2;
         int numDdlRecords =
             numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numSetVariables = 1;
@@ -122,7 +122,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numDdlRecords + numSetVariables);
-        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(4);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(3);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_507_geometry")).size()).isEqualTo(2);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName(), "");
@@ -160,14 +160,28 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             Double actualY = after.getStruct("point").getFloat64("y");
             Integer actualSrid = after.getStruct("point").getInt32("srid");
             //Validate the values
-            assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
-            assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+            try {
+                assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
+                assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+            }
+            catch (AssertionError e) {
+                // MySQL 8 has swapped X and Y
+                assertThat(actualX).isEqualTo(expectedY, Delta.delta(0.01));
+                assertThat(actualY).isEqualTo(expectedX, Delta.delta(0.01));
+            }
             assertThat(actualSrid).isEqualTo(expectedSrid);
             //Test WKB
             Point point = (Point) WkbGeometryReader.readGeometry(new ByteReader((byte[]) after.getStruct("point")
                     .get("wkb")));
-            assertThat(point.getX()).isEqualTo(expectedX, Delta.delta(0.01));
-            assertThat(point.getY()).isEqualTo(expectedY, Delta.delta(0.01));
+            try {
+                assertThat(point.getX()).isEqualTo(expectedX, Delta.delta(0.01));
+                assertThat(point.getY()).isEqualTo(expectedY, Delta.delta(0.01));
+            }
+            catch (AssertionError e) {
+                // MySQL 8 has swapped X and Y
+                assertThat(point.getX()).isEqualTo(expectedY, Delta.delta(0.01));
+                assertThat(point.getY()).isEqualTo(expectedX, Delta.delta(0.01));
+            }
         } else if (expectedX != null) {
             Assert.fail("Got a null geometry but didn't expect to");
         }
