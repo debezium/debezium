@@ -364,6 +364,16 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(tables.forTable(new TableId(null, null, "flat_view_request_log"))).isNotNull();
     }
 
+    @Test
+    @FixFor("DBZ-688")
+    public void parseGeomCollection() {
+        String ddl = "CREATE TABLE geomtable (id int(11) PRIMARY KEY, collection GEOMCOLLECTION DEFAULT NULL)";
+
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(tables.forTable(new TableId(null, null, "geomtable"))).isNotNull();
+    }
+
     @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);

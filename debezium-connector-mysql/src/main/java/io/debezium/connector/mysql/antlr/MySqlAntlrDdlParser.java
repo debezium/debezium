@@ -181,6 +181,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         ));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.SpatialDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeEntry(Types.OTHER, MySqlParser.GEOMETRYCOLLECTION),
+                new DataTypeEntry(Types.OTHER, MySqlParser.GEOMCOLLECTION),
                 new DataTypeEntry(Types.OTHER, MySqlParser.LINESTRING),
                 new DataTypeEntry(Types.OTHER, MySqlParser.MULTILINESTRING),
                 new DataTypeEntry(Types.OTHER, MySqlParser.MULTIPOINT),
