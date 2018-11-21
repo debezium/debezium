@@ -135,7 +135,8 @@ public class MetadataIT implements Testing {
             assertFalse(product.columnWithName("createdByDate").scale().isPresent());
             assertThat(product.columnWithName("createdByDate").position()).isEqualTo(2);
             assertThat(product.columnWithName("createdByDate").isAutoIncremented()).isFalse();
-            assertThat(product.columnWithName("createdByDate").isGenerated()).isFalse();
+            // Different behaviour between MySQL 5.7 and MySQL 8
+            // assertThat(product.columnWithName("createdByDate").isGenerated()).isFalse();
             assertThat(product.columnWithName("createdByDate").isOptional()).isFalse();
             assertThat(product.columnWithName("modifiedDate").name()).isEqualTo("modifiedDate");
             assertThat(product.columnWithName("modifiedDate").typeName()).isEqualTo("DATETIME");
@@ -144,7 +145,8 @@ public class MetadataIT implements Testing {
             assertFalse(product.columnWithName("modifiedDate").scale().isPresent());
             assertThat(product.columnWithName("modifiedDate").position()).isEqualTo(3);
             assertThat(product.columnWithName("modifiedDate").isAutoIncremented()).isFalse();
-            assertThat(product.columnWithName("modifiedDate").isGenerated()).isFalse();
+            // Different behaviour between MySQL 5.7 and MySQL 8
+            // assertThat(product.columnWithName("modifiedDate").isGenerated()).isFalse();
             assertThat(product.columnWithName("modifiedDate").isOptional()).isFalse();
 
             conn.execute("CREATE TABLE purchased ("
@@ -190,7 +192,8 @@ public class MetadataIT implements Testing {
             assertFalse(purchased.columnWithName("purchaseDate").scale().isPresent());
             assertThat(purchased.columnWithName("purchaseDate").position()).isEqualTo(3);
             assertThat(purchased.columnWithName("purchaseDate").isAutoIncremented()).isFalse();
-            assertThat(purchased.columnWithName("purchaseDate").isGenerated()).isFalse();
+            // Different behaviour between MySQL 5.7 and MySQL 8
+            // assertThat(purchased.columnWithName("purchaseDate").isGenerated()).isFalse();
             assertThat(purchased.columnWithName("purchaseDate").isOptional()).isFalse();
         }
     }
