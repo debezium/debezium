@@ -43,7 +43,7 @@
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae -Dmaven.test.failure.ignore=true -Dversion.mysql.server=$MYSQL_VERSION
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae -Dmaven.test.failure.ignore=true -Dversion.mysql.server=$MYSQL_VERSION -Passembly
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"
