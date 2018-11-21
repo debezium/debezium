@@ -36,6 +36,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.util.Testing;
@@ -874,6 +875,79 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
+    }
+
+    @Test
+    @FixFor("DBZ-977")
+    public void shouldIgnoreAlterTableForNonCapturedTablesNotStoredInHistory() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
+                              .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(2);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("ALTER TABLE orders ADD COLUMN (newcol INT)");
+                connection.execute("ALTER TABLE customers ADD COLUMN (newcol INT)");
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email',1);");
+            }
+        }
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("customers")).size()).isEqualTo(1);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-977")
+    public void shouldIgnoreAlterTableForNonCapturedTablesStoredInHistory() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(6);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("ALTER TABLE orders ADD COLUMN (newcol INT)");
+                connection.execute("ALTER TABLE customers ADD COLUMN (newcol INT)");
+                connection.execute("INSERT INTO customers VALUES "
+                        + "(default,'name','surname','email',1);");
+            }
+        }
+
+        records = consumeRecordsByTopic(3);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("customers")).size()).isEqualTo(1);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(2);
+
+        stopConnector();
     }
 
     protected static class BinlogPosition {

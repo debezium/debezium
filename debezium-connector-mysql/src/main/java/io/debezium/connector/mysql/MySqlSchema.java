@@ -109,7 +109,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
 
         this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(
                 getValueConverters(configuration),
-                storeOnlyMonitoredTablesDdl ? getTableFilter() : TableFilter.includeAll()
+                getTableFilter()
         );
         this.ddlChanges = this.ddlParser.getDdlChanges();
 
