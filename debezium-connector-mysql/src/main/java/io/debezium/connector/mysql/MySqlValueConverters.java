@@ -160,8 +160,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || matches(typeName, "MULTIPOINT")
                 || matches(typeName, "MULTILINESTRING")
                 || matches(typeName, "MULTIPOLYGON")
-                || matches(typeName, "GEOMCOLLECTION")
-                || matches(typeName, "GEOMETRYCOLLECTION")) {
+                || isGeometryCollection(typeName)) {
             return io.debezium.data.geometry.Geometry.builder();
         }
         if (matches(typeName, "YEAR")) {
@@ -212,8 +211,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || matches(typeName, "MULTIPOINT")
                 || matches(typeName, "MULTILINESTRING")
                 || matches(typeName, "MULTIPOLYGON")
-                || matches(typeName, "GEOMCOLLECTION")
-                || matches(typeName, "GEOMETRYCOLLECTION")) {
+                || isGeometryCollection(typeName)) {
             return (data -> convertGeometry(column, fieldDefn, data));
         }
         if (matches(typeName, "POINT")){
@@ -505,6 +503,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected boolean matches(String upperCaseTypeName, String upperCaseMatch) {
         if (upperCaseTypeName == null) return false;
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
+    }
+
+    /**
+     * Determine if the uppercase form of a column's type is geometry collection independent of JDBC driver or server version.
+     *
+     * @param upperCaseTypeName the upper case form of the column's {@link Column#typeName() type name}
+     * @return {@code true} if the type is geometry collection
+     */
+    protected boolean isGeometryCollection(String upperCaseTypeName) {
+        if (upperCaseTypeName == null) return false;
+        return upperCaseTypeName.equals("GEOMETRYCOLLECTION") || upperCaseTypeName.equals("GEOMCOLLECTION") || upperCaseTypeName.endsWith(".GEOMCOLLECTION");
     }
 
     protected List<String> extractEnumAndSetOptions(Column column) {
