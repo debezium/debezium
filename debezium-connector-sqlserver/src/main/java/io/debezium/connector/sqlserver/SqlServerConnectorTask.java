@@ -164,7 +164,9 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
     @Override
     public void commit() throws InterruptedException {
-        coordinator.commitOffset(lastOffset);
+        if (coordinator != null) {
+            coordinator.commitOffset(lastOffset);
+        }
     }
 
     @Override
@@ -208,7 +210,9 @@ public class SqlServerConnectorTask extends BaseSourceTask {
             LOGGER.error("Exception while closing JDBC connection", e);
         }
 
-        schema.close();
+        if (schema != null) {
+            schema.close();
+        }
     }
 
     @Override
