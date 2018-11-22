@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.debezium.util.DelayStrategy;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -32,6 +31,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.postgresql.util.PGmoney;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
@@ -41,7 +41,9 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
@@ -81,7 +83,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         // MDC should be in inherited from parent to child threads
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            CompletableFuture.runAsync(this::delaySnapshot, executorService)
+            CompletableFuture.runAsync(this::delaySnapshotIfNeeded, executorService)
                              .thenRun(() -> this.takeSnapshot(eventConsumer))
                              .thenRun(() -> this.startStreaming(eventConsumer, failureConsumer))
                              .exceptionally(e -> {
@@ -97,11 +99,21 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         }
     }
 
-    private void delaySnapshot() {
+    private void delaySnapshotIfNeeded() {
         Duration delay = taskContext.getConfig().getSnapshotDelay();
-        if (!delay.isZero() && !delay.isNegative()) {
-            logger.info("The connector will wait for " + delay.toMillis() + " ms before proceeding");
-            DelayStrategy.constant(delay.toMillis()).sleepWhen(true);
+        if (delay.isZero() || delay.isNegative()) {
+            return;
+        }
+
+        logger.info("The connector will wait for {} ms before proceeding", delay.toMillis());
+        Threads.Timer timer = Threads.timer(Clock.SYSTEM, delay);
+        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+        while (!timer.expired()) {
+            try {
+                metronome.pause();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

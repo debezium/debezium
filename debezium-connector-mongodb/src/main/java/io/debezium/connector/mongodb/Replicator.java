@@ -18,8 +18,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.util.DelayStrategy;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -38,10 +36,13 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
@@ -258,7 +259,7 @@ public class Replicator {
      * @return {@code true} if the initial sync was completed, or {@code false} if it was stopped for any reason
      */
     protected boolean performInitialSync() {
-        delaySnapshot();
+        delaySnapshotIfNeeded();
 
         logger.info("Beginning initial sync of '{}' at {}", rsName, source.lastOffset(rsName));
         source.startInitialSync(replicaSet.replicaSetName());
@@ -346,11 +347,21 @@ public class Replicator {
         return true;
     }
 
-    private void delaySnapshot() {
+    private void delaySnapshotIfNeeded() {
         Duration delay = Duration.ofMillis(context.getConnectionContext().config.getLong(CommonConnectorConfig.SNAPSHOT_DELAY_MS));
-        if (!delay.isZero() && !delay.isNegative()) {
-            logger.info("The connector will wait for " + delay.toMillis() + " ms before proceeding");
-            DelayStrategy.constant(delay.toMillis()).sleepWhen(true);
+        if (delay.isZero() || delay.isNegative()) {
+            return;
+        }
+
+        logger.info("The connector will wait for {} ms before proceeding", delay.toMillis());
+        Threads.Timer timer = Threads.timer(Clock.SYSTEM, delay);
+        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+        while (!timer.expired()) {
+            try {
+                metronome.pause();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
