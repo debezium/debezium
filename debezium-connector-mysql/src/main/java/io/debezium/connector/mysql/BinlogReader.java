@@ -281,8 +281,7 @@ public class BinlogReader extends AbstractReader {
             GtidSet availableServerGtidSet = new GtidSet(availableServerGtidStr);
 
             // also take into account purged GTID logs
-            String purgedServerGtidStr = connectionContext.purgedGtidSet();
-            GtidSet purgedServerGtidSet = new GtidSet(purgedServerGtidStr);
+            GtidSet purgedServerGtidSet = connectionContext.purgedGtidSet();
             logger.info("GTID set purged on server: {}", purgedServerGtidSet);
 
             GtidSet filteredGtidSet = context.filterGtidSet(availableServerGtidSet, purgedServerGtidSet);

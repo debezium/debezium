@@ -178,11 +178,11 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     /**
-     * Get the purged gtid values from MySQL (gtid_purged value)
+     * Get the purged GTID values from MySQL (gtid_purged value)
      *
-     * @return string representation of GTID set or empty string
+     * @return A GTID set; may be empty if not using GTIDs or none have been purged yet
      */
-    public String purgedGtidSet() {
+    public GtidSet purgedGtidSet() {
         AtomicReference<String> gtidSetStr = new AtomicReference<String>();
         try {
             jdbc.query("SHOW GLOBAL VARIABLES LIKE \"gtid_purged\"", rs -> {
@@ -190,12 +190,17 @@ public class MySqlJdbcContext implements AutoCloseable {
                     gtidSetStr.set(rs.getString(2));// GTID set, may be null, blank, or contain a GTID set
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at gtid_purged variable: ", e);
         }
 
         String result = gtidSetStr.get();
-        return result != null ? result : "";
+        if (result == null) {
+            result = "";
+        }
+
+        return new GtidSet(result);
     }
 
     /**

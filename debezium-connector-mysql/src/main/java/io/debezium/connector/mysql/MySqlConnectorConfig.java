@@ -746,7 +746,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * If set to 'latest', connector when encountering new GTID channel after job restart will start reading it from the
      * latest executed position (default). When set to 'earliest' the connector will start reading new GTID channels from the first available position.
-     * This is useful when in active-passive mysql setup during failover new GTID channel starts receiving writes, see #DBZ-923
+     * This is useful when in active-passive mysql setup during failover new GTID channel starts receiving writes, see DBZ-923.
      *
      * Defaults to latest.
      */
@@ -756,7 +756,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("If set to 'latest', when connector sees new GTID, it will start consuming gtid channel from the server latest executed gtid position. If 'earliest' connector starts reading channel from first available (not purged) gtid position on the server.");
-
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
                                                            .withDisplayName("Connection Timeout (ms)")
@@ -1008,6 +1007,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
+                                                     GTID_NEW_CHANNEL_POSITION,
                                                      TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
@@ -1034,6 +1034,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     private final SnapshotLockingMode snapshotLockingMode;
     private final DdlParsingMode ddlParsingMode;
+    private final GtidNewChannelPosition gitIdNewChannelPosition;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -1058,6 +1059,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
         this.ddlParsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
+
+        String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
+        this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
@@ -1066,6 +1070,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public DdlParsingMode getDdlParsingMode() {
         return ddlParsingMode;
+    }
+
+    public GtidNewChannelPosition gtidNewChannelPosition() {
+        return gitIdNewChannelPosition;
     }
 
     protected static ConfigDef configDef() {
@@ -1079,7 +1087,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
-                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, BUFFER_SIZE_FOR_BINLOG_READER,
+                    GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, GTID_NEW_CHANNEL_POSITION, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,

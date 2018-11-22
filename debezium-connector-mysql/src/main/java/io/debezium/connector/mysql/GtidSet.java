@@ -22,7 +22,7 @@ import io.debezium.annotation.Immutable;
 /**
  * A set of MySQL GTIDs. This is an improvement of {@link com.github.shyiko.mysql.binlog.GtidSet} that is immutable,
  * and more properly supports comparisons.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -52,7 +52,7 @@ public final class GtidSet {
     /**
      * Obtain a copy of this {@link GtidSet} except with only the GTID ranges that have server UUIDs that match the given
      * predicate.
-     * 
+     *
      * @param sourceFilter the predicate that returns whether a server UUID is to be included
      * @return the new GtidSet, or this object if {@code sourceFilter} is null; never null
      */
@@ -67,7 +67,7 @@ public final class GtidSet {
 
     /**
      * Get an immutable collection of the {@link UUIDSet range of GTIDs for a single server}.
-     * 
+     *
      * @return the {@link UUIDSet GTID ranges for each server}; never null
      */
     public Collection<UUIDSet> getUUIDSets() {
@@ -76,7 +76,7 @@ public final class GtidSet {
 
     /**
      * Find the {@link UUIDSet} for the server with the specified Uuid.
-     * 
+     *
      * @param uuid the Uuid of the server
      * @return the {@link UUIDSet} for the identified server, or {@code null} if there are no GTIDs from that server.
      */
@@ -86,7 +86,7 @@ public final class GtidSet {
 
     /**
      * Determine if the GTIDs represented by this object are contained completely within the supplied set of GTIDs.
-     * 
+     *
      * @param other the other set of GTIDs; may be null
      * @return {@code true} if all of the GTIDs in this set are completely contained within the supplied set of GTIDs, or
      *         {@code false} otherwise
@@ -118,13 +118,12 @@ public final class GtidSet {
      * Returns a copy with all intervals set to beginning
      * @return
      */
-    public GtidSet getGTIDSetBeginning() {
+    public GtidSet getGtidSetBeginning() {
         Map<String, UUIDSet> newSet = new HashMap<>();
 
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
             newSet.put(uuidSet.getUUID(), uuidSet.asIntervalBeginning());
         }
-
 
         return new GtidSet(newSet);
     }
@@ -159,8 +158,8 @@ public final class GtidSet {
     @Immutable
     public static class UUIDSet {
 
-        private String uuid;
-        private LinkedList<Interval> intervals = new LinkedList<>();
+        private final String uuid;
+        private final LinkedList<Interval> intervals = new LinkedList<>();
 
         protected UUIDSet(com.github.shyiko.mysql.binlog.GtidSet.UUIDSet uuidSet) {
             this.uuid = uuidSet.getUUID();
@@ -192,7 +191,7 @@ public final class GtidSet {
 
         /**
          * Get the Uuid for the server that generated the GTIDs.
-         * 
+         *
          * @return the server's Uuid; never null
          */
         public String getUUID() {
@@ -201,7 +200,7 @@ public final class GtidSet {
 
         /**
          * Get the intervals of transaction numbers.
-         * 
+         *
          * @return the immutable transaction intervals; never null
          */
         public List<Interval> getIntervals() {
@@ -211,7 +210,7 @@ public final class GtidSet {
         /**
          * Determine if the set of transaction numbers from this server is completely within the set of transaction numbers from
          * the set of transaction numbers in the supplied set.
-         * 
+         *
          * @param other the set to compare with this set
          * @return {@code true} if this server's transaction numbers are a subset of the transaction numbers of the supplied set,
          *         or false otherwise
@@ -284,7 +283,7 @@ public final class GtidSet {
 
         /**
          * Get the starting transaction number in this interval.
-         * 
+         *
          * @return this interval's first transaction number
          */
         public long getStart() {
@@ -293,7 +292,7 @@ public final class GtidSet {
 
         /**
          * Get the ending transaction number in this interval.
-         * 
+         *
          * @return this interval's last transaction number
          */
         public long getEnd() {
@@ -302,7 +301,7 @@ public final class GtidSet {
 
         /**
          * Determine if this interval is completely within the supplied interval.
-         * 
+         *
          * @param other the interval to compare with
          * @return {@code true} if the {@link #getStart() start} is greater than or equal to the supplied interval's
          *         {@link #getStart() start} and the {@link #getEnd() end} is less than or equal to the supplied interval's

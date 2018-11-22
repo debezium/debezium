@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
+import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.function.Predicates;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
@@ -241,12 +241,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
-    protected GtidNewChannelPosition gtidNewChannelPosition() {
-        String value = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
-        return GtidNewChannelPosition.parse(value, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
-    }
-
-
     public String getSnapshotSelectOverrides() {
         return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
@@ -321,13 +315,14 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
         GtidSet mergedGtidSet;
 
-        if (this.gtidNewChannelPosition() == GtidNewChannelPosition.EARLIEST) {
+        if (connectorConfig.gtidNewChannelPosition() == GtidNewChannelPosition.EARLIEST) {
             LOGGER.info("Using first available positions for new GTID channels");
             mergedGtidSet = availableServerGtidSet
-                    .getGTIDSetBeginning()
+                    .getGtidSetBeginning()
                     .with(purgedServerGtid)
                     .with(filteredGtidSet);
-        } else {
+        }
+        else {
             mergedGtidSet = availableServerGtidSet.with(filteredGtidSet);
         }
 
