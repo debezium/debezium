@@ -452,10 +452,9 @@ public class Replicator {
                 ServerAddress serverAddress = address.get();
 
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
-                    logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary",
-                            primaryAddress);
-                    // There is a new primary, so stop using this server and instead use the new primary ...
-                    return false;
+                    //primary switch will be handled automatically by mongo driver.
+                    logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary {}",
+                            primaryAddress, serverAddress);
                 } else {
                     logger.info("Found new primary event in oplog, current {} is new primary. " +
                                 "Continue to process oplog event.", primaryAddress);
