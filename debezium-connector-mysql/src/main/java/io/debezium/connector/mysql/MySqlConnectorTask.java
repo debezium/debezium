@@ -240,7 +240,10 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     @Override
     public synchronized void stop() {
         if (context != null) {
-            PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
+            PreviousContext prevLoggingContext = null;
+            if (this.taskContext != null) {
+                prevLoggingContext = this.taskContext.configureLoggingContext("task");
+            }
             try {
                 logger.info("Stopping MySQL connector task");
 
@@ -249,7 +252,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     readers.destroy();
                 }
             } finally {
-                prevLoggingContext.restore();
+                if (prevLoggingContext != null) {
+                    prevLoggingContext.restore();
+                }
             }
         }
     }
