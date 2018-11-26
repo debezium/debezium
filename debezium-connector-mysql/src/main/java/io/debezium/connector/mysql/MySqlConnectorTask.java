@@ -149,7 +149,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 }
             }
 
-            if (!startWithSnapshot && source.gtidSet() == null && isGtidModeEnabled()) {
+            if (!startWithSnapshot && source.gtidSet() == null && connectionContext.isGtidModeEnabled()) {
                 // The snapshot will properly determine the GTID set, but we're not starting with a snapshot and GTIDs were not
                 // previously used but the MySQL server has them enabled ...
                 source.setCompletedGtidSet("");
@@ -362,26 +362,6 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
         if (logNames.isEmpty()) return null;
         return logNames.get(0);
-    }
-
-    /**
-     * Determine whether the MySQL server has GTIDs enabled.
-     *
-     * @return {@code false} if the server's {@code gtid_mode} is set and is {@code OFF}, or {@code true} otherwise
-     */
-    protected boolean isGtidModeEnabled() {
-        AtomicReference<String> mode = new AtomicReference<String>("off");
-        try {
-            connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
-                if (rs.next()) {
-                    mode.set(rs.getString(2));
-                }
-            });
-        } catch (SQLException e) {
-            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
-        }
-
-        return !"OFF".equalsIgnoreCase(mode.get());
     }
 
     /**
