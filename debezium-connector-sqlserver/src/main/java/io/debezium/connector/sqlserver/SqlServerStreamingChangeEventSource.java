@@ -238,7 +238,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         return true;
                     }
                     else {
-                        LOGGER.info("CDC is enabled for table {} but the table is not whitelisted by connector");
+                        LOGGER.info("CDC is enabled for table {} but the table is not whitelisted by connector", changeTable);
                         return false;
                     }
                 })
