@@ -157,6 +157,26 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     /**
+     * Determine whether the MySQL server has GTIDs enabled.
+     *
+     * @return {@code false} if the server's {@code gtid_mode} is set and is {@code OFF}, or {@code true} otherwise
+     */
+    public boolean isGtidModeEnabled() {
+        AtomicReference<String> mode = new AtomicReference<String>("off");
+        try {
+            jdbc().query("SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'", rs -> {
+                if (rs.next()) {
+                    mode.set(rs.getString(2));
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
+        }
+
+        return !"OFF".equalsIgnoreCase(mode.get());
+    }
+
+    /**
      * Determine the available GTID set for MySQL.
      *
      * @return the string representation of MySQL's GTID sets; never null but an empty string if the server does not use GTIDs
