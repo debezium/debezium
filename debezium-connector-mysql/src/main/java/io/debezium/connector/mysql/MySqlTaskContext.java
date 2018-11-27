@@ -316,9 +316,15 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         GtidSet mergedGtidSet;
 
         if (connectorConfig.gtidNewChannelPosition() == GtidNewChannelPosition.EARLIEST) {
+            final GtidSet knownGtidSet = filteredGtidSet;
             LOGGER.info("Using first available positions for new GTID channels");
-            mergedGtidSet = availableServerGtidSet
-                    .getGtidSetBeginning()
+            final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ?
+                    availableServerGtidSet.retainAll(gtidSourceFilter) :
+                    availableServerGtidSet;
+            LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
+
+            mergedGtidSet = relevantAvailableServerGtidSet
+                    .retainAll(uuid -> knownGtidSet.forServerWithId(uuid) != null)
                     .with(purgedServerGtid)
                     .with(filteredGtidSet);
         }
