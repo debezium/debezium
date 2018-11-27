@@ -268,7 +268,7 @@ public class MySqlTaskContextTest {
 
         assertThat(uuidSet1.getIntervals()).isEqualTo(Arrays.asList(new GtidSet.Interval(1, 2)));
         assertThat(uuidSet2.getIntervals()).isEqualTo(Arrays.asList(new GtidSet.Interval(1, 1234)));
-        assertThat(uuidSet3.getIntervals()).isEqualTo(Arrays.asList(new GtidSet.Interval(1, 1)));
+        assertThat(uuidSet3).isNull();
         assertThat(uuidSet4).isNull();
     }
 
