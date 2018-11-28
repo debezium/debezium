@@ -118,7 +118,7 @@ public final class ChainedReader implements Reader {
             Reader current = currentReader.get();
             if (current != null) {
                 try {
-                    logger.info("Stopping the {} reader", current.name());
+                    logger.info("ChainedReader: Stopping the {} reader", current.name());
                     current.stop();
                 } catch (Throwable t) {
                     logger.error("Unexpected error stopping the {} reader", current.name(), t);

@@ -178,7 +178,6 @@ public class RecordMakers {
             return sourceOffset;
         }
         else {
-            // I don't like this, but oh well?
             Map<String, Object> offset = (Map<String, Object>) sourceOffset;
             for(String key : restartOffset.keySet()){
                 StringBuilder sb = new StringBuilder(SourceInfo.RESTART_PREFIX);

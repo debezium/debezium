@@ -203,18 +203,10 @@ public class ParallelSnapshotReader implements Reader {
 
         @Override
         public boolean test(SourceRecord ourSourceRecord) {
-            logger.info("TESTING PARALLEL HALTING PREDICATE: {}", ourSourceRecord.sourceOffset().toString());
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
                 //ourSourceRecord.value()
                 Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
-                if (sourceRecordTimestamp == null) {
-                    // TODO timestamp is null because it's not the -real- offset!!
-                    // it's the fake, previous offset from the other reader
-                    // in this case, it's from a snapshot. So that's why it has no timestamp.
-                    logger.info ("TIMESTAMP IS NULL! (FOR SOME REASON?!)");
-                    return true;
-                }
                 Instant recordTimestamp = Instant.ofEpochSecond(sourceRecordTimestamp);
                 Instant now = Instant.now();
                 Duration durationToEnd =
@@ -222,7 +214,7 @@ public class ParallelSnapshotReader implements Reader {
                         now);
                 if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
                     // we are within minHaltingDuration of the end
-                    logger.info("HALTING PREDICATE: THIS READER NEAR END");
+                    logger.debug("Parallel halting predicate: this reader near end");
                     thisReaderNearEnd.set(true);
                 }
             }

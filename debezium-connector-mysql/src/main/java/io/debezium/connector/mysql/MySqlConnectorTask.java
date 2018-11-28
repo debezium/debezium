@@ -69,7 +69,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             boolean startWithSnapshot = false;
             boolean snapshotEventsAreInserts = true;
             Map<String, String> partition = Collect.hashMapOf(SourceInfo.SERVER_PARTITION_KEY, serverName);
-            Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition)); // todo here we are
+            Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition));
             final SourceInfo source;
             if (offsets != null) {
                 logger.info("RESTART OFFSET IS: {}", offsets);
@@ -200,18 +200,17 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 }
             } else {
                 if (!source.hasFilterInfo()) {
-                    // if we don't have filter info, either
+                    // if we don't have filter info, then either
                     // 1. the snapshot was taken in a version of debezium before the filter info was stored in the offsets, or
                     // 2. this connector previously had no filter information.
                     // either way, we have to assume that the filter information currently in the config accurately reflects
                     // the current state of the connector.
-                    source.setFilterDataFromConfig(config);
+                    source.maybeSetFilterDataFromConfig(config);
                 }
                 if (!rowBinlogEnabled) {
                     throw new ConnectException(
                             "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
-
 
 
                 // if there are new tables

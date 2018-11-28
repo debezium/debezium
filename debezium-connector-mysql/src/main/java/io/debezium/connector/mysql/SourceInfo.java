@@ -135,10 +135,6 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(DATABASE_WHITELIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(DATABASE_BLACKLIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(TABLE_WHITELIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(TABLE_BLACKLIST_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 
     private String currentGtidSet;
@@ -161,6 +157,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private String currentQuery = null;
+    private boolean parallelSnapshotting = false;
     private String databaseWhitelist;
     private String databaseBlacklist;
     private String tableWhitelist;
@@ -281,7 +278,7 @@ final class SourceInfo extends AbstractSourceInfo {
         return offsetUsingPosition(totalNumberOfRows);
     }
 
-    private Map<String, ?> offsetUsingPosition(long rowsToSkip) { // this is the method! I think!
+    private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (restartGtidSet != null) {
@@ -300,13 +297,12 @@ final class SourceInfo extends AbstractSourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
-        else {
-            //throw new RuntimeException("SNAPSHOT IS NOT IN EFFECT!");
+        if(hasFilterInfo()) {
+            map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
+            map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
+            map.put(TABLE_WHITELIST_KEY, tableWhitelist);
+            map.put(TABLE_BLACKLIST_KEY, tableBlacklist);
         }
-        map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
-        map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
-        map.put(TABLE_WHITELIST_KEY, tableWhitelist);
-        map.put(TABLE_BLACKLIST_KEY, tableBlacklist);
         return map;
     }
 
@@ -503,7 +499,7 @@ final class SourceInfo extends AbstractSourceInfo {
     public void markLastSnapshot(Configuration config) {
         this.lastSnapshot = true;
         this.nextSnapshot = false;
-        setFilterDataFromConfig(config);
+        maybeSetFilterDataFromConfig(config);
     }
 
     /**
@@ -526,14 +522,25 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
+     * Set filter data from config if and only if parallel snapshotting of new tables is turned on
+     * @param config the configuration.
+     */
+    public void maybeSetFilterDataFromConfig(Configuration config) {
+        if (config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES).equals(
+            MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
+            setFilterDataFromConfig(config);
+        }
+    }
+
+    /**
      * @return true if this offset has filter info, false otherwise.
      */
     public boolean hasFilterInfo() {
-        /**
+        /*
          * There are 2 possible cases for us not having filter info.
          * 1. The connector does not use a filter. Creating a filter in such a connector could never add any tables.
          * 2. The initial snapshot occurred in a version of Debezium that did not store the filter information in the
-         *    offsets.
+         *    offsets / the connector was not configured to store filter information.
          */
         return databaseWhitelist != null || databaseBlacklist != null ||
                tableWhitelist != null || tableBlacklist != null;
