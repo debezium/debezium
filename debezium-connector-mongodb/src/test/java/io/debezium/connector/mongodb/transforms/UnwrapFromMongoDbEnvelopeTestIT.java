@@ -50,6 +50,7 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
     private static final String TOPIC_NAME = "mongo.transform.source";
 
     private static final String CONFIG_DROP_TOMBSTONES = "drop.tombstones";
+    private static final String HANDLE_DELETES = "delete.handling.mode";
 
     private Configuration config;
     private MongoDbTaskContext context;
@@ -143,6 +144,7 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         final Map<String, String> transformationConfig = new HashMap<>();
         transformationConfig.put(CONFIG_DROP_TOMBSTONES, "false");
+        transformationConfig.put(HANDLE_DELETES, "none");
         transformation.configure(transformationConfig);
 
         // Test insert
