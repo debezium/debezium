@@ -20,6 +20,7 @@ import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.event.Level;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.BinaryLogClient.LifecycleListener;
@@ -964,17 +965,39 @@ public class BinlogReader extends AbstractReader {
 
         @Override
         public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-            logger.debug("A deserialization failure event arrived", ex);
-            logReaderState();
-            BinlogReader.this.failed(ex);
+            if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+                logger.debug("A deserialization failure event arrived", ex);
+                logReaderState();
+                BinlogReader.this.failed(ex);
+            }
+            else if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+                logger.warn("A deserialization failure event arrived", ex);
+                logReaderState(Level.WARN);
+            }
+            else {
+                logger.debug("A deserialization failure event arrived", ex);
+                logReaderState(Level.DEBUG);
+            }
         }
     }
 
     private void logReaderState() {
-        logger.error("Error during binlog processing. Last offset stored = {}, binlog reader near position = {}",
-                lastOffset,
-                client == null ? "N/A" : client.getBinlogFilename() + "/" + client.getBinlogPosition()
-        );
+        logReaderState(Level.ERROR);
+    }
+
+    private void logReaderState(Level severity) {
+        final Object position = client == null ? "N/A" : client.getBinlogFilename() + "/" + client.getBinlogPosition();
+        final String message = "Error during binlog processing. Last offset stored = {}, binlog reader near position = {}";
+        switch (severity) {
+        case WARN:
+            logger.warn(message, lastOffset, position);
+            break;
+        case DEBUG:
+            logger.debug(message, lastOffset, position);
+            break;
+        default:
+            logger.error(message, lastOffset, position);
+        }
     }
 
     protected BinlogReaderMetrics getMetrics() {
