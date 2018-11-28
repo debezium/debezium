@@ -5,7 +5,7 @@
 -- without error or problems. The integration test does not modify any records in this database, so this script
 -- must contain all operations to these tables.
 --
--- This relies upon MySQL 5.7's Geometries datatypes.
+-- This relies upon MySQL 8.0's Geometries datatypes.
 
 -- DBZ-222 handle POINT column types ...
 CREATE TABLE dbz_222_point (
@@ -18,8 +18,6 @@ CREATE TABLE dbz_222_point (
 ) DEFAULT CHARSET=utf8;
 INSERT INTO dbz_222_point VALUES (default,ST_GeomFromText('POINT(1 1)'), 1.0, 1.0, NULL);
 INSERT INTO dbz_222_point VALUES (default,ST_GeomFromText('POINT(8.25554554 3.22124447)', 4326), 8.25554554, 3.22124447, 4326);
--- Invalid SRID is not supported in MySQL 8
--- INSERT INTO dbz_222_point VALUES (default,ST_GeomFromText('POINT(0 0)', 1234), 0.0, 0.0, 1234);
 INSERT INTO dbz_222_point VALUES (default,NULL, NULL, NULL, NULL);
 
 CREATE TABLE dbz_507_geometry (

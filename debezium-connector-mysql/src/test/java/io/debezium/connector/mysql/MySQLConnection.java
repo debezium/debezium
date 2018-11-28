@@ -5,7 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.sql.SQLException;
 import java.util.Map;
+
+import org.fest.assertions.Delta;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -18,6 +23,7 @@ import io.debezium.jdbc.JdbcConnection;
  * @author Randall Hauch
  */
 public class MySQLConnection extends JdbcConnection {
+    private DatabaseDifferences databaseAsserts;
 
     /**
      * Obtain a connection instance to the named test database.
@@ -81,5 +87,86 @@ public class MySQLConnection extends JdbcConnection {
      */
     public MySQLConnection(Configuration config) {
         super(config, FACTORY, null, MySQLConnection::addDefaults);
+    }
+
+    public DatabaseDifferences databaseAsserts() {
+        if (databaseAsserts == null) {
+            try {
+                final String versionString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE 'version'", rs -> {
+                    rs.next();
+                    return rs.getString(2);
+                });
+                if (versionString.startsWith("8.")) {
+                    databaseAsserts = new DatabaseDifferences() {
+                        @Override
+                        public boolean isCurrentDateTimeDefaultGenerated() {
+                            return true;
+                        }
+
+                        @Override
+                        public String currentDateTimeDefaultOptional(String isoString) {
+                            return null;
+                        }
+
+                        @Override
+                        public String geometryDatabaseName() {
+                            return "geometry_test_8";
+                        }
+
+                        /**
+                         * MySQL 8 does not support unknown SRIDs so the case is removed
+                         */
+                        @Override
+                        public int geometryPointTableRecords() {
+                            return 3;
+                        }
+
+                        /**
+                         * MySQL 8 returns X and Y in a different order
+                         */
+                        @Override
+                        public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
+                                Double actualY) {
+                            assertThat(actualX).isEqualTo(expectedY, Delta.delta(0.01));
+                            assertThat(actualY).isEqualTo(expectedX, Delta.delta(0.01));
+                        }
+                    };
+                }
+                else {
+                    databaseAsserts = new DatabaseDifferences() {
+                        @Override
+                        public boolean isCurrentDateTimeDefaultGenerated() {
+                            return false;
+                        }
+
+                        @Override
+                        public String currentDateTimeDefaultOptional(String isoString) {
+                            return isoString;
+                        }
+
+                        @Override
+                        public String geometryDatabaseName() {
+                            return "geometry_test_5";
+                        }
+
+                        @Override
+                        public int geometryPointTableRecords() {
+                            return 4;
+                        }
+
+                        @Override
+                        public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
+                                Double actualY) {
+                            assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
+                            assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+                        }
+                    };
+                }
+            }
+            catch (SQLException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        return databaseAsserts;
     }
 }
