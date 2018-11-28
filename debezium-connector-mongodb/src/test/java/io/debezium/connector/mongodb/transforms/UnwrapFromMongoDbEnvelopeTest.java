@@ -52,6 +52,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private static final String FLATTEN_STRUCT = "flatten.struct";
     private static final String DELIMITER = "flatten.struct.delimiter";
     private static final String OPERATION_HEADER = "operation.header";
+    private static final String HANDLE_DELETES = "delete.handling.mode";
 
     private Filters filters;
     private SourceInfo source;
@@ -323,6 +324,10 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         SourceRecord record = produced.get(0);
 
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "none");
+        transformation.configure(props);
+
         // when
         SourceRecord transformed = transformation.apply(record);
 
@@ -358,6 +363,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         final Map<String, String> props = new HashMap<>();
         props.put(OPERATION_HEADER, "true");
+        props.put(HANDLE_DELETES, "none");
         transformation.configure(props);
 
         // when
