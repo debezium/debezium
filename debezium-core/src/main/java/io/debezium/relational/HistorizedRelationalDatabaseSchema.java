@@ -52,6 +52,17 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     }
 
     /**
+     * Configures a storage used to store history, e.g. in Kafka case it creates topic with
+     * required parameters.
+     */
+    @Override
+    public void initializeStorage() {
+        if (!databaseHistory.exists()) {
+            databaseHistory.initializeStorage();
+        }
+    }
+
+    /**
      * Returns a new instance of the {@link DdlParser} to be used when recovering the schema from a previously persisted
      * history.
      */
