@@ -31,6 +31,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
+import io.debezium.util.Collect;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
@@ -89,6 +90,33 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertRecordOffset(record, true, consumer.isEmpty());
             assertSourceInfo(record);
         }
+    }
+
+    @Test
+    public void shouldGenerateSnapshotsForCustomDatatypes() throws Exception {
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
+                    .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                    .build()
+        );
+        context = new PostgresTaskContext(
+                config,
+                TestHelper.getSchema(config),
+                PostgresTopicSelector.create(config)
+        );
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+
+        final TestConsumer consumer = testConsumer(1, "public");
+
+        TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
+
+        //then start the producer and validate all records are there
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.custom_table", schemasAndValuesForCustomTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
     }
 
     @Test
