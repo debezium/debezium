@@ -795,4 +795,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected int getTimePrecision(Column column) {
         return column.scale().orElse(-1);
     }
+
+    /**
+     * Extracts a value from a PGobject .
+     *
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a Kafka Connect type
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertBinary(Column column, Field fieldDefn, Object data) {
+        return super.convertBinary(column, fieldDefn,
+                (data instanceof PGobject) ? ((PGobject)data).getValue() : data);
+    }
 }
