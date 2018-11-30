@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -514,7 +515,19 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 6);
         assertRecordSchemaAndValues(
                 Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().optional().build(), dvs2)), updatedRecord, Envelope.FieldName.AFTER);
-}
+
+        statements = "ALTER TABLE test_table ALTER COLUMN num_val SET NOT NULL;" +
+                "INSERT INTO test_table (pk,num_val) VALUES (7,1976);";
+
+        consumer.expects(1);
+        executeAndWait(statements);
+        updatedRecord = consumer.remove();
+
+        dvs2.put("scale", 0).put("value", new BigDecimal("1976").unscaledValue().toByteArray());
+        VerifyRecord.isValidInsert(updatedRecord, PK_FIELD, 7);
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("num_val", VariableScaleDecimal.builder().build(), dvs2)), updatedRecord, Envelope.FieldName.AFTER);
+    }
 
     @Test
     public void shouldReceiveChangesForDeletes() throws Exception {
