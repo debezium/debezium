@@ -517,6 +517,12 @@ public class RecordsStreamProducer extends RecordsProducer {
                                     incomingScale);
                         return true;
                     }
+                    final boolean localOptional = column.isOptional();
+                    final boolean incomingOptional = message.isOptional();
+                    if (localOptional != incomingOptional) {
+                        logger.info("detected new optional status for column '{}', old value was {}, new value is {}; refreshing table schema", columnName, localOptional, incomingOptional);
+                        return true;
+                    }
                 }
             }
             return false;
