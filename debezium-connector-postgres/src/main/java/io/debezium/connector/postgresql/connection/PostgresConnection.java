@@ -101,23 +101,6 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     /**
-     * Executes a series of statements without explicitly committing the connection.
-     *
-     * @param statements a series of statements to execute
-     * @return this object so methods can be chained together; never null
-     * @throws SQLException if anything fails
-     */
-    public PostgresConnection executeWithoutCommitting(String... statements) throws SQLException {
-        Connection conn = connection();
-        try (Statement statement = conn.createStatement()) {
-            for (String stmt : statements) {
-                statement.execute(stmt);
-            }
-        }
-        return this;
-    }
-
-    /**
      * Prints out information about the REPLICA IDENTITY status of a table.
      * This in turn determines how much information is available for UPDATE and DELETE operations for logical replication.
      *

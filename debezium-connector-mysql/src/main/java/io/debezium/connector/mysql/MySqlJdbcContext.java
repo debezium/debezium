@@ -278,7 +278,8 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     private Map<String, String> querySystemVariables(String statement) {
         Map<String, String> variables = new HashMap<>();
-        try (JdbcConnection mysql = jdbc.connect()) {
+        try {
+            JdbcConnection mysql = jdbc.connect();
             mysql.query(statement, rs -> {
                 while (rs.next()) {
                     String varName = rs.getString(1);
