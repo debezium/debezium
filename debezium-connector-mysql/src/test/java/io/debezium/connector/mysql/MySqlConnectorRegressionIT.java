@@ -549,14 +549,13 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         // Testing.Debug.enable();
-        int numCreateDatabase = 1;
         int numTables = 11;
         int numDataRecords = 20;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numCreateDefiner = 1;
         int numSetVariables = 1;
         SourceRecords records =
-            consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords + numCreateDefiner + numCreateDatabase);
+            consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
