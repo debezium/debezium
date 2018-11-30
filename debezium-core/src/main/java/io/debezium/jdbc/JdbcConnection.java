@@ -1058,6 +1058,23 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Executes a series of statements without explicitly committing the connection.
+     *
+     * @param statements a series of statements to execute
+     * @return this object so methods can be chained together; never null
+     * @throws SQLException if anything fails
+     */
+    public JdbcConnection executeWithoutCommitting(String... statements) throws SQLException {
+        Connection conn = connection();
+        try (Statement statement = conn.createStatement()) {
+            for (String stmt : statements) {
+                statement.execute(stmt);
+            }
+        }
+        return this;
+    }
+
+    /**
      * Use the supplied table editor to create columns for the supplied result set.
      *
      * @param resultSet the query result set; may not be null

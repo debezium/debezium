@@ -51,7 +51,8 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         assertThat(context.isSnapshotAllowedWhenNeeded()).isEqualTo(false);
         assertThat(context.isSnapshotNeverAllowed()).isEqualTo(false);
 
-        assertNotConnectedToJdbc();
+        // JDBC connection is automatically created by MySqlTaskContext when it reads database variables
+        assertConnectedToJdbc();
     }
 
     @Test
@@ -60,8 +61,7 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
         context = new MySqlTaskContext(config);
         context.start();
 
-        assertNotConnectedToJdbc();
-        context.getConnectionContext().jdbc().connection(); // this should establish a connection
+        // JDBC connection is automatically created by MySqlTaskContext when it reads database variables
         assertConnectedToJdbc();
 
         context.shutdown();

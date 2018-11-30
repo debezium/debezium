@@ -243,7 +243,7 @@ public class SnapshotReader extends AbstractReader {
             logger.info("Step 0: disabling autocommit and enabling repeatable read transactions");
             mysql.setAutoCommit(false);
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-            mysql.execute(sql.get());
+            mysql.executeWithoutCommitting(sql.get());
 
             // Generate the DDL statements that set the charset-related system variables ...
             Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables();
@@ -264,7 +264,7 @@ public class SnapshotReader extends AbstractReader {
                     try {
                         logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
                         sql.set("FLUSH TABLES WITH READ LOCK");
-                        mysql.execute(sql.get());
+                        mysql.executeWithoutCommitting(sql.get());
                         lockAcquired = clock.currentTimeInMillis();
                         metrics.globalLockAcquired();
                         isLocked = true;
@@ -283,7 +283,7 @@ public class SnapshotReader extends AbstractReader {
                 if (!isRunning()) return;
                 logger.info("Step 2: start transaction with consistent snapshot");
                 sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
-                mysql.execute(sql.get());
+                mysql.executeWithoutCommitting(sql.get());
                 isTxnStarted = true;
 
                 // ------------------------------------
@@ -384,7 +384,7 @@ public class SnapshotReader extends AbstractReader {
                             .orElse(null);
                         if (tableList != null) {
                             sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
-                            mysql.execute(sql.get());
+                            mysql.executeWithoutCommitting(sql.get());
                         }
                         lockAcquired = clock.currentTimeInMillis();
                         metrics.globalLockAcquired();
@@ -471,7 +471,7 @@ public class SnapshotReader extends AbstractReader {
                         // without WHERE predicates, we can release the lock now ...
                         logger.info("Step {}: releasing global read lock to enable MySQL writes", step);
                         sql.set("UNLOCK TABLES");
-                        mysql.execute(sql.get());
+                        mysql.executeWithoutCommitting(sql.get());
                         isLocked = false;
                         long lockReleased = clock.currentTimeInMillis();
                         metrics.globalLockReleased();
@@ -510,7 +510,7 @@ public class SnapshotReader extends AbstractReader {
 
                             // Switch to the table's database ...
                             sql.set("USE " + quote(tableId.catalog()) + ";");
-                            mysql.execute(sql.get());
+                            mysql.executeWithoutCommitting(sql.get());
 
                             AtomicLong numRows = new AtomicLong(-1);
                             AtomicReference<String> rowCountStr = new AtomicReference<>("<unknown>");
@@ -620,6 +620,7 @@ public class SnapshotReader extends AbstractReader {
                 }
                 step++;
             } finally {
+                mysql.connection().commit();
                 // No matter what, we always want to do these steps if necessary ...
                 boolean rolledBack = false;
                 // ------
@@ -631,16 +632,14 @@ public class SnapshotReader extends AbstractReader {
                         // We were interrupted or were stopped while reading the tables,
                         // so roll back the transaction and return immediately ...
                         logger.info("Step {}: rolling back transaction after abort", step++);
-                        sql.set("ROLLBACK");
-                        mysql.execute(sql.get());
+                        mysql.connection().rollback();
                         metrics.snapshotAborted();
                         rolledBack = true;
                     }
                     else {
                         // Otherwise, commit our transaction
                         logger.info("Step {}: committing transaction", step++);
-                        sql.set("COMMIT");
-                        mysql.execute(sql.get());
+                        mysql.connection().commit();
                         metrics.snapshotCompleted();
                     }
                 }
@@ -656,7 +655,7 @@ public class SnapshotReader extends AbstractReader {
                         logger.info("Step {}: releasing global read lock to enable MySQL writes", step++);
                     }
                     sql.set("UNLOCK TABLES");
-                    mysql.execute(sql.get());
+                    mysql.executeWithoutCommitting(sql.get());
                     isLocked = false;
                     long lockReleased = clock.currentTimeInMillis();
                     metrics.globalLockReleased();
@@ -703,7 +702,7 @@ public class SnapshotReader extends AbstractReader {
             if (isLocked) {
                 try {
                     sql.set("UNLOCK TABLES");
-                    mysql.execute(sql.get());
+                    mysql.executeWithoutCommitting(sql.get());
                 }
                 catch (Exception eUnlock) {
                     logger.error("Removing of table locks not completed successfully", eUnlock);
