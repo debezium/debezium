@@ -48,7 +48,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
         tables().overwriteTable(table);
 
         TableChanges tableChanges = null;
-        if (schemaChange.getType() == SchemaChangeEventType.CREATE && schemaChange.isFromSnapshot()) {
+        if (schemaChange.getType() == SchemaChangeEventType.CREATE) {
             tableChanges = new TableChanges();
             tableChanges.create(table);
         }
