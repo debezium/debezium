@@ -98,7 +98,13 @@ public abstract class AbstractReader implements Reader {
     @Override
     public void stop() {
         try {
-            logger.warn("MySQL discard record when stopping, queue size: {}",records.size());
+            // Emptying the queue so to make sure that enqueue() won't block indefinitely when adding records after
+            // poll() isn't called anymore but before the binlog reader is stopped; note there's still a tiny chance for
+            // this to happen if enough records are added again between here and the call to disconnect(); protecting
+            // against it seems not worth though it as shouldn't happen for any practical queue size
+            List<SourceRecord> unsent = new ArrayList<>();
+            records.drainTo(unsent);
+            logger.info("Discarding {} unsent record(s) due to the connector shutting down", unsent.size());
             records.clear();
             doStop();
             running.set(false);
