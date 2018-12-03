@@ -452,7 +452,10 @@ public class RecordsStreamProducer extends RecordsProducer {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             String columnName = Strings.unquoteIdentifierPart(column.getName());
             int position = columnNames.indexOf(columnName);
-            assert position >= 0;
+            if (position < 0) {
+                logger.warn("Internal schema is out-of-sync with incoming decoder events");
+                continue;
+            }
             values[position] = column.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
         }
 
