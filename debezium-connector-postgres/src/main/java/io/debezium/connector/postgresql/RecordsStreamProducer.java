@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +36,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
+import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.LoggingContext;
@@ -588,7 +590,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     private Table tableFromFromMessage(List<ReplicationMessage.Column> columns, Table table) {
-        return table.edit()
+        final TableEditor combinedTable = table.edit()
             .setColumns(columns.stream()
                 .map(column -> {
                     final PostgresType type = column.getType();
@@ -603,7 +605,17 @@ public class RecordsStreamProducer extends RecordsProducer {
                     return columnEditor.create();
                 })
                 .collect(Collectors.toList())
-            )
-            .setPrimaryKeyNames(table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()))).create();
+            );
+        final List<String> pkCandidates = table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()));
+        final Iterator<String> itPkCandidates = pkCandidates.iterator();
+        while (itPkCandidates.hasNext()) {
+            final String candidateName = itPkCandidates.next();
+            if (!combinedTable.hasUniqueValues() && combinedTable.columnWithName(candidateName) == null) {
+                logger.error("Potentional inconsistency in key for message {}", columns);
+                itPkCandidates.remove();
+            }
+        }
+        combinedTable.setPrimaryKeyNames(pkCandidates);
+        return combinedTable.create();
     }
 }

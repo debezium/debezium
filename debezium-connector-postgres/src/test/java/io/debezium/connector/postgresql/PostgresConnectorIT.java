@@ -12,6 +12,7 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotM
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.NEVER;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -19,6 +20,7 @@ import static org.junit.Assert.fail;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -210,6 +212,93 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
+    }
+
+    @Test
+    @FixFor("DBZ-997")
+    public void shouldReceiveChangesForChangePKColumnDefinition() throws Exception {
+        final String slotName = "pkcolumndef" + new Random().nextInt(100);
+        TestHelper.create().dropReplicationSlot(slotName);
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, Boolean.FALSE)
+                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "changepk")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.SLOT_NAME, slotName)
+                .build());
+
+        final String newPkField = "newpk";
+        final String topicName = topicName("changepk.test_table");
+
+        TestHelper.execute(
+                "CREATE SCHEMA IF NOT EXISTS changepk;",
+                "DROP TABLE IF EXISTS changepk.test_table;",
+                "CREATE TABLE changepk.test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));",
+                "INSERT INTO changepk.test_table(text) VALUES ('insert');");
+
+        start(PostgresConnector.class, config.getConfig());
+
+        assertConnectorIsRunning();
+
+        // wait for snapshot completion
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        TestHelper.execute(
+                "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
+              + "ALTER TABLE changepk.test_table RENAME COLUMN pk TO newpk;"
+              + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk);"
+              + "INSERT INTO changepk.test_table VALUES(2, 'newpkcol')");
+        records = consumeRecordsByTopic(1);
+
+        SourceRecord insertRecord = records.recordsForTopic(topicName).get(0);
+        assertEquals(topicName, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, "newpk", 2);
+
+        TestHelper.execute(
+                "ALTER TABLE changepk.test_table ADD COLUMN pk2 SERIAL;"
+              + "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
+              + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk2);"
+              + "INSERT INTO changepk.test_table VALUES(3, 'newpkcol', 8)");
+        records = consumeRecordsByTopic(1);
+
+        insertRecord = records.recordsForTopic(topicName).get(0);
+        assertEquals(topicName, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, newPkField, 3);
+        VerifyRecord.isValidInsert(insertRecord, "pk2", 8);
+
+        stopConnector();
+
+        // De-synchronize JDBC PK info and decoded event schema
+        TestHelper.execute("INSERT INTO changepk.test_table VALUES(4, 'newpkcol', 20)");
+        TestHelper.execute(
+                "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
+              + "ALTER TABLE changepk.test_table DROP COLUMN pk2;"
+              + "ALTER TABLE changepk.test_table ADD COLUMN pk3 SERIAL;"
+              + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk3);"
+              + "INSERT INTO changepk.test_table VALUES(5, 'dropandaddpkcol',10)");
+
+        start(PostgresConnector.class, config.getConfig());
+
+        records = consumeRecordsByTopic(2);
+
+        insertRecord = records.recordsForTopic(topicName).get(0);
+        assertEquals(topicName, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, newPkField, 4);
+        Struct key = (Struct) insertRecord.key();
+        // The problematic record PK info is temporarily desynced
+        assertThat(key.schema().field("pk2")).isNull();
+        assertThat(key.schema().field("pk3")).isNull();
+
+        insertRecord = records.recordsForTopic(topicName).get(1);
+        assertEquals(topicName, insertRecord.topic());
+        VerifyRecord.isValidInsert(insertRecord, newPkField, 5);
+        VerifyRecord.isValidInsert(insertRecord, "pk3", 10);
+        key = (Struct) insertRecord.key();
+        assertThat(key.schema().field("pk2")).isNull();
+
+        stopConnector();
+        TestHelper.create().dropReplicationSlot(slotName);
+
+        TestHelper.execute("DROP SCHEMA IF EXISTS changepk CASCADE;");
     }
 
     @Test
