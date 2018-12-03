@@ -97,7 +97,11 @@ final class TableEditorImpl implements TableEditor {
     }
 
     protected void updatePrimaryKeys() {
-        Iterator<String> nameIter = primaryKeyColumnNames().iterator();
+        // table does not have any primary key, no need to update
+        if (uniqueValues) {
+            return;
+        }
+        Iterator<String> nameIter = this.pkColumnNames.iterator();
         while (nameIter.hasNext()) {
             String pkColumnName = nameIter.next();
             if (!hasColumnWithName(pkColumnName)) nameIter.remove();
