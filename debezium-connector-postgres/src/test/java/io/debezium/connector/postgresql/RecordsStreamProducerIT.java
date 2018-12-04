@@ -837,8 +837,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-911")
     public void shouldNotRefreshSchemaOnUnchangedToastedData() throws Exception {
-        // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
-        // received from Postgres
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, PostgresConnectorConfig.SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
                 .build());
@@ -869,6 +867,71 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
         assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.columnNames());
+    }
+
+    @Test
+    @FixFor("DBZ-842")
+    public void shouldNotPropagateUnchangedToastedData() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, PostgresConnectorConfig.SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
+                .build());
+        setupRecordsProducer(config);
+
+        final String toastedValue1 = RandomStringUtils.randomAlphanumeric(10000);
+        final String toastedValue2 = RandomStringUtils.randomAlphanumeric(10000);
+
+        // inserting a toasted value should /always/ produce a correct record
+        String statement =
+                "ALTER TABLE test_table ADD COLUMN not_toast integer;"
+              + "INSERT INTO test_table (not_toast, text) values (10, '" + toastedValue1 + "');"
+              + "INSERT INTO test_table (not_toast, text) values (10, '" + toastedValue2 + "')";
+        consumer = testConsumer(2);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+
+        // after record should contain the toasted value
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue1)
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue2)
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+
+        statement =
+                "UPDATE test_table SET not_toast = 2;"
+              + "UPDATE test_table SET not_toast = 3;";
+        consumer.expects(6);
+        executeAndWait(statement);
+        consumer.process(record -> {
+            Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
+            assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.columnNames());
+        });
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "insert")
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "insert")
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
+        ), consumer.remove(), Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
+        ), consumer.remove(), Envelope.FieldName.AFTER);
     }
 
     private void assertHeartBeatRecordInserted() {
