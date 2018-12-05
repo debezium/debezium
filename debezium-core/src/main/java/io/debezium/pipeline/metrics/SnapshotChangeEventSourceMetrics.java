@@ -34,10 +34,8 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
     private final AtomicLong stopTime = new AtomicLong();
     private final ConcurrentMap<String, Long> rowsScanned = new ConcurrentHashMap<String, Long>();
 
-    // TODO DBZ-978 what's the purpose of the value here? It's never updated.
     private final ConcurrentMap<String, String> remainingTables = new ConcurrentHashMap<>();
 
-    // TODO DBZ-978 Pull up to Metrics
     private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
 
     public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext) {

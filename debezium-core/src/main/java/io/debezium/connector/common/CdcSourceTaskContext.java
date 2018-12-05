@@ -5,11 +5,15 @@
  */
 package io.debezium.connector.common;
 
+import java.util.Collection;
+import java.util.function.Supplier;
+
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.apache.kafka.connect.source.SourceTask;
 
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 
@@ -20,13 +24,17 @@ import io.debezium.util.LoggingContext;
  */
 public class CdcSourceTaskContext {
 
+    private static final String[] EMPTY_CAPTURED_LIST = new String[0];
+
     private final String connectorType;
     private final String connectorName;
     private final Clock clock;
+    private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
 
-    public CdcSourceTaskContext(String connectorType, String connectorName) {
+    public CdcSourceTaskContext(String connectorType, String connectorName, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = connectorType;
         this.connectorName = connectorName;
+        this.collectionsSupplier = collectionsSupplier;
 
         this.clock = Clock.system();
     }
@@ -57,5 +65,21 @@ public class CdcSourceTaskContext {
      */
     public ObjectName metricName(String contextName) throws MalformedObjectNameException {
         return new ObjectName("debezium." + connectorType.toLowerCase() + ":type=connector-metrics,context=" + contextName + ",server=" + connectorName);
+    }
+
+    public String[] capturedDataCollections() {
+        if (collectionsSupplier == null) {
+            return EMPTY_CAPTURED_LIST;
+        }
+        final Collection<? extends DataCollectionId> collections = collectionsSupplier.get();
+        if (collections == null) {
+            return EMPTY_CAPTURED_LIST;
+        }
+        String[] ret = new String[collections.size()];
+        int i = 0;
+        for (DataCollectionId collection: collections) {
+            ret[i++] = collection.toString();
+        }
+        return ret;
     }
 }

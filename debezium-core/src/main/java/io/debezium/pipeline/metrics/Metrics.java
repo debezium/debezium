@@ -28,12 +28,14 @@ import io.debezium.util.Clock;
 public abstract class Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
 
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
+    protected final AtomicLong numberOfEventsSkipped = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
 
     private final String contextName;
     protected final Clock clock;
-    private final CdcSourceTaskContext taskContext;
+    protected final CdcSourceTaskContext taskContext;
     private volatile ObjectName name;
+    private volatile String lastEvent;
 
     protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName) {
         this.contextName = contextName;
@@ -76,15 +78,25 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
-    public void onEvent() {
+    public void onEvent(String event) {
+        lastEvent = event;
+        updateCommonEventMetrics();
+    }
+
+    private void updateCommonEventMetrics() {
         totalNumberOfEventsSeen.incrementAndGet();
         lastEventTimestamp.set(clock.currentTimeInMillis());
     }
 
-    // TODO DBZ-978
+    @Override
+    public void onSkippedEvent(String event) {
+        numberOfEventsSkipped.incrementAndGet();
+        updateCommonEventMetrics();
+    }
+
     @Override
     public String getLastEvent() {
-        return "not implemented";
+        return lastEvent;
     }
 
     @Override
@@ -95,6 +107,11 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     @Override
     public long getTotalNumberOfEventsSeen() {
         return totalNumberOfEventsSeen.get();
+    }
+
+    @Override
+    public long getNumberOfEventsSkipped() {
+        return numberOfEventsSkipped.get();
     }
 
     @Override

@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.Collections;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
@@ -29,7 +30,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     private final PostgresSchema schema;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector<TableId> topicSelector) {
-        super("Postgres", config.getLogicalName());
+        super("Postgres", config.getLogicalName(), Collections::emptySet);
 
         this.config = config;
         this.topicSelector = topicSelector;
