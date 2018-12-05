@@ -21,6 +21,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
+import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
@@ -81,7 +82,6 @@ public class EventDispatcher<T extends DataCollectionId> {
     public void dispatchSnapshotEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, SnapshotReceiver receiver) throws InterruptedException {
         // TODO Handle Heartbeat
 
-        eventListener.onEvent();
 
         DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
@@ -90,7 +90,15 @@ public class EventDispatcher<T extends DataCollectionId> {
             throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
         }
 
-        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, receiver);
+        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver() {
+
+            @Override
+            public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
+                    OffsetContext offset) throws InterruptedException {
+                eventListener.onEvent("source = " + dataCollectionId + ", id = " + key + ", offset = " + offset);
+                receiver.changeRecord(dataCollectionSchema, operation, key, value, offset);
+            }
+        });
     }
 
     public SnapshotReceiver getSnapshotChangeEventReceiver() {
@@ -105,9 +113,9 @@ public class EventDispatcher<T extends DataCollectionId> {
      * {@link ChangeEventCreator} for converting them into data change events.
      */
     public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
-        eventListener.onEvent();
 
         if(!filter.isIncluded(dataCollectionId)) {
+            eventListener.onSkippedEvent("source = " + dataCollectionId);
             LOGGER.trace("Skipping data change event for {}", dataCollectionId);
         }
         else {
@@ -118,7 +126,15 @@ public class EventDispatcher<T extends DataCollectionId> {
                 throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
             }
 
-            changeRecordEmitter.emitChangeRecords(dataCollectionSchema, streamingReceiver);
+            changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver() {
+
+                @Override
+                public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
+                        OffsetContext offset) throws InterruptedException {
+                    eventListener.onEvent("operation = " + operation + ", source = " + dataCollectionId + ", id = " + key + ", offset = " + offset);
+                    streamingReceiver.changeRecord(schema, operation, key, value, offset);
+                }
+            });
         }
 
         heartbeat.heartbeat(

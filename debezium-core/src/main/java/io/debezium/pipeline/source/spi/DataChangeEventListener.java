@@ -15,8 +15,16 @@ import io.debezium.pipeline.EventDispatcher;
  */
 public interface DataChangeEventListener {
 
-    // TODO DBZ-978 pass representation of incoming event
-    void onEvent();
+    void onEvent(String event);
+    void onSkippedEvent(String event);
 
-    static DataChangeEventListener NO_OP = () -> {};
+    static DataChangeEventListener NO_OP = new DataChangeEventListener() {
+        @Override
+        public void onSkippedEvent(String event) {
+        }
+
+        @Override
+        public void onEvent(String event) {
+        }
+    };
 }

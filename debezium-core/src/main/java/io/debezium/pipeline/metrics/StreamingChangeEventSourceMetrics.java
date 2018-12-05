@@ -17,7 +17,6 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 @ThreadSafe
 public class StreamingChangeEventSourceMetrics extends Metrics implements StreamingChangeEventSourceMetricsMXBean, DataChangeEventListener {
 
-    // DBZ-978 Toggle when losing the connection
     private final AtomicBoolean connected = new AtomicBoolean();
 
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext) {
@@ -29,9 +28,12 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
         return this.connected.get();
     }
 
-    // TODO DBZ-978
     @Override
     public String[] getMonitoredTables() {
-        return new String[] {};
+        return taskContext.capturedDataCollections();
+    }
+
+    public void connected(boolean connected) {
+        this.connected.set(connected);
     }
 }

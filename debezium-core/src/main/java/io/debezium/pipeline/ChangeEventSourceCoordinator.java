@@ -79,6 +79,7 @@ public class ChangeEventSourceCoordinator {
                 if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
                     eventDispatcher.setEventListener(streamingMetrics);
+                    streamingMetrics.connected(true);
                     streamingSource.execute(context);
                 }
             }
@@ -88,6 +89,9 @@ public class ChangeEventSourceCoordinator {
             }
             catch (Exception e) {
                 errorHandler.setProducerThrowable(e);
+            }
+            finally {
+                streamingMetrics.connected(false);
             }
         });
     }

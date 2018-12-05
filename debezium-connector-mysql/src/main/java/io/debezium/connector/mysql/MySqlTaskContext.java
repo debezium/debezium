@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -54,7 +55,8 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     }
 
     public MySqlTaskContext(Configuration config, Boolean tableIdCaseInsensitive) {
-        super("MySQL", config.getString(MySqlConnectorConfig.SERVER_NAME));
+        // MySQL now calculates JMX binlog reader metrics on its own
+        super("MySQL", config.getString(MySqlConnectorConfig.SERVER_NAME), Collections::emptyList);
 
         this.config = config;
         this.connectorConfig = new MySqlConnectorConfig(config);
