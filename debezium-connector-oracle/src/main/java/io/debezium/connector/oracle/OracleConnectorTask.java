@@ -62,7 +62,20 @@ public class OracleConnectorTask extends BaseSourceTask {
         }
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        taskContext = new OracleTaskContext(connectorConfig);
+        TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
+        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+
+        Configuration jdbcConfig = config.subset("database.", true);
+        jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
+        this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
+        this.schema.initializeStorage();
+
+        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig.getLogicalName()));
+        if (previousOffset != null) {
+            schema.recover(previousOffset);
+        }
+
+        taskContext = new OracleTaskContext(connectorConfig, schema);
 
         Clock clock = Clock.system();
 
@@ -75,20 +88,6 @@ public class OracleConnectorTask extends BaseSourceTask {
                 .build();
 
         errorHandler = new ErrorHandler(OracleConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
-        TopicSelector<TableId> topicSelector = OracleTopicSelector.defaultSelector(connectorConfig);
-
-        Configuration jdbcConfig = config.subset("database.", true);
-
-        jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
-        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-
-        this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
-        this.schema.initializeStorage();
-
-        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig.getLogicalName()));
-        if (previousOffset != null) {
-            schema.recover(previousOffset);
-        }
 
         EventDispatcher<TableId> dispatcher = new EventDispatcher<>(connectorConfig, topicSelector, schema, queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new);

@@ -72,7 +72,27 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         }
 
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
-        taskContext = new SqlServerTaskContext(connectorConfig);
+        final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
+        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+
+        final Configuration jdbcConfig = config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
+                .subset("database.", true);
+        jdbcConnection = new SqlServerConnection(jdbcConfig);
+        try {
+            jdbcConnection.setAutoCommit(false);
+        }
+        catch (SQLException e) {
+            throw new ConnectException(e);
+        }
+        this.schema = new SqlServerDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
+        this.schema.initializeStorage();
+
+        final OffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig.getLogicalName()));
+        if (previousOffset != null) {
+            schema.recover(previousOffset);
+        }
+
+        taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
         final Clock clock = Clock.system();
 
@@ -85,27 +105,6 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 .build();
 
         errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
-        final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
-
-        final Configuration jdbcConfig = config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
-                .subset("database.", true);
-
-        jdbcConnection = new SqlServerConnection(jdbcConfig);
-        try {
-            jdbcConnection.setAutoCommit(false);
-        }
-        catch (SQLException e) {
-            throw new ConnectException(e);
-        }
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
-        this.schema.initializeStorage();
-
-        final OffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig.getLogicalName()));
-        if (previousOffset != null) {
-            schema.recover(previousOffset);
-        }
 
         final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
