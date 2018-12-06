@@ -203,6 +203,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 // process and send the last record after marking it as such
                 logger.info("Step 5: sending the last snapshot record");
                 sourceInfo.markLastSnapshotRecord();
+                changeSourceToLastSnapshotRecord(currentRecord);
                 this.currentRecord.set(new SourceRecord(currentRecord.sourcePartition(), sourceInfo.offset(),
                                                         currentRecord.topic(), currentRecord.kafkaPartition(),
                                                         currentRecord.keySchema(), currentRecord.key(),
@@ -237,6 +238,14 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             rollbackTransaction(jdbcConnection);
 
             logger.warn("Snapshot aborted after '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
+        }
+    }
+
+    private void changeSourceToLastSnapshotRecord(SourceRecord currentRecord) {
+        final Struct envelope = (Struct)currentRecord.value();
+        final Struct source = (Struct)envelope.get("source");
+        if (source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null) {
+            source.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, true);
         }
     }
 
