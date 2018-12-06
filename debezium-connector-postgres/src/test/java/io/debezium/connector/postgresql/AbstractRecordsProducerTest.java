@@ -610,13 +610,14 @@ public abstract class AbstractRecordsProducerTest {
         );
     }
 
-    protected void assertRecordOffset(SourceRecord record, boolean expectSnapshot, boolean expectedLastSnapshotRecord) {
+    protected void assertRecordOffsetAndSnapshotSource(SourceRecord record, boolean expectSnapshot, boolean expectedLastSnapshotRecord) {
         Map<String, ?> offset = record.sourceOffset();
         assertNotNull(offset.get(SourceInfo.TXID_KEY));
         assertNotNull(offset.get(SourceInfo.TIMESTAMP_KEY));
         assertNotNull(offset.get(SourceInfo.LSN_KEY));
         Object snapshot = offset.get(SourceInfo.SNAPSHOT_KEY);
         Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
+
         if (expectSnapshot) {
             Assert.assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
             assertEquals("Last snapshot record marker mismatch", expectedLastSnapshotRecord, lastSnapshotRecord);
@@ -624,6 +625,19 @@ public abstract class AbstractRecordsProducerTest {
         else {
             assertNull("Snapshot marker not expected, but found", snapshot);
             assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
+        }
+        final Struct envelope = (Struct)record.value();
+        if (envelope != null) {
+            final Struct source = (Struct)envelope.get("source");
+            final Boolean sourceSnapshot = source.getBoolean(SourceInfo.SNAPSHOT_KEY);
+            final Boolean sourceLastSnapshotRecord = source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
+            if (expectSnapshot) {
+                Assert.assertTrue("Snapshot marker expected in source but not found", sourceSnapshot);
+            }
+            else {
+                assertNull("Source snapshot marker not expected, but found", sourceSnapshot);
+                assertNull("Source last snapshot marker not expected, but found", sourceLastSnapshotRecord);
+            }
         }
     }
 

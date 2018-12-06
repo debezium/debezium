@@ -87,7 +87,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // check the offset information for each record
         while (!consumer.isEmpty()) {
             SourceRecord record = consumer.remove();
-            assertRecordOffset(record, true, consumer.isEmpty());
+            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
             assertSourceInfo(record);
         }
     }
@@ -159,13 +159,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         SourceRecord first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 2);
         assertEquals(topicName("s1.a"), first.topic());
-        assertRecordOffset(first, false, false);
+        assertRecordOffsetAndSnapshotSource(first, false, false);
         assertSourceInfo(first, "test_database", "s1", "a");
 
         SourceRecord second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 2);
         assertEquals(topicName("s2.a"), second.topic());
-        assertRecordOffset(second, false, false);
+        assertRecordOffsetAndSnapshotSource(second, false, false);
         assertSourceInfo(second, "test_database", "s2", "a");
 
         // now shut down the producers and insert some more records
@@ -184,7 +184,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             int counterVal = counter.getAndIncrement();
             int expectedPk = (counterVal % 3) + 1; //each table has 3 entries keyed 1-3
             VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
-            assertRecordOffset(record, true, counterVal == (expectedRecordsCount - 1));
+            assertRecordOffsetAndSnapshotSource(record, true, counterVal == (expectedRecordsCount - 1));
             assertSourceInfo(record);
         });
         consumer.clear();
@@ -196,12 +196,12 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
         first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 4);
-        assertRecordOffset(first, false, false);
+        assertRecordOffsetAndSnapshotSource(first, false, false);
         assertSourceInfo(first, "test_database", "s1", "a");
 
         second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
-        assertRecordOffset(second, false, false);
+        assertRecordOffsetAndSnapshotSource(second, false, false);
         assertSourceInfo(second, "test_database", "s2", "a");
     }
 
@@ -235,11 +235,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         final SourceRecord first = consumer.remove();
         VerifyRecord.isValidRead(first, PK_FIELD, 1);
-        assertRecordOffset(first, true, true);
-
+        assertRecordOffsetAndSnapshotSource(first, true, true);
+        System.out.println(first);
         final SourceRecord second = consumer.remove();
         assertThat(second.topic()).startsWith("__debezium-heartbeat");
-        assertRecordOffset(second, false, false);
+        assertRecordOffsetAndSnapshotSource(second, false, false);
 
         // now shut down the producers and insert some more records
         snapshotProducer.stop();
@@ -286,7 +286,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // check the offset information for each record
         while (!consumer.isEmpty()) {
             SourceRecord record = consumer.remove();
-            assertRecordOffset(record, true, consumer.isEmpty());
+            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
             assertSourceInfo(record);
         }
     }
@@ -327,7 +327,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // check the offset information for each record
         while (!consumer.isEmpty()) {
             SourceRecord record = consumer.remove();
-            assertRecordOffset(record, true, consumer.isEmpty());
+            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
             assertSourceInfo(record);
         }
     }
