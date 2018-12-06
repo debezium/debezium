@@ -213,6 +213,39 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1021")
+    public void shouldIgnoreEventsForDeletedTable() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        //check the records from the snapshot
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
+        //now stop the connector
+        stopConnector();
+        assertNoRecordsToConsume();
+
+        //insert some more records and deleted the table
+        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute("DROP TABLE s1.a");
+
+        start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics()).hasSize(1);
+        assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).hasSize(1);
+    }
+
+    @Test
     public void shouldIgnoreViews() throws Exception {
         TestHelper.execute(
                 SETUP_TABLES_STMT +

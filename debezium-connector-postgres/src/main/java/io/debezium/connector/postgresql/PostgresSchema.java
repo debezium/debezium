@@ -115,8 +115,11 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         Tables temp = new Tables();
         connection.readSchema(temp, null, null, tableId::equals, null, true);
 
-        // we expect the refreshed table to be there
-        assert temp.size() == 1;
+        // the table could be deleted before the event was processed
+        if (temp.size() == 0) {
+            LOGGER.warn("Refresh of {} was requested but the table no longer exists", tableId);
+            return;
+        }
         // overwrite (add or update) or views of the tables
         tables().overwriteTable(temp.forTable(tableId));
         // refresh the schema
