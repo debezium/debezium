@@ -203,6 +203,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 // process and send the last record after marking it as such
                 logger.info("Step 5: sending the last snapshot record");
                 sourceInfo.markLastSnapshotRecord();
+
+                // the sourceInfo element already has been baked into the record value, so
+                // update the "last_snapshot_marker" in there
                 changeSourceToLastSnapshotRecord(currentRecord);
                 this.currentRecord.set(new SourceRecord(currentRecord.sourcePartition(), sourceInfo.offset(),
                                                         currentRecord.topic(), currentRecord.kafkaPartition(),

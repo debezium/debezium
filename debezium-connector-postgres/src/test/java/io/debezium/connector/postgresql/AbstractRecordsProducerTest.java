@@ -6,11 +6,11 @@
 
 package io.debezium.connector.postgresql;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
@@ -46,7 +46,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Assert;
 
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -610,7 +609,7 @@ public abstract class AbstractRecordsProducerTest {
         );
     }
 
-    protected void assertRecordOffsetAndSnapshotSource(SourceRecord record, boolean expectSnapshot, boolean expectedLastSnapshotRecord) {
+    protected void assertRecordOffsetAndSnapshotSource(SourceRecord record, boolean shouldBeSnapshot, boolean shouldBeLastSnapshotRecord) {
         Map<String, ?> offset = record.sourceOffset();
         assertNotNull(offset.get(SourceInfo.TXID_KEY));
         assertNotNull(offset.get(SourceInfo.TIMESTAMP_KEY));
@@ -618,9 +617,9 @@ public abstract class AbstractRecordsProducerTest {
         Object snapshot = offset.get(SourceInfo.SNAPSHOT_KEY);
         Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
 
-        if (expectSnapshot) {
-            Assert.assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
-            assertEquals("Last snapshot record marker mismatch", expectedLastSnapshotRecord, lastSnapshotRecord);
+        if (shouldBeSnapshot) {
+            assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
+            assertEquals("Last snapshot record marker mismatch", shouldBeLastSnapshotRecord, lastSnapshotRecord);
         }
         else {
             assertNull("Snapshot marker not expected, but found", snapshot);
@@ -631,9 +630,9 @@ public abstract class AbstractRecordsProducerTest {
             final Struct source = (Struct)envelope.get("source");
             final Boolean sourceSnapshot = source.getBoolean(SourceInfo.SNAPSHOT_KEY);
             final Boolean sourceLastSnapshotRecord = source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
-            if (expectSnapshot) {
-                Assert.assertTrue("Snapshot marker expected in source but not found", sourceSnapshot);
-                assertEquals("Last snapshot record marker in source mismatch", expectedLastSnapshotRecord, sourceLastSnapshotRecord);
+            if (shouldBeSnapshot) {
+                assertTrue("Snapshot marker expected in source but not found", sourceSnapshot);
+                assertEquals("Last snapshot record marker in source mismatch", shouldBeLastSnapshotRecord, sourceLastSnapshotRecord);
             }
             else {
                 assertNull("Source snapshot marker not expected, but found", sourceSnapshot);
