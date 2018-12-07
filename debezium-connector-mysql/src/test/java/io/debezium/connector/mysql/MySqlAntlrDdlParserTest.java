@@ -302,6 +302,15 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1028")
+    public void shouldParseCommentWithEngineName() {
+        final String ddl =
+                "CREATE TABLE t1 (`id` int(11) NOT NULL AUTO_INCREMENT, `field_1` int(11) NOT NULL,  `field_2` int(11) NOT NULL,  `field_3` int(11) NOT NULL,  `field_4` int(11) NOT NULL,  `field_5` tinytext COLLATE utf8_unicode_ci NOT NULL,  `field_6` tinytext COLLATE utf8_unicode_ci NOT NULL, `field_7` tinytext COLLATE utf8_unicode_ci NOT NULL COMMENT 'CSV',primary key(id));";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
+    @Test
     @FixFor("DBZ-780")
     public void shouldRenameColumnWithoutDefinition() {
         parser = new MysqlDdlParserWithSimpleTestListener(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
