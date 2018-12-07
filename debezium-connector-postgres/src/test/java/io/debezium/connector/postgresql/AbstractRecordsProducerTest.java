@@ -633,6 +633,7 @@ public abstract class AbstractRecordsProducerTest {
             final Boolean sourceLastSnapshotRecord = source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
             if (expectSnapshot) {
                 Assert.assertTrue("Snapshot marker expected in source but not found", sourceSnapshot);
+                assertEquals("Last snapshot record marker in source mismatch", expectedLastSnapshotRecord, sourceLastSnapshotRecord);
             }
             else {
                 assertNull("Source snapshot marker not expected, but found", sourceSnapshot);
