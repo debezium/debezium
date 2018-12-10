@@ -620,7 +620,6 @@ public class SnapshotReader extends AbstractReader {
                 }
                 step++;
             } finally {
-                mysql.connection().commit();
                 // No matter what, we always want to do these steps if necessary ...
                 boolean rolledBack = false;
                 // ------
@@ -642,6 +641,10 @@ public class SnapshotReader extends AbstractReader {
                         mysql.connection().commit();
                         metrics.snapshotCompleted();
                     }
+                }
+                else {
+                    // Always clean up TX resources even if no changes might be done
+                    mysql.connection().rollback();
                 }
 
                 // -------
