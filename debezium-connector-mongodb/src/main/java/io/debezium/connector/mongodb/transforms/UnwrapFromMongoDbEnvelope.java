@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import io.debezium.data.Envelope;
 import io.debezium.transforms.UnwrapFromEnvelope.DeleteHandling;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -164,10 +165,6 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
 
     @Override
     public R apply(R record) {
-        if (addOperationHeader) {
-            record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) record.value()).get("op").toString());
-        }
-
         final R afterRecord = afterExtractor.apply(record);
         final R patchRecord = patchExtractor.apply(record);
         final R keyRecord = keyExtractor.apply(record);
@@ -181,7 +178,14 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
                 LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
                 return null;
             }
+            if (addOperationHeader) {
+                record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, Envelope.Operation.DELETE.code());
+            }
             return newRecord(record, keyDocument, valueDocument);
+        }
+
+        if (addOperationHeader) {
+            record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) record.value()).get("op").toString());
         }
 
         // insert
