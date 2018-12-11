@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -31,6 +33,8 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
 
     private static final int STARTING_INDEX = 1;
 
+    private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
+
     private final MySqlAntlrDdlParser parser;
     private final List<ParseTreeListener> listeners;
 
@@ -49,6 +53,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         if (!parser.getTableFilter().isIncluded(tableId)) {
+            LOG.debug("Ignoring ALTER TABLE statement for non-whitelisted table {}", tableId);
             return;
         }
         tableEditor = parser.databaseTables().editTable(tableId);
