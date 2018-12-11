@@ -53,6 +53,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private static final String DELIMITER = "flatten.struct.delimiter";
     private static final String OPERATION_HEADER = "operation.header";
     private static final String HANDLE_DELETES = "delete.handling.mode";
+    private static final String DROP_TOMBSTONE = "drop.tombstones";
 
     private Filters filters;
     private SourceInfo source;
@@ -343,6 +344,55 @@ public class UnwrapFromMongoDbEnvelopeTest {
 
         assertThat(value).isNull();
     }
+
+    @Test
+    @FixFor("DBZ-1032")
+    public void shouldGenerateRecordHeaderForTombstone() throws InterruptedException {
+        // ensure tombstone is produced
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
+
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+
+        // given
+        Document event = new Document().append("o", obj)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "d");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(2);
+
+        // the second message is the tombstone
+        SourceRecord record = produced.get(1);
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        props.put(DROP_TOMBSTONE, "false");
+        transformation.configure(props);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // then assert operation header is delete
+        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
+
+        assertThat(value).isNull();
+    }
+
 
     @Test
     @FixFor("DBZ-583")
