@@ -451,8 +451,8 @@ public class Replicator {
                 }
                 ServerAddress serverAddress = address.get();
 
+                //primary switch will be handled automatically by MongoDB driver
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
-                    //primary switch will be handled automatically by mongo driver.
                     logger.info("Found new primary event in oplog, so stopping use of {} to continue with new primary {}",
                             primaryAddress, serverAddress);
                 } else {
