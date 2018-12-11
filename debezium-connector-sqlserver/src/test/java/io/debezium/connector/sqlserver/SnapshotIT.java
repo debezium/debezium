@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -185,6 +186,55 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         testStreaming();
+    }
+
+    @Test
+    @FixFor("DBZ-1031")
+    public void takeSnapshotFromTableReservedName() throws Exception {
+        connection.execute(
+                "CREATE TABLE [User] (id int, name varchar(30), primary key(id))"
+        );
+
+        for (int i = 0; i < INITIAL_RECORDS_PER_TABLE; i++) {
+            connection.execute(
+                    String.format("INSERT INTO [User] VALUES(%s, '%s')", i, "name" + i)
+            );
+        }
+
+        TestHelper.enableTableCdc(connection, "User");
+        initializeConnectorTestFramework();
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with("table.whitelist", "dbo.User")
+                .build();
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+        final List<SourceRecord> user = records.recordsForTopic("server1.dbo.User");
+
+        Assertions.assertThat(user).hasSize(INITIAL_RECORDS_PER_TABLE);
+
+        for (int i = 0; i < INITIAL_RECORDS_PER_TABLE; i++) {
+            final SourceRecord record1 = user.get(i);
+            final List<SchemaAndValueField> expectedKey1 = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i)
+            );
+            final List<SchemaAndValueField> expectedRow1 = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i),
+                    new SchemaAndValueField("name", Schema.OPTIONAL_STRING_SCHEMA, "name" + i)
+            );
+            final Map<String, ?> expectedSource1 = Collect.hashMapOf("snapshot", true, "snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1);
+
+
+            final Struct key1 = (Struct)record1.key();
+            final Struct value1 = (Struct)record1.value();
+            assertRecord(key1, expectedKey1);
+            assertRecord((Struct)value1.get("after"), expectedRow1);
+            Assertions.assertThat(record1.sourceOffset()).isEqualTo(expectedSource1);
+            assertNull(value1.get("before"));
+        }
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
