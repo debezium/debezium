@@ -140,6 +140,11 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                     return Wal2JsonReplicationMessage.this.getValue(columnName, columnType, columnTypeName, rawValue, connection, includeUnknownDatatypes);
                 }
 
+                @Override
+                public String toString() {
+                    return columnName + "(" + columnTypeName + ")=" + rawValue;
+                }
+
             });
         }
 
