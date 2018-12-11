@@ -114,7 +114,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
                     LOGGER.info("Locking table {}", tableId);
 
-                    statement.executeQuery("SELECT * FROM " + tableId.table() + " WITH (TABLOCKX)").close();
+                    String query = String.format("SELECT * FROM [%s] WITH (TABLOCKX)", tableId.table());
+                    statement.executeQuery(query).close();
                 }
             }
         }
@@ -139,8 +140,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
-            .map(TableId::schema)
-            .collect(Collectors.toSet());
+                .map(TableId::schema)
+                .collect(Collectors.toSet());
 
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
@@ -174,7 +175,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        return "SELECT * FROM " + tableId.schema() + "." + tableId.table();
+        return String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
     }
 
     @Override
