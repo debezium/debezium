@@ -211,6 +211,7 @@ final class SourceInfo extends AbstractSourceInfo {
         this.restartBinlogPosition = positionOfFirstEvent;
         this.currentRowNumber = 0;
         this.restartRowsToSkip = 0;
+        this.restartEventsToSkip = 0;
     }
 
     /**
@@ -224,6 +225,8 @@ final class SourceInfo extends AbstractSourceInfo {
         this.currentEventLengthInBytes = eventSizeInBytes;
         if (!inTransaction) {
             this.restartBinlogPosition = positionOfCurrentEvent + eventSizeInBytes;
+            this.restartRowsToSkip = 0;
+            this.restartEventsToSkip = 0;
         }
         // Don't set anything else, since the row numbers are set in the offset(int,int) method called at least once
         // for each processed event
