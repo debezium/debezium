@@ -179,9 +179,17 @@ public class MySqlDdlParserTest {
     public void shouldParseEngineNameWithApostrophes() {
         String ddl = "CREATE TABLE t1 (id INT PRIMARY KEY) ENGINE 'InnoDB'"
                 + "CREATE TABLE t2 (id INT PRIMARY KEY) ENGINE `InnoDB`"
-                + "CREATE TABLE t3 (id INT PRIMARY KEY) ENGINE \"InnoDB\"";
+                + "CREATE TABLE t3 (id INT PRIMARY KEY) ENGINE \"InnoDB\""
+                + "CREATE TABLE t4 (id INT PRIMARY KEY) ENGINE `RocksDB`";
+
         parser.parse(ddl, tables);
-        assertThat(tables.size()).isEqualTo(3);
+        assertThat(tables.size()).isEqualTo(4);
+
+        assertThat(tables.tableIds()
+            .stream()
+            .map(TableId::table)
+            .collect(Collectors.toSet()))
+        .containsOnly("t1", "t2", "t3", "t4");
     }
 
     @Test

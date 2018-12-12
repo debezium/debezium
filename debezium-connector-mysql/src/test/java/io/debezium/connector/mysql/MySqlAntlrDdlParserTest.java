@@ -305,9 +305,21 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     @FixFor("DBZ-1028")
     public void shouldParseCommentWithEngineName() {
         final String ddl =
-                "CREATE TABLE t1 (`id` int(11) NOT NULL AUTO_INCREMENT, `field_1` int(11) NOT NULL,  `field_2` int(11) NOT NULL,  `field_3` int(11) NOT NULL,  `field_4` int(11) NOT NULL,  `field_5` tinytext COLLATE utf8_unicode_ci NOT NULL,  `field_6` tinytext COLLATE utf8_unicode_ci NOT NULL, `field_7` tinytext COLLATE utf8_unicode_ci NOT NULL COMMENT 'CSV',primary key(id));";
+                "CREATE TABLE t1 ("
+                + "`id` int(11) NOT NULL AUTO_INCREMENT, "
+                + "`field_1` int(11) NOT NULL,  "
+                + "`field_2` int(11) NOT NULL,  "
+                + "`field_3` int(11) NOT NULL,  "
+                + "`field_4` int(11) NOT NULL,  "
+                + "`field_5` tinytext COLLATE utf8_unicode_ci NOT NULL, "
+                + "`field_6` tinytext COLLATE utf8_unicode_ci NOT NULL, "
+                + "`field_7` tinytext COLLATE utf8_unicode_ci NOT NULL COMMENT 'CSV',"
+                + "primary key(id));";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
+
+        Column columnWithComment = tables.forTable(null, null, "t1").columnWithName("field_7");
+        assertThat(columnWithComment.typeName()).isEqualToIgnoringCase("tinytext");
     }
 
     @Test
