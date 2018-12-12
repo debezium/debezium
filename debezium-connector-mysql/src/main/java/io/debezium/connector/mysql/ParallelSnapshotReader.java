@@ -30,7 +30,8 @@ public class ParallelSnapshotReader implements Reader {
     private final BinlogReader newTablesBinlogReader;
     private final ChainedReader newTablesReader;
 
-    private final AtomicBoolean running = new AtomicBoolean();
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean completed = new AtomicBoolean(false);
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
     private static final long NEW_TABLES_SERVER_ID_OFFSET = 10000;
@@ -157,11 +158,12 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     private void completeSuccessfully() {
-        stop();
-
-        Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
-        if (completionHandler != null) {
-            completionHandler.run();
+        if (completed.compareAndSet(false, true)) {
+            stop();
+            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            if (completionHandler != null) {
+                completionHandler.run();
+            }
         }
     }
 

@@ -387,13 +387,13 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStop() {
         try {
-            if (isRunning()) {
-                logger.debug("Stopping binlog reader, last recorded offset: {}", lastOffset);
+            if (client.isConnected()) {
+                logger.debug("Stopping binlog reader '{}', last recorded offset: {}", this.name(), lastOffset);
                 client.disconnect();
             }
             cleanupResources();
         } catch (IOException e) {
-            logger.error("Unexpected error when disconnecting from the MySQL binary log reader", e);
+            logger.error("Unexpected error when disconnecting from the MySQL binary log reader '{}'", this.name(), e);
         }
     }
 

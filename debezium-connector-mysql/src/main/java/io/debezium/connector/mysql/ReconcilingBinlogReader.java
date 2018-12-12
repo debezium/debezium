@@ -39,8 +39,8 @@ public class ReconcilingBinlogReader implements Reader {
 
     private Boolean aReaderLeading = null;
 
-    private final AtomicBoolean running = new AtomicBoolean();
-    private final AtomicBoolean completed = new AtomicBoolean();
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean completed = new AtomicBoolean(false);
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
     private static final long RECONCILLING_READER_SERVER_ID_OFFSET = 20000;
@@ -102,11 +102,13 @@ public class ReconcilingBinlogReader implements Reader {
 
     @Override
     public void stop() {
-        try {
-            logger.info("Stopping the {} reader", reconcilingReader.name());
-            reconcilingReader.stop();
-        } catch (Throwable t) {
-            logger.error("Unexpected error stopping the {} reader", reconcilingReader.name());
+        if (running.compareAndSet(true, false)){
+            try {
+                logger.info("Stopping the {} reader", reconcilingReader.name());
+                reconcilingReader.stop();
+            } catch (Throwable t) {
+                logger.error("Unexpected error stopping the {} reader", reconcilingReader.name());
+            }
         }
     }
 
@@ -120,20 +122,21 @@ public class ReconcilingBinlogReader implements Reader {
     }
 
     private void completeSuccessfully() {
-        // if both readers have stopped, we need to stop.
-        setupUnifiedReader();
-        logger.info("Completed Reconciliation of Parallel Readers.");
+        if (completed.compareAndSet(false, true)){
+            stop();
+            setupUnifiedReader();
+            logger.info("Completed Reconciliation of Parallel Readers.");
 
-        Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
-        if (completionHandler != null) {
-            completionHandler.run();
+            Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
+            if (completionHandler != null) {
+                completionHandler.run();
+            }
         }
     }
 
     private void setupUnifiedReader() {
         unifiedReader.context.loadHistory(getLeadingReader().context.source());
         unifiedReader.context.source().setFilterDataFromConfig(unifiedReader.context.config());
-        // ^^ I think this is needed even though imo it's kind of weirdo
         Map<String, ?> keyedOffset =
             reconcilingReader.getLastOffset() == null ?
                 getLeadingReader().getLastOffset() :
