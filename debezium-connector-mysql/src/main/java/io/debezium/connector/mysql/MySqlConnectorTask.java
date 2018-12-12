@@ -217,14 +217,19 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 if (newTablesInConfig()) {
                     // and we are configured to run a parallel snapshot
                     if (taskContext.snapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
-                        ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config, taskContext, getNewFilters(offsets, config));
+                        ServerIdGenerator serverIdGenerator = new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID));
+                        ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config,
+                                                                                                   taskContext,
+                                                                                                   getNewFilters(offsets, config),
+                                                                                                   serverIdGenerator);
 
                         MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
                         // we aren't completing a snapshot, but we need to make sure the "snapshot" flag is false for this new context.
                         unifiedTaskContext.source().completeSnapshot();
-                        long newTablesBinlogReaderServerId = unifiedTaskContext.serverId() + 30000;
-                        // todo: here and other places: this is a bit more fragile than I would like. fixme?
-                        BinlogReader unifiedBinlogReader = new BinlogReader("binlog", unifiedTaskContext, null, newTablesBinlogReaderServerId);
+                        BinlogReader unifiedBinlogReader = new BinlogReader("binlog",
+                                                                            unifiedTaskContext,
+                                                                            null,
+                                                                            serverIdGenerator.getNextServerId()); // todo: should this be the configured serverId?
                         ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader(unifiedBinlogReader);
 
                         chainedReaderBuilder.addReader(parallelSnapshotReader);
@@ -263,6 +268,27 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             throw new ConnectException(e);
         } finally {
             prevLoggingContext.restore();
+        }
+    }
+
+    public class ServerIdGenerator {
+
+        private static final long OFFSET = 10000;
+        private final long configuredServerId;
+        private int counter;
+
+        private ServerIdGenerator(long configuredServerId) {
+            this.configuredServerId = configuredServerId;
+            this.counter = 0;
+        }
+
+        public long getNextServerId() {
+            counter++;
+            return configuredServerId + (counter * OFFSET);
+        }
+
+        public long getConfiguredServerId() {
+            return configuredServerId;
         }
     }
 

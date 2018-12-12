@@ -43,7 +43,7 @@ public class ReconcilingBinlogReader implements Reader {
     private final AtomicBoolean completed = new AtomicBoolean(false);
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
-    private static final long RECONCILLING_READER_SERVER_ID_OFFSET = 20000;
+    private final long serverId;
 
     /**
      * Create a reconciling Binlog Reader.
@@ -54,10 +54,12 @@ public class ReconcilingBinlogReader implements Reader {
      */
     public ReconcilingBinlogReader(BinlogReader binlogReaderA,
                                    BinlogReader binlogReaderB,
-                                   BinlogReader unifiedReader) {
+                                   BinlogReader unifiedReader,
+                                   long serverId) {
         this.binlogReaderA = binlogReaderA;
         this.binlogReaderB = binlogReaderB;
         this.unifiedReader = unifiedReader;
+        this.serverId = serverId;
     }
 
     @Override
@@ -89,13 +91,11 @@ public class ReconcilingBinlogReader implements Reader {
                 new OffsetLimitPredicate(getLeadingReader().getLastOffset(),
                                          laggingReaderContext.gtidSourceFilter());
 
-            long newTablesBinlogReaderServerId = laggingReaderContext.serverId() + RECONCILLING_READER_SERVER_ID_OFFSET;
-
             // create our actual reader
             reconcilingReader = new BinlogReader("innerReconcilingReader",
                                                  laggingReaderContext,
                                                  offsetLimitPredicate,
-                                                 newTablesBinlogReaderServerId);
+                                                 serverId);
             reconcilingReader.start();
         }
     }

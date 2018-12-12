@@ -34,7 +34,7 @@ public class ParallelSnapshotReader implements Reader {
     private final AtomicBoolean completed = new AtomicBoolean(false);
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
 
-    private static final long NEW_TABLES_SERVER_ID_OFFSET = 10000;
+    private final MySqlConnectorTask.ServerIdGenerator serverIdGenerator;
 
     /**
      * Create a ParallelSnapshotReader.
@@ -42,10 +42,13 @@ public class ParallelSnapshotReader implements Reader {
      * @param config the current connector configuration.
      * @param noSnapshotContext The context for those tables not undergoing a snapshot.
      * @param snapshotFilters {@link Filters} matching the tables that should be snapshotted.
+     * @param serverIdGenerator a generator for creating unconflicting serverIds.
      */
     public ParallelSnapshotReader(Configuration config,
                                   MySqlTaskContext noSnapshotContext,
-                                  Filters snapshotFilters) {
+                                  Filters snapshotFilters,
+                                  MySqlConnectorTask.ServerIdGenerator serverIdGenerator) {
+        this.serverIdGenerator = serverIdGenerator;
         AtomicBoolean oldTablesReaderNearEnd = new AtomicBoolean(false);
         AtomicBoolean newTablesReaderNearEnd = new AtomicBoolean(false);
         ParallelHaltingPredicate oldTablesReaderHaltingPredicate =
@@ -55,7 +58,8 @@ public class ParallelSnapshotReader implements Reader {
 
         this.oldTablesReader = new BinlogReader("oldBinlog",
                                                 noSnapshotContext,
-                                                oldTablesReaderHaltingPredicate);
+                                                oldTablesReaderHaltingPredicate,
+                                                serverIdGenerator.getNextServerId());
 
         MySqlTaskContext newTablesContext = new MySqlTaskContext(config,
                                                                  snapshotFilters,
@@ -63,11 +67,10 @@ public class ParallelSnapshotReader implements Reader {
         newTablesContext.start();
         SnapshotReader newTablesSnapshotReader = new SnapshotReader("newSnapshot", newTablesContext);
 
-        long newTablesBinlogReaderServerId = newTablesContext.serverId() + NEW_TABLES_SERVER_ID_OFFSET;
         this.newTablesBinlogReader = new BinlogReader("newBinlog",
                                                       newTablesContext,
                                                       newTablesReaderHaltingPredicate,
-                                                      newTablesBinlogReaderServerId);
+                                                      serverIdGenerator.getNextServerId());
         this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
     }
 
@@ -78,6 +81,7 @@ public class ParallelSnapshotReader implements Reader {
         this.oldTablesReader = oldTablesBinlogReader;
         this.newTablesBinlogReader = newTablesBinlogReader;
         this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
+        this.serverIdGenerator = null;
     }
 
     /**
@@ -86,7 +90,10 @@ public class ParallelSnapshotReader implements Reader {
      * @return a {@link ReconcilingBinlogReader}
      */
     public ReconcilingBinlogReader createReconcilingBinlogReader(BinlogReader unifiedReader) {
-        return new ReconcilingBinlogReader(oldTablesReader, newTablesBinlogReader, unifiedReader);
+        return new ReconcilingBinlogReader(oldTablesReader,
+                                           newTablesBinlogReader,
+                                           unifiedReader,
+                                           serverIdGenerator.getNextServerId());
     }
 
     @Override
