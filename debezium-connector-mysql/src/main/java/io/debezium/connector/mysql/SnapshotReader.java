@@ -615,7 +615,6 @@ public class SnapshotReader extends AbstractReader {
                         interrupted.set(true);
                     }
                 } else {
-                    // source.markLastSnapshot(); Think we will not be needing this here it is used to mark last row entry?
                     logger.info("Step {}: encountered only schema based snapshot, skipping data snapshot", step);
                 }
                 step++;

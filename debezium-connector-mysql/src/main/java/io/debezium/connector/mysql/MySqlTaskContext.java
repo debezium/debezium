@@ -71,8 +71,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         // Set up the source information ...
         this.source = new SourceInfo();
         this.source.setServerName(connectorConfig.getLogicalName());
-        //this.source.setOffset(); // todo something like this maybe?
-
 
         // Set up the GTID filter ...
         String gtidSetIncludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_INCLUDES);
