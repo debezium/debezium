@@ -96,6 +96,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE,
+            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             Heartbeat.HEARTBEAT_INTERVAL,
             Heartbeat.HEARTBEAT_TOPICS_PREFIX
     );
@@ -126,7 +127,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
         );
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE);
+        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
+                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS);
 
         return config;
     }
