@@ -16,8 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.ConfigurationDefaults;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
@@ -28,10 +26,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
-import io.debezium.util.Threads.Timer;
 
 /**
  * Coordinates one or more {@link ChangeEventSource}s and executes them in order.
@@ -45,7 +40,6 @@ public class ChangeEventSourceCoordinator {
 
     private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
 
-    private final Duration snapshotDelay;
     private final OffsetContext previousOffset;
     private final ErrorHandler errorHandler;
     private final ChangeEventSourceFactory changeEventSourceFactory;
@@ -58,11 +52,10 @@ public class ChangeEventSourceCoordinator {
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, Duration snapshotDelay, ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher) {
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
-        this.snapshotDelay = snapshotDelay;
         this.executor = Threads.newSingleThreadExecutor(connectorType, logicalName, "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;
     }
@@ -77,12 +70,6 @@ public class ChangeEventSourceCoordinator {
             try {
                 snapshotMetrics.register(LOGGER);
                 streamingMetrics.register(LOGGER);
-                delaySnapshotIfNeeded();
-
-                if (!running) {
-                    return;
-                }
-
 
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
 
@@ -90,11 +77,7 @@ public class ChangeEventSourceCoordinator {
                 eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
 
-                if (!running) {
-                    return;
-                }
-
-                if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
+                if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
                     eventDispatcher.setEventListener(streamingMetrics);
                     streamingSource.execute(context);
@@ -134,24 +117,6 @@ public class ChangeEventSourceCoordinator {
         }
         snapshotMetrics.unregister(LOGGER);
         streamingMetrics.unregister(LOGGER);
-    }
-
-    /**
-     * Delays snapshot execution as per the {@link CommonConnectorConfig#SNAPSHOT_DELAY_MS} parameter.
-     */
-    private void delaySnapshotIfNeeded() throws InterruptedException {
-        if (snapshotDelay.isZero() || snapshotDelay.isNegative()) {
-            return;
-        }
-
-        LOGGER.info("The connector will wait for {} ms before proceeding", snapshotDelay.toMillis());
-
-        Timer timer = Threads.timer(Clock.SYSTEM, snapshotDelay);
-        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
-
-        while(running && !timer.expired()) {
-            metronome.pause();
-        }
     }
 
     private class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
