@@ -678,7 +678,6 @@ public final class EmbeddedEngine implements Runnable {
                                 return offsetReader;
                             }
 
-                            @Override
                             public Map<String, String> configs() {
                                 // TODO Auto-generated method stub
                                 return null;
