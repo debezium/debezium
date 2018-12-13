@@ -229,7 +229,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                         BinlogReader unifiedBinlogReader = new BinlogReader("binlog",
                                                                             unifiedTaskContext,
                                                                             null,
-                                                                            serverIdGenerator.getNextServerId()); // todo: should this be the configured serverId?
+                                                                            serverIdGenerator.getConfiguredServerId());
                         ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader(unifiedBinlogReader);
 
                         chainedReaderBuilder.addReader(parallelSnapshotReader);
