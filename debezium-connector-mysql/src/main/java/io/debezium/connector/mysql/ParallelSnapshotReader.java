@@ -181,9 +181,17 @@ public class ParallelSnapshotReader implements Reader {
     }
 
     /**
-     * A Halting Predicate for the parallel snapshot reader
+     * A Halting Predicate for the parallel snapshot reader.
+     * Usage for this predicate assumes two readers using two ParallelHalting Predicates.
+     * The booleans are owned by the two predicates, and keep track of whether they or the
+     * other reader has reached the end of the binlog.
      *
-     * TODO: more documentation (that is correct)
+     * Test returns false if both both readers have been determined to be near the end of the
+     * binlog.
+     * Being near the end of the binlog is determined to be this predicate having seen a record
+     * with a timestamp within {@link ParallelHaltingPredicate#DEFAULT_MIN_HALTING_DURATION} of
+     * the current time. Once a single record near the end of the binlog has been seen, we
+     * we assume the reader will stay near the end of the binlog.
      */
     /*package local*/ static class ParallelHaltingPredicate implements Predicate<SourceRecord> {
 
@@ -194,7 +202,6 @@ public class ParallelSnapshotReader implements Reader {
 
         // The minimum duration we must be within before we attempt to halt.
         private final Duration minHaltingDuration;
-        // todo maybe this should eventually be configured, but for now the time diff were are interested in
         // is hard coded in as 5 minutes.
         private static final Duration DEFAULT_MIN_HALTING_DURATION = Duration.ofMinutes(5);
 
@@ -215,7 +222,6 @@ public class ParallelSnapshotReader implements Reader {
         public boolean test(SourceRecord ourSourceRecord) {
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
-                //ourSourceRecord.value()
                 Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
                 Instant recordTimestamp = Instant.ofEpochSecond(sourceRecordTimestamp);
                 Instant now = Instant.now();

@@ -228,6 +228,8 @@ public class ParallelSnapshotReaderTest {
 
     /**
      * Create an "offset" containing a single timestamp element with the given value.
+     * Needed because {@link ParallelSnapshotReader.ParallelHaltingPredicate} halts based on how
+     * close the record's timestamp is to the present time.
      * @param tsSec the timestamp (in seconds) in the resulting offset.
      * @return an "offset" containing the given timestamp.
      */

@@ -204,15 +204,11 @@ public class ReconcilingBinlogReader implements Reader {
      */
     /*package private*/ static class OffsetLimitPredicate implements Predicate<SourceRecord> {
 
-        private final Logger logger = LoggerFactory.getLogger(getClass());
-
-        private Map<String, ?> leadingReaderFinalOffset;
         private Document leadingReaderFinalOffsetDocument;
         private Predicate<String> gtidFilter;
 
         /*package private*/ OffsetLimitPredicate(Map<String, ?> leadingReaderFinalOffset,
                                                  Predicate<String> gtidFilter) {
-            this.leadingReaderFinalOffset = leadingReaderFinalOffset;
             this.leadingReaderFinalOffsetDocument = SourceInfo.createDocumentFromOffset(leadingReaderFinalOffset);
             this.gtidFilter = gtidFilter;
 

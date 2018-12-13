@@ -565,7 +565,7 @@ final class SourceInfo extends AbstractSourceInfo {
     /**
      * Set the source offset, as read from Kafka Connect. This method does nothing if the supplied map is null.
      *
-     * @param sourceOffset the previously-recorded Kafka Connect source oisffset
+     * @param sourceOffset the previously-recorded Kafka Connect source offset
      * @throws ConnectException if any offset parameter values are missing, invalid, or of the wrong type
      */
     public void setOffset(Map<String, ?> sourceOffset) {

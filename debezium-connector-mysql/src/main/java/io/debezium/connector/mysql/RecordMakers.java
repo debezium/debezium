@@ -73,11 +73,17 @@ public class RecordMakers {
     }
 
     /**
-     * @param restartOffset the offset to publish blah blah TODO
+     * @param restartOffset the offset to publish with the {@link SourceInfo#RESTART_PREFIX} prefix
+     *                      as additional information in the offset. If the connector attempts to
+     *                      restart from an offset with information with this prefix it will
+     *                      create an offset from the prefixed information rather than restarting
+     *                      from the base offset.
+     * @see RecordMakers#RecordMakers(MySqlSchema, SourceInfo, TopicSelector, boolean)
+     * @see MySqlConnectorTask#getRestartOffset(Map)
      */
     public RecordMakers(MySqlSchema schema,
                         SourceInfo source,
-                        TopicSelector topicSelector,
+                        TopicSelector<TableId> topicSelector,
                         boolean emitTombstoneOnDelete,
                         Map<String, ?> restartOffset) {
         this(schema, source, topicSelector, emitTombstoneOnDelete);

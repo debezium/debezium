@@ -294,6 +294,19 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         }
     }
 
+    /**
+     * Get the offset to restart the connector from. Normally, this is just the stored offset.
+     *
+     * However, if we were doing a parallel load with new tables, it's possible that the last
+     * committed offset is from reading the new tables, which could be beyond where we want to
+     * restart from (and restarting there could cause skipped events). To fix this, the new
+     * tables binlog reader records extra information in its offset to tell the connector where
+     * to restart from. If this extra information is present in the stored offset, that is the
+     * offset that is returned.
+     * @param storedOffset the stored offset.
+     * @return the offset to restart from.
+     * @see RecordMakers#RecordMakers(MySqlSchema, SourceInfo, TopicSelector, boolean, Map)
+     */
     @SuppressWarnings("unchecked")
     private Map<String, ?> getRestartOffset(Map<String, ?> storedOffset) {
         Map<String, Object> restartOffset = new HashMap<>();
