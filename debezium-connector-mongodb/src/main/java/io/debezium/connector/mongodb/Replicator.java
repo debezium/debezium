@@ -259,7 +259,13 @@ public class Replicator {
      * @return {@code true} if the initial sync was completed, or {@code false} if it was stopped for any reason
      */
     protected boolean performInitialSync() {
-        delaySnapshotIfNeeded();
+        try {
+            delaySnapshotIfNeeded();
+        }
+        catch (InterruptedException e) {
+            logger.info("Interrupted while awaiting initial snapshot delay");
+            return false;
+        }
 
         logger.info("Beginning initial sync of '{}' at {}", rsName, source.lastOffset(rsName));
         source.startInitialSync(replicaSet.replicaSetName());
@@ -347,21 +353,22 @@ public class Replicator {
         return true;
     }
 
-    private void delaySnapshotIfNeeded() {
+    private void delaySnapshotIfNeeded() throws InterruptedException {
         Duration delay = Duration.ofMillis(context.getConnectionContext().config.getLong(CommonConnectorConfig.SNAPSHOT_DELAY_MS));
         if (delay.isZero() || delay.isNegative()) {
             return;
         }
 
-        logger.info("The connector will wait for {} ms before proceeding", delay.toMillis());
         Threads.Timer timer = Threads.timer(Clock.SYSTEM, delay);
         Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
-        while (!timer.expired()) {
-            try {
-                metronome.pause();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+
+        while(!timer.expired()) {
+            if (!running.get()) {
+                throw new InterruptedException("Interrupted while awaiting initial snapshot delay");
             }
+
+            logger.info("The connector will wait for {}s before proceeding", timer.remaining().getSeconds());
+            metronome.pause();
         }
     }
 

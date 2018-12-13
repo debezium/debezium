@@ -235,7 +235,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      AUTO_DISCOVER_MEMBERS,
                                                      DATABASE_WHITELIST,
                                                      DATABASE_BLACKLIST,
-                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -249,7 +250,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
-        Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS);
+        Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
+                CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
+                CommonConnectorConfig.SNAPSHOT_DELAY_MS);
         return config;
     }
 
