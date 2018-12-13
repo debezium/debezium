@@ -625,6 +625,14 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                        + "MySQL database cluster as another server (with this unique ID) so it can read "
                                                        + "the binlog. By default, a random number is generated between 5400 and 6400.");
 
+    public static final Field SERVER_ID_OFFSET = Field.create("database.server.id.offset")
+                                                      .withDisplayName("Cluster ID offset")
+                                                      .withType(Type.LONG).withWidth(Width.LONG).withImportance(Importance.HIGH).withDefault(10000L)
+                                                      .withDescription("Only relevant in parallel snapshotting is configured. During"
+                                                              + "parallel snapshotting, multiple (4) connections open to the database"
+                                                              + "client, and they each need their own unique connection ID. This offset is"
+                                                              + "used to generate those IDs from the base configured cluster ID.");
+
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
                                               .withDisplayName("SSL mode")
                                               .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
@@ -1039,7 +1047,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID,
+    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID, SERVER_ID_OFFSET,
                                                      SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE,

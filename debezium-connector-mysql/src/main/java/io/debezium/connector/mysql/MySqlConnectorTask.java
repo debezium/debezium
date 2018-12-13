@@ -72,7 +72,6 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             Map<String, ?> offsets = getRestartOffset(context.offsetStorageReader().offset(partition));
             final SourceInfo source;
             if (offsets != null) {
-                logger.info("RESTART OFFSET IS: {}", offsets);
                 Filters filters = SourceInfo.offsetsHaveFilterInfo(offsets) ? getOldFilters(offsets, config) : getAllFilters(config);
                 this.taskContext = createAndStartTaskContext(config, filters);
                 this.connectionContext = taskContext.getConnectionContext();
@@ -217,7 +216,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 if (newTablesInConfig()) {
                     // and we are configured to run a parallel snapshot
                     if (taskContext.snapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
-                        ServerIdGenerator serverIdGenerator = new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID));
+                        ServerIdGenerator serverIdGenerator =
+                            new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID),
+                                                  config.getLong(MySqlConnectorConfig.SERVER_ID_OFFSET));
                         ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config,
                                                                                                    taskContext,
                                                                                                    getNewFilters(offsets, config),
@@ -273,18 +274,19 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
     public class ServerIdGenerator {
 
-        private static final long OFFSET = 10000;
         private final long configuredServerId;
+        private final long offset;
         private int counter;
 
-        private ServerIdGenerator(long configuredServerId) {
+        private ServerIdGenerator(long configuredServerId, long configuredOffset) {
             this.configuredServerId = configuredServerId;
+            this.offset = configuredOffset;
             this.counter = 0;
         }
 
         public long getNextServerId() {
             counter++;
-            return configuredServerId + (counter * OFFSET);
+            return configuredServerId + (counter * offset);
         }
 
         public long getConfiguredServerId() {
