@@ -59,6 +59,7 @@ public class ParallelSnapshotReaderTest {
         List<SourceRecord> newSnapshotRecords = new ArrayList<>();
         newSnapshotRecords.add(newSnapshotSourceRecord);
 
+        when(mockOldBinlogReader.isRunning()).thenReturn(true);
         when(mockOldBinlogReader.poll()).thenReturn(oldBinlogRecords);
         when(mockNewSnapshotReader.poll()).thenReturn(newSnapshotRecords);
 
@@ -84,7 +85,10 @@ public class ParallelSnapshotReaderTest {
         List<SourceRecord> newSnapshotRecords = new ArrayList<>();
         newSnapshotRecords.add(newSnapshotSourceRecord);
 
-        when(mockOldBinlogReader.poll()).thenReturn(null);
+        // if the old reader is polled when it's stopped it will throw an exception.
+        when(mockOldBinlogReader.isRunning()).thenReturn(false);
+        when(mockOldBinlogReader.poll()).thenThrow(new InterruptedException());
+
         when(mockNewSnapshotReader.poll()).thenReturn(newSnapshotRecords);
 
         // this needs to happen so that the chained reader runs correctly.
@@ -109,6 +113,7 @@ public class ParallelSnapshotReaderTest {
         List<SourceRecord> oldBinlogRecords = new ArrayList<>();
         oldBinlogRecords.add(oldBinlogSourceRecord);
 
+        when(mockOldBinlogReader.isRunning()).thenReturn(true);
         when(mockOldBinlogReader.poll()).thenReturn(oldBinlogRecords);
 
         // cheap way to have the new reader be stopped is to just not start it; so don't start the parallel reader
@@ -127,7 +132,10 @@ public class ParallelSnapshotReaderTest {
 
         ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(mockOldBinlogReader, mockNewSnapshotReader, mockNewBinlogReader);
 
-        when(mockOldBinlogReader.poll()).thenReturn(null);
+        when(mockOldBinlogReader.isRunning()).thenReturn(false);
+        when(mockOldBinlogReader.poll()).thenThrow(new InterruptedException());
+
+        when(mockNewBinlogReader.poll()).thenReturn(null);
 
         // cheap way to have the new reader be stopped is to just not start it; so don't start the parallel reader
 
@@ -224,9 +232,6 @@ public class ParallelSnapshotReaderTest {
      * @return an "offset" containing the given timestamp.
      */
     private SourceRecord createSourceRecordWithTimestamp(long tsSec) {
-        // TODO :
-        // [x] CHANCE ME TO SECONDS (that was easy)
-        // [] AND MAKE EVERYTHING THAT CALLS ME USE SECONDS
         Map<String, ?> offset = Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, tsSec);
         return new SourceRecord(null, offset, null, null, null);
     }
