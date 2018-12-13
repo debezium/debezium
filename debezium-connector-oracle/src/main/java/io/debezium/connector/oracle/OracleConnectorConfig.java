@@ -242,6 +242,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         @Override
         public boolean isIncluded(TableId t) {
             return !t.schema().toLowerCase().equals("appqossys") &&
+                    !t.schema().toLowerCase().equals("audsys") &&
                     !t.schema().toLowerCase().equals("ctxsys") &&
                     !t.schema().toLowerCase().equals("dvsys") &&
                     !t.schema().toLowerCase().equals("dbsfwuser") &&
