@@ -18,6 +18,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -29,6 +31,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -81,6 +84,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             LOGGER.debug("Skipping snapshotting");
             return SnapshotResult.completed(previousOffset);
         }
+
+        delaySnapshotIfNeeded(context);
 
         Connection connection = null;
 
@@ -167,6 +172,29 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
      */
     protected abstract SnapshottingTask getSnapshottingTask(OffsetContext previousOffset);
+
+    /**
+     * Delays snapshot execution as per the {@link CommonConnectorConfig#SNAPSHOT_DELAY_MS} parameter.
+     */
+    private void delaySnapshotIfNeeded(ChangeEventSourceContext context) throws InterruptedException {
+        Duration snapshotDelay = connectorConfig.getSnapshotDelay();
+
+        if (snapshotDelay.isZero() || snapshotDelay.isNegative()) {
+            return;
+        }
+
+        Timer timer = Threads.timer(Clock.SYSTEM, snapshotDelay);
+        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+
+        while(!timer.expired()) {
+            if (!context.isRunning()) {
+                throw new InterruptedException("Interrupted while awaiting initial snapshot delay");
+            }
+
+            LOGGER.info("The connector will wait for {}s before proceeding", timer.remaining().getSeconds());
+            metronome.pause();
+        }
+    }
 
     /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
