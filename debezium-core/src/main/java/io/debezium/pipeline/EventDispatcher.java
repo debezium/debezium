@@ -76,12 +76,8 @@ public class EventDispatcher<T extends DataCollectionId> {
                 connectorConfig.getLogicalName());
     }
 
-    // TODO One could argue that snapshot events shouldn't have to go through the dispatcher but rather to the queue
-    // directly; It's done though in order to handle heartbeat, JMX and other things consistently with streaming, so
-    // it might be beneficial eventually
     public void dispatchSnapshotEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, SnapshotReceiver receiver) throws InterruptedException {
         // TODO Handle Heartbeat
-
 
         DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 

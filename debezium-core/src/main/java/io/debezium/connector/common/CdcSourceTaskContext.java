@@ -6,6 +6,7 @@
 package io.debezium.connector.common;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.function.Supplier;
 
 import javax.management.MalformedObjectNameException;
@@ -24,17 +25,19 @@ import io.debezium.util.LoggingContext;
  */
 public class CdcSourceTaskContext {
 
-    private static final String[] EMPTY_CAPTURED_LIST = new String[0];
-
     private final String connectorType;
     private final String connectorName;
     private final Clock clock;
+
+    /**
+     * Obtains the data collections captured at the point of invocation.
+     */
     private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
 
     public CdcSourceTaskContext(String connectorType, String connectorName, Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = connectorType;
         this.connectorName = connectorName;
-        this.collectionsSupplier = collectionsSupplier;
+        this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
 
         this.clock = Clock.system();
     }
@@ -68,18 +71,9 @@ public class CdcSourceTaskContext {
     }
 
     public String[] capturedDataCollections() {
-        if (collectionsSupplier == null) {
-            return EMPTY_CAPTURED_LIST;
-        }
-        final Collection<? extends DataCollectionId> collections = collectionsSupplier.get();
-        if (collections == null) {
-            return EMPTY_CAPTURED_LIST;
-        }
-        String[] ret = new String[collections.size()];
-        int i = 0;
-        for (DataCollectionId collection: collections) {
-            ret[i++] = collection.toString();
-        }
-        return ret;
+        return collectionsSupplier.get()
+                .stream()
+                .map(DataCollectionId::toString)
+                .toArray(String[]::new);
     }
 }
