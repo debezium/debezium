@@ -6,6 +6,7 @@
 package io.debezium.util;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Utilities related to threads and threading.
- * 
+ *
  * @author Randall Hauch
  */
 public class Threads {
@@ -38,7 +39,7 @@ public class Threads {
 
         /**
          * Get the time that has elapsed since the last call to {@link #reset() reset}.
-         * 
+         *
          * @return the number of milliseconds
          */
         long elapsedTime();
@@ -49,15 +50,18 @@ public class Threads {
      *
      */
     public static interface Timer {
+
         /**
          * @return true if current time is greater than start time plus requested time period
          */
         boolean expired();
+
+        Duration remaining();
     }
 
     /**
      * Obtain a {@link TimeSince} that uses the given clock to record the time elapsed.
-     * 
+     *
      * @param clock the clock; may not be null
      * @return the {@link TimeSince} object; never null
      */
@@ -88,14 +92,26 @@ public class Threads {
     public static Timer timer(Clock clock, Duration time) {
         final TimeSince start = timeSince(clock);
         start.reset();
-        return () -> start.elapsedTime() > time.toMillis();
+
+        return new Timer() {
+
+            @Override
+            public boolean expired() {
+                return start.elapsedTime() > time.toMillis();
+            }
+
+            @Override
+            public Duration remaining() {
+                return time.minus(start.elapsedTime(), ChronoUnit.MILLIS);
+            }
+        };
     }
 
     /**
      * Create a thread that will interrupt the calling thread when the {@link TimeSince elapsed time} has exceeded the
      * specified amount. The supplied {@link TimeSince} object will be {@link TimeSince#reset() reset} when the
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -113,7 +129,7 @@ public class Threads {
      * Create a thread that will interrupt the given thread when the {@link TimeSince elapsed time} has exceeded the
      * specified amount. The supplied {@link TimeSince} object will be {@link TimeSince#reset() reset} when the
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -135,7 +151,7 @@ public class Threads {
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
      * <p>
      * The thread checks the elapsed time every 100 milliseconds.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -157,7 +173,7 @@ public class Threads {
      * new thread is started, and should also be {@link TimeSince#reset() reset} any time the elapsed time should be reset to 0.
      * <p>
      * The thread checks the elapsed time every 100 milliseconds.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null
@@ -179,7 +195,7 @@ public class Threads {
     /**
      * Create a thread that will call the supplied function when the elapsed time has exceeded the
      * specified amount.
-     * 
+     *
      * @param threadName the name of the new thread; may not be null
      * @param timeout the maximum amount of time that can elapse before the thread is interrupted; must be positive
      * @param timeoutUnit the unit for {@code timeout}; may not be null

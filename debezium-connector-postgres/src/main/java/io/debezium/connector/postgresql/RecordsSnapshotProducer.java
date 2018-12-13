@@ -105,14 +105,18 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             return;
         }
 
-        logger.info("The connector will wait for {} ms before proceeding", delay.toMillis());
         Threads.Timer timer = Threads.timer(Clock.SYSTEM, delay);
         Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+
         while (!timer.expired()) {
             try {
+                logger.info("The connector will wait for {}s before proceeding", timer.remaining().getSeconds());
                 metronome.pause();
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                logger.debug("Interrupted while awaiting initial snapshot delay");
+                return;
             }
         }
     }
@@ -121,7 +125,13 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         try {
             // and then start streaming if necessary
             streamProducer.ifPresent(producer -> {
-                logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
+                if (sourceInfo.lsn() != null) {
+                    logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
+                }
+
+                // still starting the stream producer, also if the connector has stopped already.
+                // otherwise the executor started in its constructor wouldn't be stopped. This logic
+                // will be obsolete when moving to the new framework classes.
                 producer.start(consumer, failureConsumer);
             });
         } finally {
@@ -150,6 +160,11 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     private void takeSnapshot(BlockingConsumer<ChangeEvent> consumer) {
+        if (executorService.isShutdown()) {
+            logger.info("Not taking snapshot as this task has been cancelled already");
+            return;
+        }
+
         long snapshotStart = clock().currentTimeInMillis();
         Connection jdbcConnection = null;
         try (PostgresConnection connection = taskContext.createConnection()) {
