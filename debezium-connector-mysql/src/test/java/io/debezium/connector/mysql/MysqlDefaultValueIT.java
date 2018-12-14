@@ -517,7 +517,11 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         //current timestamp will be replaced with epoch timestamp
         ZonedDateTime t5 = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
         String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
-        assertThat(schemaJ.defaultValue()).isEqualTo(MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).databaseAsserts().currentDateTimeDefaultOptional(isoString5));
+        assertThat(schemaJ.defaultValue()).isEqualTo(
+                MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())
+                    .databaseAsserts()
+                    .currentDateTimeDefaultOptional(isoString5)
+        );
     }
 
     @Test

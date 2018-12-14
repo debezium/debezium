@@ -13,12 +13,14 @@ import java.sql.SQLException;
 import javax.xml.bind.DatatypeConverter;
 
 import org.apache.kafka.connect.data.Struct;
+import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
@@ -34,17 +36,19 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
                                                              .toAbsolutePath();
     private UniqueDatabase DATABASE;
-    private DatabaseDifferences databaseAsserts;
+    private DatabaseGeoDifferences databaseDifferences;
 
     private Configuration config;
 
     @Before
     public void beforeEach() {
         stopConnector();
-        databaseAsserts = MySQLConnection.forTestDatabase("emptydb").databaseAsserts();
-        DATABASE = new UniqueDatabase("geometryit", databaseAsserts.geometryDatabaseName())
+        databaseDifferences = databaseGeoDifferences(MySQLConnection.forTestDatabase("emptydb").getMySqlVersion());
+
+        DATABASE = new UniqueDatabase("geometryit", databaseDifferences.geometryDatabaseName())
                 .withDbHistoryPath(DB_HISTORY_PATH);
         DATABASE.createAndInitialize();
+
         initializeConnectorTestFramework();
         Testing.Files.delete(DB_HISTORY_PATH);
     }
@@ -74,12 +78,12 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         //Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 2;
-        int numDataRecords = databaseAsserts.geometryPointTableRecords() + 2;
+        int numDataRecords = databaseDifferences.geometryPointTableRecords() + 2;
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables);
-        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(databaseAsserts.geometryPointTableRecords());
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(databaseDifferences.geometryPointTableRecords());
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_507_geometry")).size()).isEqualTo(2);
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
@@ -116,7 +120,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         //Testing.Debug.enable();
         int numTables = 2;
-        int numDataRecords = databaseAsserts.geometryPointTableRecords() + 2;
+        int numDataRecords = databaseDifferences.geometryPointTableRecords() + 2;
         int numDdlRecords =
             numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numSetVariables = 1;
@@ -124,7 +128,7 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numDdlRecords + numSetVariables);
-        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(databaseAsserts.geometryPointTableRecords());
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_222_point")).size()).isEqualTo(databaseDifferences.geometryPointTableRecords());
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_507_geometry")).size()).isEqualTo(2);
         assertThat(records.topics().size()).isEqualTo(numTables + 1);
         assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName(), "");
@@ -162,12 +166,12 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             Double actualY = after.getStruct("point").getFloat64("y");
             Integer actualSrid = after.getStruct("point").getInt32("srid");
             //Validate the values
-            databaseAsserts.geometryAssertPoints(expectedX, expectedY, actualX, actualY);
+            databaseDifferences.geometryAssertPoints(expectedX, expectedY, actualX, actualY);
             assertThat(actualSrid).isEqualTo(expectedSrid);
             //Test WKB
             Point point = (Point) WkbGeometryReader.readGeometry(new ByteReader((byte[]) after.getStruct("point")
                     .get("wkb")));
-            databaseAsserts.geometryAssertPoints(expectedX, expectedY, point.getX(), point.getY());
+            databaseDifferences.geometryAssertPoints(expectedX, expectedY, point.getX(), point.getY());
         } else if (expectedX != null) {
             Assert.fail("Got a null geometry but didn't expect to");
         }
@@ -200,6 +204,62 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             assertThat(after.getStruct("polygon")).isNull();
             assertThat(after.getStruct("collection")).isNull();
         }
+    }
 
+    private DatabaseGeoDifferences databaseGeoDifferences(MySqlVersion mySqlVersion) {
+        if (mySqlVersion == MySqlVersion.MYSQL_5) {
+            return new DatabaseGeoDifferences() {
+
+                @Override
+                public String geometryDatabaseName() {
+                    return "geometry_test_5";
+                }
+
+                @Override
+                public int geometryPointTableRecords() {
+                    return 4;
+                }
+
+                @Override
+                public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
+                        Double actualY) {
+                    assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
+                    assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
+                }
+            };
+        }
+        else {
+            return new DatabaseGeoDifferences() {
+
+                @Override
+                public String geometryDatabaseName() {
+                    return "geometry_test_8";
+                }
+
+                /**
+                 * MySQL 8 does not support unknown SRIDs so the case is removed
+                 */
+                @Override
+                public int geometryPointTableRecords() {
+                    return 3;
+                }
+
+                /**
+                 * MySQL 8 returns X and Y in a different order
+                 */
+                @Override
+                public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
+                        Double actualY) {
+                    assertThat(actualX).isEqualTo(expectedY, Delta.delta(0.01));
+                    assertThat(actualY).isEqualTo(expectedX, Delta.delta(0.01));
+                }
+            };
+        }
+    }
+
+    private interface DatabaseGeoDifferences {
+        String geometryDatabaseName();
+        int geometryPointTableRecords();
+        void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX, Double actualY);
     }
 }
