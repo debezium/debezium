@@ -157,7 +157,6 @@ final class SourceInfo extends AbstractSourceInfo {
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private String currentQuery = null;
-    private boolean parallelSnapshotting = false;
     private String databaseWhitelist;
     private String databaseBlacklist;
     private String tableWhitelist;

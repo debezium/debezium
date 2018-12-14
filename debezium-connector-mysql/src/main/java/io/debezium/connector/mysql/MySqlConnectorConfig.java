@@ -627,10 +627,13 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field SERVER_ID_OFFSET = Field.create("database.server.id.offset")
                                                       .withDisplayName("Cluster ID offset")
-                                                      .withType(Type.LONG).withWidth(Width.LONG).withImportance(Importance.HIGH).withDefault(10000L)
-                                                      .withDescription("Only relevant in parallel snapshotting is configured. During"
-                                                              + "parallel snapshotting, multiple (4) connections open to the database"
-                                                              + "client, and they each need their own unique connection ID. This offset is"
+                                                      .withType(Type.LONG)
+                                                      .withWidth(Width.LONG)
+                                                      .withImportance(Importance.HIGH)
+                                                      .withDefault(10000L)
+                                                      .withDescription("Only relevant in parallel snapshotting is configured. During "
+                                                              + "parallel snapshotting, multiple (4) connections open to the database "
+                                                              + "client, and they each need their own unique connection ID. This offset is "
                                                               + "used to generate those IDs from the base configured cluster ID.");
 
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
