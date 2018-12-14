@@ -512,8 +512,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return {@code true} if the type is geometry collection
      */
     protected boolean isGeometryCollection(String upperCaseTypeName) {
-        if (upperCaseTypeName == null) return false;
-        return upperCaseTypeName.equals("GEOMETRYCOLLECTION") || upperCaseTypeName.equals("GEOMCOLLECTION") || upperCaseTypeName.endsWith(".GEOMCOLLECTION");
+        if (upperCaseTypeName == null) {
+            return false;
+        }
+
+        return upperCaseTypeName.equals("GEOMETRYCOLLECTION") || upperCaseTypeName.equals("GEOMCOLLECTION")
+                || upperCaseTypeName.endsWith(".GEOMCOLLECTION");
     }
 
     protected List<String> extractEnumAndSetOptions(Column column) {

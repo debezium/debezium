@@ -5,12 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import java.sql.SQLException;
 import java.util.Map;
-
-import org.fest.assertions.Delta;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -23,7 +19,13 @@ import io.debezium.jdbc.JdbcConnection;
  * @author Randall Hauch
  */
 public class MySQLConnection extends JdbcConnection {
+
+    public enum MySqlVersion {
+        MYSQL_5, MYSQL_8;
+    }
+
     private DatabaseDifferences databaseAsserts;
+    private MySqlVersion mySqlVersion;
 
     /**
      * Obtain a connection instance to the named test database.
@@ -89,82 +91,53 @@ public class MySQLConnection extends JdbcConnection {
         super(config, FACTORY, null, MySQLConnection::addDefaults);
     }
 
-    public DatabaseDifferences databaseAsserts() {
-        if (databaseAsserts == null) {
+    public MySqlVersion getMySqlVersion() {
+        if (mySqlVersion == null) {
+            String versionString;
             try {
-                final String versionString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE 'version'", rs -> {
+                versionString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE 'version'", rs -> {
                     rs.next();
                     return rs.getString(2);
                 });
-                if (versionString.startsWith("8.")) {
-                    databaseAsserts = new DatabaseDifferences() {
-                        @Override
-                        public boolean isCurrentDateTimeDefaultGenerated() {
-                            return true;
-                        }
 
-                        @Override
-                        public String currentDateTimeDefaultOptional(String isoString) {
-                            return null;
-                        }
-
-                        @Override
-                        public String geometryDatabaseName() {
-                            return "geometry_test_8";
-                        }
-
-                        /**
-                         * MySQL 8 does not support unknown SRIDs so the case is removed
-                         */
-                        @Override
-                        public int geometryPointTableRecords() {
-                            return 3;
-                        }
-
-                        /**
-                         * MySQL 8 returns X and Y in a different order
-                         */
-                        @Override
-                        public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
-                                Double actualY) {
-                            assertThat(actualX).isEqualTo(expectedY, Delta.delta(0.01));
-                            assertThat(actualY).isEqualTo(expectedX, Delta.delta(0.01));
-                        }
-                    };
-                }
-                else {
-                    databaseAsserts = new DatabaseDifferences() {
-                        @Override
-                        public boolean isCurrentDateTimeDefaultGenerated() {
-                            return false;
-                        }
-
-                        @Override
-                        public String currentDateTimeDefaultOptional(String isoString) {
-                            return isoString;
-                        }
-
-                        @Override
-                        public String geometryDatabaseName() {
-                            return "geometry_test_5";
-                        }
-
-                        @Override
-                        public int geometryPointTableRecords() {
-                            return 4;
-                        }
-
-                        @Override
-                        public void geometryAssertPoints(Double expectedX, Double expectedY, Double actualX,
-                                Double actualY) {
-                            assertThat(actualX).isEqualTo(expectedX, Delta.delta(0.01));
-                            assertThat(actualY).isEqualTo(expectedY, Delta.delta(0.01));
-                        }
-                    };
-                }
+                mySqlVersion = versionString.startsWith("8.") ? MySqlVersion.MYSQL_8 : MySqlVersion.MYSQL_5;
             }
             catch (SQLException e) {
-                throw new IllegalStateException(e);
+                throw new IllegalStateException("Couldn't obtain MySQL Server version", e);
+            }
+        }
+
+        return mySqlVersion;
+    }
+
+    public DatabaseDifferences databaseAsserts() {
+        if (databaseAsserts == null) {
+            if (getMySqlVersion() == MySqlVersion.MYSQL_8) {
+                databaseAsserts = new DatabaseDifferences() {
+                    @Override
+                    public boolean isCurrentDateTimeDefaultGenerated() {
+                        return true;
+                    }
+
+                    @Override
+                    public String currentDateTimeDefaultOptional(String isoString) {
+                        return null;
+                    }
+                };
+            }
+            else {
+                databaseAsserts = new DatabaseDifferences() {
+                    @Override
+                    public boolean isCurrentDateTimeDefaultGenerated() {
+                        return false;
+                    }
+
+                    @Override
+                    public String currentDateTimeDefaultOptional(String isoString) {
+                        return isoString;
+                    }
+
+                };
             }
         }
         return databaseAsserts;
