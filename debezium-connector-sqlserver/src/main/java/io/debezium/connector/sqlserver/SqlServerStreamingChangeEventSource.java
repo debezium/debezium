@@ -262,7 +262,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             if (schema.tableFor(changeTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", changeTable.getSourceTableId(), changeTable.getCaptureInstance());
                 // We need to read the source table schema - primary key information cannot be obtained from change table
-                dispatcher.dispatchSchemaChangeEvent(changeTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, changeTable, connection.getTableSchemaFromTable(changeTable)));
+                dispatcher.dispatchSchemaChangeEvent(
+                        changeTable.getSourceTableId(),
+                        new SqlServerSchemaChangeEventEmitter(
+                                offsetContext,
+                                changeTable,
+                                connection.getTableSchemaFromTable(changeTable)
+                        )
+                );
             }
             tables.add(changeTable);
         }
