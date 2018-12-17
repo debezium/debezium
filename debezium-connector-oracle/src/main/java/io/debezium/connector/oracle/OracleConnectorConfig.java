@@ -87,7 +87,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         .withDefault(false)
         .withImportance(Importance.LOW)
         .withDescription("Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
-    
+
     public static final Field ORACLE_VERSION = Field.create("database.oracle.version")
         .withDisplayName("Oracle version, 11 or 12+")
         .withEnum(OracleVersion.class, OracleVersion.V12Plus)
@@ -205,11 +205,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         public int getPosVersion() {
             switch(version) {
-                case "11": 
+                case "11":
                     return XStreamUtility.POS_VERSION_V1;
-                case "12+": 
+                case "12+":
                     return XStreamUtility.POS_VERSION_V2;
-                default: 
+                default:
                     return XStreamUtility.POS_VERSION_V2;
             }
         }
