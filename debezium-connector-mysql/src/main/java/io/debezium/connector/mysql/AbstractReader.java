@@ -48,7 +48,7 @@ public abstract class AbstractReader implements Reader {
     private final Metronome metronome;
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
     private final Duration pollInterval;
-
+    private boolean stopping;
     /**
      * Create a snapshot reader.
      *
@@ -93,11 +93,13 @@ public abstract class AbstractReader implements Reader {
             this.success.set(false);
             doStart();
         }
+        stopping = false;
     }
 
     @Override
     public void stop() {
         try {
+            stopping = true;
             // Emptying the queue so to make sure that enqueue() won't block indefinitely when adding records after
             // poll() isn't called anymore but before the binlog reader is stopped; note there's still a tiny chance for
             // this to happen if enough records are added again between here and the call to disconnect(); protecting
@@ -105,7 +107,6 @@ public abstract class AbstractReader implements Reader {
             List<SourceRecord> unsent = new ArrayList<>();
             records.drainTo(unsent);
             logger.info("Discarding {} unsent record(s) due to the connector shutting down", unsent.size());
-            records.clear();
             doStop();
             running.set(false);
         } finally {
@@ -307,7 +308,11 @@ public abstract class AbstractReader implements Reader {
             if (logger.isTraceEnabled()) {
                 logger.trace("Enqueuing source record: {}", record);
             }
-            this.records.put(record);
+            if( !stopping ){
+                this.records.put(record);
+            }else{
+                logger.warn("Enqueue record while stopping: {}",record);
+            }
         }
     }
 }
