@@ -57,20 +57,23 @@ Then the Oracle connector can be built like so:
 
 ## For Oracle 11g
 
-To run Debezium oracle connector with Oracle 11g, add these additional parameters. If run with Oralce 12c+, leave these parameters to default.
+To run Debezium Oracle connector with Oracle 11g, add these additional parameters. If running with Oracle 12c+, leave these parameters to default.
+Note: The required configuration values will be determined automatically in a future version,
+making these parameters potentially obsolete.
 
 ```json
 "database.tablename.case.insensitive": "true"
 "database.oracle.version": "11"
 ```
 
-By default, DBZ will ignore some admin tables in oracle 12c, but those tables are different in oracle 11g, by now, DBZ will report error on those tables. So when use DBZ on oracle 11g, use table white list, remember to use lower case.
-
-Example:
+By default, Debezium will ignore some admin tables in Oracle 12c.
+But as those tables are different in Oracle 11g, Debezium will report an error on those tables. So when use Debezium on Oracle 11g, use table white list (remember to use lower case):
 
 ```json
 "table.whitelist":"orcl\\.debezium\\.(.*)"
 ```
+
+Making this configuration obsolete is tracked under [DBZ-1045](https://issues.jboss.org/browse/DBZ-1045).
 
 ## Contributing
 
