@@ -138,32 +138,38 @@ public class ServerInfo {
     /**
      * Information about a server replication slot
      */
-    protected static class ReplicationSlot {
-        protected static final ReplicationSlot INVALID = new ReplicationSlot(false, null);
+    public static class ReplicationSlot {
+        static final ReplicationSlot INVALID = new ReplicationSlot(false, null, null);
         
         private boolean active;
         private Long latestFlushedLSN;
-        
-        protected ReplicationSlot(boolean active, Long latestFlushedLSN) {
+        private Long catalogXmin;
+
+        protected ReplicationSlot(boolean active, Long latestFlushedLSN, Long catalogXmin) {
             this.active = active;
             this.latestFlushedLSN = latestFlushedLSN;
+            this.catalogXmin = catalogXmin;
         }
         
-        protected boolean active() {
+        public boolean active() {
             return active;
         }
         
-        protected Long latestFlushedLSN() {
+        public Long latestFlushedLSN() {
             return latestFlushedLSN;
         }
+
+        public Long catalogXmin() {
+            return catalogXmin;
+        }
         
-        protected boolean hasValidFlushedLSN() {
+        public boolean hasValidFlushedLSN() {
             return latestFlushedLSN != null;
         }
 
         @Override
         public String toString() {
-            return "ReplicationSlot [active=" + active + ", latestFlushedLSN=" + latestFlushedLSN + "]";
+            return "ReplicationSlot [active=" + active + ", latestFlushedLSN=" + latestFlushedLSN + ", catalogXmin=" + catalogXmin + "]";
         }
     }
 }

@@ -63,9 +63,12 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
     private final AtomicReference<SourceRecord> currentRecord;
 
+    private Boolean useXminRecovery;
+
     public RecordsSnapshotProducer(PostgresTaskContext taskContext,
                                    SourceInfo sourceInfo,
-                                   boolean continueStreamingAfterCompletion) {
+                                   boolean continueStreamingAfterCompletion,
+                                   boolean useXminRecovery) {
         super(taskContext, sourceInfo);
         executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         currentRecord = new AtomicReference<>();
@@ -76,6 +79,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         } else {
             streamProducer = Optional.empty();
         }
+        this.useXminRecovery = useXminRecovery;
     }
 
     @Override
@@ -167,6 +171,11 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
         long snapshotStart = clock().currentTimeInMillis();
         Connection jdbcConnection = null;
+        boolean shouldRecover = needsRecovery(sourceInfo);
+        if (!shouldRecover) {
+            logger.info("No recovery is needed, skipping!");
+            return;
+        }
         try (PostgresConnection connection = taskContext.createConnection()) {
             jdbcConnection = connection.connection();
             String lineSeparator = System.lineSeparator();
@@ -207,7 +216,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
-            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId, null);
+            // use the old xmin, as we don't want to update it if in xmin recovery
+            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId, null, sourceInfo.xmin());
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
@@ -218,7 +228,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
                     // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-                    final String selectStatement = selectOverrides.getOrDefault(tableId, "SELECT * FROM " + tableId.toDoubleQuotedString());
+                    final String selectStatement = selectOverrides.getOrDefault(tableId, buildScanQuery(tableId, useXminRecovery, sourceInfo.xmin()));
                     logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
 
                     connection.queryWithBlockingConsumer(selectStatement,
@@ -280,6 +290,37 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             logger.warn("Snapshot aborted after '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
         }
+    }
+
+
+    private boolean needsRecovery(SourceInfo sourceInfo) {
+        // If we don't want to use xminRecovery, we always need to do a full scan
+        if (!useXminRecovery) {
+            logger.debug("Not using xmin recovery, always need to recover");
+            return true;
+        }
+
+        // otherwise, if the xmin and lsn still in the slot, we don't need to recover at all
+        // if not, we do need to recover
+        try {
+            return !(taskContext.isXminInSlot(sourceInfo.xmin()) && taskContext.isLsnInSlot(sourceInfo.lsn()));
+        }
+        catch (SQLException e) {
+            logger.warn("received exception when fetching xmin", e);
+            return true;
+        }
+    }
+
+    private String buildScanQuery(TableId tableId, boolean useXminRecovery, Long xmin) {
+        //technically xmin is always an int, but we just use a long here for ease of use...
+        StringBuilder q = new StringBuilder();
+        q.append("SELECT * FROM ");
+        q.append(tableId.toDoubleQuotedString());
+        if (useXminRecovery && xmin != null) {
+            q.append(" WHERE xmin::text::int > ");
+            q.append(xmin);
+        }
+        return q.toString();
     }
 
     private void changeSourceToLastSnapshotRecord(SourceRecord currentRecord) {

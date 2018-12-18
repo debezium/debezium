@@ -110,6 +110,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         INITIAL("initial"),
 
         /**
+         * Perform an initial snapshot and on restart, fetch and missed writes using the xmin.
+         */
+        WRITE_RECOVERY("write_recovery"),
+
+        /**
          * Never perform a snapshot and only receive logical changes.
          */
         NEVER("never"),
@@ -659,6 +664,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "Options include: "
                                                            + "'always' to specify that the connector run a snapshot each time it starts up; "
                                                            + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
+                                                           + "'write_recovery' to specify the connector can run an initial snapshot, but is capable of recovering writes from a lost replication slot by only   (see docs for more details); "
                                                            + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes; and"
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server");
 
@@ -742,6 +748,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "This setting can improve connector performance significantly if there are frequently-updated tables that " +
                     "have TOASTed data that are rarely part of these updates. However, it is possible for the in-memory schema to " +
                     "become outdated if TOASTable columns are dropped from the table.");
+
+    public static final Field XMIN_FETCH_INTERVAL = Field.create("xmin.fetch.interval")
+            .withDisplayName("Xmin fetch interval (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withDefault(10000L)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how often (in ms) that the xmin will be fetched from the replication slot. " +
+                    "This xmin value is used only for 'write_recovery' snapshot mode, and has no effect in other modes. " +
+                    "The value is used to SELECT only possible changes values, by doing a SELECT * FROM *table* WHERE xmin > *xmin*. " +
+                    "The lower the value, the less changes may be duplicated, but the bigger the performance cost. " +
+                    "The bigger the value, more changes may be duplicated on recovery, but the lower the performance penalty. " +
+                    "The default is set to 10000 ms. ");
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -759,7 +778,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     XMIN_FETCH_INTERVAL);
 
     private final Configuration config;
     private final TemporalPrecisionMode temporalPrecisionMode;
@@ -890,6 +910,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return SnapshotMode.INITIAL_ONLY == this.snapshotMode;
     }
 
+    protected boolean writeRecoverySnapshot() {
+        return SnapshotMode.WRITE_RECOVERY == this.snapshotMode;
+    }
+
     protected String snapshotSelectOverrides() {
         return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
@@ -902,11 +926,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
 
+    protected long xminFetchInterval() {
+        return config.getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL);
+    }
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
+                    DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,

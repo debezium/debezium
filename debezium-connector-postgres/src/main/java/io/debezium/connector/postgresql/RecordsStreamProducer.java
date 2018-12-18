@@ -152,11 +152,11 @@ public class RecordsStreamProducer extends RecordsProducer {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             ReplicationStream replicationStream = this.replicationStream.get();
+
             if (replicationStream != null) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("Flushing LSN to server: {}", LogSequenceNumber.valueOf(lsn));
                 }
-
                 // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
                 replicationStream.flushLsn(lsn);
             }
@@ -241,7 +241,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // update the source info with the coordinates for this message
         long commitTimeNs = message.getCommitTime();
         long txId = message.getTransactionId();
-        sourceInfo.update(lsn, commitTimeNs, txId, tableId);
+        sourceInfo.update(lsn, commitTimeNs, txId, tableId, taskContext.getSlotXmin());
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
         }

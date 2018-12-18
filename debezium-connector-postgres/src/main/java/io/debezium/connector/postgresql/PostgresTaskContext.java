@@ -13,8 +13,11 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The context of a {@link PostgresConnectorTask}. This deals with most of the brunt of reading various configuration options
@@ -25,9 +28,14 @@ import io.debezium.schema.TopicSelector;
 @ThreadSafe
 public class PostgresTaskContext extends CdcSourceTaskContext {
 
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
+
     private final PostgresConnectorConfig config;
     private final TopicSelector<TableId> topicSelector;
     private final PostgresSchema schema;
+
+    private Long lastXminTime;
+    private Long lastXmin;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicSelector<TableId> topicSelector) {
         super("Postgres", config.getLogicalName(), Collections::emptySet);
@@ -54,6 +62,59 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         try (final PostgresConnection connection = createConnection()) {
             schema.refresh(connection, printReplicaIdentityInfo);
         }
+    }
+
+    protected Long getSlotXmin() throws SQLException {
+        if (!config.writeRecoverySnapshot()) {
+            return null;
+        }
+
+        if (lastXminTime == null || getClock().currentTimeInMillis() >= lastXminTime + config.xminFetchInterval()) {
+            lastXmin = getCurrentSlotInfo().catalogXmin();
+            lastXminTime = getClock().currentTimeInMillis();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Fetched new xmin from slot of {}", lastXmin);
+            }
+        }
+        else {
+            if (logger.isDebugEnabled()) {
+                logger.debug("reusing xmin value of {} from {}", lastXmin, lastXminTime);
+            }
+        }
+
+        return lastXmin;
+    }
+
+    protected ServerInfo.ReplicationSlot getCurrentSlotInfo() throws SQLException {
+        ServerInfo.ReplicationSlot slotInfo;
+        try (final PostgresConnection connection = createConnection()) {
+            slotInfo = connection.fetchReplicationSlotInfo(config.slotName(), config.plugin().getPostgresPluginName());
+        }
+        return slotInfo;
+    }
+
+    protected boolean isXminInSlot(Long xmin) throws SQLException {
+        if (xmin == null) {
+            return false;
+        }
+        Long curXmin = getCurrentSlotInfo().catalogXmin();
+        if (curXmin == null) {
+            curXmin = -1L;
+        }
+        logger.debug("last seen xmin: {}, current xmin: {}", xmin, curXmin);
+        return xmin >= curXmin;
+    }
+
+    protected boolean isLsnInSlot(Long lsn) throws SQLException {
+        if (lsn == null) {
+            return false;
+        }
+        Long curLsn = getCurrentSlotInfo().latestFlushedLSN();
+        if (curLsn == null) {
+            curLsn = -1L;
+        }
+        logger.debug("last seen lsn: {}, current lsn: {}", lsn, curLsn);
+        return lsn >= curLsn;
     }
 
     protected ReplicationConnection createReplicationConnection() throws SQLException {

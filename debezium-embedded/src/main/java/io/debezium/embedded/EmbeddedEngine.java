@@ -159,7 +159,7 @@ public final class EmbeddedEngine implements Runnable {
     public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
                                                           .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
                                                                       + OffsetCommitPolicy.class.getName()
-                                                                      + ". The default is a periodic commity policy based upon time intervals.")
+                                                                      + ". The default is a periodic commit policy based upon time intervals.")
                                                           .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
                                                           .withValidation(Field::isClassName);
 

@@ -108,7 +108,10 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     }
                 } else if (connectorConfig.alwaysTakeSnapshot()) {
                     logger.info("Taking a new snapshot as per configuration");
-                    producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true);
+                    producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true, false);
+                } else if (connectorConfig.writeRecoverySnapshot()) {
+                    logger.info("Attempting a recovery snapshot as per configuration");
+                    producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true, true);
                 } else {
                     logger.info(
                             "Previous snapshot has completed successfully, streaming logical changes from last known position");
@@ -135,10 +138,10 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private void createSnapshotProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo, boolean initialOnlySnapshot) {
         if (initialOnlySnapshot) {
             logger.info("Taking only a snapshot of the DB without streaming any changes afterwards...");
-            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, false);
+            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, false, false);
         } else {
             logger.info("Taking a new snapshot of the DB and streaming logical changes once the snapshot is finished...");
-            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true);
+            producer = new RecordsSnapshotProducer(taskContext, sourceInfo, true, false);
         }
     }
 

@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -60,6 +62,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Before
     public void before() throws Exception {
+        // ensure the slot is deleted for each test
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+        }
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
         String statements =
