@@ -246,32 +246,33 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         final List<ChangeTable> tables = new ArrayList<>();
         for (List<ChangeTable> captures: whitelistedCdcEnabledTables.values()) {
-            ChangeTable changeTable = captures.get(0);
+            ChangeTable currentTable = captures.get(0);
             if (captures.size() > 1) {
+                ChangeTable futureTable;
                 if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
-                    captures.get(0).setStopLsn(captures.get(1).getStartLsn());
-                    tables.add(captures.get(1));
+                    futureTable = captures.get(1);
                 }
                 else {
-                    captures.get(1).setStopLsn(captures.get(0).getStartLsn());
-                    changeTable = captures.get(1);
-                    tables.add(captures.get(0));
+                    currentTable = captures.get(1);
+                    futureTable = captures.get(0);
                 }
-                LOGGER.info("Multiple capture instances {} and {} present for the same table", changeTable, captures.get(1));
+                currentTable.setStopLsn(futureTable.getStartLsn());
+                tables.add(futureTable);
+                LOGGER.info("Multiple capture instances {} and {} present for the same table", currentTable, futureTable);
             }
-            if (schema.tableFor(changeTable.getSourceTableId()) == null) {
-                LOGGER.info("Table {} is new to be monitored by capture instance {}", changeTable.getSourceTableId(), changeTable.getCaptureInstance());
+            if (schema.tableFor(currentTable.getSourceTableId()) == null) {
+                LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
                 // We need to read the source table schema - primary key information cannot be obtained from change table
                 dispatcher.dispatchSchemaChangeEvent(
-                        changeTable.getSourceTableId(),
+                        currentTable.getSourceTableId(),
                         new SqlServerSchemaChangeEventEmitter(
                                 offsetContext,
-                                changeTable,
-                                connection.getTableSchemaFromTable(changeTable)
+                                currentTable,
+                                connection.getTableSchemaFromTable(currentTable)
                         )
                 );
             }
-            tables.add(changeTable);
+            tables.add(currentTable);
         }
 
         return tables.toArray(new ChangeTable[tables.size()]);
