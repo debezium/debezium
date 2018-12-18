@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -316,11 +317,24 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             }
 
             // Bug DBZ-533
-            // INSERT + SAVEPOINT + INSERT + ROLLBACK
-            records = consumeRecordsByTopic(1 + 1 + 1 + 1);
+            int recordCount;
+            int customerEventsCount;
+            if (MySQLConnection.forTestDatabase("emptydb").getMySqlVersion() == MySqlVersion.MYSQL_5) {
+                // MySQL 5 contains events when the TX was effectively rolled-back
+                // INSERT + SAVEPOINT + INSERT + ROLLBACK
+                recordCount = 4;
+                customerEventsCount = 2;
+            }
+            else {
+                // MySQL 8 does not propagate rolled back changes
+                // INSERT + SAVEPOINT
+                recordCount = 2;
+                customerEventsCount = 1;
+            }
+            records = consumeRecordsByTopic(recordCount);
             assertThat(records.topics().size()).isEqualTo(1 + 1);
-            assertThat(records.recordsForTopic(DATABASE.topicForTable("customers"))).hasSize(2);
-            assertThat(records.allRecordsInOrder()).hasSize(4);
+            assertThat(records.recordsForTopic(DATABASE.topicForTable("customers"))).hasSize(customerEventsCount);
+            assertThat(records.allRecordsInOrder()).hasSize(recordCount);
             Testing.print("*** Done with savepoint TX");
         }
     }
