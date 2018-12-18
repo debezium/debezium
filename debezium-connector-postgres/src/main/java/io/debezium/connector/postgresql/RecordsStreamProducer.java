@@ -453,7 +453,9 @@ public class RecordsStreamProducer extends RecordsProducer {
             String columnName = Strings.unquoteIdentifierPart(column.getName());
             int position = columnNames.indexOf(columnName);
             if (position < 0) {
-                logger.warn("Internal schema is out-of-sync with incoming decoder events");
+                logger.warn(
+                        "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
+                        column.getName());
                 continue;
             }
             values[position] = column.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
