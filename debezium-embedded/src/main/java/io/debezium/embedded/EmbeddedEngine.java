@@ -343,6 +343,83 @@ public final class EmbeddedEngine implements Runnable {
     }
 
     /**
+     * Interfaces with the maybeFlush and commitRecord APIs to allow
+     * the ChangeConsumer to specify when commits happen
+     */
+    @ThreadSafe
+    public static interface RecordCommitter {
+        /**
+         * Marks a single record as processed, must be called for each
+         * record, and is threadsafe
+         * @param record the record to commit
+         */
+        void markProcessed(SourceRecord record) throws InterruptedException;
+
+        /**
+         * Marks a batch as finished, this may result in committing offsets/flushing
+         * data.
+         *
+         * Should be called when a batch of records is finished being processed.
+         *
+         * Is threadsafe
+         */
+        void markBatchFinished();
+
+    }
+
+    /**
+     * An interface that interacts between lists of SourceRecords, committing
+     * and the EventQueue
+     */
+    public static interface ChangeConsumer {
+
+        /**
+         * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(SourceRecord)}
+         * for each record and {@link RecordCommitter#markBatchFinished()} when this batch is finished
+         *
+         * @param committer the committer that indicates to the system that we are finished
+         * @param records the records to be processed
+         */
+        void handleBatch(RecordCommitter committer, List<SourceRecord> records) throws Exception;
+    }
+
+    private static ChangeConsumer buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
+        return new ChangeConsumer() {
+            /**
+             * the default implementation that is compatible with the old Consumer api.
+             *
+             * On every record, it calls the consumer, and then only marks the record
+             * as processed when accept returns, additionally, it handles StopConnectorExceptions
+             * and ensures that we all ways try and mark a batch as finished, even with exceptions
+             *
+             * @param committer the committer that indicates to the system that we are finished
+             * @param records the records to be processed
+             * @throws Exception
+             */
+            @Override
+            public void handleBatch(RecordCommitter committer, List<SourceRecord> records) throws Exception {
+                try {
+                    for (SourceRecord record : records) {
+                        try {
+                            consumer.accept(record);
+                            committer.markProcessed(record);
+                        }
+                        catch (StopConnectorException ex) {
+                            // ensure that we mark the record as finished
+                            // in this case
+                            committer.markProcessed(record);
+                            throw ex;
+                        }
+                    }
+                }
+                finally {
+                    committer.markBatchFinished();
+                }
+            }
+        };
+    }
+
+    /**
      * A builder to set up and create {@link EmbeddedEngine} instances.
      */
     public static interface Builder {
@@ -355,6 +432,15 @@ public final class EmbeddedEngine implements Runnable {
          * @return this builder object so methods can be chained together; never null
          */
         Builder notifying(Consumer<SourceRecord> consumer);
+
+        /**
+         * Pass a custom ChangeConsumer override the default implementation,
+         * this allows for more complex handling of records for batch and async handling
+         *
+         * @param handler the consumer function
+         * @return this builder object so methods can be chained together; never null
+         */
+        Builder notifying(ChangeConsumer handler);
 
         /**
          * Use the specified configuration for the connector. The configuration is assumed to already be valid.
@@ -425,7 +511,7 @@ public final class EmbeddedEngine implements Runnable {
     public static Builder create() {
         return new Builder() {
             private Configuration config;
-            private Consumer<SourceRecord> consumer;
+            private ChangeConsumer handler;
             private ClassLoader classLoader;
             private Clock clock;
             private CompletionCallback completionCallback;
@@ -470,7 +556,13 @@ public final class EmbeddedEngine implements Runnable {
 
             @Override
             public Builder notifying(Consumer<SourceRecord> consumer) {
-                this.consumer = consumer;
+                this.handler = buildDefaultChangeConsumer(consumer);
+                return this;
+            }
+
+            @Override
+            public Builder notifying(ChangeConsumer handler) {
+                this.handler = handler;
                 return this;
             }
 
@@ -479,9 +571,9 @@ public final class EmbeddedEngine implements Runnable {
                 if (classLoader == null) classLoader = getClass().getClassLoader();
                 if (clock == null) clock = Clock.system();
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
-                Objects.requireNonNull(consumer, "A connector consumer must be specified.");
+                Objects.requireNonNull(handler, "A connector consumer or changeHandler must be specified.");
                 return new EmbeddedEngine(config, classLoader, clock,
-                        consumer, completionCallback, connectorCallback, offsetCommitPolicy);
+                        handler, completionCallback, connectorCallback, offsetCommitPolicy);
             }
 
         };
@@ -491,7 +583,7 @@ public final class EmbeddedEngine implements Runnable {
     private final Configuration config;
     private final Clock clock;
     private final ClassLoader classLoader;
-    private final Consumer<SourceRecord> consumer;
+    private final ChangeConsumer handler;
     private final CompletionCallback completionCallback;
     private final ConnectorCallback connectorCallback;
     private final AtomicReference<Thread> runningThread = new AtomicReference<>();
@@ -504,11 +596,11 @@ public final class EmbeddedEngine implements Runnable {
     private long timeOfLastCommitMillis = 0;
     private OffsetCommitPolicy offsetCommitPolicy;
 
-    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, Consumer<SourceRecord> consumer,
+    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, ChangeConsumer handler,
                            CompletionCallback completionCallback, ConnectorCallback connectorCallback,
                            OffsetCommitPolicy offsetCommitPolicy) {
         this.config = config;
-        this.consumer = consumer;
+        this.handler = handler;
         this.classLoader = classLoader;
         this.clock = clock;
         this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
@@ -519,7 +611,7 @@ public final class EmbeddedEngine implements Runnable {
         this.offsetCommitPolicy = offsetCommitPolicy;
 
         assert this.config != null;
-        assert this.consumer != null;
+        assert this.handler != null;
         assert this.classLoader != null;
         assert this.clock != null;
         keyConverter = config.getInstance(INTERNAL_KEY_CONVERTER_CLASS, Converter.class, () -> this.classLoader);
@@ -606,7 +698,8 @@ public final class EmbeddedEngine implements Runnable {
                     @SuppressWarnings("unchecked")
                     Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
                     connector = connectorClass.newInstance();
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
                     return;
                 }
@@ -618,7 +711,8 @@ public final class EmbeddedEngine implements Runnable {
                     @SuppressWarnings("unchecked")
                     Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
                     offsetStore = offsetStoreClass.newInstance();
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
                     return;
                 }
@@ -627,7 +721,8 @@ public final class EmbeddedEngine implements Runnable {
                 try {
                     offsetStore.configure(workerConfig);
                     offsetStore.start();
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     fail("Unable to configure and start the '" + offsetStoreClassName + "' offset backing store", t);
                     return;
                 }
@@ -656,7 +751,7 @@ public final class EmbeddedEngine implements Runnable {
                         keyConverter, valueConverter);
                 OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName,
                         keyConverter, valueConverter);
-                long commitTimeoutMs = config.getLong(OFFSET_COMMIT_TIMEOUT_MS);
+                Duration commitTimeout = Duration.ofMillis(config.getLong(OFFSET_COMMIT_TIMEOUT_MS));
 
                 try {
                     // Start the connector with the given properties and get the task configurations ...
@@ -667,7 +762,8 @@ public final class EmbeddedEngine implements Runnable {
                     SourceTask task = null;
                     try {
                         task = (SourceTask) taskClass.newInstance();
-                    } catch (IllegalAccessException | InstantiationException t) {
+                    }
+                    catch (IllegalAccessException | InstantiationException t) {
                         fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
                         return;
                     }
@@ -686,7 +782,8 @@ public final class EmbeddedEngine implements Runnable {
                         task.initialize(taskContext);
                         task.start(taskConfigs.get(0));
                         connectorCallback.ifPresent(ConnectorCallback::taskStarted);
-                    } catch (Throwable t) {
+                    }
+                    catch (Throwable t) {
                         // Mask the passwords ...
                         Configuration config = Configuration.from(taskConfigs.get(0)).withMaskedPasswords();
                         String msg = "Unable to initialize and start connector's task class '" + taskClass.getName() + "' with config: "
@@ -699,66 +796,43 @@ public final class EmbeddedEngine implements Runnable {
                     Throwable handlerError = null;
                     try {
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
-                        boolean keepProcessing = true;
                         List<SourceRecord> changeRecords = null;
-                        while (runningThread.get() != null && handlerError == null && keepProcessing) {
+                        RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
+                        while (runningThread.get() != null) {
                             try {
-                                try {
-                                    logger.debug("Embedded engine is polling task for records on thread " + runningThread.get());
-                                    changeRecords = task.poll(); // blocks until there are values ...
-                                    logger.debug("Embedded engine returned from polling task for records");
-                                } catch (InterruptedException e) {
-                                    // Interrupted while polling ...
-                                    logger.debug("Embedded engine interrupted on thread " + runningThread.get() + " while polling the task for records");
-                                    Thread.interrupted();
-                                    break;
-                                }
-                                try {
-                                    if (changeRecords != null && !changeRecords.isEmpty()) {
-                                        logger.debug("Received {} records from the task", changeRecords.size());
+                                logger.debug("Embedded engine is polling task for records on thread " + runningThread.get());
+                                changeRecords = task.poll(); // blocks until there are values ...
+                                logger.debug("Embedded engine returned from polling task for records");
+                            }
+                            catch (InterruptedException e) {
+                                // Interrupted while polling ...
+                                logger.debug("Embedded engine interrupted on thread " + runningThread.get() + " while polling the task for records");
+                                Thread.interrupted();
+                                break;
+                            }
+                            try {
+                                if (changeRecords != null && !changeRecords.isEmpty()) {
+                                    logger.debug("Received {} records from the task", changeRecords.size());
 
-                                        // First forward the records to the connector's consumer ...
-                                        for (SourceRecord record : changeRecords) {
-                                            try {
-                                                consumer.accept(record);
-                                                task.commitRecord(record);
-                                            } catch (StopConnectorException e) {
-                                                keepProcessing = false;
-                                                // Stop processing any more but first record the offset for this record's
-                                                // partition
-                                                offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
-                                                recordsSinceLastCommit += 1;
-                                                break;
-                                            } catch (Throwable t) {
-                                                handlerError = t;
-                                                break;
-                                            }
-
-                                            // Record the offset for this record's partition
-                                            offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
-                                            recordsSinceLastCommit += 1;
-                                        }
-
-                                        // Flush the offsets to storage if necessary ...
-                                        maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs, task);
-                                    } else {
-                                        logger.debug("Received no records from the task");
+                                    try {
+                                        handler.handleBatch(committer, changeRecords);
                                     }
-                                } catch (Throwable t) {
-                                    // There was some sort of unexpected exception, so we should stop work
-                                    if (handlerError == null) {
-                                        // make sure we capture the error first so that we can report it later
-                                        handlerError = t;
+                                    catch (StopConnectorException e) {
+                                        break;
                                     }
-                                    break;
                                 }
-                            } finally {
-                                // then try to commit the offsets, since we record them only after the records were handled
-                                // by the consumer ...
-                                maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeoutMs, task);
+                                else {
+                                    logger.debug("Received no records from the task");
+                                }
+                            }
+                            catch (Throwable t) {
+                                // There was some sort of unexpected exception, so we should stop work
+                                handlerError = t;
+                                break;
                             }
                         }
-                    } finally {
+                    }
+                    finally {
                         if (handlerError != null) {
                             // There was an error in the handler so make sure it's always captured...
                             fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
@@ -770,33 +844,40 @@ public final class EmbeddedEngine implements Runnable {
                             task.stop();
                             connectorCallback.ifPresent(ConnectorCallback::taskStopped);
                             // Always commit offsets that were captured from the source records we actually processed ...
-                            commitOffsets(offsetWriter, commitTimeoutMs, task);
+                            commitOffsets(offsetWriter, commitTimeout, task);
                             if (handlerError == null) {
                                 // We stopped normally ...
                                 succeed("Connector '" + connectorClassName + "' completed normally.");
                             }
-                        } catch (Throwable t) {
+                        }
+                        catch (Throwable t) {
                             fail("Error while trying to stop the task and commit the offsets", t);
                         }
                     }
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     fail("Error while trying to run connector class '" + connectorClassName + "'", t);
-                } finally {
+                }
+                finally {
                     // Close the offset storage and finally the connector ...
                     try {
                         offsetStore.stop();
-                    } catch (Throwable t) {
+                    }
+                    catch (Throwable t) {
                         fail("Error while trying to stop the offset store", t);
-                    } finally {
+                    }
+                    finally {
                         try {
                             connector.stop();
                             connectorCallback.ifPresent(ConnectorCallback::connectorStopped);
-                        } catch (Throwable t) {
+                        }
+                        catch (Throwable t) {
                             fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
                         }
                     }
                 }
-            } finally {
+            }
+            finally {
                 latch.countDown();
                 runningThread.set(null);
                 // after we've "shut down" the engine, fire the completion callback based on the results we collected
@@ -806,19 +887,48 @@ public final class EmbeddedEngine implements Runnable {
     }
 
     /**
+     * Creates a new RecordCommitter that is responsible for informing the engine
+     * about the updates to the given batch
+     * @param offsetWriter the offsetWriter current in use
+     * @param task the sourcetask
+     * @param commitTimeout the time in ms until a commit times out
+     * @return the new recordCommitter to be used for a given batch
+     */
+    protected RecordCommitter buildRecordCommitter(OffsetStorageWriter offsetWriter, SourceTask task, Duration commitTimeout) {
+        Object lock = this;
+        return new RecordCommitter() {
+            @Override
+            public void markProcessed(SourceRecord record) throws InterruptedException {
+                synchronized (lock) {
+                    task.commitRecord(record);
+                    recordsSinceLastCommit += 1;
+                    offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
+                }
+            }
+
+            @Override
+            public void markBatchFinished() {
+                synchronized (lock) {
+                    maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeout, task);
+                }
+            }
+        };
+    }
+
+    /**
      * Determine if we should flush offsets to storage, and if so then attempt to flush offsets.
      *
      * @param offsetWriter the offset storage writer; may not be null
      * @param policy the offset commit policy; may not be null
-     * @param commitTimeoutMs the timeout to wait for commit results
+     * @param commitTimeout the timeout to wait for commit results
      * @param task the task which produced the records for which the offsets have been committed
      */
-    protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, long commitTimeoutMs,
+    protected void maybeFlush(OffsetStorageWriter offsetWriter, OffsetCommitPolicy policy, Duration commitTimeout,
                               SourceTask task) {
         // Determine if we need to commit to offset storage ...
         long timeSinceLastCommitMillis = clock.currentTimeInMillis() - timeOfLastCommitMillis;
         if (policy.performCommit(recordsSinceLastCommit, Duration.ofMillis(timeSinceLastCommitMillis))) {
-            commitOffsets(offsetWriter, commitTimeoutMs, task);
+            commitOffsets(offsetWriter, commitTimeout, task);
         }
     }
 
@@ -826,12 +936,12 @@ public final class EmbeddedEngine implements Runnable {
      * Flush offsets to storage.
      *
      * @param offsetWriter the offset storage writer; may not be null
-     * @param commitTimeoutMs the timeout to wait for commit results
+     * @param commitTimeout the timeout to wait for commit results
      * @param task the task which produced the records for which the offsets have been committed
      */
-    protected void commitOffsets(OffsetStorageWriter offsetWriter, long commitTimeoutMs, SourceTask task) {
+    protected void commitOffsets(OffsetStorageWriter offsetWriter, Duration commitTimeout, SourceTask task) {
         long started = clock.currentTimeInMillis();
-        long timeout = started + commitTimeoutMs;
+        long timeout = started + commitTimeout.toMillis();
         if (!offsetWriter.beginFlush()) return;
         Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
         if (flush == null) return; // no offsets to commit ...
@@ -843,13 +953,16 @@ public final class EmbeddedEngine implements Runnable {
             task.commit();
             recordsSinceLastCommit = 0;
             timeOfLastCommitMillis = clock.currentTimeInMillis();
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             logger.warn("Flush of {} offsets interrupted, cancelling", this);
             offsetWriter.cancelFlush();
-        } catch (ExecutionException e) {
+        }
+        catch (ExecutionException e) {
             logger.error("Flush of {} offsets threw an unexpected exception: ", this, e);
             offsetWriter.cancelFlush();
-        } catch (TimeoutException e) {
+        }
+        catch (TimeoutException e) {
             logger.error("Timed out waiting to flush {} offsets to storage", this);
             offsetWriter.cancelFlush();
         }
@@ -858,7 +971,8 @@ public final class EmbeddedEngine implements Runnable {
     protected void completedFlush(Throwable error, Void result) {
         if (error != null) {
             logger.error("Failed to flush {} offsets to storage: ", this, error);
-        } else {
+        }
+        else {
             logger.trace("Finished flushing {} offsets to storage", this);
         }
     }

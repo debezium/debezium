@@ -507,8 +507,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             }
         }
         // Theoretically the LSN should change for each record but in reality there can be
-        // unfrotunate timings so let's suppose the chane will hapeni in 75 % of cases
-        Assertions.assertThat(flushLsn.size()).isGreaterThan((recordCount * 3) / 4);
+        // unfortunate timings so let's suppose the chane will happen in 75 % of cases
+        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
