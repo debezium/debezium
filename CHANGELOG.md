@@ -2,6 +2,69 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.9.0.Beta2
+December 19th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339976)
+
+### New features since 0.9.0.Beta1
+
+* Add support for Oracle 11g [DBZ-954](https://issues.jboss.org/browse/DBZ-954)
+* UnwrapFromMongoDbEnvelope refactor [DBZ-1020](https://issues.jboss.org/browse/DBZ-1020)
+* Add option for dropping deletes and tombstone events to MongoDB struct recreation SMT [DBZ-563](https://issues.jboss.org/browse/DBZ-563)
+* Expose "snapshot.delay.ms" option for all connectors [DBZ-966](https://issues.jboss.org/browse/DBZ-966)
+* Convey original operation type when using flattening SMTs [DBZ-971](https://issues.jboss.org/browse/DBZ-971)
+* Provide last event and captured tables in metrics [DBZ-978](https://issues.jboss.org/browse/DBZ-978)
+* Skip MySQL BinLog Event in case of Invalid Cell Values [DBZ-1010](https://issues.jboss.org/browse/DBZ-1010)
+
+
+### Breaking changes since 0.9.0.Beta1
+
+MongoDB CDC Event Flattening transormation now by default removes deletion messages.
+Previous default was to keep them.
+
+
+### Fixes since 0.9.0.Beta1
+
+* BinaryLogClient can't disconnect when adding records after shutdown has been initiated [DBZ-604](https://issues.jboss.org/browse/DBZ-604)
+* UnwrapFromMongoDbEnvelope fails when encountering $unset operator [DBZ-612](https://issues.jboss.org/browse/DBZ-612)
+* "no known snapshots" error when DBs rows are large [DBZ-842](https://issues.jboss.org/browse/DBZ-842)
+* MongoDB connector stops processing oplog events after encountering "new primary" event [DBZ-848](https://issues.jboss.org/browse/DBZ-848)
+* MySQL active-passive: brief data loss on failover when Debezium encounters new GTID channel [DBZ-923](https://issues.jboss.org/browse/DBZ-923)
+* ConnectException: Only REPEATABLE READ isolation level is supported for START TRANSACTION WITH CONSISTENT SNAPSHOT in RocksDB Storage Engine [DBZ-960](https://issues.jboss.org/browse/DBZ-960)
+* ConnectException during ALTER TABLE for non-whitelisted table [DBZ-977](https://issues.jboss.org/browse/DBZ-977)
+* UnwrapFromMongoDbEnvelope fails when encountering full updates [DBZ-987](https://issues.jboss.org/browse/DBZ-987)
+* UnwrapFromMongoDbEnvelope fails when encountering Tombstone messages [DBZ-989](https://issues.jboss.org/browse/DBZ-989)
+* Postgres schema changes detection (not-null constraint) [DBZ-1000](https://issues.jboss.org/browse/DBZ-1000)
+* NPE in SqlServerConnectorTask#cleanupResources() if connector failed to start [DBZ-1002](https://issues.jboss.org/browse/DBZ-1002)
+* Explicitly initialize history topic in HistorizedRelationalDatabaseSchema [DBZ-1003](https://issues.jboss.org/browse/DBZ-1003)
+* BinlogReader ignores GTIDs for empty database [DBZ-1005](https://issues.jboss.org/browse/DBZ-1005)
+* NPE in MySqlConnectorTask.stop() [DBZ-1006](https://issues.jboss.org/browse/DBZ-1006)
+* The name of captured but not whitelisted table is not logged [DBZ-1007](https://issues.jboss.org/browse/DBZ-1007)
+* GTID set is not properly initialized after DB failover [DBZ-1008](https://issues.jboss.org/browse/DBZ-1008)
+* Postgres Connector fails on none nullable MACADDR field during initial snapshot [DBZ-1009](https://issues.jboss.org/browse/DBZ-1009)
+* Connector crashes with java.lang.NullPointerException when using multiple sinks to consume the messages [DBZ-1017](https://issues.jboss.org/browse/DBZ-1017)
+* Postgres connector fails upon event of recently deleted table [DBZ-1021](https://issues.jboss.org/browse/DBZ-1021)
+* ORA-46385: DML and DDL operations are not allowed on table "AUDSYS"."AUD$UNIFIED" [DBZ-1023](https://issues.jboss.org/browse/DBZ-1023)
+* Postgres plugin does not signal the end of snapshot properly [DBZ-1024](https://issues.jboss.org/browse/DBZ-1024)
+* MySQL Antlr runtime.NoViableAltException [DBZ-1028](https://issues.jboss.org/browse/DBZ-1028)
+* Debezium 0.8.2 and 0.8.3.Final Not Available on Confluent Hub [DBZ-1030](https://issues.jboss.org/browse/DBZ-1030)
+* Snapshot of tables with reserved names fails [DBZ-1031](https://issues.jboss.org/browse/DBZ-1031)
+* UnwrapFromMongoDbEnvelope doesn't support operation header on tombstone messages [DBZ-1032](https://issues.jboss.org/browse/DBZ-1032)
+* Mysql binlog reader lost data if restart task when last binlog event is QUERY event. [DBZ-1033](https://issues.jboss.org/browse/DBZ-1033)
+* The same capture instance name is logged twice [DBZ-1047](https://issues.jboss.org/browse/DBZ-1047)
+
+
+### Other changes since 0.9.0.Beta1
+
+* MySQL 8 compatibility [DBZ-688](https://issues.jboss.org/browse/DBZ-688)
+* Don't hard code list of supported MySQL storage engines in Antlr grammar [DBZ-992](https://issues.jboss.org/browse/DBZ-992)
+* Provide updated KSQL example [DBZ-999](https://issues.jboss.org/browse/DBZ-999)
+* Update to Kafka 2.1 [DBZ-1001](https://issues.jboss.org/browse/DBZ-1001)
+* Skipt Antlr tests when tests are skipped [DBZ-1004](https://issues.jboss.org/browse/DBZ-1004)
+* Fix expected records counts in MySQL tests [DBZ-1016](https://issues.jboss.org/browse/DBZ-1016)
+* Cannot run tests against Kafka 1.x [DBZ-1037](https://issues.jboss.org/browse/DBZ-1037)
+* Configure MySQL Matrix testing job to test with and without GTID [DBZ-1050](https://issues.jboss.org/browse/DBZ-1050)
+
+
 ## 0.9.0.Beta1
 November 20th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339372)
 
