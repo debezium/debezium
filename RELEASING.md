@@ -210,11 +210,15 @@ Then, create a pull request with your changes and wait for a committer to approv
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
 
+When releasing a *final* version, send an e-mail to confluent-hub@confluent.io, asking to upload the new release artifacts, referening the tar.gz files on Maven Central.
+
 # Automated Release
-There are few manual steps to be completede before the execution
+There are few manual steps to be completed before the execution:
+
 * Update [the changelog](#update-the-changelog)
 * Update [configuration](#reconfigure-docker-hub-builds) for Docker Hub builds
 
-To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested
+To perform release automatically invoke a [Jenkins job](http://ci.hibernate.org/view/Debezium/job/debezium-release/). Two parameters are requested:
+
 * `RELEASE_VERSION` - a version to be released in format x.y.z
 * `DEVELOPMENT_VERSION` - next development version in format x.y.z-SNAPSHOT
