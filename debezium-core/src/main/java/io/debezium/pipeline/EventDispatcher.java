@@ -91,7 +91,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             @Override
             public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
                     OffsetContext offset) throws InterruptedException {
-                eventListener.onEvent("source = " + dataCollectionId + ", id = " + key + ", offset = " + offset);
+                eventListener.onEvent("source = " + dataCollectionId + ", id = " + key + ", offset = " + offset.getSourceInfo());
                 receiver.changeRecord(dataCollectionSchema, operation, key, value, offset);
             }
         });
@@ -127,7 +127,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 @Override
                 public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
                         OffsetContext offset) throws InterruptedException {
-                    eventListener.onEvent("operation = " + operation + ", source = " + dataCollectionId + ", id = " + key + ", offset = " + offset);
+                    eventListener.onEvent("operation = " + operation + ", source = " + dataCollectionId + ", id = " + key + ", offset = " + offset.getSourceInfo());
                     streamingReceiver.changeRecord(schema, operation, key, value, offset);
                 }
             });
