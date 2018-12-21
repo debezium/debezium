@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql.connection;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
@@ -206,5 +207,37 @@ public class PostgresConnectionIT {
                 assertTrue(connection.dropReplicationSlot(slotName));
             }
         }
+    }
+
+    @Test
+    public void shouldSupportPG95RestartLsn() throws Exception {
+        String slotName = "pg95";
+        try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
+            assertTrue(replConnection.isConnected());
+        }
+        try (PostgresConnection conn = buildPG95PGConn("pg95")) {
+            ServerInfo.ReplicationSlot slotInfo = conn.readReplicationSlotInfo(slotName, TestHelper.decoderPlugin().getPostgresPluginName());
+            assertNotNull(slotInfo);
+            assertNotEquals(ServerInfo.ReplicationSlot.INVALID, slotInfo);
+            conn.dropReplicationSlot(slotName);
+        }
+
+    }
+
+    // "fake" a pg95 response by not returning confirmed_flushed_lsn
+    private PostgresConnection buildPG95PGConn(String name) {
+        return new PostgresConnection(TestHelper.defaultJdbcConfig().edit().with("ApplicationName", name).build()) {
+            @Override
+            protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
+                                                              ResultSetMapper<ServerInfo.ReplicationSlot> map) throws SQLException {
+
+                String fields = "slot_name, plugin, slot_type, datoid, database, active, active_pid, xmin, catalog_xmin, restart_lsn";
+                return prepareQueryAndMap("select " + fields + " from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+                    statement.setString(1, slotName);
+                    statement.setString(2, database);
+                    statement.setString(3, pluginName);
+                }, map);
+            }
+        };
     }
 }

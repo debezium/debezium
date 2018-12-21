@@ -80,7 +80,7 @@ public final class TestHelper {
     /**
      * @return the decoder plugin used for testing and configured by system property
      */
-    static PostgresConnectorConfig.LogicalDecoder decoderPlugin() {
+    public static PostgresConnectorConfig.LogicalDecoder decoderPlugin() {
         final String s = System.getProperty(PostgresConnectorConfig.PLUGIN_NAME.name());
         return (s == null || s.length() == 0) ? PostgresConnectorConfig.LogicalDecoder.DECODERBUFS : PostgresConnectorConfig.LogicalDecoder.parse(s);
     }
@@ -174,7 +174,7 @@ public final class TestHelper {
         }
     }
 
-    private static JdbcConfiguration defaultJdbcConfig() {
+    public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
                                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
