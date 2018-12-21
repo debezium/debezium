@@ -132,12 +132,7 @@ public class PostgresConnection extends JdbcConnection {
         final Metronome metronome = Metronome.parker(PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS, Clock.SYSTEM);
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT; attempt++) {
-            final ServerInfo.ReplicationSlot slot = prepareQueryAndMap(
-                    "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                        statement.setString(1, slotName);
-                        statement.setString(2, database);
-                        statement.setString(3, pluginName);
-                    },
+            final ServerInfo.ReplicationSlot slot = queryForSlot(slotName, database, pluginName,
                     rs -> {
                         if (rs.next()) {
                             boolean active = rs.getBoolean("active");
@@ -166,32 +161,54 @@ public class PostgresConnection extends JdbcConnection {
                 + "Make sure there are no long-running transactions running in parallel as they may hinder the allocation of the replication slot when starting this connector");
     }
 
+    protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
+                                                      ResultSetMapper<ServerInfo.ReplicationSlot> map) throws SQLException {
+        return prepareQueryAndMap("select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
+            statement.setString(1, slotName);
+            statement.setString(2, database);
+            statement.setString(3, pluginName);
+        }, map);
+    }
+
     private Long parseConfirmedFlushLsn(String slotName, String pluginName, String database, ResultSet rs) {
         Long confirmedFlushedLsn = null;
 
         try {
-            String confirmedFlushLSNString = rs.getString("confirmed_flush_lsn");
-            if (confirmedFlushLSNString == null) {
-                return null;
-            }
-            try {
-                confirmedFlushedLsn = LogSequenceNumber.valueOf(confirmedFlushLSNString).asLong();
-            }
-            catch (Exception e) {
-                throw new ConnectException("Value confirmed_flush_lsn in the pg_replication_slots table for slot = '"
-                        + slotName + "', plugin = '"
-                        + pluginName + "', database = '"
-                        + database + "' is not valid. This is an abnormal situation and the database status should be checked.");
-            }
-            if (confirmedFlushedLsn == LogSequenceNumber.INVALID_LSN.asLong()) {
-                throw new ConnectException("Invalid LSN returned from database");
-            }
-         }
+            confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "confirmed_flush_lsn");
+        }
         catch (SQLException e) {
-            // info not available, so we must be prior to PG 9.6
+            LOGGER.info("unable to find confirmed_flushed_lsn, falling back to restart_lsn");
+            try {
+                confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
+            }
+            catch (SQLException e2) {
+                throw new ConnectException("Neither confirmed_flush_lsn or restart_lsn could be found");
+            }
         }
 
         return confirmedFlushedLsn;
+    }
+
+    private Long tryParseLsn(String slotName, String pluginName, String database, ResultSet rs, String column) throws ConnectException, SQLException {
+        Long lsn = null;
+
+        String lsnStr = rs.getString(column);
+        if (lsnStr == null) {
+            return null;
+        }
+        try {
+            lsn = LogSequenceNumber.valueOf(lsnStr).asLong();
+        }
+        catch (Exception e) {
+            throw new ConnectException("Value " + column + " in the pg_replication_slots table for slot = '"
+                    + slotName + "', plugin = '"
+                    + pluginName + "', database = '"
+                    + database + "' is not valid. This is an abnormal situation and the database status should be checked.");
+        }
+        if (lsn == LogSequenceNumber.INVALID_LSN.asLong()) {
+            throw new ConnectException("Invalid LSN returned from database");
+        }
+        return lsn;
     }
 
     /**
