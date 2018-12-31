@@ -124,6 +124,7 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT ext
                         "'dataLong': 80000000000," +
                         "'dataBoolean': true," +
                         "'dataByte': -1," +
+                        "'dataArrayOfStr': ['a','c','e']," +
                         "'nested': {" +
                         "'dataStr': 'hello'," +
                         "'dataInt': 123," +
