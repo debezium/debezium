@@ -63,4 +63,8 @@ public class SystemProperties {
             }
         });
     }
+
+    public void clearOriginalSystemProperties() {
+        originalSystemProperties.clear();
+    }
 }

@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.config.Field;
+import io.debezium.config.SystemProperties;
 import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
@@ -45,10 +45,12 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final Configuration config;
     protected final JdbcConnection jdbc;
-    private final Map<String, String> originalSystemProperties = new HashMap<>();
+    private final SystemProperties systemProperties;
 
     public MySqlJdbcContext(Configuration config) {
         this.config = config; // must be set before most methods are used
+
+        this.systemProperties = new SystemProperties(config);
 
         // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
         // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
@@ -125,12 +127,12 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     public void start() {
         if (sslModeEnabled()) {
-            originalSystemProperties.clear();
+            systemProperties.clearOriginalSystemProperties();
             // Set the System properties for SSL for the MySQL driver ...
-            setSystemProperty("javax.net.ssl.keyStore", MySqlConnectorConfig.SSL_KEYSTORE, true);
-            setSystemProperty("javax.net.ssl.keyStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
-            setSystemProperty("javax.net.ssl.trustStore", MySqlConnectorConfig.SSL_TRUSTSTORE, true);
-            setSystemProperty("javax.net.ssl.trustStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
+            systemProperties.setSystemProperty("javax.net.ssl.keyStore", MySqlConnectorConfig.SSL_KEYSTORE, true);
+            systemProperties.setSystemProperty("javax.net.ssl.keyStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
+            systemProperties.setSystemProperty("javax.net.ssl.trustStore", MySqlConnectorConfig.SSL_TRUSTSTORE, true);
+            systemProperties.setSystemProperty("javax.net.ssl.trustStorePassword", MySqlConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
         }
     }
 
@@ -141,13 +143,7 @@ public class MySqlJdbcContext implements AutoCloseable {
             logger.error("Unexpected error shutting down the database connection", e);
         } finally {
             // Reset the system properties to their original value ...
-            originalSystemProperties.forEach((name, value) -> {
-                if (value != null) {
-                    System.setProperty(name, value);
-                } else {
-                    System.clearProperty(name);
-                }
-            });
+            systemProperties.resetToOriginalSystemProperties();
         }
     }
 
@@ -318,32 +314,5 @@ public class MySqlJdbcContext implements AutoCloseable {
             sb.append(value);
         }
         return sb.append(";").toString();
-    }
-
-    protected void setSystemProperty(String property, Field field, boolean showValueInError) {
-        String value = config.getString(field);
-        if (value != null) {
-            value = value.trim();
-            String existingValue = System.getProperty(property);
-            if (existingValue == null) {
-                // There was no existing property ...
-                String existing = System.setProperty(property, value);
-                originalSystemProperties.put(property, existing); // the existing value may be null
-            } else {
-                existingValue = existingValue.trim();
-                if (!existingValue.equalsIgnoreCase(value)) {
-                    // There was an existing property, and the value is different ...
-                    String msg = "System or JVM property '" + property + "' is already defined, but the configuration property '"
-                            + field.name()
-                            + "' defines a different value";
-                    if (showValueInError) {
-                        msg = "System or JVM property '" + property + "' is already defined as " + existingValue
-                                + ", but the configuration property '" + field.name() + "' defines a different value '" + value + "'";
-                    }
-                    throw new ConnectException(msg);
-                }
-                // Otherwise, there was an existing property, and the value is exactly the same (so do nothing!)
-            }
-        }
     }
 }
