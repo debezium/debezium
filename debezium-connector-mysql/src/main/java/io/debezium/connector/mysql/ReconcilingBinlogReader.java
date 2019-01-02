@@ -106,6 +106,7 @@ public class ReconcilingBinlogReader implements Reader {
             try {
                 logger.info("Stopping the {} reader", reconcilingReader.name());
                 reconcilingReader.stop();
+                reconcilingReader.context.shutdown();
             } catch (Throwable t) {
                 logger.error("Unexpected error stopping the {} reader", reconcilingReader.name());
             }

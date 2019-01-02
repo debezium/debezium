@@ -121,6 +121,7 @@ public class ParallelSnapshotReader implements Reader {
             try {
                 logger.info("Stopping the {} reader", oldTablesReader.name());
                 oldTablesReader.stop();
+                oldTablesReader.context.shutdown();
             } catch (Throwable t) {
                 logger.error("Unexpected error stopping the {} reader", oldTablesReader.name());
             }
@@ -128,6 +129,7 @@ public class ParallelSnapshotReader implements Reader {
             try {
                 logger.info("Stopping the {} reader", newTablesReader.name());
                 newTablesReader.stop();
+                oldTablesReader.context.shutdown();
             } catch (Throwable t) {
                 logger.error("Unexpected error stopping the {} reader", newTablesReader.name());
             }

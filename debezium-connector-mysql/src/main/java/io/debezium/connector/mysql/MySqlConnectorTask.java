@@ -236,6 +236,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                         chainedReaderBuilder.addReader(parallelSnapshotReader);
                         chainedReaderBuilder.addReader(reconcilingBinlogReader);
                         chainedReaderBuilder.addReader(unifiedBinlogReader);
+
+                        unifiedBinlogReader.uponCompletion(unifiedTaskContext::shutdown);
                     }
                 } else {
                     // We're going to start by reading the binlog ...
