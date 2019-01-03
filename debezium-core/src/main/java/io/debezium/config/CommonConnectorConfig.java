@@ -77,6 +77,35 @@ public class CommonConnectorConfig {
         .withDefault(0L)
         .withValidation(Field::isNonNegativeLong);
 
+    public static final Field SSL_KEYSTORE = Field.create("ssl.keystore")
+            .withDisplayName("SSL Keystore")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Location of the Java keystore file containing an application process's own certificate and private key.");
+
+    public static final Field SSL_KEYSTORE_PASSWORD = Field.create("ssl.keystore.password")
+            .withDisplayName("SSL Keystore Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Password to access the private key from the keystore file specified by 'ssl.keystore' configuration property or the 'javax.net.ssl.keyStore' system or JVM property. "
+                    + "This password is used to unlock the keystore file (store password), and to decrypt the private key stored in the keystore (key password).");
+
+    public static final Field SSL_TRUSTSTORE = Field.create("ssl.truststore")
+            .withDisplayName("SSL Truststore")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Location of the Java truststore file containing the collection of CA certificates trusted by this application process (trust store).");
+
+    public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create("ssl.truststore.password")
+            .withDisplayName("SSL Truststore Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Password to unlock the keystore file (store password) specified by 'ssl.trustore' configuration property or the 'javax.net.ssl.trustStore' system or JVM property.");
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
