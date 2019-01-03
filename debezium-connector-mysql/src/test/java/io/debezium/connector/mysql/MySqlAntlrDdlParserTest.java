@@ -189,6 +189,21 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1059")
+    public void shouldParseAlterTableRename() {
+        final String ddl = "USE db;"
+                  + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY);"
+                  + "ALTER TABLE `t1` RENAME TO `t2`;"
+                  + "ALTER TABLE `db`.`t2` RENAME TO `db`.`t3`;";
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        final Table table = tables.forTable(new TableId(null, "db", "t3"));
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(1);
+    }
+
+    @Test
     public void shouldParseCreateViewStatementColumnAlias() {
         String ddl = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
