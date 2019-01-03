@@ -619,7 +619,7 @@ alterSpecification
     | DROP FOREIGN KEY uid                                          #alterByDropForeignKey
     | DISABLE KEYS                                                  #alterByDisableKeys
     | ENABLE KEYS                                                   #alterByEnableKeys
-    | RENAME renameFormat=(TO | AS)? uid                            #alterByRename
+    | RENAME renameFormat=(TO | AS)? (uid | fullId)                 #alterByRename
     | ORDER BY uidList                                              #alterByOrder
     | CONVERT TO CHARACTER SET charsetName
       (COLLATE collationName)?                                      #alterByConvertCharset
