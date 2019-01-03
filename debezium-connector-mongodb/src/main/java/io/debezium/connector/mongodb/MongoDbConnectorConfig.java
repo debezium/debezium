@@ -236,7 +236,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      DATABASE_WHITELIST,
                                                      DATABASE_BLACKLIST,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS);
+                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+                                                     CommonConnectorConfig.SSL_KEYSTORE,
+                                                     CommonConnectorConfig.SSL_KEYSTORE_PASSWORD,
+                                                     CommonConnectorConfig.SSL_TRUSTSTORE,
+                                                     CommonConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -252,7 +256,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                CommonConnectorConfig.SNAPSHOT_DELAY_MS);
+                CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SSL_TRUSTSTORE,
+                CommonConnectorConfig.SSL_TRUSTSTORE_PASSWORD, CommonConnectorConfig.SSL_KEYSTORE,
+                CommonConnectorConfig.SSL_KEYSTORE_PASSWORD);
         return config;
     }
 

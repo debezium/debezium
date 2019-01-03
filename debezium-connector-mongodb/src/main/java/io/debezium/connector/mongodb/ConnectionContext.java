@@ -25,7 +25,9 @@ import com.mongodb.MongoCredential;
 import com.mongodb.ReplicaSetStatus;
 import com.mongodb.ServerAddress;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.SystemProperties;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
@@ -49,6 +51,7 @@ public class ConnectionContext implements AutoCloseable {
     protected final ReplicaSets replicaSets;
     protected final DelayStrategy primaryBackoffStrategy;
     protected final boolean useHostsAsSeeds;
+    private final SystemProperties systemProperties;
 
     /**
      * @param config the configuration
@@ -56,12 +59,23 @@ public class ConnectionContext implements AutoCloseable {
     public ConnectionContext(Configuration config) {
         this.config = config;
 
+        this.systemProperties = new SystemProperties(config);
+
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
         final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
         final boolean useSSL = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
         final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
+
+        if (useSSL) {
+            // Set the System properties for SSL for the MongoDB driver ...
+            // This happens here before the MongoClients builder starts its process
+            systemProperties.setSystemProperty("javax.net.ssl.keyStore", CommonConnectorConfig.SSL_KEYSTORE, true);
+            systemProperties.setSystemProperty("javax.net.ssl.keyStorePassword", CommonConnectorConfig.SSL_KEYSTORE_PASSWORD, false);
+            systemProperties.setSystemProperty("javax.net.ssl.trustStore", CommonConnectorConfig.SSL_TRUSTSTORE, true);
+            systemProperties.setSystemProperty("javax.net.ssl.trustStorePassword", CommonConnectorConfig.SSL_TRUSTSTORE_PASSWORD, false);
+        }
 
         // Set up the client pool so that it ...
         MongoClients.Builder clientBuilder = MongoClients.create();
@@ -87,6 +101,9 @@ public class ConnectionContext implements AutoCloseable {
             pool.clear();
         } catch (Throwable e) {
             logger().error("Unexpected error shutting down the MongoDB clients", e);
+        } finally {
+            // Reset the system properties to their original value ...
+            systemProperties.resetToOriginalSystemProperties();
         }
     }
 
