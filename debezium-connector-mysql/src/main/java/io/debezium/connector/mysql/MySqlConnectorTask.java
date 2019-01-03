@@ -173,7 +173,6 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             ChainedReader.Builder chainedReaderBuilder = new ChainedReader.Builder();
 
             // Set up the readers, with a callback to `completeReaders` so that we know when it is finished ...
-            BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
@@ -195,6 +194,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
+                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
                     chainedReaderBuilder.addReader(binlogReader);
                 }
             } else {
@@ -241,6 +241,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     }
                 } else {
                     // We're going to start by reading the binlog ...
+                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
                     chainedReaderBuilder.addReader(binlogReader);
                 }
 
