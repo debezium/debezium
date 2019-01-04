@@ -5,16 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-
+import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Schema;
@@ -22,19 +13,13 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
-import io.debezium.connector.mongodb.MongoDbConnector;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.MongoDbTaskContext;
-import io.debezium.connector.mongodb.ReplicaSet;
-import io.debezium.connector.mongodb.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.util.Testing;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * Integration test for {@link UnwrapFromMongoDbEnvelope}. It sends operations into
@@ -43,105 +28,50 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
-
-    private static final String DB_NAME = "transform";
-    private static final String COLLECTION_NAME = "source";
-    private static final String TOPIC_NAME = "mongo.transform.source";
+public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractUnwrapFromMongoDbEnvelopeTestIT {
 
     private static final String CONFIG_DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
 
-    private Configuration config;
-    private MongoDbTaskContext context;
-    private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
-
-    @Before
-    public void beforeEach() {
-        Testing.Debug.disable();
-        Testing.Print.disable();
-        stopConnector();
-        initializeConnectorTestFramework();
-
-        transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
-        transformation.configure(Collections.emptyMap());
-    }
-
-    @After
-    public void afterEach() {
-        try {
-            stopConnector();
-        }
-        finally {
-            if (context != null) context.getConnectionContext().shutdown();
-        }
-        transformation.close();
+    @Override
+    protected String getCollectionName() {
+        return "functional";
     }
 
     @Test
     @FixFor("DBZ-563")
     public void shouldDropTombstoneByDefault() throws InterruptedException {
-        // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "transform.*")
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                .build();
-
-        // Set up the replication context for connections ...
-        context = new MongoDbTaskContext(config);
-
-        // Cleanup database
-        TestHelper.cleanDatabase(primary(), DB_NAME);
-
-        // Start the connector ...
-        start(MongoDbConnector.class, config);
-
         // First insert
         primary().execute("insert", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{'_id': 1, 'dataStr': 'hello', 'dataInt': 123, 'dataLong': 80000000000}"));
         });
 
         SourceRecords records = consumeRecordsByTopic(1);
 
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
 
         // Test Delete
         primary().execute("delete", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
         });
 
-        records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(2);
+        // First delete record to arrive is coming from the oplog
+        SourceRecord firstRecord = getRecordByOperation(Envelope.Operation.DELETE);
+        final SourceRecord transformedDelete = transformation.apply(firstRecord);
+        assertThat(transformedDelete).isNull();
+
+        // Second record is the tombstone
+        SourceRecord tombstoneRecord = getNextRecord();
+        assertThat(tombstoneRecord).isNotNull();
 
         // Test tombstone record is dropped
-        // Note we're getting the second record which is the tombstone
-        final SourceRecord tombstoneRecord = records.recordsForTopic(TOPIC_NAME).get(1);
         final SourceRecord transformedTombstone = transformation.apply(tombstoneRecord);
-
         assertThat(transformedTombstone).isNull();
     }
 
     @Test
     public void shouldTransformEvents() throws InterruptedException, IOException {
-
-        // Use the DB configuration to define the connector's configuration ...
-        config = TestHelper.getConfiguration().edit()
-                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "transform.*")
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                              .build();
-
-        // Set up the replication context for connections ...
-        context = new MongoDbTaskContext(config);
-
-        // Cleanup database
-        TestHelper.cleanDatabase(primary(), DB_NAME);
-
-        // Start the connector ...
-        start(MongoDbConnector.class, config);
-
         final Map<String, String> transformationConfig = new HashMap<>();
         transformationConfig.put(CONFIG_DROP_TOMBSTONES, "false");
         transformationConfig.put(HANDLE_DELETES, "none");
@@ -149,16 +79,16 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Test insert
         primary().execute("insert", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                     .insertOne(Document.parse("{'_id': 1, 'dataStr': 'hello', 'dataInt': 123, 'dataLong': 80000000000}"));
         });
 
         SourceRecords records = consumeRecordsByTopic(1);
 
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
-        final SourceRecord insertRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedInsert = transformation.apply(insertRecord);
-        final Struct transformedInsertValue = (Struct)transformedInsert.value();
+        final Struct transformedInsertValue = (Struct) transformedInsert.value();
 
         assertThat(transformedInsert.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedInsert.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
@@ -171,22 +101,22 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Test update
         primary().execute("update", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'$set': {'dataStr': 'bye'}}"));
         });
 
         records = consumeRecordsByTopic(1);
-        final SourceRecord candidateUpdateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
-        if (((Struct)candidateUpdateRecord.value()).get("op").equals("c")) {
+        final SourceRecord candidateUpdateRecord = records.recordsForTopic(this.topicName()).get(0);
+        if (((Struct) candidateUpdateRecord.value()).get("op").equals("c")) {
             // MongoDB is not providing really consistent snapshot, so the initial insert
             // can arrive both in initial sync snapshot and in oplog
             records = consumeRecordsByTopic(1);
         }
 
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
-        final SourceRecord updateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord updateRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
-        final Struct transformedUpdateValue = (Struct)transformedUpdate.value();
+        final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
 
         assertThat(transformedUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedUpdate.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
@@ -195,16 +125,16 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Test Update Multiple Fields
         primary().execute("update", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'$set': {'newStr': 'hello', 'dataInt': 456}}"));
         });
 
         records = consumeRecordsByTopic(1);
 
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
-        final SourceRecord updateMultipleRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord updateMultipleRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedMultipleUpdate = transformation.apply(updateMultipleRecord);
-        final Struct transformedMultipleUpdateValue = (Struct)transformedMultipleUpdate.value();
+        final Struct transformedMultipleUpdateValue = (Struct) transformedMultipleUpdate.value();
 
         assertThat(transformedMultipleUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedMultipleUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
@@ -215,16 +145,16 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Test Update with $unset operation
         primary().execute("update", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'$unset': {'newStr': ''}}"));
         });
 
         records = consumeRecordsByTopic(1);
 
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
-        final SourceRecord updateUnsetRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord updateUnsetRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedUnsetUpdate = transformation.apply(updateUnsetRecord);
-        final Struct transformedUnsetUpdateValue = (Struct)transformedUnsetUpdate.value();
+        final Struct transformedUnsetUpdateValue = (Struct) transformedUnsetUpdate.value();
 
         assertThat(transformedUnsetUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
@@ -233,22 +163,22 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Test FullUpdate
         primary().execute("update", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).updateOne(RawBsonDocument.parse("{'_id' : 1}"),
                     RawBsonDocument.parse("{'dataStr': 'Hi again'}"));
         });
 
         records = consumeRecordsByTopic(1);
-        final SourceRecord candidateFullUpdateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
-        if (((Struct)candidateFullUpdateRecord.value()).get("op").equals("c")) {
+        final SourceRecord candidateFullUpdateRecord = records.recordsForTopic(this.topicName()).get(0);
+        if (((Struct) candidateFullUpdateRecord.value()).get("op").equals("c")) {
             // MongoDB is not providing really consistent snapshot, so the initial insert
             // can arrive both in initial sync snapshot and in oplog
             records = consumeRecordsByTopic(1);
         }
 
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
-        final SourceRecord FullUpdateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord FullUpdateRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedFullUpdate = transformation.apply(FullUpdateRecord);
-        final Struct transformedFullUpdateValue = (Struct)transformedFullUpdate.value();
+        final Struct transformedFullUpdateValue = (Struct) transformedFullUpdate.value();
 
         assertThat(transformedFullUpdate.valueSchema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedFullUpdate.valueSchema().field("dataStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
@@ -257,21 +187,21 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
 
         // Test Delete
         primary().execute("delete", client -> {
-            client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).deleteOne(RawBsonDocument.parse("{'_id' : 1}"));
         });
 
         records = consumeRecordsByTopic(2);
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
 
         // Test mongo Deletion operation
-        final SourceRecord deleteRecord = records.recordsForTopic(TOPIC_NAME).get(0);
+        final SourceRecord deleteRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedDelete = transformation.apply(deleteRecord);
-        final Struct transformedDeleteValue = (Struct)transformedDelete.value();
+        final Struct transformedDeleteValue = (Struct) transformedDelete.value();
 
         assertThat(transformedDeleteValue).isNull();
 
         // Test tombstone record
-        final SourceRecord tombstoneRecord = records.recordsForTopic(TOPIC_NAME).get(1);
+        final SourceRecord tombstoneRecord = records.recordsForTopic(this.topicName()).get(1);
         final SourceRecord transformedTombstone = transformation.apply(tombstoneRecord);
 
         assertThat(transformedTombstone.value()).isNull();
@@ -279,20 +209,5 @@ public class UnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
         // Assert deletion preserves key
         assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
         assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
-}
-
-    private MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
-    }
-
-    private BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
     }
 }
