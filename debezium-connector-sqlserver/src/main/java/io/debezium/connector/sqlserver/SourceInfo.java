@@ -118,4 +118,15 @@ public class SourceInfo extends AbstractSourceInfo {
         }
         return ret;
     }
+
+    @Override
+    public String toString() {
+        return "SourceInfo [" +
+                "serverName=" + serverName +
+                ", changeLsn=" + changeLsn +
+                ", commitLsn=" + commitLsn +
+                ", snapshot=" + snapshot +
+                ", sourceTime=" + sourceTime +
+                "]";
+    }
 }

@@ -123,4 +123,14 @@ public class SqlServerOffsetContext implements OffsetContext {
             return new SqlServerOffsetContext(logicalName, lsn, snapshot, snapshotCompleted);
         }
     }
+
+    @Override
+    public String toString() {
+        return "SqlServerOffsetContext [" +
+                "sourceInfoSchema=" + sourceInfoSchema +
+                ", sourceInfo=" + sourceInfo +
+                ", partition=" + partition +
+                ", snapshotCompleted=" + snapshotCompleted +
+                "]";
+    }
 }
