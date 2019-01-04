@@ -171,12 +171,12 @@ public class UnwrapFromMongoDbEnvelopeUpdateFieldOperatorTestIT extends Abstract
         Bson setOnInsert = Document.parse("{'$setOnInsert': {'onlySetIfInsertDataInt': 789}}");
         UpdateOptions updateOptions = new UpdateOptions();
         updateOptions.upsert(true);
-        Consumer<MongoClient> upsert = client -> client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+        Consumer<MongoClient> upsert = client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                 .updateOne(Document.parse("{'_id' : 2}"), setOnInsert, updateOptions);
 
         primary().execute("update", upsert);
 
-        SourceRecord upsertRecord = consumeRecordsByTopic(1).recordsForTopic(TOPIC_NAME).get(0);
+        SourceRecord upsertRecord = consumeRecordsByTopic(1).recordsForTopic(this.topicName()).get(0);
 
         final SourceRecord transformedUpsert = transformation.apply(upsertRecord);
         final Struct transformedUpsertValue = (Struct) transformedUpsert.value();
@@ -189,7 +189,7 @@ public class UnwrapFromMongoDbEnvelopeUpdateFieldOperatorTestIT extends Abstract
 
         // Execute a new Upsert with the same ID to ensure the field "onlySetIfInsertDataInt" doesn't change its value
         Bson setOnInsertAndSet = Document.parse("{'$setOnInsert': {'onlySetIfInsertDataInt': 123}, '$set': {'newField': 456}}");
-        Consumer<MongoClient> upsertAndUpdate = client -> client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+        Consumer<MongoClient> upsertAndUpdate = client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                 .updateOne(Document.parse("{'_id' : 2}"), setOnInsertAndSet, updateOptions);
         primary().execute("update", upsertAndUpdate);
 
