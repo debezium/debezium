@@ -6,29 +6,14 @@
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
 import com.mongodb.MongoClient;
-import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
-import io.debezium.connector.mongodb.MongoDbConnector;
-import io.debezium.connector.mongodb.MongoDbConnectorConfig;
-import io.debezium.connector.mongodb.MongoDbTaskContext;
-import io.debezium.connector.mongodb.ReplicaSet;
-import io.debezium.connector.mongodb.TestHelper;
+import io.debezium.connector.mongodb.transforms.AbstractUnwrapFromMongoDbEnvelopeTestIT;
 import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope;
-import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
-import org.junit.After;
-import org.junit.Before;
 
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
 /**
  * Integration test for {@link UnwrapFromMongoDbEnvelope}. It sends operations into
@@ -40,51 +25,11 @@ import static org.junit.Assert.fail;
  *
  * @author Renato Mefi
  */
-public abstract class AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT extends AbstractConnectorTest {
+abstract class AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT extends AbstractUnwrapFromMongoDbEnvelopeTestIT {
 
-    static final String DB_NAME = "transform_operations";
-    static final String COLLECTION_NAME = "source";
-    static final String TOPIC_NAME = "mongo.transform_operations.source";
-
-    private MongoDbTaskContext context;
-    UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
-
-    @Before
-    public void beforeEach() {
-        Debug.disable();
-        Print.disable();
-        stopConnector();
-        initializeConnectorTestFramework();
-
-        transformation = new UnwrapFromMongoDbEnvelope<>();
-        transformation.configure(Collections.emptyMap());
-
-        // Use the DB configuration to define the connector's configuration ...
-        Configuration config = TestHelper.getConfiguration().edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "transform_operations.*")
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                .build();
-
-        // Set up the replication context for connections ...
-        context = new MongoDbTaskContext(config);
-
-        // Cleanup database
-        TestHelper.cleanDatabase(primary(), DB_NAME);
-
-        // Start the connector ...
-        start(MongoDbConnector.class, config);
-    }
-
-    @After
-    public void afterEach() {
-        try {
-            stopConnector();
-        }
-        finally {
-            if (context != null) context.getConnectionContext().shutdown();
-        }
-        transformation.close();
+    @Override
+    protected String getCollectionName() {
+        return "update_operators";
     }
 
     SourceRecord executeSimpleUpdateOperation(String updateDocument) throws InterruptedException {
@@ -92,31 +37,15 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT ext
 
         SourceRecords records = consumeRecordsByTopic(1);
 
-        assertThat(records.recordsForTopic(TOPIC_NAME)).hasSize(1);
+        assertThat(records.recordsForTopic(this.topicName())).hasSize(1);
 
         primary().execute("update", createUpdateOneItem(1, updateDocument));
 
         return getUpdateRecord();
     }
 
-    SourceRecord getUpdateRecord() throws InterruptedException {
-        SourceRecords records;
-        records = consumeRecordsByTopic(1);
-        final SourceRecord candidateRecord = records.recordsForTopic(TOPIC_NAME).get(0);
-
-        if (!((Struct) candidateRecord.value()).get("op").equals(Envelope.Operation.UPDATE.code())) {
-            // MongoDB is not providing really consistent snapshot, so the initial insert
-            // can arrive both in initial sync snapshot and in oplog
-            return getUpdateRecord();
-        }
-
-        assertThat(records.recordsForTopic(TOPIC_NAME).size()).isEqualTo(1);
-
-        return records.recordsForTopic(TOPIC_NAME).get(0);
-    }
-
     private Consumer<MongoClient> createInsertItemDefault(int id) {
-        return client -> client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
+        return client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
                 .insertOne(Document.parse("{" +
                         "'_id': " + id + "," +
                         "'dataStr': 'hello'," +
@@ -136,24 +65,7 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT ext
     }
 
     private Consumer<MongoClient> createUpdateOneItem(int id, String document) {
-        return client -> client.getDatabase(DB_NAME).getCollection(COLLECTION_NAME)
-                .updateOne(Document.parse("{'_id' : " + id + "}"), Document.parse(document));
-    }
-
-    MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
-        return context.getConnectionContext().primaryFor(
-                replicaSet, context.filters(), connectionErrorHandler(3)
-        );
-    }
-
-    private BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {
-        AtomicInteger attempts = new AtomicInteger();
-        return (desc, error) -> {
-            if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
-                fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
-            }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-        };
+        return client -> client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                .updateOne(Document.parse(String.format("{'_id' : %d}", id)), Document.parse(document));
     }
 }
