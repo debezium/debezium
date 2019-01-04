@@ -83,12 +83,7 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeTestIT extends AbstractCo
     }
 
     SourceRecord getRecordByOperation(Envelope.Operation operation) throws InterruptedException {
-        SourceRecords records;
-        records = consumeRecordsByTopic(1);
-
-        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
-
-        final SourceRecord candidateRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord candidateRecord = getNextRecord();
 
         if (!((Struct) candidateRecord.value()).get("op").equals(operation.code())) {
             // MongoDB is not providing really consistent snapshot, so the initial insert
@@ -97,6 +92,14 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeTestIT extends AbstractCo
         }
 
         return candidateRecord;
+    }
+
+    SourceRecord getNextRecord() throws InterruptedException {
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        return records.recordsForTopic(this.topicName()).get(0);
     }
 
     protected SourceRecord getUpdateRecord() throws InterruptedException {
