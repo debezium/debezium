@@ -29,7 +29,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDatabaseSchema.class);
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, SqlServerConnection connection) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), null,
+        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         new SqlServerValueConverters(connectorConfig.getDecimalMode()),
                         schemaNameAdjuster,
