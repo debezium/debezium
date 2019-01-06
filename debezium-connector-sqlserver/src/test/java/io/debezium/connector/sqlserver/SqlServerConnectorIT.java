@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
@@ -23,6 +24,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
+import io.debezium.connector.sqlserver.util.SourceRecordAssert;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.doc.FixFor;
@@ -411,6 +413,66 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
         Assertions.assertThat(tableA == null || tableA.isEmpty()).isTrue();
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1067")
+    public void blacklistColumn() throws Exception {
+        connection.execute(
+                "CREATE TABLE blacklist_column_table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE blacklist_column_table_b (id int, name varchar(30), amount integer primary key(id))"
+        );
+        TestHelper.enableTableCdc(connection, "blacklist_column_table_a");
+        TestHelper.enableTableCdc(connection, "blacklist_column_table_b");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.blacklist_column_table_a.amount")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO blacklist_column_table_b VALUES(11, 'some_name', 447)");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.blacklist_column_table_a");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.blacklist_column_table_b");
+
+        Schema expectedSchemaA = SchemaBuilder.struct()
+                .optional()
+                .name("server1.dbo.blacklist_column_table_a.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Struct expectedValueA = new Struct(expectedSchemaA)
+                .put("id", 10)
+                .put("name", "some_name");
+
+        Schema expectedSchemaB = SchemaBuilder.struct()
+                .optional()
+                .name("server1.dbo.blacklist_column_table_b.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("amount", Schema.OPTIONAL_INT32_SCHEMA)
+                .build();
+        Struct expectedValueB = new Struct(expectedSchemaB)
+                .put("id", 11)
+                .put("name", "some_name")
+                .put("amount", 447);
+
+        Assertions.assertThat(tableA).hasSize(1);
+        SourceRecordAssert.assertThat(tableA.get(0))
+                .valueAfterFieldIsEqualTo(expectedValueA)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaA);
+
+        Assertions.assertThat(tableB).hasSize(1);
+        SourceRecordAssert.assertThat(tableB.get(0))
+                .valueAfterFieldIsEqualTo(expectedValueB)
+                .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
 
         stopConnector();
     }
