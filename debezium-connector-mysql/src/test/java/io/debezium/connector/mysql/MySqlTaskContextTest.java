@@ -255,7 +255,7 @@ public class MySqlTaskContextTest {
                 .with(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION, GtidNewChannelPosition.EARLIEST)
                 .build();
 
-        context = new MySqlTaskContext(config, false);
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false);
         context.start();
         context.source().setCompletedGtidSet(gtidStr);
 
