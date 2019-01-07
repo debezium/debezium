@@ -68,10 +68,6 @@ public class MySqlDefaultValuePreConverter  {
         case Types.BIT:
             return convertToBits(column, value);
 
-        case Types.TINYINT:
-        case Types.SMALLINT:
-            return convertToSmallInt(value);
-
         case Types.NUMERIC:
         case Types.DECIMAL:
             return convertToDecimal(value);
@@ -80,10 +76,6 @@ public class MySqlDefaultValuePreConverter  {
         case Types.DOUBLE:
         case Types.REAL:
             return convertToDouble(value);
-        case Types.BIGINT:
-            return convertToBigInt(value);
-        case Types.INTEGER:
-            return convertToInteger(value);
         }
         return value;
     }
