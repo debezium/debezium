@@ -269,7 +269,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
         int count = 0;
-        if (ReplicaSets.parse(hosts) == null) {
+        if (ReplicaSets.parse(hosts).all().isEmpty()) {
             problems.accept(field, hosts, "Invalid host specification");
             ++count;
         }
@@ -277,20 +277,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     private static int validateCollectionBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getString(COLLECTION_WHITELIST);
-        String blacklist = config.getString(COLLECTION_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(COLLECTION_BLACKLIST, blacklist, "Whitelist is already specified");
-            return 1;
-        }
-        return 0;
+        return validateBlacklistField(config, problems, COLLECTION_WHITELIST, COLLECTION_BLACKLIST);
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
-        String whitelist = config.getString(DATABASE_WHITELIST);
-        String blacklist = config.getString(DATABASE_BLACKLIST);
+        return validateBlacklistField(config, problems, DATABASE_WHITELIST, DATABASE_BLACKLIST);
+    }
+
+    private static int validateBlacklistField(Configuration config, ValidationOutput problems, Field fieldWhitelist, Field fieldBlacklist) {
+        String whitelist = config.getString(fieldWhitelist);
+        String blacklist = config.getString(fieldBlacklist);
         if (whitelist != null && blacklist != null) {
-            problems.accept(DATABASE_BLACKLIST, blacklist, "Whitelist is already specified");
+            problems.accept(fieldBlacklist, blacklist, "Whitelist is already specified");
             return 1;
         }
         return 0;
