@@ -55,7 +55,8 @@ public abstract class AbstractMysqlDefaultValueTest {
                 "    C TINYINT UNSIGNED NULL," +
                 "    D TINYINT UNSIGNED NOT NULL," +
                 "    E TINYINT UNSIGNED NOT NULL DEFAULT 0," +
-                "    F TINYINT UNSIGNED NOT NULL DEFAULT '0'" +
+                "    F TINYINT UNSIGNED NOT NULL DEFAULT '0'," +
+                "    G TINYINT UNSIGNED NOT NULL DEFAULT '255'" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_TINYINT_TABLE"));
@@ -69,6 +70,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo((short) 0);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo((short) 0);
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo((short) 255);
     }
 
     @Test
@@ -79,7 +81,8 @@ public abstract class AbstractMysqlDefaultValueTest {
                 "  C SMALLINT UNSIGNED NULL,\n" +
                 "  D SMALLINT UNSIGNED NOT NULL,\n" +
                 "  E SMALLINT UNSIGNED NOT NULL DEFAULT 0,\n" +
-                "  F SMALLINT UNSIGNED NOT NULL DEFAULT '0'\n" +
+                "  F SMALLINT UNSIGNED NOT NULL DEFAULT '0',\n" +
+                "  G SMALLINT UNSIGNED NOT NULL DEFAULT '65535'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_SMALLINT_TABLE"));
@@ -92,6 +95,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0);
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(65535);
     }
 
     @Test
@@ -102,7 +106,8 @@ public abstract class AbstractMysqlDefaultValueTest {
                 "  C MEDIUMINT UNSIGNED NULL,\n" +
                 "  D MEDIUMINT UNSIGNED NOT NULL,\n" +
                 "  E MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\n" +
-                "  F MEDIUMINT UNSIGNED NOT NULL DEFAULT '0'\n" +
+                "  F MEDIUMINT UNSIGNED NOT NULL DEFAULT '0',\n" +
+                "  G MEDIUMINT UNSIGNED NOT NULL DEFAULT '16777215'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_MEDIUMINT_TABLE"));
@@ -115,6 +120,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0);
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(16777215);
     }
 
     @Test
@@ -125,7 +131,8 @@ public abstract class AbstractMysqlDefaultValueTest {
                 "  C INT UNSIGNED NULL,\n" +
                 "  D INT UNSIGNED NOT NULL,\n" +
                 "  E INT UNSIGNED NOT NULL DEFAULT 0,\n" +
-                "  F INT UNSIGNED NOT NULL DEFAULT '0'\n" +
+                "  F INT UNSIGNED NOT NULL DEFAULT '0',\n" +
+                "  G INT UNSIGNED NOT NULL DEFAULT '4294967295'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_INT_TABLE"));
@@ -138,6 +145,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(0L);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(0L);
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(4294967295L);
     }
 
     @Test
@@ -175,7 +183,8 @@ public abstract class AbstractMysqlDefaultValueTest {
                 "  C BIGINT UNSIGNED NULL,\n" +
                 "  D BIGINT UNSIGNED NOT NULL,\n" +
                 "  E BIGINT UNSIGNED NOT NULL DEFAULT 0,\n" +
-                "  F BIGINT UNSIGNED NOT NULL DEFAULT '0'\n" +
+                "  F BIGINT UNSIGNED NOT NULL DEFAULT '0',\n" +
+                "  G BIGINT UNSIGNED NOT NULL DEFAULT '18446744073709551615'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_BIGINT_TABLE"));
@@ -188,6 +197,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("E").isOptional()).isEqualTo(false);
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(BigDecimal.ZERO);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(BigDecimal.ZERO);
+        assertThat(table.columnWithName("G").defaultValue()).isEqualTo(new BigDecimal("18446744073709551615"));
     }
 
     @Test
