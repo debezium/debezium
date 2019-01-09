@@ -24,6 +24,7 @@ Eero Koplimets
 Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
+Gagan Agrawal
 Gunnar Morling
 Henryk Konsek
 Horia Chiorean
