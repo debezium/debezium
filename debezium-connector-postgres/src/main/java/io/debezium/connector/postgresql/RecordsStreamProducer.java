@@ -248,9 +248,6 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         TableSchema tableSchema = tableSchemaFor(tableId);
         if (tableSchema != null) {
-            if (tableSchema.keySchema() == null) {
-                logger.warn("ignoring message for table '{}' because it does not have a primary key defined", tableId);
-            }
 
             ReplicationMessage.Operation operation = message.getOperation();
             switch (operation) {
@@ -291,7 +288,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         assert tableSchema != null;
         Object key = tableSchema.keyFromColumnData(rowData);
         Struct value = tableSchema.valueFromColumnData(rowData);
-        if (key == null || value == null) {
+        if (value == null) {
+            logger.warn("no values found for table '{}' from create message at '{}'; skipping record" , tableId, sourceInfo);
             return;
         }
         Schema keySchema = tableSchema.keySchema();
@@ -389,7 +387,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         assert tableSchema != null;
         Object key = tableSchema.keyFromColumnData(oldRowData);
         Struct value = tableSchema.valueFromColumnData(oldRowData);
-        if (key == null || value == null) {
+        if (value == null) {
+            logger.warn("ignoring message from delete transaction for table '{}' because it does not have a primary key defined and replica identity for the table is not FULL", tableId);
             return;
         }
         Schema keySchema = tableSchema.keySchema();

@@ -219,6 +219,37 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    public void shouldReceiveChangesForInsertsDependingOnReplicaIdentity() throws Exception {
+        // insert statement should not be affected by replica identity settings in any way
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        String statement = "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;" +
+                           "INSERT INTO test_table (text) VALUES ('pk_and_default');";
+        executeAndWait(statement);
+        assertRecordInserted("public.test_table", PK_FIELD, 2);
+
+        consumer.expects(1);
+        statement = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
+                    "INSERT INTO test_table (text) VALUES ('pk_and_full');";
+        executeAndWait(statement);
+        assertRecordInserted("public.test_table", PK_FIELD, 3);
+
+        consumer.expects(1);
+        statement = "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;" +
+                    "INSERT INTO test_table (pk, text) VALUES (4, 'no_pk_and_full');";
+        executeAndWait(statement);
+        assertRecordInserted("public.test_table", PK_FIELD, 4);
+
+        consumer.expects(1);
+        statement = "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;" +
+                    "INSERT INTO test_table (pk, text) VALUES (5, 'no_pk_and_default');";
+        executeAndWait(statement);
+        assertRecordInserted("public.test_table", PK_FIELD, 5);
+    }
+
+    @Test
     @FixFor("DBZ-478")
     public void shouldReceiveChangesForNullInsertsWithArrayTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -278,12 +309,30 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
 
         // now we should get both old and new values
-        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA,
-                                                                                               "update"));
+        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
 
         expectedAfter = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update2"));
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
+
+        // without PK and with REPLICA IDENTITY FULL we still getting all fields 'before' and all fields 'after'
+        TestHelper.execute("ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;");
+        consumer.expects(1);
+        executeAndWait("UPDATE test_table SET text = 'update3' WHERE pk = 1;");
+        updatedRecord = consumer.remove();
+        assertEquals(topicName, updatedRecord.topic());
+
+        expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA,  "update2"));
+        assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
+
+        expectedAfter = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA,  "update3"));
+        assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
+
+        // without PK and with REPLICA IDENTITY DEFAULT we will get nothing
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        consumer.expects(0);
+        executeAndWait("UPDATE test_table SET text = 'no_pk_and_default' WHERE pk = 1;");
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     @Test
@@ -594,6 +643,48 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         record = consumer.remove();
         assertEquals(topicName, record.topic());
         VerifyRecord.isValidDelete(record, PK_FIELD, 2);
+    }
+
+    @Test
+    public void shouldReceiveChangesForDeletesDependingOnReplicaIdentity() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                                                                               .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                                                                               .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                                                                               .build()
+        );
+        setupRecordsProducer(config);
+        String topicName = topicName("public.test_table");
+
+        // With PK we should get delete event with default level of replica identity
+        String statement = "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;" +
+                            "DELETE FROM test_table WHERE pk = 1;";
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+        SourceRecord record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 1);
+
+        // Without PK we should get delete event with REPLICA IDENTITY FULL
+        statement = "ALTER TABLE test_table REPLICA IDENTITY FULL;" +
+                    "ALTER TABLE test_table DROP CONSTRAINT test_table_pkey CASCADE;" +
+                    "INSERT INTO test_table (pk, text) VALUES (2, 'insert2');" +
+                    "DELETE FROM test_table WHERE pk = 2;";
+        consumer.expects(2);
+        executeAndWait(statement);
+        assertRecordInserted("public.test_table", PK_FIELD, 2);
+        record = consumer.remove();
+        assertEquals(topicName, record.topic());
+        VerifyRecord.isValidDelete(record, PK_FIELD, 2);
+
+        // Without PK and without REPLICA IDENTITY FULL we will not get delete event
+        statement = "ALTER TABLE test_table REPLICA IDENTITY DEFAULT;" +
+                    "INSERT INTO test_table (pk, text) VALUES (3, 'insert3');" +
+                    "DELETE FROM test_table WHERE pk = 3;";
+        consumer.expects(1);
+        executeAndWait(statement);
+        assertRecordInserted("public.test_table", PK_FIELD, 3);
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     @Test
