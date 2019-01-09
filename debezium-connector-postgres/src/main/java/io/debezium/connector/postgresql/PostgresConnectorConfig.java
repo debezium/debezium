@@ -639,17 +639,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      .withValidation(Field::isListOfRegex, PostgresConnectorConfig::validateTableBlacklist)
                                                      .withInvisibleRecommender();
 
-    /**
-     * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
-     * and change messages. Fully-qualified names for columns are of the form {@code <schemaName>.<tableName>.<columnName>}.
-     */
-    public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
-                                                      .withDisplayName("Exclude Columns")
-                                                      .withType(Type.STRING)
-                                                      .withWidth(Width.LONG)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDescription("");
-
     //TODO author=Horia Chiorean date=25/10/2016 description=PG 9.x logical decoding does not support schema changes
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
                                                             .withDisplayName("Include database schema changes")
@@ -766,7 +755,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE,
-                                                     TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,HSTORE_HANDLING_MODE,
+                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,HSTORE_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
@@ -924,7 +913,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,SCHEMA_REFRESH_MODE,ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,SCHEMA_REFRESH_MODE,ROWS_FETCH_SIZE);
 
         return config;
     }

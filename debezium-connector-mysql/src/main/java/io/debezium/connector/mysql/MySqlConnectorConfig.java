@@ -686,18 +686,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      .withInvisibleRecommender();
 
     /**
-     * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
-     * and change messages. Fully-qualified names for columns are of the form {@code <databaseName>.<tableName>.<columnName>}
-     * or {@code <databaseName>.<schemaName>.<tableName>.<columnName>}.
-     */
-    public static final Field COLUMN_BLACKLIST = Field.create("column.blacklist")
-                                                      .withDisplayName("Exclude Columns")
-                                                      .withType(Type.STRING)
-                                                      .withWidth(Width.LONG)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDescription("");
-
-    /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
      * be used.
@@ -999,7 +987,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      GTID_NEW_CHANNEL_POSITION,
-                                                     TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
+                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                                                      SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD,
                                                      SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
                                                      BIGINT_UNSIGNED_HANDLING_MODE,
@@ -1083,7 +1071,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
         return config;
     }
