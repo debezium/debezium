@@ -13,13 +13,13 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
+import org.fest.assertions.MapAssert;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,7 +34,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.time.Timestamp;
-import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 /**
@@ -117,14 +116,14 @@ public class SnapshotIT extends AbstractConnectorTest {
                     new SchemaAndValueField("price", Decimal.builder(2).parameter("connect.decimal.precision", "8").optional().build(), new BigDecimal(i + ".23")),
                     new SchemaAndValueField("ts", Timestamp.builder().optional().schema(), 1_531_920_536_000l)
             );
-            final Map<String, ?> expectedSource1 = Collect.hashMapOf("snapshot", true, "snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1);
-
 
             final Struct key1 = (Struct)record1.key();
             final Struct value1 = (Struct)record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct)value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset()).isEqualTo(expectedSource1);
+            assertThat(record1.sourceOffset()).includes(
+                    MapAssert.entry("snapshot", true),
+                    MapAssert.entry("snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1));
             assertNull(value1.get("before"));
         }
     }
@@ -228,13 +227,14 @@ public class SnapshotIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, i),
                     new SchemaAndValueField("name", Schema.OPTIONAL_STRING_SCHEMA, "name" + i)
             );
-            final Map<String, ?> expectedSource1 = Collect.hashMapOf("snapshot", true, "snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1);
 
             final Struct key1 = (Struct)record1.key();
             final Struct value1 = (Struct)record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct)value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset()).isEqualTo(expectedSource1);
+            assertThat(record1.sourceOffset()).includes(
+                    MapAssert.entry("snapshot", true),
+                    MapAssert.entry("snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1));
             assertNull(value1.get("before"));
         }
     }
