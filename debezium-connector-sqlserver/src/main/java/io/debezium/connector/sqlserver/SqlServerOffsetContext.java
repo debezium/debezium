@@ -30,10 +30,15 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo = new SourceInfo(serverName);
 
         sourceInfo.setChangeLsn(lsn);
-        sourceInfo.setSnapshot(snapshot);
         sourceInfoSchema = sourceInfo.schema();
 
         this.snapshotCompleted = snapshotCompleted;
+        if (this.snapshotCompleted) {
+            postSnapshotCompletion();
+        }
+        else {
+            sourceInfo.setSnapshot(snapshot);
+        }
     }
 
     @Override
