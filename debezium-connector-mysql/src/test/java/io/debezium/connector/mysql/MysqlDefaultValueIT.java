@@ -22,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -100,6 +101,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo((short) 0);
         assertThat(schemaF.isOptional()).isEqualTo(false);
         assertThat(schemaF.defaultValue()).isEqualTo((short) 0);
+        assertEmptyFieldValue(record, "G");
     }
 
     @Test
@@ -132,6 +134,13 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(0);
         assertThat(schemaF.isOptional()).isEqualTo(false);
         assertThat(schemaF.defaultValue()).isEqualTo(0);
+        assertEmptyFieldValue(record, "G");
+    }
+
+    private void assertEmptyFieldValue(SourceRecord record, String fieldName) {
+        final Struct envelope = (Struct)record.value();
+        final Struct after = (Struct)envelope.get("after");
+        assertThat(after.getWithoutDefault(fieldName)).isNull();
     }
 
     @Test
@@ -164,6 +173,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(0);
         assertThat(schemaF.isOptional()).isEqualTo(false);
         assertThat(schemaF.defaultValue()).isEqualTo(0);
+        assertEmptyFieldValue(record, "G");
     }
 
     @Test
@@ -196,6 +206,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(0L);
         assertThat(schemaF.isOptional()).isEqualTo(false);
         assertThat(schemaF.defaultValue()).isEqualTo(0L);
+        assertEmptyFieldValue(record, "G");
     }
 
     @Test
@@ -228,6 +239,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(0L);
         assertThat(schemaF.isOptional()).isEqualTo(false);
         assertThat(schemaF.defaultValue()).isEqualTo(0L);
+        assertEmptyFieldValue(record, "G");
     }
 
     @Test
@@ -264,6 +276,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(BigDecimal.ZERO);
         assertThat(schemaF.isOptional()).isEqualTo(false);
         assertThat(schemaF.defaultValue()).isEqualTo(BigDecimal.ZERO);
+        assertEmptyFieldValue(record, "G");
     }
 
     @Test
@@ -295,6 +308,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaF.defaultValue()).isEqualTo(null);
         assertThat(schemaG.defaultValue()).isEqualTo(null);
         assertThat(schemaH.defaultValue()).isEqualTo(null);
+        assertEmptyFieldValue(record, "I");
     }
 
     @Test
@@ -330,6 +344,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaH.defaultValue()).isEqualTo(new byte[] {66, 1});
         assertThat(schemaI.defaultValue()).isEqualTo(null);
         assertThat(schemaJ.defaultValue()).isEqualTo(new byte[] {15, 97, 1, 0});
+        assertEmptyFieldValue(record, "K");
     }
 
     @Test
@@ -380,6 +395,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaC.defaultValue()).isEqualTo(0);
         assertThat(schemaD.defaultValue()).isEqualTo(20L);
         assertThat(schemaE.defaultValue()).isEqualTo(null);
+        assertEmptyFieldValue(record, "F");
     }
 
     @Test
@@ -399,6 +415,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(schemaA.defaultValue()).isEqualTo(0d);
         assertThat(schemaB.defaultValue()).isEqualTo(1.0d);
+        assertEmptyFieldValue(record, "H");
     }
 
     @Test
@@ -418,6 +435,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(schemaA.defaultValue()).isEqualTo(1d);
         assertThat(schemaB.defaultValue()).isEqualTo(null);
+        assertEmptyFieldValue(record, "C");
     }
 
     @Test
@@ -440,6 +458,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaA.defaultValue()).isEqualTo(1.23d);
         assertThat(schemaB.defaultValue()).isEqualTo(2.321d);
         assertThat(schemaC.defaultValue()).isEqualTo(12.678d);
+        assertEmptyFieldValue(record, "D");
     }
 
     @Test
@@ -463,6 +482,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(schemaA.defaultValue()).isEqualTo(BigDecimal.valueOf(1.23));
         assertThat(schemaB.defaultValue()).isEqualTo(BigDecimal.valueOf(2.321));
+        assertEmptyFieldValue(record, "D");
     }
 
     @Test
@@ -522,6 +542,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                     .databaseAsserts()
                     .currentDateTimeDefaultOptional(isoString5)
         );
+        assertEmptyFieldValue(record, "K");
     }
 
     @Test
@@ -572,6 +593,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaG.defaultValue()).isEqualTo(0);
         assertThat(schemaH.defaultValue()).isEqualTo(82800700);
         assertThat(schemaI.defaultValue()).isEqualTo(82800123456L);
+        assertEmptyFieldValue(record, "K");
     }
 
     @Test
@@ -632,6 +654,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         Duration duration2 = Duration.between(LocalTime.MIN, LocalTime.from(DateTimeFormatter.ofPattern("HH:mm:ss.SSSSSS").parse("23:00:00.123456")));
         assertThat(schemaI.defaultValue()).isEqualTo(new java.util.Date(io.debezium.time.Time.toMilliOfDay(duration2, MySqlValueConverters::adjustTemporal)));
+        assertEmptyFieldValue(record, "K");
     }
 
     @Test

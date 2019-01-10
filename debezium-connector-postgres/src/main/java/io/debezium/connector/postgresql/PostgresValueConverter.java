@@ -411,7 +411,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
     private Object convertHstoreToMap(Column column, Field fieldDefn, Object data){
-        if(data == null) {
+        if(data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -444,7 +444,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data){
-        if(data == null) {
+        if(data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -515,7 +515,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertMoney(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -533,7 +533,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -619,7 +619,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -650,7 +650,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertGeography(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -681,7 +681,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertCitext(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -712,7 +712,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * @return a value which will be used by Connect to represent the actual point value
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         Schema schema = fieldDefn.schema();
@@ -740,7 +740,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertArray(Column column, Field fieldDefn, ValueConverter elementConverter, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {

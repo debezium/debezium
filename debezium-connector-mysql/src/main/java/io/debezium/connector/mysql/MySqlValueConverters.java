@@ -324,7 +324,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertJson(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -363,7 +363,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Charset columnCharset, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -392,7 +392,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     @SuppressWarnings("deprecation")
     protected Object convertYearToInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -430,7 +430,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertEnumToString(List<String> options, Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -473,7 +473,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSetToString(List<String> options, Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -564,7 +564,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data){
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -599,7 +599,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
 
@@ -646,7 +646,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedTinyint(Column column, Field fieldDefn, Object data){
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -678,7 +678,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedSmallint(Column column, Field fieldDefn, Object data){
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -710,7 +710,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedMediumint(Column column, Field fieldDefn, Object data){
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -742,7 +742,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedInt(Column column, Field fieldDefn, Object data){
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -774,7 +774,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data){
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -813,7 +813,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDurationToMicroseconds(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -829,7 +829,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             return null;
         }
         if (!(data instanceof Timestamp)) {
