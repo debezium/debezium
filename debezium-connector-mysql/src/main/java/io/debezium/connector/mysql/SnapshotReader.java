@@ -321,7 +321,9 @@ public class SnapshotReader extends AbstractReader {
                 if (!isRunning()) return;
                 logger.info("Step {}: read list of available tables in each database", step++);
                 List<TableId> tableIds = new ArrayList<>();
-                final Map<String, List<TableId>> tableIdsByDbName = new HashMap<>();
+                //List<TableId> allTableIds = new ArrayList<>();
+                final Filters createTableFilters = getCreateTableFilters(filters);
+                final Map<String, List<TableId>> createTablesMap = new HashMap<>();
                 final Set<String> readableDatabaseNames = new HashSet<>();
                 for (String dbName : databaseNames) {
                     try {
@@ -331,9 +333,11 @@ public class SnapshotReader extends AbstractReader {
                         mysql.query(sql.get(), rs -> {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
+                                if (createTableFilters.tableFilter().test(id)){
+                                    createTablesMap.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
+                                }
                                 if (filters.tableFilter().test(id)) {
                                     tableIds.add(id);
-                                    tableIdsByDbName.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                                     logger.info("\t including '{}'", id);
                                 } else {
                                     logger.info("\t '{}' is filtered out, discarding", id);
@@ -427,7 +431,7 @@ public class SnapshotReader extends AbstractReader {
                                                                     this::enqueueSchemaChanges));
 
                     // Now process all of our tables for each database ...
-                    for (Map.Entry<String, List<TableId>> entry : tableIdsByDbName.entrySet()) {
+                    for (Map.Entry<String, List<TableId>> entry : createTablesMap.entrySet()) {
                         if (!isRunning()) break;
                         String dbName = entry.getKey();
                         // First drop, create, and then use the named database ...
@@ -752,6 +756,23 @@ public class SnapshotReader extends AbstractReader {
                             + "'. Make sure your server is correctly configured");
                 }
             });
+        }
+    }
+
+    /**
+     * Get the filters for table creation. Depending on the configuration, this may not be the default filter set.
+     *
+     * @param filters the default filters of this {@link SnapshotReader}
+     * @return {@link Filters} that represent all the tables that this snapshot reader should CREATE
+     */
+    private Filters getCreateTableFilters(Filters filters) {
+        MySqlConnectorConfig.SnapshotNewTables snapshotNewTables = context.snapshotNewTables();
+        if (snapshotNewTables == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
+            // if we are snapshotting new tables in parallel, we need to make sure all the tables in the configuration
+            // are created.
+            return new Filters.Builder(context.config()).build();
+        } else {
+            return filters;
         }
     }
 
