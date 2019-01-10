@@ -311,7 +311,7 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -398,7 +398,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -430,7 +430,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
