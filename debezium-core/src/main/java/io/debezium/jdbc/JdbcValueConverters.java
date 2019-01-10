@@ -350,7 +350,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -381,7 +381,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -410,7 +410,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -439,7 +439,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -468,7 +468,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -497,7 +497,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -527,7 +527,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMillisPastMidnight(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -557,7 +557,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMicrosPastMidnight(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -587,7 +587,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToNanosPastMidnight(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -617,7 +617,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -646,7 +646,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -678,7 +678,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -707,7 +707,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -778,7 +778,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -809,7 +809,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -840,7 +840,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -884,7 +884,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -916,7 +916,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -969,7 +969,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object toBigDecimal(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -1015,7 +1015,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -1043,7 +1043,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertRowId(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -1067,7 +1067,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBit(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -1096,7 +1096,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
@@ -1190,7 +1190,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
-        if (data == null) {
+        if (data == null && !fieldDefn.schema().isOptional()) {
             data = fieldDefn.schema().defaultValue();
         }
         if (data == null) {
