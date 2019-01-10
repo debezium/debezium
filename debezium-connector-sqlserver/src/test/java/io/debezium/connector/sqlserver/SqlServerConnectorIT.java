@@ -278,6 +278,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             );
         }
 
+        for (int i = 0; !connection.getMaxLsn().isAvailable(); i++) {
+            if (i == 30) {
+                org.junit.Assert.fail("Initial changes not writtent to CDC structures");
+            }
+            Testing.debug("Waiting for initial changes to be propagated to CDC structures");
+            Thread.sleep(1000);
+        }
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
@@ -307,12 +314,40 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES).allRecordsInOrder();
-        for (Iterator<SourceRecord> it = records.iterator(); it.hasNext();) {
-            SourceRecord record = it.next();
-            assertThat(record.sourceOffset().get("snapshot")).as("Streaming phase").isNull();
-            assertThat(record.sourceOffset().get("snapshot_completed")).as("Streaming phase").isNull();
-            assertThat(record.sourceOffset().get("change_lsn")).as("LSN present").isNotNull();
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        final List<SourceRecord> tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = i + ID_RESTART;
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowA = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "a"));
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct valueA = (Struct)recordA.value();
+            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            assertNull(valueA.get("before"));
+
+            final Struct valueB = (Struct)recordB.value();
+            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+
+            assertThat(recordA.sourceOffset().get("snapshot")).as("Streaming phase").isNull();
+            assertThat(recordA.sourceOffset().get("snapshot_completed")).as("Streaming phase").isNull();
+            assertThat(recordA.sourceOffset().get("change_lsn")).as("LSN present").isNotNull();
+
+            assertThat(recordB.sourceOffset().get("snapshot")).as("Streaming phase").isNull();
+            assertThat(recordB.sourceOffset().get("snapshot_completed")).as("Streaming phase").isNull();
+            assertThat(recordB.sourceOffset().get("change_lsn")).as("LSN present").isNotNull();
         }
     }
 

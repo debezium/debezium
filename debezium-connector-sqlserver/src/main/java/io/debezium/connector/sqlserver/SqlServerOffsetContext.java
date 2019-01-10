@@ -51,7 +51,8 @@ public class SqlServerOffsetContext implements OffsetContext {
         if (sourceInfo.isSnapshot()) {
             return Collect.hashMapOf(
                     SourceInfo.SNAPSHOT_KEY, true,
-                    SNAPSHOT_COMPLETED_KEY, snapshotCompleted
+                    SNAPSHOT_COMPLETED_KEY, snapshotCompleted,
+                    SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn().toString()
             );
         }
         else {
