@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
 
+import io.debezium.util.CounterIdBuilder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -29,7 +30,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo("serverX");
+        source = new SourceInfo("serverX", new CounterIdBuilder());
     }
 
     @Test
@@ -44,6 +45,7 @@ public class SourceInfoTest {
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.INITIAL_SYNC).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
+        assertThat(schema.field(SourceInfo.ORDER_ID_KEY).schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
     }
 
     @Test
@@ -74,16 +76,18 @@ public class SourceInfoTest {
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
+        assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
 
         // Create a new source info and set the offset ...
         Map<String,String> partition = source.partition(REPLICA_SET_NAME);
-        source = new SourceInfo("serverX");
+        source = new SourceInfo("serverX", new CounterIdBuilder());
         source.setOffsetFor(partition, offset);
         
         offset = source.lastOffset(REPLICA_SET_NAME);
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
+        assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
 
         BsonTimestamp ts = source.lastOffsetTimestamp(REPLICA_SET_NAME);
         assertThat(ts.getTime()).isEqualTo(100);
@@ -97,6 +101,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
+        assertThat(struct.getString(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
     }
 
     @Test
@@ -107,6 +112,7 @@ public class SourceInfoTest {
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isNull();
+        assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo("0");
 
         BsonTimestamp ts = source.lastOffsetTimestamp(REPLICA_SET_NAME);
         assertThat(ts.getTime()).isEqualTo(0);
@@ -120,6 +126,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
+        assertThat(struct.getString(SourceInfo.ORDER_ID_KEY)).isEqualTo("0");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -138,6 +145,7 @@ public class SourceInfoTest {
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
+        assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
 
         BsonTimestamp ts = source.lastOffsetTimestamp(REPLICA_SET_NAME);
         assertThat(ts.getTime()).isEqualTo(100);
@@ -151,6 +159,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
+        assertThat(struct.getString(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
     }
 
     @Test
@@ -162,6 +171,7 @@ public class SourceInfoTest {
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isNull();
+        assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo("0");
 
         BsonTimestamp ts = source.lastOffsetTimestamp(REPLICA_SET_NAME);
         assertThat(ts.getTime()).isEqualTo(0);
@@ -175,6 +185,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
+        assertThat(struct.getString(SourceInfo.ORDER_ID_KEY)).isEqualTo("0");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -195,6 +206,7 @@ public class SourceInfoTest {
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(offset.get(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
+        assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
 
         BsonTimestamp ts = source.lastOffsetTimestamp(REPLICA_SET_NAME);
         assertThat(ts.getTime()).isEqualTo(100);
@@ -208,6 +220,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
+        assertThat(struct.getString(SourceInfo.ORDER_ID_KEY)).isEqualTo("1");
     }
 
     @Test

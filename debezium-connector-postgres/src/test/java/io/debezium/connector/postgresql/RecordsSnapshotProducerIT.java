@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.util.NoOpOrderedIdBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -69,7 +70,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                false);
 
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted__");
 
@@ -105,7 +108,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.getSchema(config),
                 PostgresTopicSelector.create(config)
         );
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                false);
 
         final TestConsumer consumer = testConsumer(1, "public");
 
@@ -143,7 +148,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                             insertStmt;
         TestHelper.execute(statements);
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                true);
         TestConsumer consumer = testConsumer(2, "s1", "s2");
         snapshotProducer.start(consumer, e -> {});
 
@@ -175,7 +182,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // start a new producer back up, take a new snapshot (we expect all the records to be read back)
         int expectedRecordsCount = 6;
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                true);
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
@@ -226,7 +235,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                true);
         TestConsumer consumer = testConsumer(2);
         snapshotProducer.start(consumer, e -> {});
 
@@ -268,7 +279,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                false);
 
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted__");
 
@@ -310,7 +323,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                false);
 
         TestConsumer consumer = testConsumer(1, "public", "Quoted_\"");
 

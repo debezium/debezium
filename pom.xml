@@ -79,6 +79,9 @@
         <!-- ANTLR -->
         <antlr.version>4.7</antlr.version>
 
+        <!-- ulid -->
+        <ulid.version>8.2.0</ulid.version>
+
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
@@ -170,6 +173,11 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
                 <version>${version.jackson}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.huxhorn.sulky</groupId>
+                <artifactId>de.huxhorn.sulky.ulid</artifactId>
+                <version>${ulid.version}</version>
             </dependency>
 
             <!-- Kafka Connect -->

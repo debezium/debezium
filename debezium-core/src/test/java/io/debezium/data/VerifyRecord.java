@@ -325,6 +325,25 @@ public class VerifyRecord {
     }
 
     /**
+     * Verify that the given {@link SourceRecord} has a valid order_id field.
+     *
+     * @param record the source record; may not be null
+     * @param idValue the id value that should match
+     */
+    public static void hasValidOrderId(final SourceRecord record, String idValue) {
+        assertValueField(record, "source/order_id", idValue);
+    }
+
+    /**
+     * Verify that the given {@link SourceRecord} has no order_id field
+     *
+     * @param record the source record; may not be null
+     */
+    public static void hasNoOrderId(final SourceRecord record) {
+        hasValidOrderId(record, null);
+    }
+
+    /**
      * Verify the given {@link SourceRecord} has the expected value in the given fieldPath.
      *
      * @param record the source record; may not be null
@@ -340,7 +359,7 @@ public class VerifyRecord {
             if (value instanceof Struct) {
                 value = ((Struct)value).get(fieldName);
             }
-            else {
+            else if (value != null) {
                 // We expected the value to be a struct ...
                 String path = pathSoFar == null ? "record value" : ("'" + pathSoFar + "'");
                 String msg = "Expected the " + path + " to be a Struct but was " + value.getClass().getSimpleName() + " in record: " + SchemaUtil.asString(record);
@@ -348,7 +367,7 @@ public class VerifyRecord {
             }
             pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
         }
-        assertSameValue(value,expectedValue);
+        assertSameValue(value, expectedValue);
     }
 
     /**

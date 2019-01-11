@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import io.debezium.schema.TopicSelector;
+import io.debezium.util.NoOpOrderedIdBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -38,7 +39,7 @@ public class FieldRenamesTest {
     @Before
     public void setup() {
         build = new Configurator();
-        source = new SourceInfo(SERVER_NAME);
+        source = new SourceInfo(SERVER_NAME, new NoOpOrderedIdBuilder());
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
     }
 

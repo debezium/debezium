@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import io.debezium.util.CounterIdBuilder;
+import io.debezium.util.NoOpOrderedIdBuilder;
+import io.debezium.util.OrderedIdBuilder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -1103,6 +1106,43 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, deletedRecord, Envelope.FieldName.AFTER);
     }
 
+    @Test
+    public void shouldAddOrderIdField() throws Exception {
+        // add a new entry and remove both
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(CommonConnectorConfig.ORDERED_ID_PROVIDER, "ulid")
+                .build());
+        setupRecordsProducer(config, new CounterIdBuilder());
+
+        String statements = "INSERT INTO test_table (text) VALUES ('insert2');" +
+                "UPDATE test_table SET text = 'update2' WHERE pk = 2;" +
+                "DELETE FROM test_table WHERE pk > 1;";
+        consumer = testConsumer(4);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statements);
+
+        String topicPrefix = "public.test_table";
+        String topicName = topicName(topicPrefix);
+        SourceRecord record = consumer.remove();
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+        VerifyRecord.hasValidOrderId(record, "1");
+
+        record = consumer.remove();
+        VerifyRecord.isValidUpdate(record, true);
+        VerifyRecord.hasValidOrderId(record, "2");
+
+        record = consumer.remove();
+        VerifyRecord.isValidDelete(record, PK_FIELD, 2);
+        VerifyRecord.hasValidOrderId(record, "3");
+
+        // followed by a tombstone
+        record = consumer.remove();
+        VerifyRecord.isValidTombstone(record, PK_FIELD, 2);
+        System.out.println(record);
+        // tombstones don't have ulids
+        VerifyRecord.hasNoOrderId(record);
+    }
+
     private void assertHeartBeatRecordInserted() {
         assertFalse("records not generated", consumer.isEmpty());
 
@@ -1114,6 +1154,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void setupRecordsProducer(PostgresConnectorConfig config) {
+        setupRecordsProducer(config, new NoOpOrderedIdBuilder());
+    }
+
+    private void setupRecordsProducer(PostgresConnectorConfig config, OrderedIdBuilder idBuilder) {
         if (recordsProducer != null) {
             recordsProducer.stop();
         }
@@ -1125,7 +1169,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.getSchema(config),
                 selector
         );
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.getLogicalName(), config.databaseName()));
+        recordsProducer = new RecordsStreamProducer(context,
+                new SourceInfo(config.getLogicalName(), config.databaseName(), idBuilder));
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

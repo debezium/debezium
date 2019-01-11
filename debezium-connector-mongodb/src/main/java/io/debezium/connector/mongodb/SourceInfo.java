@@ -6,12 +6,14 @@
 package io.debezium.connector.mongodb;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import io.debezium.util.OrderedIdBuilder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -99,6 +101,7 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, OrderedIdBuilder> idBuildersByReplicaSetName = new ConcurrentHashMap<>();
     private final Set<String> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Immutable
@@ -146,8 +149,8 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     private final String serverName;
 
-    public SourceInfo(String serverName) {
-        super(Module.version());
+    public SourceInfo(String serverName, OrderedIdBuilder idBuilder) {
+        super(Module.version(), idBuilder);
         this.serverName = Objects.requireNonNull(serverName);
     }
 
@@ -204,15 +207,19 @@ public final class SourceInfo extends AbstractSourceInfo {
     public Map<String, ?> lastOffset(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
         if (existing == null) existing = INITIAL_POSITION;
-        if (isInitialSyncOngoing(replicaSetName)) {
-            return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
-                                     ORDER, Integer.valueOf(existing.getInc()),
-                                     OPERATION_ID, existing.getOperationId(),
-                                     INITIAL_SYNC, true);
+        OrderedIdBuilder idBuilder = idBuildersByReplicaSetName.get(replicaSetName);
+        if (idBuilder == null) idBuilder = idBuilder().clone();
+        Map<String, Object> map = new HashMap<>();
+        if (idBuilder.shouldIncludeId()) {
+            map.put(AbstractSourceInfo.ORDER_ID_KEY, idBuilder.lastId());
         }
-        return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
-                                 ORDER, Integer.valueOf(existing.getInc()),
-                                 OPERATION_ID, existing.getOperationId());
+        map.put(TIMESTAMP, existing.getTime());
+        map.put(ORDER, existing.getInc());
+        map.put(OPERATION_ID, existing.getOperationId());
+        if (isInitialSyncOngoing(replicaSetName)) {
+            map.put(INITIAL_SYNC, true);
+        }
+        return map;
     }
 
     /**
@@ -226,7 +233,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     public Struct lastOffsetStruct(String replicaSetName, CollectionId collectionId) {
         return offsetStructFor(replicaSetName, collectionId.namespace(), positionsByReplicaSetName.get(replicaSetName),
-                               isInitialSyncOngoing(replicaSetName));
+                               idBuildersByReplicaSetName.get(replicaSetName), isInitialSyncOngoing(replicaSetName));
     }
 
     /**
@@ -241,6 +248,8 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     public Struct offsetStructForEvent(String replicaSetName, Document oplogEvent) {
         Position position = INITIAL_POSITION;
+        OrderedIdBuilder idBuilder = idBuildersByReplicaSetName.getOrDefault(replicaSetName, idBuilder().clone());
+        idBuilder.buildNextId();
         String namespace = "";
         if (oplogEvent != null) {
             BsonTimestamp ts = extractEventTimestamp(oplogEvent);
@@ -249,7 +258,8 @@ public final class SourceInfo extends AbstractSourceInfo {
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
-        return offsetStructFor(replicaSetName, namespace, position, isInitialSyncOngoing(replicaSetName));
+        idBuildersByReplicaSetName.put(replicaSetName, idBuilder);
+        return offsetStructFor(replicaSetName, namespace, position, idBuilder, isInitialSyncOngoing(replicaSetName));
     }
 
     /**
@@ -262,9 +272,13 @@ public final class SourceInfo extends AbstractSourceInfo {
         return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
     }
 
-    private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
+    private Struct offsetStructFor(String replicaSetName, String namespace, Position position, OrderedIdBuilder idBuilder, boolean isInitialSync) {
         if (position == null) position = INITIAL_POSITION;
+        if (idBuilder == null) idBuilder = idBuilder().clone();
         Struct result = super.struct();
+        if (idBuilder.shouldIncludeId()) {
+            result.put(AbstractSourceInfo.ORDER_ID_KEY, idBuilder.lastId());
+        }
         result.put(SERVER_NAME, serverName);
         result.put(REPLICA_SET_NAME, replicaSetName);
         result.put(NAMESPACE, namespace);
@@ -305,6 +319,11 @@ public final class SourceInfo extends AbstractSourceInfo {
         if (initSync) {
             return false;
         }
+        String idState = stringOffsetValue(sourceOffset, AbstractSourceInfo.ORDER_ID_KEY);
+        OrderedIdBuilder idBuilder = idBuilder().clone();
+        idBuilder.restoreState(idState);
+        idBuildersByReplicaSetName.put(replicaSetName, idBuilder);
+
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
         Long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
@@ -383,5 +402,12 @@ public final class SourceInfo extends AbstractSourceInfo {
             return ((Boolean) obj).booleanValue();
         }
         return false;
+    }
+
+    private static String stringOffsetValue(Map<String, ?> values, String key) {
+        Object obj = values.get(key);
+        if (obj == null) return "";
+        if (obj instanceof String) return (String) obj;
+        throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " was not a string as expected");
     }
 }

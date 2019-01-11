@@ -9,6 +9,10 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
+import io.debezium.util.CounterIdBuilder;
+import io.debezium.util.NoOpOrderedIdBuilder;
+import io.debezium.util.OrderedIdBuilder;
+import io.debezium.util.UlidIdBuilder;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -28,6 +32,46 @@ public class CommonConnectorConfig {
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = "database.";
+
+    public enum OrderedIdProvider implements EnumeratedValue {
+        NOOP("noop") {
+            @Override
+            public OrderedIdBuilder getBuilder() {
+                return new NoOpOrderedIdBuilder();
+            }
+        },
+
+        COUNTER("counter") {
+            @Override
+            public OrderedIdBuilder getBuilder() {
+                return new CounterIdBuilder();
+            }
+        },
+
+        ULID("ulid") {
+            @Override
+            public OrderedIdBuilder getBuilder() {
+                return new UlidIdBuilder();
+            }
+        };
+
+        private String value;
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public abstract OrderedIdBuilder getBuilder();
+
+        OrderedIdProvider(String value) {
+            this.value = value;
+        }
+
+        public static OrderedIdProvider parse(String s) {
+            return valueOf(s.trim().toUpperCase());
+        }
+    }
 
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
@@ -76,6 +120,19 @@ public class CommonConnectorConfig {
         .withDescription("The number of milliseconds to delay before a snapshot will begin.")
         .withDefault(0L)
         .withValidation(Field::isNonNegativeLong);
+
+    public static final Field ORDERED_ID_PROVIDER = Field.create("ordered.id.provider")
+            .withDisplayName("Ordered ID Provider")
+            .withEnum(OrderedIdProvider.class, OrderedIdProvider.NOOP)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The order_id field field can be populated with a provider, depending on" +
+                    "the provider, different properties about the id hold. The value options are as follows" +
+                    "'noop' (default) provides no order_id, the field will be omitted;" +
+                    "'counter' the counter provider uses an incrementing long, in the event of failure" +
+                    "the value will reset, meaning some duplicate ids will be seen;" +
+                    "'ulid' the ulid provider creates a string id that is globally unique and sortable, under" +
+                    "failure it will remain sortable.");
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
@@ -131,6 +188,10 @@ public class CommonConnectorConfig {
 
     public Duration getSnapshotDelay() {
         return snapshotDelayMs;
+    }
+
+    public OrderedIdBuilder getIdBuilder() {
+        return OrderedIdProvider.parse(config.getString(ORDERED_ID_PROVIDER)).getBuilder();
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {

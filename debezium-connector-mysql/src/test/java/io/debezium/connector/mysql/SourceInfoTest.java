@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import io.debezium.util.CounterIdBuilder;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
@@ -40,7 +41,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo();
+        source = new SourceInfo(new CounterIdBuilder());
         inTxn = false;
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
@@ -54,6 +55,7 @@ public class SourceInfoTest {
         assertThat(source.eventsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -63,6 +65,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     // -------------------------------------------------------------------------------------
@@ -77,6 +80,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -87,6 +91,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -97,6 +102,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -107,6 +113,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -117,6 +124,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -127,6 +135,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -137,6 +146,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -147,6 +157,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -157,6 +168,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -167,6 +179,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -177,6 +190,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -187,6 +201,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isFalse();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -197,6 +212,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -207,6 +223,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(0);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -217,6 +234,7 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(0);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
     }
 
     @Test
@@ -227,6 +245,18 @@ public class SourceInfoTest {
         assertThat(source.binlogPosition()).isEqualTo(100);
         assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
         assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("0");
+    }
+
+    @Test
+    public void shouldStartSourceInfoFromBinLongWithOrderId() {
+        sourceWith(offset(GTID_SET, 100, 5, true, "25"));
+        assertThat(source.gtidSet()).isEqualTo(GTID_SET);
+        assertThat(source.binlogFilename()).isEqualTo(FILENAME);
+        assertThat(source.binlogPosition()).isEqualTo(100);
+        assertThat(source.rowsToSkipUponRestart()).isEqualTo(5);
+        assertThat(source.isSnapshotInEffect()).isTrue();
+        assertThat(source.currentOrderId()).isEqualTo("25");
     }
 
     // -------------------------------------------------------------------------------------
@@ -239,41 +269,41 @@ public class SourceInfoTest {
 
         // Try a transactions with just one event ...
         handleTransactionBegin(150, 2);
-        handleNextEvent(200, 10, withRowCount(1));
+        handleNextEvent(200, 10, withRowCount(1), 1);
         handleTransactionCommit(210, 2);
 
         handleTransactionBegin(210, 2);
-        handleNextEvent(220, 10, withRowCount(1));
+        handleNextEvent(220, 10, withRowCount(1), 2);
         handleTransactionCommit(230, 3);
 
         handleTransactionBegin(240, 2);
-        handleNextEvent(250, 50, withRowCount(1));
+        handleNextEvent(250, 50, withRowCount(1), 3);
         handleTransactionCommit(300, 4);
 
         // Try a transactions with multiple events ...
         handleTransactionBegin(340, 2);
-        handleNextEvent(350, 20, withRowCount(1));
-        handleNextEvent(370, 30, withRowCount(1));
-        handleNextEvent(400, 40, withRowCount(1));
+        handleNextEvent(350, 20, withRowCount(1), 4);
+        handleNextEvent(370, 30, withRowCount(1), 5);
+        handleNextEvent(400, 40, withRowCount(1), 6);
         handleTransactionCommit(440, 4);
 
         handleTransactionBegin(500, 2);
-        handleNextEvent(510, 20, withRowCount(1));
-        handleNextEvent(540, 15, withRowCount(1));
-        handleNextEvent(560, 10, withRowCount(1));
+        handleNextEvent(510, 20, withRowCount(1), 7);
+        handleNextEvent(540, 15, withRowCount(1), 8);
+        handleNextEvent(560, 10, withRowCount(1), 9);
         handleTransactionCommit(580, 4);
 
         // Try another single event transaction ...
         handleTransactionBegin(600, 2);
-        handleNextEvent(610, 50, withRowCount(1));
+        handleNextEvent(610, 50, withRowCount(1), 10);
         handleTransactionCommit(660, 4);
 
         // Try event outside of a transaction ...
-        handleNextEvent(670, 10, withRowCount(1));
+        handleNextEvent(670, 10, withRowCount(1), 11);
 
         // Try another single event transaction ...
         handleTransactionBegin(700, 2);
-        handleNextEvent(710, 50, withRowCount(1));
+        handleNextEvent(710, 50, withRowCount(1), 12);
         handleTransactionCommit(760, 4);
     }
 
@@ -283,41 +313,41 @@ public class SourceInfoTest {
 
         // Try a transactions with just one event ...
         handleTransactionBegin(150, 2);
-        handleNextEvent(200, 10, withRowCount(3));
+        handleNextEvent(200, 10, withRowCount(3), 1);
         handleTransactionCommit(210, 2);
 
         handleTransactionBegin(210, 2);
-        handleNextEvent(220, 10, withRowCount(4));
+        handleNextEvent(220, 10, withRowCount(4), 4);
         handleTransactionCommit(230, 3);
 
         handleTransactionBegin(240, 2);
-        handleNextEvent(250, 50, withRowCount(5));
+        handleNextEvent(250, 50, withRowCount(5), 8);
         handleTransactionCommit(300, 4);
 
         // Try a transactions with multiple events ...
         handleTransactionBegin(340, 2);
-        handleNextEvent(350, 20, withRowCount(6));
-        handleNextEvent(370, 30, withRowCount(1));
-        handleNextEvent(400, 40, withRowCount(3));
+        handleNextEvent(350, 20, withRowCount(6), 13);
+        handleNextEvent(370, 30, withRowCount(1), 19);
+        handleNextEvent(400, 40, withRowCount(3), 20);
         handleTransactionCommit(440, 4);
 
         handleTransactionBegin(500, 2);
-        handleNextEvent(510, 20, withRowCount(8));
-        handleNextEvent(540, 15, withRowCount(9));
-        handleNextEvent(560, 10, withRowCount(1));
+        handleNextEvent(510, 20, withRowCount(8), 23);
+        handleNextEvent(540, 15, withRowCount(9), 31);
+        handleNextEvent(560, 10, withRowCount(1), 40);
         handleTransactionCommit(580, 4);
 
         // Try another single event transaction ...
         handleTransactionBegin(600, 2);
-        handleNextEvent(610, 50, withRowCount(1));
+        handleNextEvent(610, 50, withRowCount(1), 41);
         handleTransactionCommit(660, 4);
 
         // Try event outside of a transaction ...
-        handleNextEvent(670, 10, withRowCount(5));
+        handleNextEvent(670, 10, withRowCount(5), 42);
 
         // Try another single event transaction ...
         handleTransactionBegin(700, 2);
-        handleNextEvent(710, 50, withRowCount(3));
+        handleNextEvent(710, 50, withRowCount(3), 47);
         handleTransactionCommit(760, 4);
     }
 
@@ -359,13 +389,14 @@ public class SourceInfoTest {
         }
     }
 
-    protected void handleNextEvent(long positionOfEvent, long eventSize, int rowCount) {
+    protected void handleNextEvent(long positionOfEvent, long eventSize, int rowCount, int startOrderId) {
         if (inTxn) ++eventNumberInTxn;
         source.setEventPosition(positionOfEvent, eventSize);
         for (int row = 0; row != rowCount; ++row) {
             // Get the offset for this row (always first!) ...
             Map<String, ?> offset = source.offsetForRow(row, rowCount);
             assertThat(offset.get(SourceInfo.BINLOG_FILENAME_OFFSET_KEY)).isEqualTo(FILENAME);
+            assertThat(offset.get(SourceInfo.ORDER_ID_KEY)).isEqualTo(Integer.toString(startOrderId + row));
             if (source.gtidSet() != null) {
                 assertThat(offset.get(SourceInfo.GTID_SET_KEY)).isEqualTo(source.gtidSet());
             }
@@ -399,30 +430,37 @@ public class SourceInfoTest {
             if (source.gtidSet() != null) {
                 assertThat(recordSource.getString(SourceInfo.GTID_SET_KEY)).isEqualTo(source.gtidSet());
             }
+            assertThat(recordSource.getString(SourceInfo.ORDER_ID_KEY)).isEqualTo(Integer.toString(startOrderId + row));
         }
         source.completeEvent();
     }
 
     protected Map<String, String> offset(long position, int row) {
-        return offset(null, position, row, false);
+        return offset(null, position, row, false, null);
     }
 
     protected Map<String, String> offset(long position, int row, boolean snapshot) {
-        return offset(null, position, row, snapshot);
+        return offset(null, position, row, snapshot, null);
     }
 
     protected Map<String, String> offset(String gtidSet, long position, int row, boolean snapshot) {
+        return offset(gtidSet, position, row, snapshot, null);
+    }
+
+    protected Map<String, String> offset(String gtidSet, long position, int row, boolean snapshot,
+                                         String idState) {
         Map<String, String> offset = new HashMap<>();
         offset.put(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, FILENAME);
         offset.put(SourceInfo.BINLOG_POSITION_OFFSET_KEY, Long.toString(position));
         offset.put(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, Integer.toString(row));
         if (gtidSet != null) offset.put(SourceInfo.GTID_SET_KEY, gtidSet);
         if (snapshot) offset.put(SourceInfo.SNAPSHOT_KEY, Boolean.TRUE.toString());
+        if (idState != null) offset.put(SourceInfo.ORDER_ID_KEY, idState);
         return offset;
     }
 
     protected SourceInfo sourceWith(Map<String, String> offset) {
-        source = new SourceInfo();
+        source = new SourceInfo(new CounterIdBuilder());
         source.setOffset(offset);
         source.setServerName(SERVER_NAME);
         return source;

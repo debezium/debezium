@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import io.debezium.util.NoOpOrderedIdBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -52,7 +53,7 @@ public class RecordMakersTest {
     @Before
     public void beforeEach() {
         filters = new Configurator().createFilters();
-        source = new SourceInfo(SERVER_NAME);
+        source = new SourceInfo(SERVER_NAME, new NoOpOrderedIdBuilder());
         topicSelector = MongoDbTopicSelector.defaultSelector(PREFIX, "__debezium-heartbeat");
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);

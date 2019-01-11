@@ -34,7 +34,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
         final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);
-        this.source = new SourceInfo(serverName);
+        this.source = new SourceInfo(serverName, new MongoDbConnectorConfig(config).getIdBuilder());
         this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX));
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.debezium.data.Envelope;
+import io.debezium.util.NoOpOrderedIdBuilder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -66,7 +67,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     @Before
     public void setup() {
         filters = new Configurator().createFilters();
-        source = new SourceInfo(SERVER_NAME);
+        source = new SourceInfo(SERVER_NAME, new NoOpOrderedIdBuilder());
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);

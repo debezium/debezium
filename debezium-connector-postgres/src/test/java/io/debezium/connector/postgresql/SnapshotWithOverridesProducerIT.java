@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.util.NoOpOrderedIdBuilder;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
@@ -74,7 +75,9 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 100")
                 .build());
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                false);
 
         final int expectedRecordsCount = 3 + 6;
 
@@ -96,7 +99,9 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 101")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t2", "SELECT * FROM over.t2 WHERE pk > 100")
                 .build());
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = new RecordsSnapshotProducer(context,
+                new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE, new NoOpOrderedIdBuilder()),
+                false);
 
         final int expectedRecordsCount = 2 + 3;
 

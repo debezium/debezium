@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import io.debezium.util.OrderedIdBuilder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -152,8 +152,8 @@ final class SourceInfo extends AbstractSourceInfo {
     private boolean nextSnapshot = false;
     private String currentQuery = null;
 
-    public SourceInfo() {
-        super(Module.version());
+    public SourceInfo(OrderedIdBuilder idBuilder) {
+        super(Module.version(), idBuilder);
     }
 
     /**
@@ -254,6 +254,8 @@ final class SourceInfo extends AbstractSourceInfo {
      * @see #struct()
      */
     public Map<String, ?> offsetForRow(int eventRowNumber, int totalNumberOfRows) {
+        // increment our id
+        getNextId();
         if (eventRowNumber < (totalNumberOfRows - 1)) {
             // This is not the last row, so our offset should record the next row to be used ...
             this.currentRowNumber = eventRowNumber;
@@ -268,7 +270,7 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = buildOffset();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (restartGtidSet != null) {
             // Put the previously-completed GTID set in the offset along with the event number ...
@@ -365,6 +367,10 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public boolean isSnapshotInEffect() {
         return nextSnapshot;
+    }
+
+    public String currentOrderId() {
+        return idBuilder().lastId();
     }
 
     public void startNextTransaction() {
@@ -500,6 +506,7 @@ final class SourceInfo extends AbstractSourceInfo {
     public void setOffset(Map<String, ?> sourceOffset) {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
+            setIdState((String) sourceOffset.get(AbstractSourceInfo.ORDER_ID_KEY));
             setCompletedGtidSet((String) sourceOffset.get(GTID_SET_KEY)); // may be null
             restartEventsToSkip = longOffsetValue(sourceOffset, EVENTS_TO_SKIP_OFFSET_KEY);
             String binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);

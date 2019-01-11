@@ -7,10 +7,10 @@
 package io.debezium.connector.postgresql;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 import io.debezium.relational.TableId;
+import io.debezium.util.OrderedIdBuilder;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -115,8 +115,8 @@ final class SourceInfo extends AbstractSourceInfo {
     private String schemaName;
     private String tableName;
 
-    protected SourceInfo(String serverName, String dbName) {
-        super(Module.version());
+    protected SourceInfo(String serverName, String dbName, OrderedIdBuilder idBuilder) {
+        super(Module.version(), idBuilder);
         this.serverName = serverName;
         this.dbName = dbName;
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
@@ -127,6 +127,7 @@ final class SourceInfo extends AbstractSourceInfo {
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
         this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_KEY);
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
+        setIdState((String) lastStoredOffset.get(AbstractSourceInfo.ORDER_ID_KEY));
         if (this.snapshot) {
             this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
         }
@@ -151,7 +152,7 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public Map<String, ?> offset() {
         assert serverName != null && dbName != null;
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = buildOffset();
         if (useconds != null) {
             result.put(TIMESTAMP_KEY, useconds);
         }
@@ -180,6 +181,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * @return this instance
      */
     protected SourceInfo update(Long lsn, Long useconds, Long txId, TableId tableId) {
+        getNextId();
         this.lsn = lsn;
         this.useconds = useconds;
         this.txId = txId;
@@ -193,6 +195,7 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     protected SourceInfo update(Long useconds, TableId tableId) {
+        getNextId();
         this.useconds = useconds;
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();

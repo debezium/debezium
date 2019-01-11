@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 
+import io.debezium.util.NoOpOrderedIdBuilder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,7 +43,7 @@ public class MySqlSchemaTest {
         Testing.Files.delete(TEST_FILE_PATH);
         build = new Configurator();
         mysql = null;
-        source = new SourceInfo();
+        source = new SourceInfo(new NoOpOrderedIdBuilder());
     }
 
     @After
