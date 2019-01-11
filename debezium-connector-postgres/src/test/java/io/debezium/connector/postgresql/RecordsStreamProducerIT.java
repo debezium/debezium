@@ -801,6 +801,23 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-1073")
+    @Ignore
+    public void shouldPropagateSourceColumnTypeScaleToSchemaParameter() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+            .with("column.propagate.source.type", "d|dzs")
+            .build());
+        setupRecordsProducer(config);
+
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericTypesWithSourceColumnTypeInfo());
+    }
+
+    @Test
     @FixFor("DBZ-800")
     public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
         // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record

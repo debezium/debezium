@@ -347,6 +347,29 @@ public abstract class AbstractRecordsProducerTest {
                 );
      }
 
+    protected List<SchemaAndValueField> schemasAndValuesForNumericTypesWithSourceColumnTypeInfo() {
+        return Arrays.asList(new SchemaAndValueField("d",
+                SchemaBuilder.string().optional()
+                    .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
+                    .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
+                    .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2")
+                    .build(),
+                1.1d
+            ),
+            new SchemaAndValueField("dzs",
+                SchemaBuilder.string().optional()
+                    .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
+                    .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "4")
+                    .build(),
+                10d
+            ),
+            new SchemaAndValueField("dvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 10.1111d),
+            new SchemaAndValueField("n", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.22d),
+            new SchemaAndValueField("nzs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22d),
+            new SchemaAndValueField("nvs", Schema.OPTIONAL_FLOAT64_SCHEMA, 22.2222d)
+        );
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForTextTypes() {
         return Arrays.asList(new SchemaAndValueField("j", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),
                              new SchemaAndValueField("jb", Json.builder().optional().build(), "{\"bar\": \"baz\"}"),

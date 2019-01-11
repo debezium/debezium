@@ -33,6 +33,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
+    private static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-schema-parameter.txt")
                                                              .toAbsolutePath();
@@ -124,7 +125,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
                 .parameters();
 
         assertThat(c3aSchemaParameters).includes(
-                entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"), entry(TYPE_LENGTH_PARAMETER_KEY, "5"));
+                entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"), entry(TYPE_LENGTH_PARAMETER_KEY, "5"), entry(TYPE_SCALE_PARAMETER_KEY, "2"));
 
         // variable width, name and length info
         Map<String, String> c3bSchemaParameters = before
