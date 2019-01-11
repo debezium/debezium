@@ -23,6 +23,7 @@ public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
     private static final String TYPE_LENGTH_PARAMETER_KEY = "__debezium.source.column.length";
+    private static final String TYPE_SCALE_PARAMETER_KEY = "__debezium.source.column.scale";
 
     @Override
     public ValueConverter create(Column column) {
@@ -36,6 +37,10 @@ public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
 
        if (column.length() != Column.UNSET_INT_VALUE) {
            schemaBuilder.parameter(TYPE_LENGTH_PARAMETER_KEY, String.valueOf(column.length()));
+       }
+
+       if (column.scale().isPresent()) {
+         schemaBuilder.parameter(TYPE_SCALE_PARAMETER_KEY, String.valueOf(column.scale().get()));
        }
     }
 }
