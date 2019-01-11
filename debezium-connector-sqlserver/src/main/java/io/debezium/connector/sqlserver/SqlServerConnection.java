@@ -30,6 +30,7 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.util.BoundedConcurrentHashMap;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -62,6 +63,8 @@ public class SqlServerConnection extends JdbcConnection {
         T apply(ResultSet rs) throws SQLException;
     }
 
+    private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
+
     /**
      * Creates a new connection using the supplied configuration.
      *
@@ -70,6 +73,7 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public SqlServerConnection(Configuration config) {
         super(config, FACTORY);
+        lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
     }
 
 
@@ -164,12 +168,21 @@ public class SqlServerConnection extends JdbcConnection {
         if (lsn.getBinary() == null) {
             return null;
         }
+
+        Instant cachedInstant = lsnToInstantCache.get(lsn);
+        if (cachedInstant != null) {
+            return cachedInstant;
+        }
+
         return prepareQueryAndMap(query, statement -> {
             statement.setBytes(1, lsn.getBinary());
         }, singleResultMapper(rs -> {
             final Timestamp ts = rs.getTimestamp(1);
             final Instant ret = (ts == null) ? null : ts.toInstant();
             LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
+            if (ret != null) {
+                lsnToInstantCache.put(lsn, ret);
+            }
             return ret;
         }, "LSN to timestamp query must return exactly one value"));
     }
