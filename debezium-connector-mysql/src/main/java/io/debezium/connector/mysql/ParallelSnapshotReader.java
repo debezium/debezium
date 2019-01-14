@@ -5,17 +5,17 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.config.Configuration;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
+
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
 
 /**
  * A reader that runs a {@link ChainedReader} consisting of a {@link SnapshotReader} and a {@link BinlogReader}
@@ -195,17 +195,17 @@ public class ParallelSnapshotReader implements Reader {
      * the current time. Once a single record near the end of the binlog has been seen, we
      * we assume the reader will stay near the end of the binlog.
      */
-    /*package local*/ static class ParallelHaltingPredicate implements Predicate<SourceRecord> {
+    /*package local*/ static class ParallelHaltingPredicate implements HaltingPredicate {
 
-        private final Logger logger = LoggerFactory.getLogger(getClass());
+        private static final Logger LOGGER = LoggerFactory.getLogger(ParallelHaltingPredicate.class);
+
+        private static final Duration DEFAULT_MIN_HALTING_DURATION = Duration.ofMinutes(5);
 
         private volatile AtomicBoolean thisReaderNearEnd;
         private volatile AtomicBoolean otherReaderNearEnd;
 
         // The minimum duration we must be within before we attempt to halt.
         private final Duration minHaltingDuration;
-        // is hard coded in as 5 minutes.
-        private static final Duration DEFAULT_MIN_HALTING_DURATION = Duration.ofMinutes(5);
 
         /*package local*/ ParallelHaltingPredicate(AtomicBoolean thisReaderNearEndRef,
                                                    AtomicBoolean otherReaderNearEndRef) {
@@ -221,7 +221,7 @@ public class ParallelSnapshotReader implements Reader {
         }
 
         @Override
-        public boolean test(SourceRecord ourSourceRecord) {
+        public boolean accepts(SourceRecord ourSourceRecord) {
             // we assume if we ever end up near the end of the binlog, then we will remain there.
             if (!thisReaderNearEnd.get()) {
                 Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
@@ -232,7 +232,7 @@ public class ParallelSnapshotReader implements Reader {
                         now);
                 if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
                     // we are within minHaltingDuration of the end
-                    logger.debug("Parallel halting predicate: this reader near end");
+                    LOGGER.debug("Parallel halting predicate: this reader near end");
                     thisReaderNearEnd.set(true);
                 }
             }

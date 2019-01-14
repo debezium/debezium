@@ -5,14 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * @author Moira Tagle
@@ -27,7 +27,7 @@ public class ReconcilingBinlogReaderTest {
 
         SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(0));
         // tested record (0) is before limit (1), so we should return true.
-        Assert.assertTrue(offsetLimitPredicate.test(testSourceRecord));
+        Assert.assertTrue(offsetLimitPredicate.accepts(testSourceRecord));
     }
 
     @Test
@@ -38,7 +38,7 @@ public class ReconcilingBinlogReaderTest {
 
         SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(1));
         // tested record (1) is beyond limit (0), so we should return false.
-        Assert.assertFalse(offsetLimitPredicate.test(testSourceRecord));
+        Assert.assertFalse(offsetLimitPredicate.accepts(testSourceRecord));
     }
 
     private final int SERVER_ID = 0;

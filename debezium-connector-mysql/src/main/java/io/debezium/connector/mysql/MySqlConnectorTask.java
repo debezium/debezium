@@ -10,13 +10,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.debezium.util.LoggingContext;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -29,6 +29,7 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Collect;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 
 /**
@@ -215,7 +216,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 // if there are new tables
                 if (newTablesInConfig()) {
                     // and we are configured to run a parallel snapshot
-                    if (taskContext.snapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
+                    if (taskContext.getConnectorConfig().getSnapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
                         ServerIdGenerator serverIdGenerator =
                             new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID),
                                                   config.getLong(MySqlConnectorConfig.SERVER_ID_OFFSET));
@@ -310,14 +311,13 @@ public final class MySqlConnectorTask extends BaseSourceTask {
      * @return the offset to restart from.
      * @see RecordMakers#RecordMakers(MySqlSchema, SourceInfo, TopicSelector, boolean, Map)
      */
-    @SuppressWarnings("unchecked")
     private Map<String, ?> getRestartOffset(Map<String, ?> storedOffset) {
         Map<String, Object> restartOffset = new HashMap<>();
         if (storedOffset != null) {
-            for (String key : storedOffset.keySet()){
-                if (key.startsWith(SourceInfo.RESTART_PREFIX)) {
-                    String newKey = key.substring(SourceInfo.RESTART_PREFIX.length());
-                    restartOffset.put(newKey, storedOffset.get(key));
+            for (Entry<String, ?> entry : storedOffset.entrySet()){
+                if (entry.getKey().startsWith(SourceInfo.RESTART_PREFIX)) {
+                    String newKey = entry.getKey().substring(SourceInfo.RESTART_PREFIX.length());
+                    restartOffset.put(newKey, entry.getValue());
                 }
             }
         }

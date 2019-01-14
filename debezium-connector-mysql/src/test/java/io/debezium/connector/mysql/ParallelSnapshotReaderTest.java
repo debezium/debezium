@@ -5,21 +5,23 @@
  */
 package io.debezium.connector.mysql;
 
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.debezium.connector.mysql.ParallelSnapshotReader.ParallelHaltingPredicate;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Assert;
+import org.junit.Test;
+
+import io.debezium.connector.mysql.ParallelSnapshotReader.ParallelHaltingPredicate;
 
 /**
  * @author Moira Tagle
@@ -170,12 +172,11 @@ public class ParallelSnapshotReaderTest {
         AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
         AtomicBoolean otherReaderNearEnd = new AtomicBoolean(false);
 
-        long durationSec = 5 * 60; // five minutes
-        Duration duration = Duration.ofSeconds(durationSec);
+        Duration duration = Duration.ofMinutes(5);
 
         ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
-        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()/1000 - (durationSec * 2)));
+        boolean testResult = parallelHaltingPredicate.accepts(createSourceRecordWithTimestamp(Instant.now().minus(duration.multipliedBy(2))));
 
         Assert.assertTrue(testResult);
 
@@ -192,11 +193,11 @@ public class ParallelSnapshotReaderTest {
         AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
         AtomicBoolean otherReaderNearEnd = new AtomicBoolean(false);
 
-        Duration duration = Duration.ofSeconds(5 * 60); // five minutes
+        Duration duration = Duration.ofMinutes(5);
 
         ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
-        boolean testResult = parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()/1000));
+        boolean testResult = parallelHaltingPredicate.accepts(createSourceRecordWithTimestamp(Instant.now()));
 
         Assert.assertTrue(testResult);
 
@@ -212,16 +213,16 @@ public class ParallelSnapshotReaderTest {
         AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
         AtomicBoolean otherReaderNearEnd = new AtomicBoolean(true);
 
-        Duration duration = Duration.ofSeconds(5 * 60); // five minutes
+        Duration duration = Duration.ofMinutes(5);
 
         ParallelHaltingPredicate parallelHaltingPredicate =
             new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
         boolean testResult =
-            parallelHaltingPredicate.test(createSourceRecordWithTimestamp(System.currentTimeMillis()/1000));
+            parallelHaltingPredicate.accepts(createSourceRecordWithTimestamp(Instant.now()));
 
         Assert.assertFalse(testResult);
-        
+
         Assert.assertTrue(thisReaderNearEnd.get());
         Assert.assertTrue(otherReaderNearEnd.get());
     }
@@ -230,11 +231,11 @@ public class ParallelSnapshotReaderTest {
      * Create an "offset" containing a single timestamp element with the given value.
      * Needed because {@link ParallelSnapshotReader.ParallelHaltingPredicate} halts based on how
      * close the record's timestamp is to the present time.
-     * @param tsSec the timestamp (in seconds) in the resulting offset.
+     * @param tsSec the timestamp in the resulting offset.
      * @return an "offset" containing the given timestamp.
      */
-    private SourceRecord createSourceRecordWithTimestamp(long tsSec) {
-        Map<String, ?> offset = Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, tsSec);
+    private SourceRecord createSourceRecordWithTimestamp(Instant ts) {
+        Map<String, ?> offset = Collections.singletonMap(SourceInfo.TIMESTAMP_KEY, ts.getEpochSecond());
         return new SourceRecord(null, offset, null, null, null);
     }
 }
