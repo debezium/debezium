@@ -388,7 +388,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         Object key = tableSchema.keyFromColumnData(oldRowData);
         Struct value = tableSchema.valueFromColumnData(oldRowData);
         if (value == null) {
-            logger.warn("ignoring message from delete transaction for table '{}' because it does not have a primary key defined and replica identity for the table is not FULL", tableId);
+            logger.warn("ignoring delete message for table '{}' because it does not have a primary key defined and replica identity for the table is not FULL", tableId);
             return;
         }
         Schema keySchema = tableSchema.keySchema();
