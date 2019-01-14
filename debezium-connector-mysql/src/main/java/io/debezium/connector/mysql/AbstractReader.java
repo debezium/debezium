@@ -13,7 +13,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -50,7 +49,7 @@ public abstract class AbstractReader implements Reader {
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
     private final Duration pollInterval;
 
-    private final Predicate<SourceRecord> acceptAndContinue;
+    private final HaltingPredicate acceptAndContinue;
 
     /**
      * Create a snapshot reader.
@@ -62,7 +61,7 @@ public abstract class AbstractReader implements Reader {
      *                          accepting records once {@link #enqueueRecord(SourceRecord)} is called with a record
      *                          that tests as false. Can be null. If null, all records will be accepted.
      */
-    public AbstractReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue) {
+    public AbstractReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue) {
         this.name = name;
         this.context = context;
         this.connectionContext = context.getConnectionContext();
@@ -313,7 +312,7 @@ public abstract class AbstractReader implements Reader {
      */
     protected boolean enqueueRecord(SourceRecord record) throws InterruptedException {
         if (record != null) {
-            if (acceptAndContinue.test(record)) {
+            if (acceptAndContinue.accepts(record)) {
                 if (logger.isTraceEnabled()) {
                     logger.trace("Enqueuing source record: {}", record);
                 }
@@ -331,10 +330,10 @@ public abstract class AbstractReader implements Reader {
     /**
      * A predicate that returns true for all sourceRecords
      */
-    public static class AcceptAllPredicate implements Predicate<SourceRecord> {
+    public static class AcceptAllPredicate implements HaltingPredicate {
 
         @Override
-        public boolean test(SourceRecord sourceRecord) {
+        public boolean accepts(SourceRecord sourceRecord) {
             return true;
         }
     }

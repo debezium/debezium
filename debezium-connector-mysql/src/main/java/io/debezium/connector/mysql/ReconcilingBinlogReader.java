@@ -5,10 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.document.Document;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static io.debezium.connector.mysql.SourceInfo.BINLOG_FILENAME_OFFSET_KEY;
+import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
 
 import java.util.List;
 import java.util.Map;
@@ -16,8 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import static io.debezium.connector.mysql.SourceInfo.BINLOG_FILENAME_OFFSET_KEY;
-import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.document.Document;
 
 /**
  * A reader that unifies the binlog positions of two binlog readers.
@@ -29,7 +30,7 @@ import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
  */
 public class ReconcilingBinlogReader implements Reader {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReconcilingBinlogReader.class);
 
     private final BinlogReader binlogReaderA;
     private final BinlogReader binlogReaderB;
@@ -104,11 +105,11 @@ public class ReconcilingBinlogReader implements Reader {
     public void stop() {
         if (running.compareAndSet(true, false)){
             try {
-                logger.info("Stopping the {} reader", reconcilingReader.name());
+                LOGGER.info("Stopping the {} reader", reconcilingReader.name());
                 reconcilingReader.stop();
                 reconcilingReader.context.shutdown();
             } catch (Throwable t) {
-                logger.error("Unexpected error stopping the {} reader", reconcilingReader.name());
+                LOGGER.error("Unexpected error stopping the {} reader", reconcilingReader.name());
             }
         }
     }
@@ -126,7 +127,7 @@ public class ReconcilingBinlogReader implements Reader {
         if (completed.compareAndSet(false, true)){
             stop();
             setupUnifiedReader();
-            logger.info("Completed Reconciliation of Parallel Readers.");
+            LOGGER.info("Completed Reconciliation of Parallel Readers.");
 
             Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
@@ -177,9 +178,9 @@ public class ReconcilingBinlogReader implements Reader {
         }
 
         if (aReaderLeading) {
-            logger.info("old tables leading; reading only from new tables");
+            LOGGER.info("old tables leading; reading only from new tables");
         } else {
-            logger.info("new tables leading; reading only from old tables");
+            LOGGER.info("new tables leading; reading only from old tables");
         }
     }
 
@@ -203,10 +204,10 @@ public class ReconcilingBinlogReader implements Reader {
     /**
      * A Predicate that returns false for any record beyond a given offset.
      */
-    /*package private*/ static class OffsetLimitPredicate implements Predicate<SourceRecord> {
+    /*package private*/ static class OffsetLimitPredicate implements HaltingPredicate {
 
-        private Document leadingReaderFinalOffsetDocument;
-        private Predicate<String> gtidFilter;
+        private final Document leadingReaderFinalOffsetDocument;
+        private final Predicate<String> gtidFilter;
 
         /*package private*/ OffsetLimitPredicate(Map<String, ?> leadingReaderFinalOffset,
                                                  Predicate<String> gtidFilter) {
@@ -216,7 +217,7 @@ public class ReconcilingBinlogReader implements Reader {
         }
 
         @Override
-        public boolean test(SourceRecord sourceRecord) {
+        public boolean accepts(SourceRecord sourceRecord) {
             Document offsetDocument = SourceInfo.createDocumentFromOffset(sourceRecord.sourceOffset());
             // .isPositionAtOrBefore is true IFF leadingReaderFinalOffsetDocument <= offsetDocument
             // we should stop (return false) IFF leadingReaderFinalOffsetDocument <= offsetDocument
