@@ -3,22 +3,20 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.util;
+package io.debezium.jdbc;
 
 /**
  * This interface allows the code to optionally pass a value between two parts of the application.
- * 
- * @author Jiri Pechanec
  *
- * @param <T> type of the value to pass
+ * @author Jiri Pechanec
  */
-public interface ResultReceiver<T> {
+public interface ResultReceiver {
 
     /**
      * Send the object to the receiver.
      * @param o - object to be delivered
      */
-    public void deliver(T o);
+    public void deliver(Object o);
 
     /**
      * @return true if a value has been sent to the receiver
@@ -28,26 +26,29 @@ public interface ResultReceiver<T> {
     /**
      * @return the object sent to the receiver
      */
-    public T get();
+    public Object get();
 
     /**
      * @return default, not thread-safe implementation of the receiver
      */
-    public static <T> ResultReceiver<T> create() {
-        return new ResultReceiver<T>() {
+    public static ResultReceiver create() {
+        return new ResultReceiver() {
             private boolean received = false;
-            private T object = null;
+            private Object object = null;
 
-            public void deliver(T o) {
+            @Override
+            public void deliver(Object o) {
                 received = true;
                 object = o;
             }
 
+            @Override
             public boolean hasReceived() {
                 return received;
             }
 
-            public T get() {
+            @Override
+            public Object get() {
                 return object;
             }
 

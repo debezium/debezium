@@ -5,8 +5,8 @@
  */
 package io.debezium.jdbc;
 
-import static io.debezium.util.NumberConversions.BYTE_ZERO;
 import static io.debezium.util.NumberConversions.BYTE_BUFFER_ZERO;
+import static io.debezium.util.NumberConversions.BYTE_ZERO;
 import static io.debezium.util.NumberConversions.SHORT_FALSE;
 
 import java.math.BigDecimal;
@@ -23,7 +23,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Field;
@@ -48,7 +47,6 @@ import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
-import io.debezium.util.ResultReceiver;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various column types. This implementation is aware
@@ -747,7 +745,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
-            if (data instanceof Integer) { 
+            if (data instanceof Integer) {
                 r.deliver(data);
             }
             else if (data instanceof Number) {
@@ -892,7 +890,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object toBigDecimal(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BigDecimal.ZERO, (r) -> {
             if (data instanceof BigDecimal) {
-                r.deliver((BigDecimal)data);
+                r.deliver(data);
             }
             else if (data instanceof Boolean) {
                 r.deliver(NumberConversions.getBigDecimal((Boolean)data));
@@ -1133,7 +1131,29 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return column.length();
     }
 
-    protected Object convertValue(Column column, Field fieldDefn, Object data, Object fallback, Consumer<ResultReceiver<Object>> convert) {
+    /**
+     * Converts the given value for the given column/field.
+     *
+     * @param column
+     *            describing the {@code data} value; never null
+     * @param fieldDefn
+     *            the field definition; never null
+     * @param data
+     *            the data object to be converted into a {@link Date Kafka Connect date} type
+     * @param fallback
+     *            value that will be applied in case the column is defined as NOT NULL without a default value, but we
+     *            still received no value; may happen e.g. when enabling MySQL's non-strict mode
+     * @param callback
+     *            conversion routine that will be invoked in case the value is not null
+     *
+     * @return The converted value. Will be {@code null} if the inbound value was {@code null} and the column is
+     *         optional. Will be the column's default value (converted to the corresponding KC type, if the inbound
+     *         value was {@code null}, the column is non-optional and has a default value. Will be {@code fallback} if
+     *         the inbound value was {@code null}, the column is non-optional and has no default value. Otherwise, it
+     *         will be the value produced by {@code callback} and lastly the result returned by
+     *         {@link #handleUnknownData(Column, Field, Object)}.
+     */
+    protected Object convertValue(Column column, Field fieldDefn, Object data, Object fallback, ValueConversionCallback callback) {
         if (data == null) {
             if (column.isOptional()) {
                 return null;
@@ -1144,8 +1164,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             return schemaDefault != null ? schemaDefault : fallback;
         }
-        final ResultReceiver<Object> r = ResultReceiver.create();
-        convert.accept(r);
+
+        final ResultReceiver r = ResultReceiver.create();
+        callback.convert(r);
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
     }
 }

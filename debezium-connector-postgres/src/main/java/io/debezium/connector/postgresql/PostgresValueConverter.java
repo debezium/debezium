@@ -730,6 +730,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
+    @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
         return super.convertBinary(column, fieldDefn,
                 (data instanceof PGobject) ? ((PGobject)data).getValue() : data);
