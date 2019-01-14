@@ -766,7 +766,7 @@ public class SnapshotReader extends AbstractReader {
      * @return {@link Filters} that represent all the tables that this snapshot reader should CREATE
      */
     private Filters getCreateTableFilters(Filters filters) {
-        MySqlConnectorConfig.SnapshotNewTables snapshotNewTables = context.snapshotNewTables();
+        MySqlConnectorConfig.SnapshotNewTables snapshotNewTables = context.getConnectorConfig().getSnapshotNewTables();
         if (snapshotNewTables == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
             // if we are snapshotting new tables in parallel, we need to make sure all the tables in the configuration
             // are created.

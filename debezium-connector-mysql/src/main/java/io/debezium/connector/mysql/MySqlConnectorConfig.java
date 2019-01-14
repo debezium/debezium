@@ -631,7 +631,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                       .withWidth(Width.LONG)
                                                       .withImportance(Importance.HIGH)
                                                       .withDefault(10000L)
-                                                      .withDescription("Only relevant in parallel snapshotting is configured. During "
+                                                      .withDescription("Only relevant if parallel snapshotting is configured. During "
                                                               + "parallel snapshotting, multiple (4) connections open to the database "
                                                               + "client, and they each need their own unique connection ID. This offset is "
                                                               + "used to generate those IDs from the base configured cluster ID.");
@@ -1092,6 +1092,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final SnapshotLockingMode snapshotLockingMode;
     private final DdlParsingMode ddlParsingMode;
     private final GtidNewChannelPosition gitIdNewChannelPosition;
+    private final SnapshotNewTables snapshotNewTables;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -1119,6 +1120,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
         this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
+
+        String snapshotNewTables = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
+        this.snapshotNewTables = SnapshotNewTables.parse(snapshotNewTables, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES.defaultValueAsString());
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
@@ -1131,6 +1135,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public GtidNewChannelPosition gtidNewChannelPosition() {
         return gitIdNewChannelPosition;
+    }
+
+    public SnapshotNewTables getSnapshotNewTables() {
+        return snapshotNewTables;
     }
 
     protected static ConfigDef configDef() {

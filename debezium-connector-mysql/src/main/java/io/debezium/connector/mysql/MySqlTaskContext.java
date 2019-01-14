@@ -17,7 +17,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotNewTables;
 import io.debezium.function.Predicates;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.DatabaseHistory;
@@ -244,11 +243,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     protected SnapshotMode snapshotMode() {
         String value = config.getString(MySqlConnectorConfig.SNAPSHOT_MODE);
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
-    }
-
-    protected SnapshotNewTables snapshotNewTables() {
-        String value = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
-        return SnapshotNewTables.parse(value, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES.defaultValueAsString());
     }
 
     public String getSnapshotSelectOverrides() {

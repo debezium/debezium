@@ -146,7 +146,7 @@ public class BinlogReader extends AbstractReader {
      * @param context the task context in which this reader is running; may not be null
      * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
      */
-    public BinlogReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue) {
+    public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue) {
         this(name, context, acceptAndContinue, context.serverId());
     }
 
@@ -158,7 +158,7 @@ public class BinlogReader extends AbstractReader {
      * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
      * @param serverId the server id to use for the {@link BinaryLogClient}
      */
-    public BinlogReader(String name, MySqlTaskContext context, Predicate<SourceRecord> acceptAndContinue, long serverId) {
+    public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue, long serverId) {
         super(name, context, acceptAndContinue);
 
         connectionContext = context.getConnectionContext();
