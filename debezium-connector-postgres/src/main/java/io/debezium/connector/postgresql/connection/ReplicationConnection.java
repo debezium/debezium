@@ -134,5 +134,12 @@ public interface ReplicationConnection extends AutoCloseable {
          * @return a connection, never null
          */
         ReplicationConnection build();
+
+        /**
+         * Transition option to enable seamless migration between wal2json plug-in versions - see DBZ-1083
+         *
+         * @return this instance
+         */
+        Builder withIncludeUnchangedToastFlag();
     }
 }

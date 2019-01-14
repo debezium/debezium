@@ -46,6 +46,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Integer statusUpdateIntervalMillis;
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
+    private final boolean includeUnchangedToastFlag;
 
     private long defaultStartingPos;
 
@@ -58,6 +59,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
      * @param typeRegistry registry with PostgreSQL types
+     * @param includeUnchangedToastFlag true if include-unchanged-toast = 0 should be added to plugin registration
+     *
      * updates to the server
      */
     private PostgresReplicationConnection(Configuration config,
@@ -65,7 +68,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
                                          Integer statusUpdateIntervalMillis,
-                                         TypeRegistry typeRegistry) {
+                                         TypeRegistry typeRegistry,
+                                         boolean includeUnchangedToastFlag) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -75,6 +79,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
         this.messageDecoder = plugin.messageDecoder();
         this.typeRegistry = typeRegistry;
+        this.includeUnchangedToastFlag = includeUnchangedToastFlag;
 
         try {
             initReplicationSlot();
@@ -288,6 +293,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName(slotName)
                 .withStartPosition(lsn);
+        if (includeUnchangedToastFlag) {
+            streamBuilder = streamBuilder.withSlotOption("include-unchanged-toast", 0);
+        }
         streamBuilder = configurator.apply(streamBuilder);
 
         if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
@@ -341,6 +349,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
         private TypeRegistry typeRegistry;
+        private boolean includeUnchangedToastFlag;
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -376,12 +385,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry, includeUnchangedToastFlag);
         }
 
         @Override
         public Builder withTypeRegistry(TypeRegistry typeRegistry) {
             this.typeRegistry = typeRegistry;
+            return this;
+        }
+
+        @Override
+        public Builder withIncludeUnchangedToastFlag() {
+            this.includeUnchangedToastFlag = true;
             return this;
         }
     }

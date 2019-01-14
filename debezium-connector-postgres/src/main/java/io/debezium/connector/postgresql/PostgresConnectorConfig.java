@@ -728,6 +728,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                                                                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
+    public static final Field INCLUDE_UNCHANGED_TOAST_FLAG = Field.create("include.unchanged.toast.flag")
+            .withDisplayName("Include include-unchanged-toast flag in replication slot configuration")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify whether the include-unchanged-toast parameter should be set while creating replication slot (see DBZ-1083):"
+                    + "'false' (the default) does not include the parameter, valid for RDS and newer wal2json connector versions; "
+                    + "'true' legacy setting that should be used only in version upgrade scenarios.");
 
     public static final Field SCHEMA_REFRESH_MODE = Field.create("schema.refresh.mode")
             .withDisplayName("Schema refresh mode")
@@ -759,7 +768,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     INCLUDE_UNCHANGED_TOAST_FLAG);
 
     private final Configuration config;
     private final TemporalPrecisionMode temporalPrecisionMode;
@@ -902,6 +912,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
 
+    protected boolean includeUnchangedToastFlag() {
+        return config.getBoolean(PostgresConnectorConfig.INCLUDE_UNCHANGED_TOAST_FLAG);
+    }
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
@@ -913,7 +927,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,SCHEMA_REFRESH_MODE,ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE, ROWS_FETCH_SIZE,
+                    INCLUDE_UNCHANGED_TOAST_FLAG);
 
         return config;
     }

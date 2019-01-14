@@ -57,13 +57,17 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     }
 
     protected ReplicationConnection createReplicationConnection() throws SQLException {
-        return ReplicationConnection.builder(config.jdbcConfig())
-                                    .withSlot(config.slotName())
-                                    .withPlugin(config.plugin())
-                                    .dropSlotOnClose(config.dropSlotOnStop())
-                                    .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
-                                    .withTypeRegistry(schema.getTypeRegistry())
-                                    .build();
+        final ReplicationConnection.Builder builder =
+                ReplicationConnection.builder(config.jdbcConfig())
+                                     .withSlot(config.slotName())
+                                     .withPlugin(config.plugin())
+                                     .dropSlotOnClose(config.dropSlotOnStop())
+                                     .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
+                                     .withTypeRegistry(schema.getTypeRegistry());
+        if (config.includeUnchangedToastFlag()) {
+            builder.withIncludeUnchangedToastFlag();
+        }
+        return builder.build();
     }
 
     protected PostgresConnection createConnection() {
