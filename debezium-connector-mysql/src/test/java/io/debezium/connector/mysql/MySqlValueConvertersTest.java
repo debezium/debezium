@@ -84,7 +84,7 @@ public class MySqlValueConvertersTest {
 
         // ColA -  Nullable column
         Column colA= table.columnWithName("A");
-        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).build());
+        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).optional().build());
         assertThat(converters.converter(colA, fieldA).convert("{}")).isEqualTo("{}");
         assertThat(converters.converter(colA, fieldA).convert("[]")).isEqualTo("[]");
         assertThat(converters.converter(colA, fieldA).convert(new byte[0])).isNull();
