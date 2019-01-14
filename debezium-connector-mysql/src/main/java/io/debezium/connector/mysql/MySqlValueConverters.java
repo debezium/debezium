@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -324,32 +325,27 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertJson(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return "{}";
-        }
-        if (data instanceof byte[]) {
-            // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
-            // to parse MySQL's internal binary representation into a JSON string, using the standard formatter.
+        return convertValue(column, fieldDefn, data, "{}", (r) -> {
+            if (data instanceof byte[]) {
+                // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
+                // to parse MySQL's internal binary representation into a JSON string, using the standard formatter.
 
-            if (((byte[]) data).length == 0)
-                return column.isOptional() ? null : "{}";
-
-            try {
-                String json = JsonBinary.parseAsString((byte[]) data);
-                return json;
-            } catch (IOException e) {
-                throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
+                if (((byte[]) data).length == 0) {
+                    r.deliver(column.isOptional() ? null : "{}");
+                }
+                else {
+                    try {
+                        r.deliver(JsonBinary.parseAsString((byte[]) data));
+                    } catch (IOException e) {
+                        throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
+                    }
+                }
             }
-        }
-        if (data instanceof String) {
-            // The SnapshotReader sees JSON values as UTF-8 encoded strings.
-            return data;
-        }
-        return handleUnknownData(column, fieldDefn, data);
+            else if (data instanceof String) {
+                // The SnapshotReader sees JSON values as UTF-8 encoded strings.
+                r.deliver(data);
+            }
+        });
     }
 
     /**
@@ -363,21 +359,15 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Charset columnCharset, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return "";
-        }
-        if (data instanceof byte[]) {
-            // Decode the binary representation using the given character encoding ...
-            return new String((byte[]) data, columnCharset);
-        }
-        if (data instanceof String) {
-            return data;
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            if (data instanceof byte[]) {
+                // Decode the binary representation using the given character encoding ...
+                r.deliver(new String((byte[]) data, columnCharset));
+            }
+            else if (data instanceof String) {
+                r.deliver(data);
+            }
+        });
     }
 
     /**
@@ -392,29 +382,24 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     @SuppressWarnings("deprecation")
     protected Object convertYearToInt(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0;
-        }
-        if (data instanceof java.time.Year) {
-            // The MySQL binlog always returns a Year object ...
-            return adjustYear(((java.time.Year) data).getValue());
-        }
-        if (data instanceof java.sql.Date) {
-            // MySQL JDBC driver sometimes returns a Java SQL Date object ...
-            return adjustYear(((java.sql.Date) data).getYear());
-        }
-        if (data instanceof String) {
-            data = Integer.parseInt((String) data);
-        }
-        if (data instanceof Number) {
-            // MySQL JDBC driver sometimes returns a short ...
-            return adjustYear(((Number) data).intValue());
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, 0, (r) -> {
+            Object mutData = data;
+            if (data instanceof java.time.Year) {
+                // The MySQL binlog always returns a Year object ...
+                r.deliver(adjustYear(((java.time.Year) data).getValue()));
+            }
+            else if (data instanceof java.sql.Date) {
+                // MySQL JDBC driver sometimes returns a Java SQL Date object ...
+                r.deliver(adjustYear(((java.sql.Date) data).getYear()));
+            }
+            else if (data instanceof String) {
+                mutData = Integer.parseInt((String) data);
+            }
+            if (mutData instanceof Number) {
+                // MySQL JDBC driver sometimes returns a short ...
+                r.deliver(adjustYear(((Number) mutData).intValue()));
+            }
+        });
     }
 
     /**
@@ -430,34 +415,29 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertEnumToString(List<String> options, Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return "";
-        }
-        if (data instanceof String) {
-            // JDBC should return strings ...
-            return data;
-        }
-        if (data instanceof Integer) {
-
-            if (options != null) {
-                // The binlog will contain an int with the 1-based index of the option in the enum value ...
-                int value = ((Integer) data).intValue();
-                if (value == 0) {
-                    // an invalid value was specified, which corresponds to the empty string '' and an index of 0
-                    return "";
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            if (data instanceof String) {
+                // JDBC should return strings ...
+                r.deliver(data);
+            }
+            else if (data instanceof Integer) {
+                if (options != null) {
+                    // The binlog will contain an int with the 1-based index of the option in the enum value ...
+                    int value = ((Integer) data).intValue();
+                    if (value == 0) {
+                        // an invalid value was specified, which corresponds to the empty string '' and an index of 0
+                        r.deliver("");
+                    }
+                    int index = value - 1; // 'options' is 0-based
+                    if (index < options.size() && index >= 0) {
+                        r.deliver(options.get(index));
+                    }
                 }
-                int index = value - 1; // 'options' is 0-based
-                if (index < options.size() && index >= 0) {
-                    return options.get(index);
+                else {
+                    r.deliver(null);
                 }
             }
-            return null;
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        });
     }
 
     /**
@@ -473,23 +453,17 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSetToString(List<String> options, Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return "";
-        }
-        if (data instanceof String) {
-            // JDBC should return strings ...
-            return data;
-        }
-        if (data instanceof Long) {
-            // The binlog will contain a long with the indexes of the options in the set value ...
-            long indexes = ((Long) data).longValue();
-            return convertSetValue(column, indexes, options);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            if (data instanceof String) {
+                // JDBC should return strings ...
+                r.deliver(data);
+            }
+            else if (data instanceof Long) {
+                // The binlog will contain a long with the indexes of the options in the set value ...
+                long indexes = ((Long) data).longValue();
+                r.deliver(convertSetValue(column, indexes, options));
+            }
+        });
     }
 
     /**
@@ -564,29 +538,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data){
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-
-        Schema schema = fieldDefn.schema();
-
-        if (data == null) {
-            if (column.isOptional()) return null;
+        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
             // we can't create an EMPTY Point because it has X & Y integer fields which can't be null.
             throw new IllegalArgumentException("Nulls not valid on " + column);
-        }
-
-        if (data instanceof byte[]) {
-            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
-            // to the suitable class
-            MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
-            if (mySqlGeometry.isPoint()) {
-                return io.debezium.data.geometry.Point.createValue(schema, mySqlGeometry.getWkb(), mySqlGeometry.getSrid());
-            } else {
-                throw new ConnectException("Failed to parse and read a value of type POINT on " + column);
+        }, (r) -> {
+            if (data instanceof byte[]) {
+                // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+                // to the suitable class
+                MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+                if (mySqlGeometry.isPoint()) {
+                    r.deliver(io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
+                } else {
+                    throw new ConnectException("Failed to parse and read a value of type POINT on " + column);
+                }
             }
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        });
     }
 
     /**
@@ -599,29 +565,21 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-
-        Schema schema = fieldDefn.schema();
-
-        if (data == null) {
-            if (column.isOptional()) {
-                return null;
+        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
+            final MySqlGeometry empty = MySqlGeometry.createEmpty();
+            return io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid());
+        }, (r) -> {
+            if (data instanceof byte[]) {
+                // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+                // to the suitable class
+                if (data instanceof byte[]) {
+                    // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
+                    // to the suitable class
+                    MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
+                    r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
+                }
             }
-
-            MySqlGeometry emptyMysqlGeometry = MySqlGeometry.createEmpty();
-            return io.debezium.data.geometry.Point.createValue(schema, emptyMysqlGeometry.getWkb(), emptyMysqlGeometry.getSrid());
-        }
-
-        if (data instanceof byte[]) {
-            // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
-            // to the suitable class
-            MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
-            return io.debezium.data.geometry.Geometry.createValue(schema, mySqlGeometry.getWkb(), mySqlGeometry.getSrid());
-        }
-
-        return handleUnknownData(column, fieldDefn, data);
+        });
     }
 
     @Override
@@ -646,24 +604,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedTinyint(Column column, Field fieldDefn, Object data){
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return (short) 0;
-        }
-
-        if (data instanceof Short) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) data);
-        }
-        else if (data instanceof Number) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedTinyint(((Number) data).shortValue());
-        }
-        else {
-            //We continue with the original converting method (smallint) since we have an unsigned Tinyint
-            return convertSmallInt(column, fieldDefn, data);
-        }
+        return convertValue(column, fieldDefn, data, (short)0, (r) -> {
+            if (data instanceof Short) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short)data));
+            }
+            else if (data instanceof Number) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint(((Number)data).shortValue()));
+            }
+            else {
+                //We continue with the original converting method (smallint) since we have an unsigned Tinyint
+                r.deliver(convertSmallInt(column, fieldDefn, data));
+            }
+        });
     }
 
     /**
@@ -678,24 +630,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedSmallint(Column column, Field fieldDefn, Object data){
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0;
-        }
-
-        if (data instanceof Integer) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int)data);
-        }
-        else if (data instanceof Number) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedSmallint(((Number) data).intValue());
-        }
-        else {
-            //We continue with the original converting method (integer) since we have an unsigned Smallint
-            return convertInteger(column, fieldDefn, data);
-        }
+        return convertValue(column, fieldDefn, data, 0, (r) -> {
+            if (data instanceof Integer) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int)data));
+            }
+            else if (data instanceof Number) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint(((Number)data).intValue()));
+            }
+            else {
+                //We continue with the original converting method (integer) since we have an unsigned Smallint
+                r.deliver(convertInteger(column, fieldDefn, data));
+            }
+        });
     }
 
     /**
@@ -710,24 +656,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedMediumint(Column column, Field fieldDefn, Object data){
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0;
-        }
-
-        if (data instanceof Integer) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int)data);
-        }
-        else if (data instanceof Number) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedMediumint(((Number) data).intValue());
-        }
-        else {
-            //We continue with the original converting method (integer) since we have an unsigned Medium
-            return convertInteger(column, fieldDefn, data);
-        }
+        return convertValue(column, fieldDefn, data, 0, (r) -> {
+            if (data instanceof Integer) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int)data));
+            }
+            else if (data instanceof Number) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint(((Number)data).intValue()));
+            }
+            else {
+                //We continue with the original converting method (integer) since we have an unsigned Medium
+                r.deliver(convertInteger(column, fieldDefn, data));
+            }
+        });
     }
 
     /**
@@ -742,24 +682,18 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedInt(Column column, Field fieldDefn, Object data){
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L;
-        }
-
-        if (data instanceof Long) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedInteger((long) data);
-        }
-        else if (data instanceof Number) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedInteger(((Number) data).longValue());
-        }
-        else {
-            //We continue with the original converting method (bigint) since we have an unsigned Integer
-            return convertBigInt(column, fieldDefn, data);
-        }
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            if (data instanceof Long) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger((long)data));
+            }
+            else if (data instanceof Number) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger(((Number)data).longValue()));
+            }
+            else {
+                //We continue with the original converting method (bigint) since we have an unsigned Integer
+                r.deliver(convertBigInt(column, fieldDefn, data));
+            }
+        });
     }
 
     /**
@@ -774,27 +708,20 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data){
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L;
-        }
-
-        if (data instanceof BigDecimal) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data);
-        }
-        else if (data instanceof Number) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString()));
-        }
-        else if (data instanceof String) {
-            return MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data));
-        }
-        else {
-            //We continue with the original converting method (numeric) since we have an unsigned Integer
-            return convertNumeric(column, fieldDefn, data);
-        }
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            if (data instanceof BigDecimal) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal)data));
+            }
+            else if (data instanceof Number) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number)data).toString())));
+            }
+            else if (data instanceof String) {
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String)data)));
+            }
+            else {
+                r.deliver(convertNumeric(column, fieldDefn, data));
+            }
+        });
     }
 
     /**
@@ -813,19 +740,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDurationToMicroseconds(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L;
-        }
-        try {
-            if (data instanceof Duration) return ((Duration) data).toNanos() / 1_000;
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                if (data instanceof Duration) {
+                    r.deliver(((Duration)data).toNanos() / 1_000);
+                }
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {

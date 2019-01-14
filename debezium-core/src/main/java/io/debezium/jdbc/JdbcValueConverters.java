@@ -6,6 +6,7 @@
 package io.debezium.jdbc;
 
 import static io.debezium.util.NumberConversions.BYTE_ZERO;
+import static io.debezium.util.NumberConversions.BYTE_BUFFER_ZERO;
 import static io.debezium.util.NumberConversions.SHORT_FALSE;
 
 import java.math.BigDecimal;
@@ -22,6 +23,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -45,6 +48,7 @@ import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
+import io.debezium.util.ResultReceiver;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various column types. This implementation is aware
@@ -350,18 +354,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            data = OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset); // return epoch
-        }
-        try {
-            return ZonedTimestamp.toIsoString(data, defaultOffset, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), (r) -> {
+            try {
+                r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -381,18 +380,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            data = OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset); // return epoch time
-        }
-        try {
-            return ZonedTime.toIsoString(data, defaultOffset, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), (r) -> {
+            try {
+                r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -410,18 +404,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L; // return epoch
-        }
-        try {
-            return Timestamp.toEpochMillis(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(Timestamp.toEpochMillis(data, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -439,18 +428,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L; // return epoch
-        }
-        try {
-            return MicroTimestamp.toEpochMicros(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(MicroTimestamp.toEpochMicros(data, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -468,18 +452,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L; // return epoch
-        }
-        try {
-            return NanoTimestamp.toEpochNanos(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(NanoTimestamp.toEpochNanos(data, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -497,18 +476,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return new java.util.Date(0L); // return epoch
-        }
-        try {
-            return new java.util.Date(Timestamp.toEpochMillis(data, adjuster));
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -527,18 +501,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMillisPastMidnight(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0; // return epoch
-        }
-        try {
-            return Time.toMilliOfDay(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0, (r) -> {
+            try {
+                r.deliver(Time.toMilliOfDay(data, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -557,18 +526,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMicrosPastMidnight(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L; // return epoch
-        }
-        try {
-            return MicroTime.toMicroOfDay(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(MicroTime.toMicroOfDay(data, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -587,18 +551,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToNanosPastMidnight(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L; // return epoch
-        }
-        try {
-            return NanoTime.toNanoOfDay(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(NanoTime.toNanoOfDay(data, adjuster));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -617,18 +576,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L; // return epoch
-        }
-        try {
-            return new java.util.Date(Time.toMilliOfDay(data, adjuster));
-        } catch (IllegalArgumentException e) {
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            try {
+                r.deliver(new java.util.Date(Time.toMilliOfDay(data, adjuster)));
+            } catch (IllegalArgumentException e) {
+            }
+        });
     }
 
     /**
@@ -646,20 +600,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDays(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0; // return epoch
-        }
-        try {
-            return Date.toEpochDay(data, adjuster);
-        } catch (IllegalArgumentException e) {
-            logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                        fieldDefn.schema(), data.getClass(), data);
-            return handleUnknownData(column, fieldDefn, data);
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, 0, (r) -> {
+            try {
+                r.deliver(Date.toEpochDay(data, adjuster));
+            } catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                            fieldDefn.schema(), data.getClass(), data);
+            }
+        });
     }
 
     /**
@@ -678,22 +627,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDateToEpochDaysAsDate(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return new java.util.Date(0L); // return epoch
-        }
-        try {
-            int epochDay = Date.toEpochDay(data, adjuster);
-            long epochMillis = TimeUnit.DAYS.toMillis(epochDay);
-            return new java.util.Date(epochMillis);
-        } catch (IllegalArgumentException e) {
-            logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                        fieldDefn.schema(), data.getClass(), data);
-            return null;
-        }
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
+            try {
+                int epochDay = Date.toEpochDay(data, adjuster);
+                long epochMillis = TimeUnit.DAYS.toMillis(epochDay);
+                r.deliver(new java.util.Date(epochMillis));
+            } catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                            fieldDefn.schema(), data.getClass(), data);
+            }
+        });
     }
 
     /**
@@ -707,26 +651,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            data = BYTE_ZERO;
-        }
-        if (data instanceof char[]) {
-            data = new String((char[]) data); // convert to string
-        }
-        if (data instanceof String) {
-            // This was encoded as a hexadecimal string, but we receive it as a normal string ...
-            data = ((String) data).getBytes();
-        }
-        if (data instanceof byte[]) {
-            return convertByteArray(column, (byte[]) data);
-        }
-
-        // An unexpected value
-        return unexpectedBinary(data, fieldDefn);
+        return convertValue(column, fieldDefn, data, BYTE_ZERO, (r) -> {
+            Object dataMut = data;
+            if (dataMut instanceof char[]) {
+                dataMut = new String((char[]) dataMut); // convert to string
+            }
+            if (dataMut instanceof String) {
+                // This was encoded as a hexadecimal string, but we receive it as a normal string ...
+                dataMut = ((String) dataMut).getBytes();
+            }
+            if (dataMut instanceof byte[]) {
+                r.deliver(convertByteArray(column, (byte[]) dataMut));
+            }
+            else {
+                // An unexpected value
+                r.deliver(unexpectedBinary(dataMut, fieldDefn));
+            }
+        });
     }
 
     /**
@@ -778,25 +719,21 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return SHORT_FALSE;
-        }
-        if (data instanceof Short) return data;
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            return new Short(value.shortValue());
-        }
-        if (data instanceof Boolean) {
-            return NumberConversions.getShort((Boolean) data);
-        }
-        if (data instanceof String) {
-            return Short.parseShort((String) data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, SHORT_FALSE, (r) -> {
+            if (data instanceof Short) {
+                r.deliver(data);
+            }
+            else if (data instanceof Number) {
+                Number value = (Number) data;
+                r.deliver(new Short(value.shortValue()));
+            }
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getShort((Boolean)data));
+            }
+            else if (data instanceof String) {
+                r.deliver(Short.parseShort((String)data));
+            }
+        });
     }
 
     /**
@@ -809,25 +746,21 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0;
-        }
-        if (data instanceof Integer) return data;
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            return Integer.valueOf(value.intValue());
-        }
-        if (data instanceof Boolean) {
-            return NumberConversions.getInteger((Boolean) data);
-        }
-        if (data instanceof String) {
-            return Integer.parseInt((String) data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, 0, (r) -> {
+            if (data instanceof Integer) { 
+                r.deliver(data);
+            }
+            else if (data instanceof Number) {
+                Number value = (Number) data;
+                r.deliver(Integer.valueOf(value.intValue()));
+            }
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getInteger((Boolean)data));
+            }
+            else if (data instanceof String) {
+                r.deliver(Integer.parseInt((String)data));
+            }
+        });
     }
 
     /**
@@ -840,25 +773,21 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0L;
-        }
-        if (data instanceof Long) return data;
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            return Long.valueOf(value.longValue());
-        }
-        if (data instanceof Boolean) {
-            return NumberConversions.getLong((Boolean) data);
-        }
-        if (data instanceof String) {
-            return Long.parseLong((String) data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+            if (data instanceof Long) {
+                r.deliver(data);
+            }
+            else if (data instanceof Number) {
+                Number value = (Number) data;
+                r.deliver(Long.valueOf(value.longValue()));
+            }
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getLong((Boolean) data));
+            }
+            else if (data instanceof String) {
+                r.deliver(Long.parseLong((String) data));
+            }
+        });
     }
 
     /**
@@ -884,26 +813,22 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0.0d;
-        }
-        if (data instanceof Double) return data;
-        if (data instanceof Number) {
-            // Includes BigDecimal and other numeric values ...
-            Number value = (Number) data;
-            return Double.valueOf(value.doubleValue());
-        }
-        if (data instanceof SpecialValueDecimal) {
-            return ((SpecialValueDecimal)data).toDouble();
-        }
-        if (data instanceof Boolean) {
-            return NumberConversions.getDouble((Boolean) data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, 0.0d, (r) -> {
+            if (data instanceof Double) {
+                r.deliver(data);
+            }
+            else if (data instanceof Number) {
+                // Includes BigDecimal and other numeric values ...
+                Number value = (Number) data;
+                r.deliver(Double.valueOf(value.doubleValue()));
+            }
+            else if (data instanceof SpecialValueDecimal) {
+                r.deliver(((SpecialValueDecimal)data).toDouble());
+            }
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getDouble((Boolean) data));
+            }
+        });
     }
 
     /**
@@ -916,23 +841,19 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return 0.0f;
-        }
-        if (data instanceof Float) return data;
-        if (data instanceof Number) {
-            // Includes BigDecimal and other numeric values ...
-            Number value = (Number) data;
-            return Float.valueOf(value.floatValue());
-        }
-        if (data instanceof Boolean) {
-            return NumberConversions.getFloat((Boolean) data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, 0.0f, (r) -> {
+            if (data instanceof Float) {
+                r.deliver(data);
+            }
+            else if (data instanceof Number) {
+                // Includes BigDecimal and other numeric values ...
+                Number value = (Number) data;
+                r.deliver(Float.valueOf(value.floatValue()));
+            }
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getFloat((Boolean) data));
+            }
+        });
     }
 
     /**
@@ -969,38 +890,32 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object toBigDecimal(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) {
-                return null;
+        return convertValue(column, fieldDefn, data, BigDecimal.ZERO, (r) -> {
+            if (data instanceof BigDecimal) {
+                r.deliver((BigDecimal)data);
             }
-            else {
-                return BigDecimal.ZERO;
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getBigDecimal((Boolean)data));
             }
-        }
-        BigDecimal decimal = null;
-        if (data instanceof BigDecimal)
-            decimal = (BigDecimal) data;
-        else if (data instanceof Boolean)
-            decimal = NumberConversions.getBigDecimal((Boolean) data);
-        else if (data instanceof Short)
-            decimal = new BigDecimal(((Short) data).intValue());
-        else if (data instanceof Integer)
-            decimal = new BigDecimal(((Integer) data).intValue());
-        else if (data instanceof Long)
-            decimal = BigDecimal.valueOf(((Long) data).longValue());
-        else if (data instanceof Float)
-            decimal = BigDecimal.valueOf(((Float) data).doubleValue());
-        else if (data instanceof Double)
-            decimal = BigDecimal.valueOf(((Double) data).doubleValue());
-        else if (data instanceof String)
-            decimal = new BigDecimal((String) data);
-        else {
-            return handleUnknownData(column, fieldDefn, data);
-        }
-        return decimal;
+            else if (data instanceof Short) {
+                r.deliver(new BigDecimal(((Short)data).intValue()));
+            }
+            else if (data instanceof Integer) {
+                r.deliver(new BigDecimal(((Integer)data).intValue()));
+            }
+            else if (data instanceof Long) {
+                r.deliver(BigDecimal.valueOf(((Long)data).longValue()));
+            }
+            else if (data instanceof Float) {
+                r.deliver(BigDecimal.valueOf(((Float)data).doubleValue()));
+            }
+            else if (data instanceof Double) {
+                r.deliver(BigDecimal.valueOf(((Double)data).doubleValue()));
+            }
+            else if (data instanceof String) {
+                r.deliver(new BigDecimal((String)data));
+            }
+        });
     }
 
     /**
@@ -1015,22 +930,19 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return "";
-        }
-        if (data instanceof SQLXML) {
-            try {
-                return ((SQLXML) data).getString();
-            } catch (SQLException e) {
-                throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
-                        ": class=" + data.getClass(), e);
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            if (data instanceof SQLXML) {
+                try {
+                    r.deliver(((SQLXML)data).getString());
+                } catch (SQLException e) {
+                    throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
+                            ": class=" + data.getClass(), e);
+                }
             }
-        }
-        return data.toString();
+            else {
+                r.deliver(data.toString());
+            }
+        });
     }
 
     /**
@@ -1043,18 +955,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertRowId(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return ByteBuffer.wrap(new byte[0]);
-        }
-        if (data instanceof java.sql.RowId) {
-            java.sql.RowId row = (java.sql.RowId) data;
-            return ByteBuffer.wrap(row.getBytes());
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, BYTE_BUFFER_ZERO, (r) -> {
+            if (data instanceof java.sql.RowId) {
+                java.sql.RowId row = (java.sql.RowId) data;
+                r.deliver(ByteBuffer.wrap(row.getBytes()));
+            }
+        });
     }
 
     /**
@@ -1067,22 +973,24 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBit(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return false;
-        }
-        if (data instanceof Boolean) return data;
-        if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof BitSet) {
-            BitSet value = (BitSet) data;
-            return value.get(0);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, false, (r) -> {
+            if (data instanceof Boolean) {
+                r.deliver(data);
+            }
+            else if (data instanceof Short) {
+                r.deliver(((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE);
+            }
+            else if (data instanceof Integer) {
+                r.deliver(((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE);
+            }
+            else if (data instanceof Long) {
+                r.deliver(((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE);
+            }
+            else if (data instanceof BitSet) {
+                BitSet value = (BitSet) data;
+                r.deliver(value.get(0));
+            }
+        });
     }
 
     /**
@@ -1096,63 +1004,57 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return false;
-        }
-        if (data instanceof Boolean) {
-            Boolean value = (Boolean) data;
-            return new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 };
-        }
-        if (data instanceof Short) {
-            Short value = (Short) data;
-            ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            buffer.putShort(value.shortValue());
-            return buffer.array();
-        }
-        if (data instanceof Integer) {
-            Integer value = (Integer) data;
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            buffer.putInt(value.intValue());
-            return buffer.array();
-        }
-        if (data instanceof Long) {
-            Long value = (Long) data;
-            ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            buffer.putLong(value.longValue());
-            return buffer.array();
-        }
-        if (data instanceof byte[]) {
-            byte[] bytes = (byte[]) data;
-            if (bytes.length == 1) {
-                return bytes;
+        return convertValue(column, fieldDefn, data, false, (r) -> {
+            if (data instanceof Boolean) {
+                Boolean value = (Boolean) data;
+                r.deliver(new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 });
             }
-            if (byteOrderOfBitType() == ByteOrder.BIG_ENDIAN) {
-                // Reverse it to little endian ...
-                int i = 0;
-                int j = bytes.length - 1;
-                byte tmp;
-                while (j > i) {
-                    tmp = bytes[j];
-                    bytes[j] = bytes[i];
-                    bytes[i] = tmp;
-                    ++i;
-                    --j;
+            else if (data instanceof Short) {
+                Short value = (Short) data;
+                ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES);
+                buffer.order(ByteOrder.LITTLE_ENDIAN);
+                buffer.putShort(value.shortValue());
+                r.deliver(buffer.array());
+            }
+            else if (data instanceof Integer) {
+                Integer value = (Integer) data;
+                ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+                buffer.order(ByteOrder.LITTLE_ENDIAN);
+                buffer.putInt(value.intValue());
+                r.deliver(buffer.array());
+            }
+            else if (data instanceof Long) {
+                Long value = (Long) data;
+                ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+                buffer.order(ByteOrder.LITTLE_ENDIAN);
+                buffer.putLong(value.longValue());
+                r.deliver(buffer.array());
+            }
+            else if (data instanceof byte[]) {
+                byte[] bytes = (byte[]) data;
+                if (bytes.length == 1) {
+                    r.deliver(bytes);
                 }
+                if (byteOrderOfBitType() == ByteOrder.BIG_ENDIAN) {
+                    // Reverse it to little endian ...
+                    int i = 0;
+                    int j = bytes.length - 1;
+                    byte tmp;
+                    while (j > i) {
+                        tmp = bytes[j];
+                        bytes[j] = bytes[i];
+                        bytes[i] = tmp;
+                        ++i;
+                        --j;
+                    }
+                }
+                r.deliver(padLittleEndian(numBytes, bytes));
             }
-            return padLittleEndian(numBytes, bytes);
-        }
-        if (data instanceof BitSet) {
-            byte[] bytes = ((BitSet) data).toByteArray();
-            return padLittleEndian(numBytes, bytes);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+            else if (data instanceof BitSet) {
+                byte[] bytes = ((BitSet) data).toByteArray();
+                r.deliver(padLittleEndian(numBytes, bytes));
+            }
+        });
     }
 
     protected byte[] padLittleEndian(int numBytes, byte[] data) {
@@ -1190,18 +1092,20 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return false;
-        }
-        if (data instanceof Boolean) return data;
-        if (data instanceof Short) return ((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Integer) return ((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        if (data instanceof Long) return ((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-        return handleUnknownData(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, false, (r) -> {
+            if (data instanceof Boolean) {
+                r.deliver(data);
+            }
+            else if (data instanceof Short) {
+                r.deliver(((Short) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE);
+            }
+            else if (data instanceof Integer) {
+                r.deliver(((Integer) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE);
+            }
+            else if (data instanceof Long) {
+                r.deliver(((Long) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE);
+            }
+        });
     }
 
     /**
@@ -1227,5 +1131,21 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     protected int getTimePrecision(Column column) {
         return column.length();
+    }
+
+    protected Object convertValue(Column column, Field fieldDefn, Object data, Object fallback, Consumer<ResultReceiver<Object>> convert) {
+        if (data == null) {
+            if (column.isOptional()) {
+                return null;
+            }
+            final Object schemaDefault = fieldDefn.schema().defaultValue();
+            if (schemaDefault instanceof Supplier<?>) {
+                return ((Supplier<?>)schemaDefault).get();
+            }
+            return schemaDefault != null ? schemaDefault : fallback;
+        }
+        final ResultReceiver<Object> r = ResultReceiver.create();
+        convert.accept(r);
+        return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
     }
 }
