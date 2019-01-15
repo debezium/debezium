@@ -654,7 +654,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * @return a value which will be used by Connect to represent the actual point value
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, (Supplier<?>)() -> handleUnknownData(column, fieldDefn, data), Collections.emptyList(), (r) -> {
+        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> Point.createValue(fieldDefn.schema(), 0, 0), (r) -> {
             final Schema schema = fieldDefn.schema();
             if (data instanceof PGpoint) {
                 PGpoint pgPoint = (PGpoint) data;

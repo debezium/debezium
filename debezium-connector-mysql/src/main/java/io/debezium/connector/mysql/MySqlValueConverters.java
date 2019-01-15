@@ -539,8 +539,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
-            // we can't create an EMPTY Point because it has X & Y integer fields which can't be null.
-            throw new IllegalArgumentException("Nulls not valid on " + column);
+            final MySqlGeometry empty = MySqlGeometry.createEmpty();
+            return io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid());
         }, (r) -> {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
