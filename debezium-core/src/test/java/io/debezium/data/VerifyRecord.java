@@ -103,9 +103,16 @@ public class VerifyRecord {
      *
      * @param record the source record; may not be null
      */
-    public static void isValidInsert(SourceRecord record) {
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
+    public static void isValidInsert(SourceRecord record, boolean keyExpected) {
+        if (keyExpected) {
+            assertThat(record.key()).isNotNull();
+            assertThat(record.keySchema()).isNotNull();
+        }
+        else {
+            assertThat(record.key()).isNull();
+            assertThat(record.keySchema()).isNull();
+        }
+
         assertThat(record.valueSchema()).isNotNull();
         Struct value = (Struct) record.value();
         assertThat(value).isNotNull();
@@ -135,9 +142,15 @@ public class VerifyRecord {
      *
      * @param record the source record; may not be null
      */
-    public static void isValidUpdate(SourceRecord record) {
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
+    public static void isValidUpdate(SourceRecord record, boolean keyExpected) {
+        if (keyExpected) {
+            assertThat(record.key()).isNotNull();
+            assertThat(record.keySchema()).isNotNull();
+        }
+        else {
+            assertThat(record.key()).isNull();
+            assertThat(record.keySchema()).isNull();
+        }
         assertThat(record.valueSchema()).isNotNull();
         Struct value = (Struct) record.value();
         assertThat(value).isNotNull();
@@ -151,9 +164,15 @@ public class VerifyRecord {
      *
      * @param record the source record; may not be null
      */
-    public static void isValidDelete(SourceRecord record) {
-        assertThat(record.key()).isNotNull();
-        assertThat(record.keySchema()).isNotNull();
+    public static void isValidDelete(SourceRecord record, boolean keyExpected) {
+        if (keyExpected) {
+            assertThat(record.key()).isNotNull();
+            assertThat(record.keySchema()).isNotNull();
+        }
+        else {
+            assertThat(record.key()).isNull();
+            assertThat(record.keySchema()).isNull();
+        }
         assertThat(record.valueSchema()).isNotNull();
         Struct value = (Struct) record.value();
         assertThat(value).isNotNull();
@@ -188,6 +207,15 @@ public class VerifyRecord {
     }
 
     /**
+     * Verify that the given {@link SourceRecord} is a {@link Operation#CREATE INSERT/CREATE} record without primary key.
+     *
+     * @param record the source record; may not be null
+     */
+    public static void isValidInsert(SourceRecord record) {
+        isValidInsert(record, false);
+    }
+
+    /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#CREATE INSERT/CREATE} record, and that the integer key
      * matches the expected value.
      *
@@ -197,7 +225,7 @@ public class VerifyRecord {
      */
     public static void isValidInsert(SourceRecord record, String pkField, int pk) {
         hasValidKey(record, pkField, pk);
-        isValidInsert(record);
+        isValidInsert(record, true);
     }
 
     /**
@@ -214,6 +242,17 @@ public class VerifyRecord {
     }
 
     /**
+     * Verify that the given {@link SourceRecord} is a {@link Operation#UPDATE UPDATE} record without PK.
+     *
+     * @param record the source record; may not be null
+     * @param pkField the single field defining the primary key of the struct; may not be null
+     * @param pk the expected integer value of the primary key in the struct
+     */
+    public static void isValidUpdate(SourceRecord record) {
+        isValidUpdate(record, false);
+    }
+
+    /**
      * Verify that the given {@link SourceRecord} is a {@link Operation#UPDATE UPDATE} record, and that the integer key
      * matches the expected value.
      *
@@ -223,7 +262,19 @@ public class VerifyRecord {
      */
     public static void isValidUpdate(SourceRecord record, String pkField, int pk) {
         hasValidKey(record, pkField, pk);
-        isValidUpdate(record);
+        isValidUpdate(record, true);
+    }
+
+    /**
+     * Verify that the given {@link SourceRecord} is a {@link Operation#DELETE DELETE} record without PK.
+     * matches the expected value.
+     *
+     * @param record the source record; may not be null
+     * @param pkField the single field defining the primary key of the struct; may not be null
+     * @param pk the expected integer value of the primary key in the struct
+     */
+    public static void isValidDelete(SourceRecord record) {
+        isValidDelete(record, false);
     }
 
     /**
@@ -236,7 +287,7 @@ public class VerifyRecord {
      */
     public static void isValidDelete(SourceRecord record, String pkField, int pk) {
         hasValidKey(record, pkField, pk);
-        isValidDelete(record);
+        isValidDelete(record, true);
     }
 
     /**

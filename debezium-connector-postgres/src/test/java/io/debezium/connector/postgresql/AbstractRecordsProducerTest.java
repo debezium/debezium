@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -49,6 +50,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.SchemaUtil;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -625,11 +627,17 @@ public abstract class AbstractRecordsProducerTest {
                                                SourceRecord record,
                                                String envelopeFieldName) {
         Struct content = ((Struct) record.value()).getStruct(envelopeFieldName);
-        assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
 
-        expectedSchemaAndValuesByColumn.forEach(
-                schemaAndValueField -> schemaAndValueField.assertFor(content)
-        );
+        if (expectedSchemaAndValuesByColumn == null) {
+            assertThat(content).isNull();
+        }
+        else {
+            assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
+
+            expectedSchemaAndValuesByColumn.forEach(
+                    schemaAndValueField -> schemaAndValueField.assertFor(content)
+            );
+        }
     }
 
     protected void assertRecordOffsetAndSnapshotSource(SourceRecord record, boolean shouldBeSnapshot, boolean shouldBeLastSnapshotRecord) {
@@ -783,8 +791,8 @@ public abstract class AbstractRecordsProducerTest {
             }
             Schema schema = content.schema();
             Field field = schema.field(fieldName);
-            assertNotNull(fieldName + " not found in schema " + schema, field);
-            VerifyRecord.assertConnectSchemasAreEqual(field.name(), this.schema, field.schema());
+            assertNotNull(fieldName + " not found in schema " + SchemaUtil.asString(schema), field);
+            VerifyRecord.assertConnectSchemasAreEqual(field.name(), field.schema(), this.schema);
         }
     }
 

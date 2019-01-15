@@ -108,9 +108,16 @@ public final class TestHelper {
     /**
      * Executes a JDBC statement using the default jdbc config without autocommitting the connection
      *
-     * @param statement an array of statement
+     * @param statement A SQL statement
+     * @param furtherStatements Further SQL statement(s)
      */
-    public static void execute(String statement) {
+    public static void execute(String statement, String... furtherStatements) {
+        if (furtherStatements != null) {
+            for (String further : furtherStatements) {
+                statement = statement + further;
+            }
+        }
+
         try (PostgresConnection connection = create()) {
             connection.setAutoCommit(false);
             connection.executeWithoutCommitting(statement);

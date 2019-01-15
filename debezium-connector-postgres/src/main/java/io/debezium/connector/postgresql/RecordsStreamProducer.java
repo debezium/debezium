@@ -380,7 +380,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
     protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (oldRowData == null || oldRowData.length == 0) {
-            logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
+            logger.warn("no values found for table '{}' from delete message at '{}'; skipping record" , tableId, sourceInfo);
             return;
         }
         TableSchema tableSchema = schema().schemaFor(tableId);

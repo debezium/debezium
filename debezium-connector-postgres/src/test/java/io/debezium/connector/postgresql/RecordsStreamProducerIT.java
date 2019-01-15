@@ -91,39 +91,39 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer, blackHole);
 
         //numerical types
-        assertInsert(INSERT_NUMERIC_TYPES_STMT, schemasAndValuesForNumericType());
+        assertInsert(INSERT_NUMERIC_TYPES_STMT, 1, schemasAndValuesForNumericType());
 
         //numerical decimal types
         consumer.expects(1);
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN, schemasAndValuesForBigDecimalEncodedNumericTypes());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN, 1, schemasAndValuesForBigDecimalEncodedNumericTypes());
 
         // string types
         consumer.expects(1);
-        assertInsert(INSERT_STRING_TYPES_STMT, schemasAndValuesForStringTypes());
+        assertInsert(INSERT_STRING_TYPES_STMT, 1, schemasAndValuesForStringTypes());
 
         // monetary types
         consumer.expects(1);
-        assertInsert(INSERT_CASH_TYPES_STMT,  schemaAndValuesForMoneyTypes());
+        assertInsert(INSERT_CASH_TYPES_STMT, 1, schemaAndValuesForMoneyTypes());
 
         // bits and bytes
         consumer.expects(1);
-        assertInsert(INSERT_BIN_TYPES_STMT, schemaAndValuesForBinTypes());
+        assertInsert(INSERT_BIN_TYPES_STMT, 1, schemaAndValuesForBinTypes());
 
         //date and time
         consumer.expects(1);
-        assertInsert(INSERT_DATE_TIME_TYPES_STMT, schemaAndValuesForDateTimeTypes());
+        assertInsert(INSERT_DATE_TIME_TYPES_STMT, 1, schemaAndValuesForDateTimeTypes());
 
         // text
         consumer.expects(1);
-        assertInsert(INSERT_TEXT_TYPES_STMT, schemasAndValuesForTextTypes());
+        assertInsert(INSERT_TEXT_TYPES_STMT, 1, schemasAndValuesForTextTypes());
 
         // geom types
         consumer.expects(1);
-        assertInsert(INSERT_GEOM_TYPES_STMT, schemaAndValuesForGeomTypes());
+        assertInsert(INSERT_GEOM_TYPES_STMT, 1, schemaAndValuesForGeomTypes());
 
         // timezone range types
         consumer.expects(1);
-        assertInsert(INSERT_TSTZRANGE_TYPES_STMT, schemaAndValuesForTstzRangeTypes());
+        assertInsert(INSERT_TSTZRANGE_TYPES_STMT, 1, schemaAndValuesForTstzRangeTypes());
     }
 
     @Test
@@ -139,7 +139,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer, blackHole);
 
         // custom types + null value
-        assertInsert(INSERT_CUSTOM_TYPES_STMT, schemasAndValuesForCustomTypes());
+        assertInsert(INSERT_CUSTOM_TYPES_STMT, 1, schemasAndValuesForCustomTypes());
 
     }
 
@@ -166,7 +166,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // now do it for actual testing
         // postgis types
         consumer.expects(1);
-        assertInsert(INSERT_POSTGIS_TYPES_STMT, schemaAndValuesForPostgisTypes());
+        assertInsert(INSERT_POSTGIS_TYPES_STMT, 1, schemaAndValuesForPostgisTypes());
     }
 
     @Test(timeout = 30000)
@@ -192,7 +192,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // now do it for actual testing
         // postgis types
         consumer.expects(1);
-        assertInsert(INSERT_POSTGIS_ARRAY_TYPES_STMT, schemaAndValuesForPostgisArrayTypes());
+        assertInsert(INSERT_POSTGIS_ARRAY_TYPES_STMT, 1, schemaAndValuesForPostgisArrayTypes());
     }
 
     @Test
@@ -205,7 +205,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         recordsProducer.start(consumer, blackHole);
 
         // Quoted column name
-        assertInsert(INSERT_QUOTED_TYPES_STMT, schemasAndValuesForQuotedTypes());
+        assertInsert(INSERT_QUOTED_TYPES_STMT, 1, schemasAndValuesForQuotedTypes());
     }
 
     @Test
@@ -215,7 +215,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_ARRAY_TYPES_STMT, schemasAndValuesForArrayTypes());
+        assertInsert(INSERT_ARRAY_TYPES_STMT, 1, schemasAndValuesForArrayTypes());
     }
 
     @Test
@@ -254,7 +254,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, schemasAndValuesForArrayTypesWithNullValues());
+        assertInsert(INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, 1, schemasAndValuesForArrayTypesWithNullValues());
     }
 
     @Test
@@ -696,7 +696,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForDoubleEncodedNumericTypes());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, 1, schemasAndValuesForDoubleEncodedNumericTypes());
     }
 
     @Test
@@ -712,7 +712,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForStringEncodedNumericTypes());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, 1, schemasAndValuesForStringEncodedNumericTypes());
     }
 
     @Test
@@ -726,7 +726,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_STMT, schemaAndValueFieldForMapEncodedHStoreType());
+        assertInsert(INSERT_HSTORE_TYPE_STMT, 1, schemaAndValueFieldForMapEncodedHStoreType());
     }
 
     @Test
@@ -740,7 +740,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT, schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues());
+        assertInsert(INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT, 1, schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues());
     }
 
     @Test
@@ -754,7 +754,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer,blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues());
+        assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, 1, schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues());
     }
 
     @Test
@@ -768,7 +768,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters());
+        assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, 1, schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters());
     }
 
     @Test
@@ -782,7 +782,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_STMT, schemaAndValueFieldForJsonEncodedHStoreType());
+        assertInsert(INSERT_HSTORE_TYPE_STMT, 1, schemaAndValueFieldForJsonEncodedHStoreType());
     }
 
     @Test
@@ -796,7 +796,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT, schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues());
+        assertInsert(INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT, 1, schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues());
     }
 
     @Test
@@ -810,7 +810,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters());
+        assertInsert(INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT, 1, schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters());
     }
 
     @Test
@@ -824,7 +824,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues());
+        assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, 1, schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues());
     }
 
     @Test
@@ -885,7 +885,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_STRING_TYPES_STMT, schemasAndValuesForStringTypesWithSourceColumnTypeInfo());
+        assertInsert(INSERT_STRING_TYPES_STMT, 1, schemasAndValuesForStringTypesWithSourceColumnTypeInfo());
     }
 
     @Test
@@ -902,7 +902,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, schemasAndValuesForNumericTypesWithSourceColumnTypeInfo());
+        assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, 1, schemasAndValuesForNumericTypesWithSourceColumnTypeInfo());
     }
 
     @Test
@@ -1050,6 +1050,62 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         ), consumer.remove(), Envelope.FieldName.AFTER);
     }
 
+    @Test
+    @FixFor("DBZ-1029")
+    public void shouldReceiveChangesForTableWithoutPrimaryKey() throws Exception{
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_table;",
+                "CREATE TABLE test_table (id SERIAL, text TEXT);",
+                "ALTER TABLE test_table REPLICA IDENTITY FULL"
+        );
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        // INSERT
+        String statement = "INSERT INTO test_table (text) VALUES ('a');";
+        assertInsert(
+                statement,
+                Arrays.asList(
+                        new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1), // SERIAL is NOT NULL implicitly
+                        new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "a")
+                )
+        );
+
+        // UPDATE
+        consumer.expects(1);
+        executeAndWait("UPDATE test_table set text='b' WHERE id=1");
+        SourceRecord updatedRecord = consumer.remove();
+        VerifyRecord.isValidUpdate(updatedRecord);
+
+        List<SchemaAndValueField> expectedBefore = Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "a")
+        );
+        assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
+
+        List<SchemaAndValueField> expectedAfter = Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "b")
+        );
+        assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
+
+        // DELETE
+        consumer.expects(2);
+        executeAndWait("DELETE FROM test_table WHERE id=1");
+        SourceRecord deletedRecord = consumer.remove();
+        VerifyRecord.isValidDelete(deletedRecord);
+
+        expectedBefore = Arrays.asList(
+                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "b")
+        );
+        assertRecordSchemaAndValues(expectedBefore, deletedRecord, Envelope.FieldName.BEFORE);
+
+        expectedAfter = null;
+        assertRecordSchemaAndValues(expectedAfter, deletedRecord, Envelope.FieldName.AFTER);
+    }
+
     private void assertHeartBeatRecordInserted() {
         assertFalse("records not generated", consumer.isEmpty());
 
@@ -1076,17 +1132,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
-        assertInsert(statement, 1, expectedSchemaAndValuesByColumn);
+        assertInsert(statement, null, expectedSchemaAndValuesByColumn);
     }
 
-    private void assertInsert(String statement, int pk, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
+    private void assertInsert(String statement, Integer pk, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         TableId table = tableIdFromInsertStmt(statement);
         String expectedTopicName = table.schema() + "." + table.table();
         expectedTopicName = expectedTopicName.replaceAll("[ \"]", "_");
 
         try {
             executeAndWait(statement);
-            SourceRecord record = assertRecordInserted(expectedTopicName, PK_FIELD, pk);
+            SourceRecord record = assertRecordInserted(expectedTopicName, pk != null ? PK_FIELD : null, pk);
             assertRecordOffsetAndSnapshotSource(record, false, false);
             assertSourceInfo(record, "postgres", table.schema(), table.table());
             assertRecordSchemaAndValues(expectedSchemaAndValuesByColumn, record, Envelope.FieldName.AFTER);
@@ -1096,11 +1152,18 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
-    private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, int pk) throws InterruptedException {
+    private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
         assertFalse("records not generated", consumer.isEmpty());
         SourceRecord insertedRecord = consumer.remove();
         assertEquals(topicName(expectedTopicName), insertedRecord.topic());
-        VerifyRecord.isValidInsert(insertedRecord, pkColumn, pk);
+
+        if (pk != null) {
+            VerifyRecord.isValidInsert(insertedRecord, pkColumn, pk);
+        }
+        else {
+            VerifyRecord.isValidInsert(insertedRecord);
+        }
+
         return insertedRecord;
     }
 
