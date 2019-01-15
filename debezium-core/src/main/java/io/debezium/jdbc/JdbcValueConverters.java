@@ -23,7 +23,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -1159,10 +1158,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return null;
             }
             final Object schemaDefault = fieldDefn.schema().defaultValue();
-            if (schemaDefault != null) {
-                return schemaDefault;
-            }
-            return (fallback instanceof Supplier<?>) ? ((Supplier<?>)fallback).get() : fallback;
+            return schemaDefault != null ? schemaDefault : fallback;
         }
 
         final ResultReceiver r = ResultReceiver.create();

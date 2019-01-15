@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -580,10 +579,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
-            final PostgisGeometry empty = PostgisGeometry.createEmpty();
-            return io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid());
-        }, (r) -> {
+        final PostgisGeometry empty = PostgisGeometry.createEmpty();
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             try {
                 final Schema schema = fieldDefn.schema();
                 if (data instanceof byte[]) {
@@ -606,10 +603,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertGeography(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
-            final PostgisGeometry empty = PostgisGeometry.createEmpty();
-            return io.debezium.data.geometry.Geography.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid());
-        }, (r) -> {
+        final PostgisGeometry empty = PostgisGeometry.createEmpty();
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geography.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             final Schema schema = fieldDefn.schema();
             try {
                 if (data instanceof byte[]) {
@@ -654,7 +649,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * @return a value which will be used by Connect to represent the actual point value
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> Point.createValue(fieldDefn.schema(), 0, 0), (r) -> {
+        return convertValue(column, fieldDefn, data, Point.createValue(fieldDefn.schema(), 0, 0), (r) -> {
             final Schema schema = fieldDefn.schema();
             if (data instanceof PGpoint) {
                 PGpoint pgPoint = (PGpoint) data;
