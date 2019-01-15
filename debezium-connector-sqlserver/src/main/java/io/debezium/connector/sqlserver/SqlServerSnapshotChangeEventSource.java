@@ -74,7 +74,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected SnapshotContext prepare(ChangeEventSourceContext context) throws Exception {
-        return new SqlServerSnapshotContext(connectorConfig.getDatabaseName());
+        return new SqlServerSnapshotContext(jdbcConnection.getRealDatabaseName());
     }
 
     @Override
