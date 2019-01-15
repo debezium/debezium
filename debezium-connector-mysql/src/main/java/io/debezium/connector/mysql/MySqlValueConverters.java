@@ -538,7 +538,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data){
         final MySqlGeometry empty = MySqlGeometry.createEmpty();
-        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
@@ -563,7 +563,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      */
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
         final MySqlGeometry empty = MySqlGeometry.createEmpty();
-        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
