@@ -170,6 +170,10 @@ public class PostgresConnection extends JdbcConnection {
         }, map);
     }
 
+    /**
+     * Obtains the LSN to resume streaming from. On PG 9.5 there is no confirmed_flushed_lsn yet, so restart_lsn will be
+     * read instead. This may result in more records to be re-read after a restart.
+     */
     private Long parseConfirmedFlushLsn(String slotName, String pluginName, String database, ResultSet rs) {
         Long confirmedFlushedLsn = null;
 
@@ -182,7 +186,7 @@ public class PostgresConnection extends JdbcConnection {
                 confirmedFlushedLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
             }
             catch (SQLException e2) {
-                throw new ConnectException("Neither confirmed_flush_lsn or restart_lsn could be found");
+                throw new ConnectException("Neither confirmed_flush_lsn nor restart_lsn could be found");
             }
         }
 
