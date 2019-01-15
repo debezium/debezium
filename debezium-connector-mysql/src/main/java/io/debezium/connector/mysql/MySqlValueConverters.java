@@ -22,7 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
@@ -538,10 +537,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertPoint(Column column, Field fieldDefn, Object data){
-        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
-            final MySqlGeometry empty = MySqlGeometry.createEmpty();
-            return io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid());
-        }, (r) -> {
+        final MySqlGeometry empty = MySqlGeometry.createEmpty();
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
@@ -565,10 +562,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, (Supplier<?>)() -> {
-            final MySqlGeometry empty = MySqlGeometry.createEmpty();
-            return io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid());
-        }, (r) -> {
+        final MySqlGeometry empty = MySqlGeometry.createEmpty();
+        return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof byte[]) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
