@@ -30,6 +30,7 @@ Gunnar Morling
 Henryk Konsek
 Horia Chiorean
 Ian Axelrod
+Ilia Bogdanov
 Ivan Vucina
 Jiri Pechanec
 Jure Kajzer
