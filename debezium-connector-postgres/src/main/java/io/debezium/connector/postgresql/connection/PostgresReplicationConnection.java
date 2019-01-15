@@ -46,7 +46,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Integer statusUpdateIntervalMillis;
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
-    private final boolean includeUnchangedToastFlag;
 
     private long defaultStartingPos;
 
@@ -59,7 +58,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
      * @param typeRegistry registry with PostgreSQL types
-     * @param includeUnchangedToastFlag true if include-unchanged-toast = 0 should be added to plugin registration
      *
      * updates to the server
      */
@@ -68,8 +66,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
                                          Integer statusUpdateIntervalMillis,
-                                         TypeRegistry typeRegistry,
-                                         boolean includeUnchangedToastFlag) {
+                                         TypeRegistry typeRegistry) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -79,7 +76,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
         this.messageDecoder = plugin.messageDecoder();
         this.typeRegistry = typeRegistry;
-        this.includeUnchangedToastFlag = includeUnchangedToastFlag;
 
         try {
             initReplicationSlot();
@@ -191,19 +187,30 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
         PGReplicationStream s;
         try {
-            s = startPgReplicationStream(lsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
+            s = startPgReplicationStream(lsn,
+                    plugin.forceRds() ? x -> messageDecoder.optionsWithoutMetadata(x.withSlotOption("include-unchanged-toast", 0)) : x -> messageDecoder.optionsWithMetadata(x.withSlotOption("include-unchanged-toast", 0)));
             messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
-        } catch (PSQLException e) {
-            if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
-                // It is possible we are connecting to an old wal2json plug-in
-                LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
-                s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
-                messageDecoder.setContainsMetadata(false);
-            } else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
-                LOGGER.error("Cannot rewind to last processed WAL position", e);
-                throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
-            } else {
-                throw e;
+        }
+        catch (PSQLException e) {
+            LOGGER.debug("Could not register for streaming with include-unchanged-toast option, retrying without it", e);
+            try {
+                s = startPgReplicationStream(lsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
+                messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
+            }
+            catch (PSQLException ei) {
+                if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
+                    // It is possible we are connecting to an old wal2json plug-in
+                    LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
+                    s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
+                    messageDecoder.setContainsMetadata(false);
+                }
+                else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
+                    LOGGER.error("Cannot rewind to last processed WAL position", e);
+                    throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
+                }
+                else {
+                    throw ei;
+                }
             }
         }
         final PGReplicationStream stream = s;
@@ -293,9 +300,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName(slotName)
                 .withStartPosition(lsn);
-        if (includeUnchangedToastFlag) {
-            streamBuilder = streamBuilder.withSlotOption("include-unchanged-toast", 0);
-        }
         streamBuilder = configurator.apply(streamBuilder);
 
         if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
@@ -349,7 +353,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
         private TypeRegistry typeRegistry;
-        private boolean includeUnchangedToastFlag;
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -385,18 +388,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry, includeUnchangedToastFlag);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry);
         }
 
         @Override
         public Builder withTypeRegistry(TypeRegistry typeRegistry) {
             this.typeRegistry = typeRegistry;
-            return this;
-        }
-
-        @Override
-        public Builder withIncludeUnchangedToastFlag() {
-            this.includeUnchangedToastFlag = true;
             return this;
         }
     }
