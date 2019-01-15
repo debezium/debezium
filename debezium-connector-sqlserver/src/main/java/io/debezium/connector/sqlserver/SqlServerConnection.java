@@ -40,6 +40,8 @@ import io.debezium.util.BoundedConcurrentHashMap;
  */
 public class SqlServerConnection extends JdbcConnection {
 
+    private static final String GET_DATABASE_NAME = "SELECT db_name()";
+
     private static Logger LOGGER = LoggerFactory.getLogger(SqlServerConnection.class);
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
@@ -58,6 +60,8 @@ public class SqlServerConnection extends JdbcConnection {
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
             SQLServerDriver.class.getName(),
             SqlServerConnection.class.getClassLoader());
+
+    private volatile String realDatabaseName;
 
     private static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
@@ -244,7 +248,7 @@ public class SqlServerConnection extends JdbcConnection {
             while (rs.next()) {
                 changeTables.add(
                         new ChangeTable(
-                                new TableId(database(), rs.getString(1), rs.getString(2)),
+                                new TableId(getRealDatabaseName(), rs.getString(1), rs.getString(2)),
                                 rs.getString(3),
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
@@ -284,7 +288,7 @@ public class SqlServerConnection extends JdbcConnection {
 
         List<Column> columns = new ArrayList<>();
         try (ResultSet rs = metadata.getColumns(
-                database(),
+                getRealDatabaseName(),
                 changeTable.getSourceTableId().schema(),
                 changeTable.getSourceTableId().table(),
                 null)
@@ -308,7 +312,7 @@ public class SqlServerConnection extends JdbcConnection {
         final TableId changeTableId = changeTable.getChangeTableId();
 
         List<ColumnEditor> columnEditors = new ArrayList<>();
-        try (ResultSet rs = metadata.getColumns(database(), changeTableId.schema(), changeTableId.table(), null)) {
+        try (ResultSet rs = metadata.getColumns(getRealDatabaseName(), changeTableId.schema(), changeTableId.table(), null)) {
             while (rs.next()) {
                 readTableColumn(rs, changeTableId, null).ifPresent(columnEditors::add);
             }
@@ -341,5 +345,12 @@ public class SqlServerConnection extends JdbcConnection {
 
     public String getNameOfChangeTable(String captureName) {
         return captureName + "_CT";
+    }
+
+    public String getRealDatabaseName() throws SQLException {
+        if (realDatabaseName == null) {
+            realDatabaseName = queryAndMap(GET_DATABASE_NAME, singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
+        }
+        return realDatabaseName;
     }
 }
