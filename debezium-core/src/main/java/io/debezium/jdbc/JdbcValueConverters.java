@@ -1159,10 +1159,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return null;
             }
             final Object schemaDefault = fieldDefn.schema().defaultValue();
-            if (schemaDefault instanceof Supplier<?>) {
-                return ((Supplier<?>)schemaDefault).get();
+            if (schemaDefault != null) {
+                return schemaDefault;
             }
-            return schemaDefault != null ? schemaDefault : fallback;
+            return (fallback instanceof Supplier<?>) ? ((Supplier<?>)fallback).get() : fallback;
         }
 
         final ResultReceiver r = ResultReceiver.create();
