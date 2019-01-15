@@ -24,7 +24,7 @@ import io.debezium.util.Testing;
 public class TestHelper {
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
-    public static final String TEST_DATABASE = "testDB";
+    public static final String TEST_DATABASE = "testdb";
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
 
