@@ -311,33 +311,25 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) {
-                return null;
+        return convertValue(column, fieldDefn, data, BYTE_FALSE, (r) -> {
+            if (data instanceof Byte) {
+                r.deliver(data);
             }
-            else {
-                return BYTE_FALSE;
+            else if (data instanceof Number) {
+                Number value = (Number) data;
+                r.deliver(value.byteValue());
             }
-        }
-        if (data instanceof Byte) return data;
-        if (data instanceof Number) {
-            Number value = (Number) data;
-            return value.byteValue();
-        }
-        if (data instanceof Boolean) {
-            return NumberConversions.getByte((boolean) data);
-        }
-        if (data instanceof String) {
-            return Byte.parseByte((String) data);
-        }
-        return handleUnknownData(column, fieldDefn, data);
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getByte((boolean) data));
+            }
+            else if (data instanceof String) {
+                r.deliver(Byte.parseByte((String) data));
+            }
+        });
     }
 
     protected Object convertVariableScale(Column column, Field fieldDefn, Object data) {
-        data = convertNumeric(column, fieldDefn, data);
+        data = convertNumeric(column, fieldDefn, data); // provides default value
 
         if (data == null) {
             return null;
@@ -398,65 +390,53 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return NumberConversions.DOUBLE_FALSE;
-        }
-        if (data instanceof Number) {
-            // we expect to get back from the plugin a double value
-            return ((Number) data).doubleValue();
-        }
-        if (data instanceof INTERVALYM) {
-            final String interval = ((INTERVALYM) data).stringValue();
-            int sign = 1;
-            int start = 0;
-            if (interval.charAt(0) == '-') {
-                sign = -1;
-                start = 1;
+        return convertValue(column, fieldDefn, data, NumberConversions.DOUBLE_FALSE, (r) -> {
+            if (data instanceof Number) {
+                // we expect to get back from the plugin a double value
+                r.deliver(((Number) data).doubleValue());
             }
-            for (int i = 1; i < interval.length(); i++) {
-                if (interval.charAt(i) == '-') {
-                    final int year = sign * Integer.parseInt(interval.substring(start, i));
-                    final int month = sign * Integer.parseInt(interval.substring(i + 1, interval.length()));
-                    return MicroDuration.durationMicros(year, month, 0, 0,
-                            0, 0, MicroDuration.DAYS_PER_MONTH_AVG);
+            else if (data instanceof INTERVALYM) {
+                final String interval = ((INTERVALYM) data).stringValue();
+                int sign = 1;
+                int start = 0;
+                if (interval.charAt(0) == '-') {
+                    sign = -1;
+                    start = 1;
+                }
+                for (int i = 1; i < interval.length(); i++) {
+                    if (interval.charAt(i) == '-') {
+                        final int year = sign * Integer.parseInt(interval.substring(start, i));
+                        final int month = sign * Integer.parseInt(interval.substring(i + 1, interval.length()));
+                        r.deliver(MicroDuration.durationMicros(year, month, 0, 0,
+                                0, 0, MicroDuration.DAYS_PER_MONTH_AVG));
+                    }
                 }
             }
-        }
-        return handleUnknownData(column, fieldDefn, data);
+        });
     }
 
     protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
-        if (data == null && !fieldDefn.schema().isOptional()) {
-            data = fieldDefn.schema().defaultValue();
-        }
-        if (data == null) {
-            if (column.isOptional()) return null;
-            return NumberConversions.DOUBLE_FALSE;
-        }
-        if (data instanceof Number) {
-            // we expect to get back from the plugin a double value
-            return ((Number) data).doubleValue();
-        }
-        if (data instanceof INTERVALDS) {
-            final String interval = ((INTERVALDS) data).stringValue();
-            final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
-            if (m.matches()) {
-                final int sign = "-".equals(m.group(1)) ? -1 : 1;
-                return MicroDuration.durationMicros(
-                        0,
-                        0,
-                        sign * Integer.valueOf(m.group(2)),
-                        sign * Integer.valueOf(m.group(3)),
-                        sign * Integer.valueOf(m.group(4)),
-                        sign * Integer.valueOf(m.group(5)),
-                        sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
-                        MicroDuration.DAYS_PER_MONTH_AVG);
+        return convertValue(column, fieldDefn, data, NumberConversions.DOUBLE_FALSE, (r) -> {
+            if (data instanceof Number) {
+                // we expect to get back from the plugin a double value
+                r.deliver(((Number) data).doubleValue());
             }
-        }
-        return handleUnknownData(column, fieldDefn, data);
+            else if (data instanceof INTERVALDS) {
+                final String interval = ((INTERVALDS) data).stringValue();
+                final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
+                if (m.matches()) {
+                    final int sign = "-".equals(m.group(1)) ? -1 : 1;
+                    r.deliver(MicroDuration.durationMicros(
+                            0,
+                            0,
+                            sign * Integer.valueOf(m.group(2)),
+                            sign * Integer.valueOf(m.group(3)),
+                            sign * Integer.valueOf(m.group(4)),
+                            sign * Integer.valueOf(m.group(5)),
+                            sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
+                            MicroDuration.DAYS_PER_MONTH_AVG));
+                }
+            }
+        });
     }
 }
