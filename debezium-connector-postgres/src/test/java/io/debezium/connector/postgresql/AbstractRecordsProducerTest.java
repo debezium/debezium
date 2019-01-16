@@ -331,6 +331,7 @@ public abstract class AbstractRecordsProducerTest {
                                     SchemaBuilder.string().optional()
                                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
                                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
+                                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
                                         .build(),
                                     "\u017E\u0161"
                              ),
@@ -338,6 +339,7 @@ public abstract class AbstractRecordsProducerTest {
                                      SchemaBuilder.string().optional()
                                          .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR")
                                          .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2")
+                                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
                                          .build(),
                                      "bb"
                              ),
@@ -351,7 +353,7 @@ public abstract class AbstractRecordsProducerTest {
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericTypesWithSourceColumnTypeInfo() {
         return Arrays.asList(new SchemaAndValueField("d",
-                SchemaBuilder.string().optional()
+                SchemaBuilder.float64().optional()
                     .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                     .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
                     .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2")
@@ -359,9 +361,10 @@ public abstract class AbstractRecordsProducerTest {
                 1.1d
             ),
             new SchemaAndValueField("dzs",
-                SchemaBuilder.string().optional()
+                SchemaBuilder.float64().optional()
                     .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                     .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "4")
+                    .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
                     .build(),
                 10d
             ),
