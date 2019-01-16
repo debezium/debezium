@@ -11,7 +11,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -308,7 +310,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                 ResultSet rs = statement.executeQuery(selectStatement)) {
 
             Column[] columns = getColumnsForResultSet(table, rs);
-            final int numColumns = table.columns().size();
+            final int numColumns = columns.length;
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
 
@@ -318,9 +320,9 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                 }
 
                 rows++;
-                final Object[] row = new Object[numColumns];
+                final Map<String, Object> row = new HashMap<>(numColumns);
                 for (int i = 0; i < numColumns; i++) {
-                    row[i] = getColumnValue(rs, i + 1, columns[i]);
+                    row.put(columns[i].name(), getColumnValue(rs, i + 1, columns[i]));
                 }
 
                 if (logTimer.expired()) {
@@ -351,7 +353,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
+    protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Map<String, Object> row);
 
     /**
      * Returns the SELECT statement to be used for scanning the given table

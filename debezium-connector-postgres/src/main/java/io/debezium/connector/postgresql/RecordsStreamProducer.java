@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -252,18 +253,18 @@ public class RecordsStreamProducer extends RecordsProducer {
             ReplicationMessage.Operation operation = message.getOperation();
             switch (operation) {
                 case INSERT: {
-                    Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    Map<String, Object> row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
                     generateCreateRecord(tableId, row, consumer);
                     break;
                 }
                 case UPDATE: {
-                    Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
-                    Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
+                    Map<String, Object> newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    Map<String, Object> oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
                     generateUpdateRecord(tableId, oldRow, newRow, consumer);
                     break;
                 }
                 case DELETE: {
-                    Object[] row = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
+                    Map<String, Object> row = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
                     generateDeleteRecord(tableId, row, consumer);
                     break;
                 }
@@ -279,8 +280,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    protected void generateCreateRecord(TableId tableId, Object[] rowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
-        if (rowData == null || rowData.length == 0) {
+    protected void generateCreateRecord(TableId tableId, Map<String, Object> rowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
+        if (rowData == null || rowData.size() == 0) {
             logger.warn("no new values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
         }
@@ -306,9 +307,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         recordConsumer.accept(new ChangeEvent(record, lastCompletelyProcessedLsn));
     }
 
-    protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData,
+    protected void generateUpdateRecord(TableId tableId, Map<String, Object> oldRowData, Map<String, Object> newRowData,
                                         BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
-        if (newRowData == null || newRowData.length == 0) {
+        if (newRowData == null || newRowData.size() == 0) {
             logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
             return;
         }
@@ -319,7 +320,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         TableSchema tableSchema = schema().schemaFor(tableId);
         assert tableSchema != null;
 
-        if (oldRowData != null && oldRowData.length > 0) {
+        if (oldRowData != null && oldRowData.size() > 0) {
             oldKey = tableSchema.keyFromColumnData(oldRowData);
             oldKeySchema = tableSchema.keySchema();
             oldValue = tableSchema.valueFromColumnData(oldRowData);
@@ -378,8 +379,8 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    protected void generateDeleteRecord(TableId tableId, Object[] oldRowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
-        if (oldRowData == null || oldRowData.length == 0) {
+    protected void generateDeleteRecord(TableId tableId, Map<String, Object> oldRowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
+        if (oldRowData == null || oldRowData.size() == 0) {
             logger.warn("no values found for table '{}' from delete message at '{}'; skipping record" , tableId, sourceInfo);
             return;
         }
@@ -421,7 +422,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
+    private Map<String, Object> columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
             throws SQLException {
         if (columns == null || columns.isEmpty()) {
             return null;
@@ -445,7 +446,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         // based on the schema columns, create the values on the same position as the columns
         List<String> columnNames = table.columnNames();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
+        Map<String, Object> values = new HashMap<>(columns.size() < columnNames.size() ? columnNames.size() : columns.size());
 
         for (ReplicationMessage.Column column : columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
@@ -457,7 +458,10 @@ public class RecordsStreamProducer extends RecordsProducer {
                         column.getName());
                 continue;
             }
-            values[position] = column.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes());
+            values.put(
+                    columnName,
+                    column.getValue(this::typeResolverConnection, taskContext.config().includeUnknownDatatypes())
+            );
         }
 
         return values;

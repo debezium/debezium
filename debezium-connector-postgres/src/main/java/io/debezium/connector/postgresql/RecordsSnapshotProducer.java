@@ -314,13 +314,16 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         Table table = schema().tableFor(tableId);
         assert table != null;
         final int numColumns = table.columns().size();
-        final Object[] row = new Object[numColumns];
+        final Map<String, Object> row = new HashMap<>(numColumns);
         final ResultSetMetaData metaData = rs.getMetaData();
         while (rs.next()) {
             rowsCounter.incrementAndGet();
             sendCurrentRecord(consumer);
             for (int i = 0, j = 1; i != numColumns; ++i, ++j) {
-                row[i] = valueForColumn(rs, j, metaData);
+                row.put(
+                        table.columnNames().get(i),
+                        valueForColumn(rs, j, metaData)
+                );
             }
             generateReadRecord(tableId, row);
         }
@@ -366,8 +369,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         }
     }
 
-    protected void generateReadRecord(TableId tableId, Object[] rowData) {
-        if (rowData.length == 0) {
+    protected void generateReadRecord(TableId tableId, Map<String, Object> rowData) {
+        if (rowData.size() == 0) {
             return;
         }
         TableSchema tableSchema = schema().schemaFor(tableId);

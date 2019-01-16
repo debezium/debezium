@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Struct;
@@ -60,7 +61,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
 
     private void emitCreateRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
-        Object[] newColumnValues = getNewColumnValues();
+        Map<String, Object> newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
@@ -70,7 +71,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
 
     private void emitReadRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
-        Object[] newColumnValues = getNewColumnValues();
+        Map<String, Object> newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
@@ -80,8 +81,8 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
 
     private void emitUpdateRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
-        Object[] oldColumnValues = getOldColumnValues();
-        Object[] newColumnValues = getNewColumnValues();
+        Map<String, Object> oldColumnValues = getOldColumnValues();
+        Map<String, Object> newColumnValues = getNewColumnValues();
 
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
@@ -105,7 +106,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
     }
 
     private void emitDeleteRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
-        Object[] oldColumnValues = getOldColumnValues();
+        Map<String, Object> oldColumnValues = getOldColumnValues();
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
@@ -121,10 +122,10 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
     /**
      * Returns the old row state in case of an UPDATE or DELETE.
      */
-    protected abstract Object[] getOldColumnValues();
+    protected abstract Map<String, Object> getOldColumnValues();
 
     /**
      * Returns the new row state in case of a CREATE or READ.
      */
-    protected abstract Object[] getNewColumnValues();
+    protected abstract Map<String, Object> getNewColumnValues();
 }

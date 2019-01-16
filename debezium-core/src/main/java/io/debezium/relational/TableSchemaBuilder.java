@@ -5,12 +5,17 @@
  */
 package io.debezium.relational;
 
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
+
 import java.sql.Types;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -119,8 +124,8 @@ public class TableSchemaBuilder {
 
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
+        Function<Map<String, Object>, Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
+        Function<Map<String, Object>, Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
         return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
@@ -135,25 +140,22 @@ public class TableSchemaBuilder {
      * @param columns the column definitions for the table that defines the row; may not be null
      * @return the key-generating function, or null if there is no key schema
      */
-    protected Function<Object[], Object> createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
+    protected Function<Map<String, Object>, Object> createKeyGenerator(Schema schema, TableId columnSetName, List<Column> columns) {
         if (schema != null) {
-            int[] recordIndexes = indexesForColumns(columns);
-            Field[] fields = fieldsForColumns(schema, columns);
-            int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
+            Map<Column, Field> fields = fieldMapForColumns(schema, columns);
+            Map<Column, ValueConverter> converters = convertersForColumns(schema, columnSetName, columns, null, null);
             return (row) -> {
                 Struct result = new Struct(schema);
-                for (int i = 0; i != numFields; ++i) {
-                    Object value = row[recordIndexes[i]];
-                    ValueConverter converter = converters[i];
+                for (Column column : columns) {
+                    Object value = row.get(column.name());
+                    ValueConverter converter = converters.get(column);
                     if (converter != null) {
                         value = value == null ? value : converter.convert(value);
                         try {
-                            result.put(fields[i], value);
+                            result.put(fields.get(column), value);
                         } catch (DataException e) {
-                            Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert key value for '{}.{}' of type {} for row {}:",
-                                         columnSetName, col.name(), col.typeName(), row, e);
+                                         columnSetName, column.name(), column.typeName(), row, e);
                         }
                     }
                 }
@@ -175,30 +177,24 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the value-generating function, or null if there is no value schema
      */
-    protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
-                                                              Predicate<ColumnId> filter, ColumnMappers mappers) {
+    protected Function<Map<String, Object>, Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
+                                                                         Predicate<ColumnId> filter, ColumnMappers mappers) {
         if (schema != null) {
-            int[] recordIndexes = indexesForColumns(columns);
-            Field[] fields = fieldsForColumns(schema, columns);
-            int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, tableId, columns, filter, mappers);
+            List<Column> whitelistedColumns = filterColumns(columns, tableId, filter);
+            Map<Column, Field> fields = fieldMapForColumns(schema, whitelistedColumns);
+            Map<Column, ValueConverter> converters = convertersForColumns(schema, tableId, whitelistedColumns, filter, mappers);
             return (row) -> {
                 Struct result = new Struct(schema);
-                for (int i = 0; i != numFields; ++i) {
-                    Object value = row[recordIndexes[i]];
-                    ValueConverter converter = converters[i];
+                for (Column column : whitelistedColumns) {
+                    ValueConverter converter = converters.get(column);
                     if (converter != null) {
+                        Object value = row.get(column.name());
                         try {
                             value = converter.convert(value);
-                            result.put(fields[i], value);
-                        } catch (DataException|IllegalArgumentException e) {
-                            Column col = columns.get(i);
-                            LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
-                                         tableId, col.name(), col.typeName(), row, e);
+                            result.put(fields.get(column), value);
                         } catch (final Exception e) {
-                            Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
-                                         tableId, col.name(), col.typeName(), row, e);
+                                         tableId, column.name(), column.typeName(), row, e);
                         }
                     }
                 }
@@ -208,23 +204,19 @@ public class TableSchemaBuilder {
         return null;
     }
 
-    protected int[] indexesForColumns(List<Column> columns) {
-        int[] recordIndexes = new int[columns.size()];
-        AtomicInteger i = new AtomicInteger(0);
-        columns.forEach(column -> {
-            recordIndexes[i.getAndIncrement()] = column.position() - 1; // position is 1-based, indexes 0-based
-        });
-        return recordIndexes;
+    private List<Column> filterColumns(List<Column> columns, TableId tableId,
+            Predicate<ColumnId> filter) {
+        return filter == null
+                ? columns
+                : columns.stream()
+                        .filter(column -> filter.test(new ColumnId(tableId, column.name())))
+                        .collect(Collectors.toList());
     }
 
-    protected Field[] fieldsForColumns(Schema schema, List<Column> columns) {
-        Field[] fields = new Field[columns.size()];
-        AtomicInteger i = new AtomicInteger(0);
-        columns.forEach(column -> {
-            Field field = schema.field(column.name()); // may be null if the field is unused ...
-            fields[i.getAndIncrement()] = field;
-        });
-        return fields;
+    private Map<Column, Field> fieldMapForColumns(Schema schema, List<Column> columns) {
+        return columns.stream()
+            .filter(c -> schema.field(c.name()) != null)
+            .collect(toMap(identity(), column -> schema.field(column.name())));
     }
 
     /**
@@ -239,18 +231,12 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the converters for each column in the rows; never null
      */
-    protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
-                                                    Predicate<ColumnId> filter, ColumnMappers mappers) {
+    protected Map<Column, ValueConverter> convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
+                                                               Predicate<ColumnId> filter, ColumnMappers mappers) {
 
-        ValueConverter[] converters = new ValueConverter[columns.size()];
+        Map<Column, ValueConverter> converters = new HashMap<>(columns.size());
 
-        for (int i = 0; i < columns.size(); i++) {
-            Column column = columns.get(i);
-
-            if (filter != null && !filter.test(new ColumnId(tableId, column.name()))) {
-                continue;
-            }
-
+        for (Column column : columns) {
             ValueConverter converter = createValueConverterFor(column, schema.field(column.name()));
             converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
 
@@ -261,7 +247,7 @@ public class TableSchemaBuilder {
             }
 
             // may be null if no converter found
-            converters[i] = converter;
+            converters.put(column, converter);
         }
 
         return converters;

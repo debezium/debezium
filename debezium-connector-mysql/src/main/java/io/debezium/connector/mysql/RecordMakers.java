@@ -109,7 +109,8 @@ public class RecordMakers {
     public RecordsForTable forTable(long tableNumber, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
         Converter converter = convertersByTableNumber.get(tableNumber);
         if (converter == null) return null;
-        return new RecordsForTable(converter, includedColumns, consumer);
+        Table table = schema.tableFor(tableIdsByTableNumber.get(tableNumber));
+        return new RecordsForTable(table, converter, includedColumns, consumer);
     }
 
     /**
@@ -186,7 +187,7 @@ public class RecordMakers {
         Converter converter = new Converter() {
 
             @Override
-            public int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int read(SourceInfo source, Map<String, Object> row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                             BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 Object key = tableSchema.keyFromColumnData(row);
@@ -205,7 +206,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int insert(SourceInfo source, Map<String, Object> row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 Object key = tableSchema.keyFromColumnData(row);
@@ -224,7 +225,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns,
+            public int update(SourceInfo source, Map<String, Object> before, Map<String, Object> after, int rowNumber, int numberOfRows, BitSet includedColumns,
                               long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
@@ -271,7 +272,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int delete(SourceInfo source, Map<String, Object> row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
@@ -331,19 +332,19 @@ public class RecordMakers {
     }
 
     protected static interface Converter {
-        int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int read(SourceInfo source, Map<String, Object> row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                  BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int insert(SourceInfo source, Map<String, Object> row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int update(SourceInfo source, Map<String, Object> before, Map<String, Object> after, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int delete(SourceInfo source, Map<String, Object> row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
@@ -353,11 +354,13 @@ public class RecordMakers {
      * A {@link SourceRecord} factory for a specific table and consumer.
      */
     public final class RecordsForTable {
+        private final Table table;
         private final BitSet includedColumns;
         private final Converter converter;
         private final BlockingConsumer<SourceRecord> consumer;
 
-        protected RecordsForTable(Converter converter, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
+        protected RecordsForTable(Table table, Converter converter, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
+            this.table = table;
             this.converter = converter;
             this.includedColumns = includedColumns;
             this.consumer = consumer;
@@ -388,7 +391,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int read(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
-            return converter.read(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
+            return converter.read(source, convertToMap(row), rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
         /**
@@ -416,7 +419,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int create(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
-            return converter.insert(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
+            return converter.insert(source, convertToMap(row), rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
         /**
@@ -448,7 +451,7 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int update(Object[] before, Object[] after, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
-            return converter.update(source, before, after, rowNumber, numberOfRows, includedColumns, ts, consumer);
+            return converter.update(source, convertToMap(before), convertToMap(after), rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
         /**
@@ -476,7 +479,15 @@ public class RecordMakers {
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
         public int delete(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
-            return converter.delete(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
+            return converter.delete(source, convertToMap(row), rowNumber, numberOfRows, includedColumns, ts, consumer);
+        }
+
+        private Map<String, Object> convertToMap(Object[] row) {
+            Map<String, Object> result = new HashMap<>(row.length);
+            for (int i = 0; i < row.length; ++i) {
+                result.put(table.columnNames().get(i), row[i]);
+            }
+            return result;
         }
     }
 

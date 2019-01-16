@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -53,8 +54,8 @@ public class TableSchema implements DataCollectionSchema {
     private final Schema keySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
-    private final Function<Object[], Object> keyGenerator;
-    private final Function<Object[], Struct> valueGenerator;
+    private final Function<Map<String, Object>, Object> keyGenerator;
+    private final Function<Map<String, Object>, Struct> valueGenerator;
 
     /**
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
@@ -68,8 +69,8 @@ public class TableSchema implements DataCollectionSchema {
      * @param valueGenerator the function that converts a row into a single value object for Kafka Connect; may not be null but
      *            may return nulls
      */
-    public TableSchema(TableId id, Schema keySchema, Function<Object[], Object> keyGenerator,
-            Envelope envelopeSchema, Schema valueSchema, Function<Object[], Struct> valueGenerator) {
+    public TableSchema(TableId id, Schema keySchema, Function<Map<String, Object>, Object> keyGenerator,
+            Envelope envelopeSchema, Schema valueSchema, Function<Map<String, Object>, Struct> valueGenerator) {
         this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
@@ -120,7 +121,7 @@ public class TableSchema implements DataCollectionSchema {
      * @param columnData the column values for the table
      * @return the key, or null if the {@code columnData}
      */
-    public Object keyFromColumnData(Object[] columnData) {
+    public Object keyFromColumnData(Map<String, Object> columnData) {
         return columnData == null ? null : keyGenerator.apply(columnData);
     }
 
@@ -131,7 +132,7 @@ public class TableSchema implements DataCollectionSchema {
      * @param columnData the column values for the table
      * @return the value, or null if the {@code columnData}
      */
-    public Struct valueFromColumnData(Object[] columnData) {
+    public Struct valueFromColumnData(Map<String, Object> columnData) {
         return columnData == null ? null : valueGenerator.apply(columnData);
     }
 

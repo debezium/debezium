@@ -12,6 +12,8 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -27,7 +29,7 @@ public class TableSchemaBuilderTest {
 
     private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
-    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null };
+    private Map<String, Object> data;
     private Table table;
     private Column c1;
     private Column c2;
@@ -81,6 +83,14 @@ public class TableSchemaBuilderTest {
         c4 = table.columnWithName("C4");
         c5 = table.columnWithName("C5");
         c6 = table.columnWithName("C6");
+
+        data = new HashMap<>();
+        data.put("C1", "c1value");
+        data.put("C2", 3.142d);
+        data.put("C3", java.sql.Date.valueOf("2001-10-31"));
+        data.put("C4", 4);
+        data.put("C5", new byte[]{ 71, 117, 110, 110, 97, 114});
+        data.put("C6", null);
     }
 
     @Test
