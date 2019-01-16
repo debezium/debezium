@@ -1076,7 +1076,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait("UPDATE test_table set text='b' WHERE id=1");
         SourceRecord updatedRecord = consumer.remove();
-        VerifyRecord.isValidUpdate(updatedRecord);
+        VerifyRecord.isValidUpdate(updatedRecord, false);
 
         List<SchemaAndValueField> expectedBefore = Arrays.asList(
                 new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
@@ -1094,7 +1094,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(2);
         executeAndWait("DELETE FROM test_table WHERE id=1");
         SourceRecord deletedRecord = consumer.remove();
-        VerifyRecord.isValidDelete(deletedRecord);
+        VerifyRecord.isValidDelete(deletedRecord, false);
 
         expectedBefore = Arrays.asList(
                 new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
@@ -1161,7 +1161,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             VerifyRecord.isValidInsert(insertedRecord, pkColumn, pk);
         }
         else {
-            VerifyRecord.isValidInsert(insertedRecord);
+            VerifyRecord.isValidInsert(insertedRecord, false);
         }
 
         return insertedRecord;
