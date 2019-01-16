@@ -254,8 +254,7 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
             .withSlotOption("pretty-print", 1)
             .withSlotOption("write-in-chunks", 1)
             .withSlotOption("include-xids", 1)
-            .withSlotOption("include-timestamp", 1)
-            .withSlotOption("include-unchanged-toast", 0);
+            .withSlotOption("include-timestamp", 1);
     }
 
     @Override

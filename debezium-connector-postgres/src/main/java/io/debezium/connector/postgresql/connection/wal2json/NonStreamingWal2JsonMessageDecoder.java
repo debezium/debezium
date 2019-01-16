@@ -78,8 +78,7 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
             .withSlotOption("pretty-print", 1)
             .withSlotOption("write-in-chunks", 0)
             .withSlotOption("include-xids", 1)
-            .withSlotOption("include-timestamp", 1)
-            .withSlotOption("include-unchanged-toast", 0);
+            .withSlotOption("include-timestamp", 1);
     }
 
     @Override
