@@ -348,9 +348,11 @@ public final class EmbeddedEngine implements Runnable {
      */
     @ThreadSafe
     public static interface RecordCommitter {
+
         /**
          * Marks a single record as processed, must be called for each
-         * record, and is threadsafe
+         * record.
+         *
          * @param record the record to commit
          */
         void markProcessed(SourceRecord record) throws InterruptedException;
@@ -358,18 +360,15 @@ public final class EmbeddedEngine implements Runnable {
         /**
          * Marks a batch as finished, this may result in committing offsets/flushing
          * data.
-         *
+         * <p>
          * Should be called when a batch of records is finished being processed.
-         *
-         * Is threadsafe
          */
         void markBatchFinished();
-
     }
 
     /**
-     * An interface that interacts between lists of SourceRecords, committing
-     * and the EventQueue
+     * An interface that interacts between lists of source records, committing
+     * and the event queue
      */
     public static interface ChangeConsumer {
 
@@ -385,6 +384,7 @@ public final class EmbeddedEngine implements Runnable {
 
     private static ChangeConsumer buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
         return new ChangeConsumer() {
+
             /**
              * the default implementation that is compatible with the old Consumer api.
              *
@@ -774,6 +774,7 @@ public final class EmbeddedEngine implements Runnable {
                                 return offsetReader;
                             }
 
+                            @Override
                             public Map<String, String> configs() {
                                 // TODO Auto-generated method stub
                                 return null;
@@ -895,22 +896,17 @@ public final class EmbeddedEngine implements Runnable {
      * @return the new recordCommitter to be used for a given batch
      */
     protected RecordCommitter buildRecordCommitter(OffsetStorageWriter offsetWriter, SourceTask task, Duration commitTimeout) {
-        Object lock = this;
         return new RecordCommitter() {
             @Override
-            public void markProcessed(SourceRecord record) throws InterruptedException {
-                synchronized (lock) {
-                    task.commitRecord(record);
-                    recordsSinceLastCommit += 1;
-                    offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
-                }
+            public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
+                task.commitRecord(record);
+                recordsSinceLastCommit += 1;
+                offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
             }
 
             @Override
-            public void markBatchFinished() {
-                synchronized (lock) {
-                    maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeout, task);
-                }
+            public synchronized void markBatchFinished() {
+                maybeFlush(offsetWriter, offsetCommitPolicy, commitTimeout, task);
             }
         };
     }

@@ -5,6 +5,8 @@
  */
 package io.debezium.embedded;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -13,21 +15,20 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import io.debezium.util.LoggingContext;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.util.Collect;
+import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
 /**
@@ -93,6 +94,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1080")
     public void shouldWorkToUseCustomChangeConsumer() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
@@ -115,7 +117,8 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                     records.forEach((r) -> {
                         try {
                             committer.markProcessed(r);
-                        } catch (InterruptedException ex) {
+                        }
+                        catch (InterruptedException ex) {
                             Thread.interrupted();
                         }
                     });
