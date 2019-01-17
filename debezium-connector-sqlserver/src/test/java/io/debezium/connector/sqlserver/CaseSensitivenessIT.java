@@ -19,11 +19,12 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
- * Integration test to verify behaviour of detabase with and without case sensistive names.
+ * Integration test to verify behaviour of database with and without case sensitive names.
  *
  * @author Jiri Pechanec
  */
@@ -48,6 +49,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1051")
     public void caseInsensitiveDatabase() throws Exception {
         connection.execute(
                 "CREATE TABLE MyTableOne (Id int primary key, ColA varchar(30))",
@@ -58,6 +60,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1051")
     public void caseSensitiveDatabase() throws Exception {
         connection.execute(
                 "ALTER DATABASE testDB COLLATE Latin1_General_BIN",
