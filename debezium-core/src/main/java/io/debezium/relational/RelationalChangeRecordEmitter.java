@@ -100,7 +100,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
             receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
 
             envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
-            receiver.changeRecord(tableSchema, Operation.UPDATE, oldKey, envelope, offsetContext);
+            receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
         }
     }
 
