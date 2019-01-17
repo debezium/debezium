@@ -343,8 +343,8 @@ public final class EmbeddedEngine implements Runnable {
     }
 
     /**
-     * Interfaces with the maybeFlush and commitRecord APIs to allow
-     * the ChangeConsumer to specify when commits happen
+     * Contract passed to {@link ChangeConsumer}s, allowing them to commit single records as they have been processed
+     * and to signal that offsets may be flushed eventually.
      */
     @ThreadSafe
     public static interface RecordCommitter {
@@ -367,19 +367,18 @@ public final class EmbeddedEngine implements Runnable {
     }
 
     /**
-     * An interface that interacts between lists of source records, committing
-     * and the event queue
+     * A contract invoked by the embedded engine when it has received a batch of change records to be processed. Allows
+     * to process multiple records in one go, acknowledging their processing once that's done.
      */
     public static interface ChangeConsumer {
 
         /**
          * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(SourceRecord)}
-         * for each record and {@link RecordCommitter#markBatchFinished()} when this batch is finished
-         *
-         * @param committer the committer that indicates to the system that we are finished
+         * for each record and {@link RecordCommitter#markBatchFinished()} when this batch is finished.
          * @param records the records to be processed
+         * @param committer the committer that indicates to the system that we are finished
          */
-        void handleBatch(RecordCommitter committer, List<SourceRecord> records) throws Exception;
+        void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException;
     }
 
     private static ChangeConsumer buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
@@ -391,13 +390,13 @@ public final class EmbeddedEngine implements Runnable {
              * On every record, it calls the consumer, and then only marks the record
              * as processed when accept returns, additionally, it handles StopConnectorExceptions
              * and ensures that we all ways try and mark a batch as finished, even with exceptions
-             *
-             * @param committer the committer that indicates to the system that we are finished
              * @param records the records to be processed
+             * @param committer the committer that indicates to the system that we are finished
+             *
              * @throws Exception
              */
             @Override
-            public void handleBatch(RecordCommitter committer, List<SourceRecord> records) throws Exception {
+            public void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException {
                 try {
                     for (SourceRecord record : records) {
                         try {
@@ -816,7 +815,7 @@ public final class EmbeddedEngine implements Runnable {
                                     logger.debug("Received {} records from the task", changeRecords.size());
 
                                     try {
-                                        handler.handleBatch(committer, changeRecords);
+                                        handler.handleBatch(changeRecords, committer);
                                     }
                                     catch (StopConnectorException e) {
                                         break;
@@ -897,6 +896,7 @@ public final class EmbeddedEngine implements Runnable {
      */
     protected RecordCommitter buildRecordCommitter(OffsetStorageWriter offsetWriter, SourceTask task, Duration commitTimeout) {
         return new RecordCommitter() {
+
             @Override
             public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
                 task.commitRecord(record);

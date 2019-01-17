@@ -13,7 +13,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -108,20 +107,18 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         CountDownLatch firstLatch = new CountDownLatch(1);
         CountDownLatch allLatch = new CountDownLatch(6);
+
         // create an engine with our custom class
         engine = EmbeddedEngine.create()
                 .using(config)
-                .notifying((EmbeddedEngine.RecordCommitter committer, List<SourceRecord> records) -> {
+                .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
-                    records.forEach((r) -> {
-                        try {
-                            committer.markProcessed(r);
-                        }
-                        catch (InterruptedException ex) {
-                            Thread.interrupted();
-                        }
-                    });
+
+                    for (SourceRecord r : records) {
+                        committer.markProcessed(r);
+                    }
+
                     committer.markBatchFinished();
                     firstLatch.countDown();
                     for (int i = 0; i < groupCount; i++) {
@@ -130,7 +127,6 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 })
                 .using(this.getClass().getClassLoader())
                 .build();
-
 
         ExecutorService exec = Executors.newFixedThreadPool(1);
         exec.execute(() -> {
@@ -149,7 +145,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         allLatch.await(5000, TimeUnit.MILLISECONDS);
         assertThat(allLatch.getCount()).isEqualTo(0);
 
-        // Stop the connector ..
+        // Stop the connector ...
         stopConnector();
     }
 
