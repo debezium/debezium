@@ -181,9 +181,15 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
         logger.debug("Applying topic name transformation from {} to {}", oldTopic, newTopic);
 
-        final Struct oldKey = requireStruct(record.key(), "Updating schema");
-        final Schema newKeySchema = updateKeySchema(oldKey.schema(), newTopic);
-        final Struct newKey = updateKey(newKeySchema, oldKey, oldTopic);
+        Schema newKeySchema = null;
+        Struct newKey = null;
+
+        // Key could be null in the case of a table without a primary key
+        if (record.key() != null) {
+            final Struct oldKey = requireStruct(record.key(), "Updating schema");
+            newKeySchema = updateKeySchema(oldKey.schema(), newTopic);
+            newKey = updateKey(newKeySchema, oldKey, oldTopic);
+        }
 
         if (record.value() == null) {
             // Value will be null in the case of a delete event tombstone

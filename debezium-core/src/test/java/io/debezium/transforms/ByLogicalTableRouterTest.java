@@ -196,6 +196,30 @@ public class ByLogicalTableRouterTest {
         subject.configure(props);
     }
 
+    @Test
+    public void testKeyNullValue() {
+        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final Map<String, String> props = new HashMap<>();
+
+        props.put("topic.regex", "(.*)customers_shard(.*)");
+        props.put("topic.replacement", "$1customers_all_shards");
+        props.put("key.field.name", "shard_id");
+        props.put("key.field.regex", "(.*)customers_shard_(.*)");
+        props.put("key.field.replacement", "$2");
+        router.configure(props);
+
+        SourceRecord record1 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "mysql-server-1.inventory.customers_shard_1", null, null, null, null
+        );
+
+        SourceRecord transformed1 = router.apply(record1);
+        assertThat(transformed1).isNotNull();
+        assertThat(transformed1.topic()).isEqualTo("mysql-server-1.inventory.customers_all_shards");
+
+        assertThat(transformed1.keySchema()).isNull();
+        assertThat(transformed1.key()).isNull();
+    }
+
     // FIXME: This SMT can use more tests for more detailed coverage.
     // The creation of a DBZ-ish SourceRecord is required for each test
 }
