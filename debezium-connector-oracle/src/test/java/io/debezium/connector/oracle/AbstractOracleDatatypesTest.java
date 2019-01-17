@@ -48,7 +48,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     private static final Schema NUMBER_SCHEMA = Decimal.builder(0).optional().parameter(PRECISION_PARAMETER_KEY, "38").build();
 
     private static final String DDL_STRING = "create table debezium.type_string (" +
-            "  id int not null, " +
+            "  id numeric(9,0) not null, " +
             "  val_varchar varchar(1000), " +
             "  val_varchar2 varchar2(1000), " +
             "  val_nvarchar2 nvarchar2(1000), " +
@@ -58,7 +58,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             ")";
 
     private static final String DDL_FP = "create table debezium.type_fp (" +
-            "  id int not null, " +
+            "  id numeric(9,0) not null, " +
             "  val_bf binary_float, " +
             "  val_bd binary_double, " +
             "  val_f float, " +
@@ -73,7 +73,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             ")";
 
     private static final String DDL_INT = "create table debezium.type_int (" +
-            "  id int not null, " +
+            "  id numeric(9,0) not null, " +
             "  val_int int, " +
             "  val_integer integer, " +
             "  val_smallint smallint, " +
@@ -93,7 +93,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             ")";
 
     private static final String DDL_TIME = "create table debezium.type_time (" +
-            "  id int not null, " +
+            "  id numeric(9,0) not null, " +
             "  val_date date, " +
             "  val_ts timestamp, " +
             "  val_ts_precision2 timestamp(2), " +
@@ -225,10 +225,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(record);
+            VerifyRecord.isValidInsert(record, "ID", 1);
         }
         else {
-            VerifyRecord.isValidRead(record);
+            VerifyRecord.isValidRead(record, "ID", 1);
         }
 
         Struct after = (Struct) ((Struct)record.value()).get("after");
@@ -256,10 +256,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(record);
+            VerifyRecord.isValidInsert(record, "ID", 1);
         }
         else {
-            VerifyRecord.isValidRead(record);
+            VerifyRecord.isValidRead(record, "ID", 1);
         }
 
         Struct after = (Struct) ((Struct)record.value()).get("after");
@@ -287,10 +287,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(record);
+            VerifyRecord.isValidInsert(record, "ID", 1);
         }
         else {
-            VerifyRecord.isValidRead(record);
+            VerifyRecord.isValidRead(record, "ID", 1);
         }
 
         Struct after = (Struct) ((Struct)record.value()).get("after");
@@ -318,10 +318,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         // insert
         if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(record);
+            VerifyRecord.isValidInsert(record, "ID", 1);
         }
         else {
-            VerifyRecord.isValidRead(record);
+            VerifyRecord.isValidRead(record, "ID", 1);
         }
 
         Struct after = (Struct) ((Struct)record.value()).get("after");

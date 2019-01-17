@@ -7,7 +7,6 @@ package io.debezium.connector.oracle;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +55,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         TestHelper.dropTable(connection, "debezium.table3");
 
         String ddl = "create table debezium.table1 (" +
-                "  id int not null, " +
+                "  id numeric(9,0) not null, " +
                 "  name varchar2(1000), " +
                 "  primary key (id)" +
                 ")";
@@ -66,7 +65,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         connection.execute("ALTER TABLE debezium.table1 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
         ddl = "create table debezium.table2 (" +
-                "  id int not null, " +
+                "  id numeric(9,0) not null, " +
                 "  name varchar2(1000), " +
                 "  primary key (id)" +
                 ")";
@@ -98,7 +97,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         connection.execute("COMMIT");
 
         String ddl = "create table debezium.table3 (" +
-                "  id int not null, " +
+                "  id numeric(9, 0) not null, " +
                 "  name varchar2(1000), " +
                 "  primary key (id)" +
                 ")";
@@ -114,9 +113,9 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
         assertThat(testTableRecords).hasSize(1);
 
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
+        assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Text-1");
 
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
@@ -125,9 +124,9 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
         assertThat(testTableRecords).hasSize(1);
 
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
         after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(3));
+        assertThat(after.get("ID")).isEqualTo(3);
         assertThat(after.get("NAME")).isEqualTo("Text-3");
     }
 
@@ -150,7 +149,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         connection.execute("COMMIT");
 
         String ddl = "create table debezium.table3 (" +
-                "  id int not null, " +
+                "  id numeric(9,0) not null, " +
                 "  name varchar2(1000), " +
                 "  primary key (id)" +
                 ")";
@@ -166,9 +165,9 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE1");
         assertThat(testTableRecords).hasSize(1);
 
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
         Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(1));
+        assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Text-1");
 
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE2");
@@ -177,9 +176,9 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TABLE3");
         assertThat(testTableRecords).hasSize(1);
 
-        VerifyRecord.isValidInsert(testTableRecords.get(0));
+        VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
         after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
-        assertThat(after.get("ID")).isEqualTo(BigDecimal.valueOf(3));
+        assertThat(after.get("ID")).isEqualTo(3);
         assertThat(after.get("NAME")).isEqualTo("Text-3");
     }
 }
