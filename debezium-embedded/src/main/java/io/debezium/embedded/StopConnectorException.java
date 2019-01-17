@@ -5,14 +5,19 @@
  */
 package io.debezium.embedded;
 
+import java.util.function.Consumer;
+
 import org.apache.kafka.connect.errors.ConnectException;
 
 /**
- * An exception that is used to tell the connector to process the last source record and to then stop.
- * 
+ * An exception that is used to tell the connector to process the last source record and to then stop. When raised by
+ * {@link Consumer} implementations passed to {@link EmbeddedEngine.Builder#notifying(Consumer)}, this exception should
+ * only be raised after that consumer has safely processed the passed event.
+ *
  * @author Randall Hauch
  */
 public class StopConnectorException extends ConnectException {
+
     private static final long serialVersionUID = 1L;
 
     public StopConnectorException(String msg) {
