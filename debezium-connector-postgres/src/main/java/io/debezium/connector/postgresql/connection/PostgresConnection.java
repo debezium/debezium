@@ -85,7 +85,7 @@ public class PostgresConnection extends JdbcConnection {
             typeRegistry = initTypeRegistry(connection());
         }
         catch (SQLException e) {
-            throw new ConnectException("Could not intialize type registry", e);
+            throw new ConnectException("Could not initialize type registry", e);
         }
 
         databaseCharset = determineDatabaseCharset();
