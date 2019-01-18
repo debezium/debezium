@@ -85,7 +85,7 @@ public class TableSchemaBuilder {
         if (schemaPrefix == null) schemaPrefix = "";
         // Build the schemas ...
         final TableId tableId = table.id();
-        final String tableIdStr = tableId.toString();
+        final String tableIdStr = tableSchemaName(tableId);
         final String schemaNamePrefix = schemaPrefix + tableIdStr;
         LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Value"));
@@ -124,6 +124,20 @@ public class TableSchemaBuilder {
 
         // And the table schema ...
         return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+    }
+
+    private String tableSchemaName(TableId tableId) {
+        if (tableId.catalog() == null || tableId.catalog().length() == 0) {
+            if (tableId.schema() == null || tableId.schema().length() == 0) {
+                return tableId.table();
+            }
+            return tableId.schema() + "." + tableId.table();
+        }
+        if (tableId.schema() == null || tableId.schema().length() == 0) {
+            return tableId.catalog() + "." + tableId.table();
+        }
+        // When both catalog and schema is present then only schema is used
+        return tableId.schema() + "." + tableId.table();
     }
 
     /**
