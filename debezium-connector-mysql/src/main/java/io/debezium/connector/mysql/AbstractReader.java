@@ -307,24 +307,22 @@ public abstract class AbstractReader implements Reader {
      * queue is full.
      *
      * @param record the record to be enqueued
-     * @return true if the record was successfully enqueued, false if not.
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
-    protected boolean enqueueRecord(SourceRecord record) throws InterruptedException {
+    protected void enqueueRecord(SourceRecord record) throws InterruptedException {
         if (record != null) {
             if (acceptAndContinue.accepts(record)) {
                 if (logger.isTraceEnabled()) {
                     logger.trace("Enqueuing source record: {}", record);
                 }
                 this.records.put(record);
-                return true;
-            } else {
+            }
+            else {
                 // if we found a record we should not accept, we are done.
                 logger.info("predicate returned false; completing reader {}", this.name);
                 completeSuccessfully();
             }
         }
-        return false;
     }
 
     /**
