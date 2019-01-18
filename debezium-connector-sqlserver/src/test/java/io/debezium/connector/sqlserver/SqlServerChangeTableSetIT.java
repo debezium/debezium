@@ -105,7 +105,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tablec.Value")
+                        .name("server1.dbo.tablec.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colc", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -116,7 +116,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tabled.Value")
+                        .name("server1.dbo.tabled.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("cold", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -210,7 +210,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -238,7 +238,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -268,7 +268,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("newcol", Schema.INT32_SCHEMA)
@@ -293,7 +293,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("newcol", Schema.INT32_SCHEMA)
@@ -334,7 +334,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -363,7 +363,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .build()
             );
@@ -386,7 +386,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .build()
             );
@@ -459,7 +459,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .build()
             );
@@ -498,7 +498,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -529,7 +529,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -553,7 +553,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("newcolb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -593,7 +593,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
@@ -626,7 +626,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_INT32_SCHEMA)
                         .build()
@@ -654,7 +654,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                     (Struct)((Struct)record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB.dbo.tableb.Value")
+                        .name("server1.dbo.tableb.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("colb", Schema.OPTIONAL_INT32_SCHEMA)
                         .build()

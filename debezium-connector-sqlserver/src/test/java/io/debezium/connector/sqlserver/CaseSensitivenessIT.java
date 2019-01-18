@@ -86,7 +86,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
             (Struct)((Struct)record.value()).get("after"),
             SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB.dbo.MyTableOne.Value")
+                .name("server1.dbo.MyTableOne.Value")
                 .field("Id", Schema.INT32_SCHEMA)
                 .field("ColA", Schema.OPTIONAL_STRING_SCHEMA)
                 .build()
@@ -94,7 +94,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
         assertSchemaMatchesStruct(
             (Struct)record.key(),
             SchemaBuilder.struct()
-                .name("server1.testDB.dbo.MyTableOne.Key")
+                .name("server1.dbo.MyTableOne.Key")
                 .field("Id", Schema.INT32_SCHEMA)
                 .build()
         );
@@ -108,7 +108,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
             (Struct)((Struct)record.value()).get("after"),
             SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB.dbo.MyTableOne.Value")
+                .name("server1.dbo.MyTableOne.Value")
                 .field("Id", Schema.INT32_SCHEMA)
                 .field("ColA", Schema.OPTIONAL_STRING_SCHEMA)
                 .build()
@@ -116,7 +116,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
         assertSchemaMatchesStruct(
             (Struct)record.key(),
             SchemaBuilder.struct()
-                .name("server1.testDB.dbo.MyTableOne.Key")
+                .name("server1.dbo.MyTableOne.Key")
                 .field("Id", Schema.INT32_SCHEMA)
                 .build()
         );
@@ -134,7 +134,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
             (Struct)((Struct)record.value()).get("after"),
             SchemaBuilder.struct()
                 .optional()
-                .name("server1.testDB.dbo.MyTableTwo.Value")
+                .name("server1.dbo.MyTableTwo.Value")
                 .field("Id", Schema.INT32_SCHEMA)
                 .field("ColB", Schema.OPTIONAL_STRING_SCHEMA)
                 .build()
@@ -142,7 +142,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
         assertSchemaMatchesStruct(
             (Struct)record.key(),
             SchemaBuilder.struct()
-                .name("server1.testDB.dbo.MyTableTwo.Key")
+                .name("server1.dbo.MyTableTwo.Key")
                 .field("Id", Schema.INT32_SCHEMA)
                 .build()
         );
