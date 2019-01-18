@@ -325,6 +325,11 @@ public abstract class AbstractReader implements Reader {
         }
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
     /**
      * A predicate that returns true for all sourceRecords
      */
