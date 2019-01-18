@@ -27,6 +27,7 @@ import io.debezium.data.SchemaUtil;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.util.Strings;
 
 /**
  * Builder that constructs {@link TableSchema} instances for {@link Table} definitions.
@@ -126,18 +127,25 @@ public class TableSchemaBuilder {
         return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
     }
 
+    /**
+     * Returns the type schema name for the given table.
+     */
     private String tableSchemaName(TableId tableId) {
-        if (tableId.catalog() == null || tableId.catalog().length() == 0) {
-            if (tableId.schema() == null || tableId.schema().length() == 0) {
+        if (Strings.isNullOrEmpty(tableId.catalog())) {
+            if (Strings.isNullOrEmpty(tableId.schema())) {
                 return tableId.table();
             }
-            return tableId.schema() + "." + tableId.table();
+            else {
+                return tableId.schema() + "." + tableId.table();
+            }
         }
-        if (tableId.schema() == null || tableId.schema().length() == 0) {
+        else if (Strings.isNullOrEmpty(tableId.schema())) {
             return tableId.catalog() + "." + tableId.table();
         }
         // When both catalog and schema is present then only schema is used
-        return tableId.schema() + "." + tableId.table();
+        else {
+            return tableId.schema() + "." + tableId.table();
+        }
     }
 
     /**

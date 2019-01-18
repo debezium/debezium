@@ -19,6 +19,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.time.Date;
 import io.debezium.util.SchemaNameAdjuster;
@@ -104,6 +105,53 @@ public class TableSchemaBuilderTest {
         schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
                 .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1089")
+    public void shouldBuildCorrectSchemaNames() {
+        // table id with catalog and schema
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", table, null, null);
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("schema.table.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("schema.table.Value");
+
+        // only catalog
+        table = table.edit()
+                .tableId(new TableId("testDb", null, "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", table, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("testDb.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("testDb.testTable.Value");
+
+        // only schema
+        table = table.edit()
+                .tableId(new TableId(null, "testSchema", "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", table, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("testSchema.testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("testSchema.testTable.Value");
+
+        // neither catalog nor schema
+        table = table.edit()
+                .tableId(new TableId(null, null, "testTable"))
+                .create();
+
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+                .create(prefix, "sometopic", table, null, null);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.keySchema().name()).isEqualTo("testTable.Key");
+        assertThat(schema.valueSchema().name()).isEqualTo("testTable.Value");
     }
 
     @Test
