@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.AbstractReader.AcceptAllPredicate;
 import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
@@ -121,7 +122,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader("binlog", context);
+        reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
         reader.start();
@@ -183,7 +184,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader("binlog", context);
+        reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
         reader.start();
@@ -255,7 +256,7 @@ public class BinlogReaderIT {
         context.start();
         context.source().setBinlogStartPoint("",0L); // start from beginning
         context.initializeHistory();
-        reader = new BinlogReader("binlog", context);
+        reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
         // Start reading the binlog ...
         reader.start();

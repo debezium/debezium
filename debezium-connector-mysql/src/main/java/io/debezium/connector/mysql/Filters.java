@@ -75,12 +75,6 @@ public class Filters {
         return dbFilter;
     }
 
-    public Predicate<TableId> tableInDatabaseFilter() {
-        return tableId->{
-            return dbFilter.test(tableId.catalog());
-        };
-    }
-
     public Predicate<TableId> tableFilter() {
         return tableFilter;
     }
