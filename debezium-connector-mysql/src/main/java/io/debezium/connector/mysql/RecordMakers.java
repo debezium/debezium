@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,7 +47,7 @@ public class RecordMakers {
     private final Schema schemaChangeKeySchema;
     private final Schema schemaChangeValueSchema;
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
-    private Map<String, ?> restartOffset = null;
+    private final Map<String, ?> restartOffset;
 
     /**
      * Create the record makers using the supplied components.
@@ -54,12 +55,21 @@ public class RecordMakers {
      * @param schema the schema information about the MySQL server databases; may not be null
      * @param source the connector's source information; may not be null
      * @param topicSelector the selector for topic names; may not be null
+     * @param emitTombstoneOnDelete whether to emit a tombstone message upon DELETE events or not
+     * @param restartOffset the offset to publish with the {@link SourceInfo#RESTART_PREFIX} prefix
+     *                      as additional information in the offset. If the connector attempts to
+     *                      restart from an offset with information with this prefix it will
+     *                      create an offset from the prefixed information rather than restarting
+     *                      from the base offset.
+     * @see MySqlConnectorTask#getRestartOffset(Map)
      */
-    public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector, boolean emitTombstoneOnDelete) {
+    public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector,
+            boolean emitTombstoneOnDelete, Map<String, ?> restartOffset) {
         this.schema = schema;
         this.source = source;
         this.topicSelector = topicSelector;
         this.emitTombstoneOnDelete = emitTombstoneOnDelete;
+        this.restartOffset = restartOffset;
         this.schemaChangeKeySchema = SchemaBuilder.struct()
                                                   .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeKey"))
                                                   .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
@@ -70,24 +80,6 @@ public class RecordMakers {
                                                     .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
                                                     .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
                                                     .build();
-    }
-
-    /**
-     * @param restartOffset the offset to publish with the {@link SourceInfo#RESTART_PREFIX} prefix
-     *                      as additional information in the offset. If the connector attempts to
-     *                      restart from an offset with information with this prefix it will
-     *                      create an offset from the prefixed information rather than restarting
-     *                      from the base offset.
-     * @see RecordMakers#RecordMakers(MySqlSchema, SourceInfo, TopicSelector, boolean)
-     * @see MySqlConnectorTask#getRestartOffset(Map)
-     */
-    public RecordMakers(MySqlSchema schema,
-                        SourceInfo source,
-                        TopicSelector<TableId> topicSelector,
-                        boolean emitTombstoneOnDelete,
-                        Map<String, ?> restartOffset) {
-        this(schema, source, topicSelector, emitTombstoneOnDelete);
-        this.restartOffset = restartOffset;
     }
 
     /**
@@ -179,17 +171,16 @@ public class RecordMakers {
         });
     }
 
-    private Map<String, ?> getSourceRecordOffset(Map<String, ?> sourceOffset) {
+    private Map<String, ?> getSourceRecordOffset(Map<String, Object> sourceOffset) {
         if (restartOffset == null) {
             return sourceOffset;
         }
         else {
-            Map<String, Object> offset = (Map<String, Object>) sourceOffset;
-            for(String key : restartOffset.keySet()){
-                StringBuilder sb = new StringBuilder(SourceInfo.RESTART_PREFIX);
-                offset.put(sb.append(key).toString(), restartOffset.get(key));
+            for(Entry<String, ?> restartOffsetEntry : restartOffset.entrySet()){
+                sourceOffset.put(SourceInfo.RESTART_PREFIX + restartOffsetEntry.getKey(), restartOffsetEntry.getValue());
             }
-            return offset;
+
+            return sourceOffset;
         }
     }
 
@@ -227,7 +218,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
+                    Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
                     SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
@@ -246,7 +237,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
+                    Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
                     SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
@@ -269,7 +260,7 @@ public class RecordMakers {
                     Struct valueBefore = tableSchema.valueFromColumnData(before);
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
+                    Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
                     if (key != null && !Objects.equals(key, oldKey)) {
                         // The key has changed, so we need to deal with both the new key and old key.
@@ -313,7 +304,7 @@ public class RecordMakers {
                 if (value != null || key != null) {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
-                    Map<String, ?> offset = source.offsetForRow(rowNumber, numberOfRows);
+                    Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
                     Struct origin = source.struct(id);
                     // Send a delete message ...
                     SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,

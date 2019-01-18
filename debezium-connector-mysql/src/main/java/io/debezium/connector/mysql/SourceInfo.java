@@ -9,13 +9,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import io.debezium.config.Configuration;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
@@ -263,7 +263,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * @return a copy of the current offset; never null
      * @see #struct()
      */
-    public Map<String, ?> offsetForRow(int eventRowNumber, int totalNumberOfRows) {
+    public Map<String, Object> offsetForRow(int eventRowNumber, int totalNumberOfRows) {
         if (eventRowNumber < (totalNumberOfRows - 1)) {
             // This is not the last row, so our offset should record the next row to be used ...
             this.currentRowNumber = eventRowNumber;
@@ -277,7 +277,7 @@ final class SourceInfo extends AbstractSourceInfo {
         return offsetUsingPosition(totalNumberOfRows);
     }
 
-    private Map<String, ?> offsetUsingPosition(long rowsToSkip) {
+    private Map<String, Object> offsetUsingPosition(long rowsToSkip) {
         Map<String, Object> map = new HashMap<>();
         if (serverId != 0) map.put(SERVER_ID_KEY, serverId);
         if (restartGtidSet != null) {
@@ -697,7 +697,7 @@ final class SourceInfo extends AbstractSourceInfo {
         }
         return sb.toString();
     }
-    
+
     /**
      * Create a {@link Document} from the given offset.
      *

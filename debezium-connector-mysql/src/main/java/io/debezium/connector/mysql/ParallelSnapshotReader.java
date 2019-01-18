@@ -24,7 +24,7 @@ import io.debezium.config.Configuration;
  */
 public class ParallelSnapshotReader implements Reader {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParallelSnapshotReader.class);
 
     private final BinlogReader oldTablesReader;
     private final BinlogReader newTablesBinlogReader;
@@ -119,19 +119,19 @@ public class ParallelSnapshotReader implements Reader {
     public void stop() {
         if (running.compareAndSet(true, false)) {
             try {
-                logger.info("Stopping the {} reader", oldTablesReader.name());
+                LOGGER.info("Stopping the {} reader", oldTablesReader.name());
                 oldTablesReader.stop();
                 oldTablesReader.context.shutdown();
             } catch (Throwable t) {
-                logger.error("Unexpected error stopping the {} reader", oldTablesReader.name());
+                LOGGER.error("Unexpected error stopping the {} reader", oldTablesReader.name());
             }
 
             try {
-                logger.info("Stopping the {} reader", newTablesReader.name());
+                LOGGER.info("Stopping the {} reader", newTablesReader.name());
                 newTablesReader.stop();
                 oldTablesReader.context.shutdown();
             } catch (Throwable t) {
-                logger.error("Unexpected error stopping the {} reader", newTablesReader.name());
+                LOGGER.error("Unexpected error stopping the {} reader", newTablesReader.name());
             }
         }
     }
@@ -227,9 +227,8 @@ public class ParallelSnapshotReader implements Reader {
                 Long sourceRecordTimestamp = (Long) ourSourceRecord.sourceOffset().get(SourceInfo.TIMESTAMP_KEY);
                 Instant recordTimestamp = Instant.ofEpochSecond(sourceRecordTimestamp);
                 Instant now = Instant.now();
-                Duration durationToEnd =
-                    Duration.between(recordTimestamp,
-                        now);
+                Duration durationToEnd = Duration.between(recordTimestamp, now);
+
                 if (durationToEnd.compareTo(minHaltingDuration) <= 0) {
                     // we are within minHaltingDuration of the end
                     LOGGER.debug("Parallel halting predicate: this reader near end");

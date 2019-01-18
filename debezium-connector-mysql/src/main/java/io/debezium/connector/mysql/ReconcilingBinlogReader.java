@@ -36,7 +36,7 @@ public class ReconcilingBinlogReader implements Reader {
     private final BinlogReader binlogReaderB;
     private final BinlogReader unifiedReader;
 
-    private BinlogReader reconcilingReader;
+    private final BinlogReader reconcilingReader;
 
     private Boolean aReaderLeading = null;
 
@@ -127,7 +127,7 @@ public class ReconcilingBinlogReader implements Reader {
         if (completed.compareAndSet(false, true)){
             stop();
             setupUnifiedReader();
-            LOGGER.info("Completed Reconciliation of Parallel Readers.");
+            LOGGER.info("Completed reconciliation of parallel readers.");
 
             Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
