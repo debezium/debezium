@@ -17,6 +17,8 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
+
 /**
  * @author Mario Mueller
  */
@@ -197,6 +199,7 @@ public class ByLogicalTableRouterTest {
     }
 
     @Test
+    @FixFor("DBZ-1086")
     public void testKeyNullValue() {
         final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
         final Map<String, String> props = new HashMap<>();

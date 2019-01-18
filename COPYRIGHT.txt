@@ -32,6 +32,7 @@ Henryk Konsek
 Horia Chiorean
 Ian Axelrod
 Ilia Bogdanov
+Ivan Kovbas
 Ivan Vucina
 Jiri Pechanec
 Jure Kajzer
