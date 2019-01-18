@@ -80,7 +80,30 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
     <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <configuration>
+                            <relocations>
+                                <relocation>
+                                    <pattern>io.debezium</pattern>
+                                    <shadedPattern>shaded.io.debezium</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->
             <resource>

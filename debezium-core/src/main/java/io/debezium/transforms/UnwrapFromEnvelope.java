@@ -122,6 +122,9 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
     private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
+    private final ExtractField<R> extractTimeStampDelegate = new ExtractField.Value();
+    private final InsertField<R> insertTimeStampDelegate = new org.apache.kafka.connect.transforms.InsertField.Value();
+
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -160,6 +163,10 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         delegateConfig.put("static.field", DELETED_FIELD);
         delegateConfig.put("static.value", "false");
         updatedDelegate.configure(delegateConfig);
+
+        delegateConfig = new HashMap<>();
+        delegateConfig.put("field","ts_ms");
+        this.extractTimeStampDelegate.configure(delegateConfig);
     }
 
     @Override
@@ -187,20 +194,33 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                 case REWRITE:
                     logger.trace("Delete message {} requested to be rewritten", record.key());
                     final R oldRecord = beforeDelegate.apply(record);
-                    return removedDelegate.apply(oldRecord);
+                    R recordWithTimestamp = getRecordWithTimeStamp(record, oldRecord);
+                    return removedDelegate.apply(recordWithTimestamp);
                 default:
                     return newRecord;
             }
         } else {
             // Handling insert and update records
+            R recordWithTimestamp = getRecordWithTimeStamp(record, newRecord);
             switch (handleDeletes) {
                 case REWRITE:
                     logger.trace("Insert/update message {} requested to be rewritten", record.key());
-                    return updatedDelegate.apply(newRecord);
+                    return updatedDelegate.apply(recordWithTimestamp);
                 default:
-                    return newRecord;
+                    return recordWithTimestamp;
             }
         }
+    }
+
+    private R getRecordWithTimeStamp(R record, R newRecord) {
+        R timestamp2 = this.extractTimeStampDelegate.apply(record);
+        Long ts_ms = (Long)timestamp2.value();
+        System.out.println("ts_ms " + ts_ms);
+        Map<String, String> delegateConfig = new HashMap();
+        delegateConfig.put("static.field", "ts_ms");
+        delegateConfig.put("static.value", ts_ms+"");
+        this.insertTimeStampDelegate.configure(delegateConfig);
+        return this.insertTimeStampDelegate.apply(newRecord);
     }
 
     @Override
