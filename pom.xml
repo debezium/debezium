@@ -72,6 +72,7 @@
         <version.mysql.binlog>0.16.1</version.mysql.binlog>
         <version.mongo.server>3.6</version.mongo.server>
         <version.mongo.driver>3.9.0</version.mongo.driver>
+        <version.sqlserver.driver>6.4.0.jre8</version.sqlserver.driver>
 
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
@@ -122,6 +123,7 @@
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
         <module>debezium-connector-mongodb</module>
+        <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
     </modules>
 
@@ -270,6 +272,13 @@
                 <groupId>org.mongodb</groupId>
                 <artifactId>mongodb-driver</artifactId>
                 <version>${version.mongo.driver}</version>
+            </dependency>
+
+            <!-- SQL Server driver -->
+            <dependency>
+                <groupId>com.microsoft.sqlserver</groupId>
+                <artifactId>mssql-jdbc</artifactId>
+                <version>${version.sqlserver.driver}</version>
             </dependency>
 
             <!-- Logging -->
