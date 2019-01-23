@@ -24,7 +24,6 @@
     <properties>
         <!-- Databases -->
         <version.oracle.driver>12.1.0.2</version.oracle.driver>
-        <version.sqlserver.driver>6.4.0.jre8</version.sqlserver.driver>
 
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
@@ -32,13 +31,6 @@
 
     <dependencyManagement>
         <dependencies>
-           <!--SQL Server -->
-            <dependency>
-                <groupId>com.microsoft.sqlserver</groupId>
-                <artifactId>mssql-jdbc</artifactId>
-                <version>${version.sqlserver.driver}</version>
-            </dependency>
-
             <!-- Debezium artifacts -->
             <dependency>
                 <groupId>io.debezium</groupId>
@@ -80,7 +72,6 @@
     </dependencyManagement>
 
     <modules>
-        <module>debezium-connector-sqlserver</module>
     </modules>
 
     <build>
