@@ -26,8 +26,8 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
 
-    public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext) {
-        super(taskContext, "binlog");
+    public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name) {
+        super(taskContext, name);
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
         this.schema = taskContext.dbSchema();
