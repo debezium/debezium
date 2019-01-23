@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import static io.debezium.connector.mysql.SourceInfo.BINLOG_FILENAME_OFFSET_KEY;
 import static io.debezium.connector.mysql.SourceInfo.BINLOG_POSITION_OFFSET_KEY;
+import static io.debezium.connector.mysql.SourceInfo.GTID_SET_KEY;
 
 import java.util.List;
 import java.util.Map;
@@ -143,6 +144,7 @@ public class ReconcilingBinlogReader implements Reader {
             reconcilingReader.getLastOffset() == null ?
                 getLeadingReader().getLastOffset() :
                 reconcilingReader.getLastOffset();
+        unifiedReader.context.source().setCompletedGtidSet((String)keyedOffset.get(GTID_SET_KEY));
         unifiedReader.context.source()
             .setBinlogStartPoint((String) keyedOffset.get(BINLOG_FILENAME_OFFSET_KEY),
                                  (Long) keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));
