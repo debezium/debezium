@@ -30,8 +30,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.connector.sqlserver.util.SourceRecordAssert;
 import io.debezium.data.SchemaAndValueField;
+import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
@@ -252,7 +252,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         final SourceRecord record = consumeRecord();
-        
+
         Assertions.assertThat(record.topic()).startsWith("__debezium-heartbeat");
     }
 
