@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -23,9 +24,11 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
@@ -135,7 +138,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         final ChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new ChangeTablePointer(tables[i], resultSets[i]);
+                            changeTables[i] = new ChangeTablePointer(schema, tables[i], resultSets[i]);
                             changeTables[i].next();
                         }
 
@@ -307,12 +310,15 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      */
     private static class ChangeTablePointer {
 
+        private final SqlServerDatabaseSchema schema;
         private final ChangeTable changeTable;
         private final ResultSet resultSet;
         private boolean completed = false;
         private TxLogPosition currentChangePosition;
+        private ResultSetMapper<Object[]> resultSetMapper = null;
 
-        public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) {
+        public ChangeTablePointer(SqlServerDatabaseSchema schema, ChangeTable changeTable, ResultSet resultSet) {
+            this.schema = schema;
             this.changeTable = changeTable;
             this.resultSet = resultSet;
         }
@@ -330,12 +336,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         public Object[] getData() throws SQLException {
-            final int dataColumnCount = resultSet.getMetaData().getColumnCount() - (COL_DATA - 1);
-            final Object[] data = new Object[dataColumnCount];
-            for (int i = 0; i < dataColumnCount; i++) {
-                data[i] = resultSet.getObject(COL_DATA + i);
+            if (resultSetMapper == null) {
+                resultSetMapper = createResultSetMapper(schema.tableFor(this.changeTable.getSourceTableId()));
             }
-            return data;
+            return resultSetMapper.apply(resultSet);
         }
 
         public boolean next() throws SQLException {
@@ -360,6 +364,72 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         public String toString() {
             return "ChangeTablePointer [changeTable=" + changeTable + ", resultSet=" + resultSet + ", completed="
                     + completed + ", currentChangePosition=" + currentChangePosition + "]";
+        }
+
+        /**
+         * Internally each row is represented as an array of objects, where the order of values
+         * corresponds to the order of columns (fields) in the table schema. However, when capture
+         * instance contains only a subset of original's table column, in order to preserve the
+         * aforementioned order of values in array, raw database results have to be adjusted
+         * accordingly.
+         *
+         * @param table original table
+         * @return a mapper which adjusts order of values in case the capture instance contains only
+         * a subset of columns
+         */
+        private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
+            final List<String> sourceTableColumns = table.columnNames();
+            final List<String> resultColumns = getResultColumnNames();
+            final int sourceColumnCount = sourceTableColumns.size();
+            final int resultColumnCount = resultColumns.size();
+
+            if (sourceTableColumns.equals(resultColumns)) {
+                return resultSet -> {
+                    final Object[] data = new Object[sourceColumnCount];
+                    for (int i = 0; i < sourceColumnCount; i++) {
+                        data[i] = resultSet.getObject(COL_DATA + i);
+                    }
+                    return data;
+                };
+            }
+            else {
+                final IndicesMapping indicesMapping = new IndicesMapping(sourceTableColumns, resultColumns);
+                return resultSet -> {
+                    final Object[] data = new Object[sourceColumnCount];
+                    for (int i = 0; i < resultColumnCount; i++) {
+                        int index = indicesMapping.getSourceTableColumnIndex(i);
+                        data[index] = resultSet.getObject(COL_DATA + i);
+                    }
+                    return data;
+                };
+            }
+        }
+
+        private List<String> getResultColumnNames() throws SQLException {
+            final int columnCount = resultSet.getMetaData().getColumnCount() - (COL_DATA - 1);
+            final List<String> columns = new ArrayList<>(columnCount);
+            for (int i = 0; i < columnCount; ++i) {
+                columns.add(resultSet.getMetaData().getColumnName(COL_DATA + i));
+            }
+            return columns;
+        }
+
+        private class IndicesMapping {
+
+            private final Map<Integer, Integer> mapping;
+
+            IndicesMapping(List<String> sourceTableColumns, List<String> captureInstanceColumns) {
+                this.mapping = new HashMap<>(sourceTableColumns.size());
+
+                for (int i = 0; i < captureInstanceColumns.size(); ++i) {
+                    mapping.put(i, sourceTableColumns.indexOf(captureInstanceColumns.get(i)));
+                }
+
+            }
+
+            int getSourceTableColumnIndex(int resultCaptureInstanceColumnIndex) {
+                return mapping.get(resultCaptureInstanceColumnIndex);
+            }
         }
     }
 }
