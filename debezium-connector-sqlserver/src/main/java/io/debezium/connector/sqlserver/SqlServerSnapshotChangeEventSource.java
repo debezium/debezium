@@ -96,7 +96,11 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
-        if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
+        if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_UNCOMMITTED) {
+            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            LOGGER.info("Schema locking was disabled in connector configuration");
+        }
+        else if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
             // Snapshot transaction isolation level has already been set.
             LOGGER.info("Schema locking was disabled in connector configuration");
         }
@@ -127,7 +131,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     @Override
     protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
         // Exclusive mode: locks should be kept until the end of transaction.
-        // snapshot mode: no locks have been acquired.
+        // read_uncommitted mode; snapshot mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
             jdbcConnection.connection().rollback(((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint);
         }

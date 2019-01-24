@@ -94,6 +94,11 @@ public class SnapshotIT extends AbstractConnectorTest {
         takeSnapshot(SnapshotIsolationMode.REPEATABLE_READ);
     }
 
+    @Test
+    public void takeSnapshotInReadUncommittedMode() throws Exception {
+        takeSnapshot(SnapshotIsolationMode.READ_UNCOMMITTED);
+    }
+
     private void takeSnapshot(SnapshotIsolationMode lockingMode) throws Exception {
         final Configuration config = TestHelper.defaultConfig()
             .with(SNAPSHOT_ISOLATION_MODE.name(), lockingMode.getValue())
