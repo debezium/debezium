@@ -16,6 +16,7 @@ import io.debezium.relational.TableId;
  *
  */
 public class ChangeTable {
+
     private static final String CDC_SCHEMA = "cdc";
 
     /**
@@ -90,7 +91,7 @@ public class ChangeTable {
 
     @Override
     public String toString() {
-        return "ChangeTable [captureInstance=" + captureInstance + ", sourceTableId=" + sourceTableId
+        return "Capture instance \"" + captureInstance + "\" [sourceTableId=" + sourceTableId
                 + ", changeTableId=" + changeTableId + ", startLsn=" + startLsn + ", changeTableObjectId="
                 + changeTableObjectId + ", stopLsn=" + stopLsn + "]";
     }
