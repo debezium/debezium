@@ -282,7 +282,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         for (int i = 0; !connection.getMaxLsn().isAvailable(); i++) {
             if (i == 30) {
-                org.junit.Assert.fail("Initial changes not writtent to CDC structures");
+                org.junit.Assert.fail("Initial changes not written to CDC structures");
             }
             Testing.debug("Waiting for initial changes to be propagated to CDC structures");
             Thread.sleep(1000);

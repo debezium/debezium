@@ -134,7 +134,12 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
-        ctx.offset = new SqlServerOffsetContext(connectorConfig.getLogicalName(), TxLogPosition.valueOf(jdbcConnection.getMaxLsn()), false, false);
+        ctx.offset = new SqlServerOffsetContext(
+                connectorConfig.getLogicalName(),
+                TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
+                false,
+                false
+        );
     }
 
     @Override
