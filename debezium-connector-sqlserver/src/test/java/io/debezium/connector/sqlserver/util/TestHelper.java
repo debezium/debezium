@@ -10,6 +10,9 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
@@ -22,6 +25,7 @@ import io.debezium.util.Testing;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class TestHelper {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
@@ -106,6 +110,7 @@ public class TestHelper {
             enableDbCdc(connection, "testDB");
         }
         catch (SQLException e) {
+            LOGGER.error("Error while initiating test database", e);
             throw new IllegalStateException("Error while initiating test database", e);
         }
     }
