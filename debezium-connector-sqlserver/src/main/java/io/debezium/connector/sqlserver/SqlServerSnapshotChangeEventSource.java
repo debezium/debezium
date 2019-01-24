@@ -181,6 +181,12 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected void complete() {
+        try {
+            // Revert to default transaction isolation level (read committed).
+            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to set transaction isolation level.", e);
+        }
     }
 
     @Override
