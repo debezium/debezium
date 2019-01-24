@@ -16,7 +16,7 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  *
  */
-public class Lsn implements Comparable<Lsn> {
+public class Lsn implements Comparable<Lsn>, Nullable {
     private static final String NULL_STRING = "NULL";
 
     public static final Lsn NULL = new Lsn(null); 
@@ -40,6 +40,7 @@ public class Lsn implements Comparable<Lsn> {
     /**
      * @return true if this is a real LSN or false it it is {@code NULL}
      */
+    @Override
     public boolean isAvailable() {
         return binary != null;
     }
