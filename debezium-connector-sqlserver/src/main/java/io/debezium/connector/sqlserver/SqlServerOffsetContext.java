@@ -25,11 +25,12 @@ public class SqlServerOffsetContext implements OffsetContext {
     private final Map<String, String> partition;
     private boolean snapshotCompleted;
 
-    public SqlServerOffsetContext(String serverName, Lsn lsn, boolean snapshot, boolean snapshotCompleted) {
+    public SqlServerOffsetContext(String serverName, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
         sourceInfo = new SourceInfo(serverName);
 
-        sourceInfo.setChangeLsn(lsn);
+        sourceInfo.setCommitLsn(position.getCommitLsn());
+        sourceInfo.setChangeLsn(position.getInTxLsn());
         sourceInfoSchema = sourceInfo.schema();
 
         this.snapshotCompleted = snapshotCompleted;
@@ -52,11 +53,15 @@ public class SqlServerOffsetContext implements OffsetContext {
             return Collect.hashMapOf(
                     SourceInfo.SNAPSHOT_KEY, true,
                     SNAPSHOT_COMPLETED_KEY, snapshotCompleted,
-                    SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn().toString()
+                    SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString()
             );
         }
         else {
-            return Collections.singletonMap(SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn().toString());
+            return Collect.hashMapOf(
+                    SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
+                    SourceInfo.CHANGE_LSN_KEY,
+                        sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString()
+            );
         }
     }
 
@@ -70,16 +75,13 @@ public class SqlServerOffsetContext implements OffsetContext {
         return sourceInfo.struct();
     }
 
-    public void setChangeLsn(Lsn lsn) {
-        sourceInfo.setChangeLsn(lsn);
+    public TxLogPosition getChangePosition() {
+        return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn());
     }
 
-    public Lsn getChangeLsn() {
-        return sourceInfo.getChangeLsn() == null ? Lsn.NULL : sourceInfo.getChangeLsn();
-    }
-
-    public void setCommitLsn(Lsn lsn) {
-        sourceInfo.setCommitLsn(lsn);
+    public void setChangePosition(TxLogPosition position) {
+        sourceInfo.setCommitLsn(position.getCommitLsn());
+        sourceInfo.setChangeLsn(position.getInTxLsn());
     }
 
     public void setSourceTime(Instant instant) {
@@ -122,11 +124,12 @@ public class SqlServerOffsetContext implements OffsetContext {
 
         @Override
         public OffsetContext load(Map<String, ?> offset) {
-            final Lsn lsn = Lsn.valueOf((String)offset.get(SourceInfo.CHANGE_LSN_KEY));
+            final Lsn changeLsn = Lsn.valueOf((String)offset.get(SourceInfo.CHANGE_LSN_KEY));
+            final Lsn commitLsn = Lsn.valueOf((String)offset.get(SourceInfo.COMMIT_LSN_KEY));
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            return new SqlServerOffsetContext(logicalName, lsn, snapshot, snapshotCompleted);
+            return new SqlServerOffsetContext(logicalName, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted);
         }
     }
 

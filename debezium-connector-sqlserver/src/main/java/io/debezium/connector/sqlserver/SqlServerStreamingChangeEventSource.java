@@ -74,10 +74,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         try {
             final AtomicReference<ChangeTable[]> tablesSlot = new AtomicReference<ChangeTable[]>(getCdcTablesToQuery());
 
-            final Lsn lastProcessedLsnOnStart = offsetContext.getChangeLsn();
-            LOGGER.info("Last LSN recorded in offsets is {}", lastProcessedLsnOnStart);
+            final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
+            LOGGER.info("Last Position recorded in offsets is {}", lastProcessedPositionOnStart);
 
-            Lsn lastProcessedLsn = offsetContext.getChangeLsn();
+            TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
             while (context.isRunning()) {
                 final Lsn currentMaxLsn = connection.getMaxLsn();
 
@@ -89,15 +89,15 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     continue;
                 }
                 // There is no change in the database
-                if (currentMaxLsn.equals(lastProcessedLsn)) {
+                if (currentMaxLsn.equals(lastProcessedPosition.getCommitLsn())) {
                     LOGGER.debug("No change in the database");
                     metronome.pause();
                     continue;
                 }
 
                 // Reading interval is inclusive so we need to move LSN forward
-                final Lsn fromLsn = lastProcessedLsn.isAvailable() ? connection.incrementLsn(lastProcessedLsn)
-                        : lastProcessedLsn;
+                final Lsn fromLsn = lastProcessedPosition.getCommitLsn().isAvailable() ? connection.incrementLsn(lastProcessedPosition.getCommitLsn())
+                        : lastProcessedPosition.getCommitLsn();
 
                 while (!schemaChangeCheckpoints.isEmpty()) {
                     migrateTable(schemaChangeCheckpoints);
@@ -139,31 +139,29 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 break;
                             }
 
-                            if (!tableWithSmallestLsn.getRowLsn().isAvailable()) {
+                            if (!(tableWithSmallestLsn.getChangePosition().isAvailable() && tableWithSmallestLsn.getChangePosition().getInTxLsn().isAvailable())) {
                                 LOGGER.error("Skipping change {} as its LSN is NULL which is not expected", tableWithSmallestLsn);
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
-                            if (tableWithSmallestLsn.getRowLsn().compareTo(lastProcessedLsnOnStart) <= 0) {
-                                LOGGER.info("Skipping change {} as its LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn, lastProcessedLsnOnStart);
+                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) <= 0) {
+                                LOGGER.info("Skipping change {} as its position is smaller than the last recorded position {}", tableWithSmallestLsn, lastProcessedPositionOnStart);
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
                             if (tableWithSmallestLsn.getChangeTable().getStopLsn().isAvailable() &&
-                                    tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getRowLsn()) <= 0) {
-                                LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn, tableWithSmallestLsn.getRowLsn());
+                                    tableWithSmallestLsn.getChangeTable().getStopLsn().compareTo(tableWithSmallestLsn.getChangePosition().getCommitLsn()) <= 0) {
+                                LOGGER.debug("Skipping table change {} as its stop LSN is smaller than the last recorded LSN {}", tableWithSmallestLsn, tableWithSmallestLsn.getChangePosition());
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
                             if (!schemaChangeCheckpoints.isEmpty()) {
-                                if (tableWithSmallestLsn.getRowLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) >= 0) {
+                                if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) >= 0) {
                                     migrateTable(schemaChangeCheckpoints);
                                 }
                             }
                             final TableId tableId = tableWithSmallestLsn.getChangeTable().getSourceTableId();
-                            final Lsn commitLsn = tableWithSmallestLsn.getCommitLsn();
-                            final Lsn rowLsn = tableWithSmallestLsn.getRowLsn();
                             final int operation = tableWithSmallestLsn.getOperation();
                             final Object[] data = tableWithSmallestLsn.getData();
 
@@ -172,14 +170,13 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             // it was updated
                             if (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) {
                                 if (!tableWithSmallestLsn.next() || tableWithSmallestLsn.getOperation() != SqlServerChangeRecordEmitter.OP_UPDATE_AFTER) {
-                                    throw new IllegalStateException("The update before event at " + rowLsn + " for table " + tableId + " was not followed by after event.\n Please report this as a bug together with a events around given LSN.");
+                                    throw new IllegalStateException("The update before event at " + tableWithSmallestLsn.getChangePosition() + " for table " + tableId + " was not followed by after event.\n Please report this as a bug together with a events around given LSN.");
                                 }
                             }
                             final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableWithSmallestLsn.getData() : null;
 
-                            offsetContext.setChangeLsn(rowLsn);
-                            offsetContext.setCommitLsn(commitLsn);
-                            offsetContext.setSourceTime(connection.timestampOfLsn(commitLsn));
+                            offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition());
+                            offsetContext.setSourceTime(connection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn()));
 
                             dispatcher
                                     .dispatchDataChangeEvent(
@@ -196,7 +193,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             tableWithSmallestLsn.next();
                         }
                     });
-                    lastProcessedLsn = currentMaxLsn;
+                    lastProcessedPosition = TxLogPosition.valueOf(currentMaxLsn);
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     connection.rollback();
                 }
@@ -298,7 +295,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         private final ChangeTable changeTable;
         private final ResultSet resultSet;
         private boolean completed = false;
-        private Lsn currentChangeLsn;
+        private TxLogPosition currentChangePosition;
 
         public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) {
             this.changeTable = changeTable;
@@ -309,12 +306,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             return changeTable;
         }
 
-        public Lsn getCommitLsn() throws SQLException {
-            return Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN));
-        }
-
-        public Lsn getRowLsn() throws SQLException {
-            return currentChangeLsn;
+        public TxLogPosition getChangePosition() throws SQLException {
+            return currentChangePosition;
         }
 
         public int getOperation() throws SQLException {
@@ -332,7 +325,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
         public boolean next() throws SQLException {
             completed = !resultSet.next();
-            currentChangeLsn = completed ? Lsn.NULL : Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN));
+            currentChangePosition = completed ? TxLogPosition.NULL : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
             if (completed) {
                 LOGGER.trace("Closing result set of change tables for table {}", changeTable);
                 resultSet.close();
@@ -345,13 +338,13 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
 
         public int compareTo(ChangeTablePointer o) throws SQLException {
-            return getRowLsn().compareTo(o.getRowLsn());
+            return getChangePosition().compareTo(o.getChangePosition());
         }
 
         @Override
         public String toString() {
             return "ChangeTablePointer [changeTable=" + changeTable + ", resultSet=" + resultSet + ", completed="
-                    + completed + ", currentChangeLsn=" + currentChangeLsn + "]";
+                    + completed + ", currentChangePosition=" + currentChangePosition + "]";
         }
     }
 }

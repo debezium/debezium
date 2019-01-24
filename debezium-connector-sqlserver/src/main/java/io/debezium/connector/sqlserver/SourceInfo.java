@@ -110,10 +110,10 @@ public class SourceInfo extends AbstractSourceInfo {
                 .put(LOG_TIMESTAMP_KEY, sourceTime == null ? null : sourceTime.toEpochMilli())
                 .put(SNAPSHOT_KEY, snapshot);
 
-        if (changeLsn.isAvailable()) {
+        if (changeLsn != null && changeLsn.isAvailable()) {
             ret.put(CHANGE_LSN_KEY, changeLsn.toString());
         }
-        if (commitLsn != null) {
+        if (commitLsn != null && commitLsn.isAvailable()) {
             ret.put(COMMIT_LSN_KEY, commitLsn.toString());
         }
         return ret;
