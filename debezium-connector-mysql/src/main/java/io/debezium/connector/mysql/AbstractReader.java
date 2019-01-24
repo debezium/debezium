@@ -36,6 +36,7 @@ import io.debezium.util.Threads.Timer;
 public abstract class AbstractReader implements Reader {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
     private final String name;
     protected final MySqlTaskContext context;
     protected final MySqlJdbcContext connectionContext;
@@ -310,7 +311,7 @@ public abstract class AbstractReader implements Reader {
      * @throws InterruptedException if interrupted while waiting for the queue to have room for this record
      */
     protected void enqueueRecord(SourceRecord record) throws InterruptedException {
-        if (record != null) {
+        if (record != null && running.get()) {
             if (acceptAndContinue.accepts(record)) {
                 if (logger.isTraceEnabled()) {
                     logger.trace("Enqueuing source record: {}", record);
