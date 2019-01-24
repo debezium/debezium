@@ -4,11 +4,6 @@ cache:
   - $HOME/.m2/repository
 
 env:
-  - MAVEN_CLI: '"clean install -pl debezium-connector-mysql -am -Passembly"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-mysql -am -Passembly,parser-legacy"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-postgres -am -Passembly"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-postgres -am -Passembly,wal2json-decoder"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-mongodb -am -Passembly"'
   - MAVEN_CLI: '"clean install -pl debezium-connector-sqlserver -am -Passembly"'
 
 sudo: required

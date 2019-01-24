@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -52,6 +53,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tablea");
         TestHelper.enableTableCdc(connection, "tableb");
 
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }
@@ -363,6 +365,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tableb")
                 .build();
 
+        Testing.Print.enable();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 

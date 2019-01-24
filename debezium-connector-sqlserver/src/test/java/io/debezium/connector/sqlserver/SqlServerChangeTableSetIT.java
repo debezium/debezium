@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -42,6 +43,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tablea");
         TestHelper.enableTableCdc(connection, "tableb");
 
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }

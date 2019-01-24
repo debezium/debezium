@@ -355,7 +355,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
         int recordsConsumed = 0;
-        final int BREAK_AFTER_NULLS = 3;
+        final int BREAK_AFTER_NULLS = 6;
         int nullReturn = 0;
         while (recordsConsumed < numberOfRecords) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);

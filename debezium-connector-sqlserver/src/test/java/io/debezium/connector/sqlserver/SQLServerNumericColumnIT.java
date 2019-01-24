@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -56,6 +57,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "tablec");
         TestHelper.enableTableCdc(connection, "tabled");
 
+        setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
     }

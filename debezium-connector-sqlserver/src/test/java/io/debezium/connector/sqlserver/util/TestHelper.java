@@ -181,6 +181,13 @@ public class TestHelper {
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
         connection.execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
+        try {
+            Thread.sleep(5000);
+        }
+        catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -196,6 +203,13 @@ public class TestHelper {
         Objects.requireNonNull(captureName);
         String enableCdcForTableStmt = String.format(ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, tableName, captureName);
         connection.execute(enableCdcForTableStmt);
+        try {
+            Thread.sleep(5000);
+        }
+        catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -209,5 +223,9 @@ public class TestHelper {
         Objects.requireNonNull(name);
         String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         connection.execute(disableCdcForTableStmt);
+    }
+
+    public static int defaultMessageConsumerPollTimeout() {
+        return 120;
     }
 }
