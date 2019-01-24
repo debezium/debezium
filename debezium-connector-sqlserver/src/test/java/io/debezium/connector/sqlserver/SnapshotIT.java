@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_LOCKING_MODE;
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SNAPSHOT_ISOLATION_MODE;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
@@ -27,7 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotLockingMode;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
@@ -81,22 +81,22 @@ public class SnapshotIT extends AbstractConnectorTest {
 
     @Test
     public void takeSnapshotInExclusiveMode() throws Exception {
-        takeSnapshot(SnapshotLockingMode.EXCLUSIVE);
+        takeSnapshot(SnapshotIsolationMode.EXCLUSIVE);
     }
 
     @Test
     public void takeSnapshotInSnapshotMode() throws Exception {
-        takeSnapshot(SnapshotLockingMode.SNAPSHOT);
+        takeSnapshot(SnapshotIsolationMode.SNAPSHOT);
     }
 
     @Test
     public void takeSnapshotInRepeatableReadMode() throws Exception {
-        takeSnapshot(SnapshotLockingMode.REPEATABLE_READ);
+        takeSnapshot(SnapshotIsolationMode.REPEATABLE_READ);
     }
 
-    private void takeSnapshot(SnapshotLockingMode lockingMode) throws Exception {
+    private void takeSnapshot(SnapshotIsolationMode lockingMode) throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-            .with(SNAPSHOT_LOCKING_MODE.name(), lockingMode.getValue())
+            .with(SNAPSHOT_ISOLATION_MODE.name(), lockingMode.getValue())
             .build();
 
         start(SqlServerConnector.class, config);
