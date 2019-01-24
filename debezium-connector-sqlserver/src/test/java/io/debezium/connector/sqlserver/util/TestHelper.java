@@ -25,6 +25,7 @@ import io.debezium.util.Testing;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class TestHelper {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();

@@ -15,6 +15,7 @@ package io.debezium.connector.sqlserver;
  *
  */
 public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
+
     public static final TxLogPosition NULL = new TxLogPosition(null, null);
     private final Lsn commitLsn;
     private final Lsn inTxLsn;

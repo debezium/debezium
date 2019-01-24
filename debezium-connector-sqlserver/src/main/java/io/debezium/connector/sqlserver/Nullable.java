@@ -6,7 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 /**
- * 
+ *
  * @author Jiri Pechanec
  *
  */

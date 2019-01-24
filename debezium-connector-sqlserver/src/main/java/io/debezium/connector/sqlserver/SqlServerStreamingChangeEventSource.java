@@ -75,7 +75,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final AtomicReference<ChangeTable[]> tablesSlot = new AtomicReference<ChangeTable[]>(getCdcTablesToQuery());
 
             final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
-            LOGGER.info("Last Position recorded in offsets is {}", lastProcessedPositionOnStart);
+            LOGGER.info("Last position recorded in offsets is {}", lastProcessedPositionOnStart);
 
             TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
             while (context.isRunning()) {
