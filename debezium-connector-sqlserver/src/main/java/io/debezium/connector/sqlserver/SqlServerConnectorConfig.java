@@ -127,10 +127,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         SNAPSHOT("snapshot"),
 
         /**
-         * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
-         * set to schema_only or schema_only_recovery.
+         * This mode uses REPEATABLE READ isolation level.  This mode will avoid taking any table
+         * locks during the snapshot process, except schema snapshot phase where exclusive table
+         * locks are acquired for a short period.  Since phantom reads can occur, it does not fully
+         * guarantee consistency.
          */
-        NONE("none");
+        REPEATABLE_READ("repeatable_read");
 
         private final String value;
 
@@ -205,12 +207,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
-            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.REPEATABLE_READ)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Controls how long the connector locks the montiored tables for snapshot execution. The default is '" + SnapshotLockingMode.NONE.getValue() + "', "
-                + "which means that the connector does not hold any locks for all monitored tables."
-                + "Using a value of '" + SnapshotLockingMode.EXCLUSIVE.getValue() + "' ensures that the connector holds the exlusive lock (and thus prevents any reads and updates) for all monitored tables.");
+            .withDescription("Controls how long the connector locks the monitored tables for snapshot execution. The default is '" + SnapshotLockingMode.REPEATABLE_READ.getValue() + "', "
+                    + "which means that the connector hold locks for all monitored tables only during schema snapshot."
+                    + "Using a value of '" + SnapshotLockingMode.EXCLUSIVE.getValue() + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all monitored tables. "
+                    + "When '" + SnapshotLockingMode.SNAPSHOT.getValue() + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held.");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.

@@ -90,8 +90,8 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void takeSnapshotInNoneMode() throws Exception {
-        takeSnapshot(SnapshotLockingMode.NONE);
+    public void takeSnapshotInRepeatableReadMode() throws Exception {
+        takeSnapshot(SnapshotLockingMode.REPEATABLE_READ);
     }
 
     private void takeSnapshot(SnapshotLockingMode lockingMode) throws Exception {

@@ -96,16 +96,16 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
-        if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.NONE) {
-            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-            ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+        if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.SNAPSHOT) {
+            // Snapshot transaction isolation level has already been set.
             LOGGER.info("Schema locking was disabled in connector configuration");
         }
-        else if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.EXCLUSIVE) {
-            LOGGER.info("Executing schema locking");
-
+        else if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.EXCLUSIVE
+                || connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.REPEATABLE_READ) {
+            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
+            LOGGER.info("Executing schema locking");
             try (Statement statement = jdbcConnection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
                 for (TableId tableId : snapshotContext.capturedTables) {
                     if (!sourceContext.isRunning()) {
@@ -119,9 +119,6 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
                 }
             }
         }
-        else if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.SNAPSHOT) {
-            ((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
-        }
         else {
             throw new IllegalStateException("Unknown locking mode specified.");
         }
@@ -129,7 +126,11 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
-        jdbcConnection.connection().rollback(((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint);
+        // Exclusive mode: locks should be kept until the end of transaction.
+        // snapshot mode: no locks have been acquired.
+        if (connectorConfig.getSnapshotLockingMode() == SnapshotLockingMode.REPEATABLE_READ) {
+            jdbcConnection.connection().rollback(((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint);
+        }
     }
 
     @Override
