@@ -255,7 +255,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 }
                 currentTable.setStopLsn(futureTable.getStartLsn());
                 tables.add(futureTable);
-                LOGGER.info("Multiple capture instances {} and {} present for the same table", currentTable, futureTable);
+                LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
             if (schema.tableFor(currentTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
