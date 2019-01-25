@@ -82,6 +82,11 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
     }
 
     @Override
+    public ChainedLogicalStreamBuilder tryOnceOptions(ChainedLogicalStreamBuilder builder) {
+        return builder.withSlotOption("include-unchanged-toast", 0);
+    }
+
+    @Override
     public void setContainsMetadata(boolean containsMetadata) {
         this.containsMetadata = containsMetadata;
     }

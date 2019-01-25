@@ -30,7 +30,7 @@ public interface MessageDecoder {
      * @param processor - message processing on arrival
      * @param typeRegistry - registry with known types
      */
-    void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException;
+    void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException;
 
     /**
      * Allows MessageDecoder to configure options with which the replication stream is started.
@@ -40,7 +40,7 @@ public interface MessageDecoder {
      * @param builder
      * @return the builder instance
      */
-    ChainedLogicalStreamBuilder optionsWithMetadata(final ChainedLogicalStreamBuilder builder);
+    ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder);
 
     /**
      * Allows MessageDecoder to configure options with which the replication stream is started.
@@ -50,7 +50,17 @@ public interface MessageDecoder {
      * @param builder
      * @return the builder instance
      */
-    ChainedLogicalStreamBuilder optionsWithoutMetadata(final ChainedLogicalStreamBuilder builder);
+    ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder);
+
+    /**
+     * Allows a message decoder to configure optional options that might or might not be present on the server-side LD
+     * plug-in. So these options will be tried once, and that causes an exception, the connection will be built without
+     * them.
+     *
+     * @param builder the builder to modify
+     * @return the amended builder instance
+     */
+    ChainedLogicalStreamBuilder tryOnceOptions(ChainedLogicalStreamBuilder builder);
 
     /**
      * Signals to this decoder whether messages contain type metadata or not.
