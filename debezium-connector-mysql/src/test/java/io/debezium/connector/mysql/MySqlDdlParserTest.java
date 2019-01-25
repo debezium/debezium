@@ -89,7 +89,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId(null, null, "foo"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).containsExactly("c1", "c2");
+        assertThat(foo.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(foo.primaryKeyColumnNames()).isEmpty();
         assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
         assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
@@ -106,7 +106,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId("my", null, "foo"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).containsExactly("c1", "c2");
+        assertThat(foo.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(foo.primaryKeyColumnNames()).containsExactly("c1");
         assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
         assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
@@ -129,7 +129,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId(null, null, "shop"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).containsExactly("id", "version", "name", "owner", "phone_number");
+        assertThat(foo.retrieveColumnNames()).containsExactly("id", "version", "name", "owner", "phone_number");
         assertThat(foo.primaryKeyColumnNames()).containsExactly("id", "name");
         assertColumn(foo, "id", "BIGINT", Types.BIGINT, 20, -1, false, true, true);
         assertColumn(foo, "version", "BIGINT", Types.BIGINT, 20, -1, false, false, false);
@@ -199,7 +199,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId(null, null, "user"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).contains("Host", "User", "Select_priv");
+        assertThat(foo.retrieveColumnNames()).contains("Host", "User", "Select_priv");
         assertColumn(foo, "Host", "CHAR BINARY", Types.BINARY, 60, -1, false, false, false);
 
         parser.parse("DROP TABLE user", tables);
@@ -216,7 +216,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId(null, null, "foo"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).containsExactly("c1", "c2");
+        assertThat(foo.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(foo.primaryKeyColumnNames()).isEmpty();
         assertColumn(foo, "c1", "BIGINT SIGNED", Types.BIGINT, -1, -1, false, false, false);
         assertColumn(foo, "c2", "INT UNSIGNED", Types.INTEGER, -1, -1, false, false, false);
@@ -229,7 +229,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.retrieveColumnNames()).containsExactly("col1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
 
@@ -238,7 +238,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(2);
         Table t2 = tables.forTable(new TableId(null, null, "t2"));
         assertThat(t2).isNotNull();
-        assertThat(t2.columnNames()).containsExactly("col1");
+        assertThat(t2.retrieveColumnNames()).containsExactly("col1");
         assertThat(t2.primaryKeyColumnNames()).isEmpty();
         assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
 
@@ -247,7 +247,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(3);
         Table t3 = tables.forTable(new TableId(null, null, "t3"));
         assertThat(t3).isNotNull();
-        assertThat(t3.columnNames()).containsExactly("col1");
+        assertThat(t3.retrieveColumnNames()).containsExactly("col1");
         assertThat(t3.primaryKeyColumnNames()).isEmpty();
         assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
 
@@ -256,7 +256,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(4);
         Table t4 = tables.forTable(new TableId(null, null, "t4"));
         assertThat(t4).isNotNull();
-        assertThat(t4.columnNames()).containsExactly("col1");
+        assertThat(t4.retrieveColumnNames()).containsExactly("col1");
         assertThat(t4.primaryKeyColumnNames()).isEmpty();
         assertColumn(t4, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
     }
@@ -268,7 +268,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.retrieveColumnNames()).containsExactly("col1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
     }
@@ -280,7 +280,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.retrieveColumnNames()).containsExactly("col1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, null, true);
 
@@ -288,7 +288,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         Table t2 = tables.forTable(new TableId(null, null, "t"));
         assertThat(t2).isNotNull();
-        assertThat(t2.columnNames()).containsExactly("col1");
+        assertThat(t2.retrieveColumnNames()).containsExactly("col1");
         assertThat(t2.primaryKeyColumnNames()).isEmpty();
         assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 50, "greek", true);
 
@@ -296,7 +296,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         Table t3 = tables.forTable(new TableId(null, null, "t"));
         assertThat(t3).isNotNull();
-        assertThat(t3.columnNames()).containsExactly("col1");
+        assertThat(t3.retrieveColumnNames()).containsExactly("col1");
         assertThat(t3.primaryKeyColumnNames()).isEmpty();
         assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 75, "utf8", true);
     }
@@ -319,7 +319,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId("db1", null, "t1"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("id", "c1", "c2", "c3");
+        assertThat(t.retrieveColumnNames()).containsExactly("id", "c1", "c2", "c3");
         assertThat(t.primaryKeyColumnNames()).containsExactly("id");
         assertColumn(t, "id", "INT", Types.INTEGER, 11, -1, false, true, true);
         assertColumn(t, "c1", "VARCHAR", Types.VARCHAR, 255, "latin1", true);
@@ -338,7 +338,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(2);
         Table t2 = tables.forTable(new TableId("db1", null, "t2"));
         assertThat(t2).isNotNull();
-        assertThat(t2.columnNames()).containsExactly("id", "c1", "c2", "c3");
+        assertThat(t2.retrieveColumnNames()).containsExactly("id", "c1", "c2", "c3");
         assertThat(t2.primaryKeyColumnNames()).containsExactly("id");
         assertColumn(t2, "id", "INT", Types.INTEGER, 11, -1, false, true, true);
         assertColumn(t2, "c1", "VARCHAR", Types.VARCHAR, 255, "utf8mb4", true);
@@ -486,7 +486,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("col1");
+        assertThat(t.retrieveColumnNames()).containsExactly("col1");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
         assertThat(t.columnWithName("col1").position()).isEqualTo(1);
@@ -495,7 +495,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         Table t2 = tables.forTable(new TableId(null, null, "t"));
         assertThat(t2).isNotNull();
-        assertThat(t2.columnNames()).containsExactly("col1", "col2");
+        assertThat(t2.retrieveColumnNames()).containsExactly("col1", "col2");
         assertThat(t2.primaryKeyColumnNames()).isEmpty();
         assertColumn(t2, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
         assertColumn(t2, "col2", "VARCHAR", Types.VARCHAR, 50, -1, false, false, false);
@@ -506,7 +506,7 @@ public class MySqlDdlParserTest {
         parser.parse(ddl, tables);
         Table t3 = tables.forTable(new TableId(null, null, "t"));
         assertThat(t3).isNotNull();
-        assertThat(t3.columnNames()).containsExactly("col1", "col3", "col2");
+        assertThat(t3.retrieveColumnNames()).containsExactly("col1", "col3", "col2");
         assertThat(t3.primaryKeyColumnNames()).isEmpty();
         assertColumn(t3, "col1", "VARCHAR", Types.VARCHAR, 25, -1, true, false, false);
         assertColumn(t3, "col3", "FLOAT", Types.FLOAT, -1, -1, false, false, false);
@@ -550,7 +550,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "ENUM", Types.CHAR, 1, -1, false, false, false);
         assertColumn(t, "c2", "SET", Types.CHAR, 5, -1, true, false, false);
@@ -600,7 +600,7 @@ public class MySqlDdlParserTest {
         assertThat(listener.total()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t1"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3", "c4");
+        assertThat(t.retrieveColumnNames()).containsExactly("c1", "c2", "c3", "c4");
         assertThat(t.primaryKeyColumnNames()).containsExactly("c1");
         assertColumn(t, "c1", "INT", Types.INTEGER, -1, -1, false, true, true);
         assertColumn(t, "c2", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
@@ -634,7 +634,7 @@ public class MySqlDdlParserTest {
 
         Table t = tables.forTable(new TableId(null, null, "customers"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("id", "name");
+        assertThat(t.retrieveColumnNames()).containsExactly("id", "name");
         assertThat(t.primaryKeyColumnNames()).containsExactly("id");
         assertColumn(t, "id", "INT", Types.INTEGER, -1, -1, false, false, false);
         assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 30, -1, false, false, false);
@@ -644,7 +644,7 @@ public class MySqlDdlParserTest {
         t = tables.forTable(new TableId(null, null, "CUSTOMERS_HISTORY"));
         assertThat(t).isNotNull();
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("action", "revision", "changed_on", "id", "name");
+        assertThat(t.retrieveColumnNames()).containsExactly("action", "revision", "changed_on", "id", "name");
         assertThat(t.primaryKeyColumnNames()).containsExactly("id", "revision");
         assertColumn(t, "action", "TINYINT UNSIGNED", Types.SMALLINT, 3, -1, false, false, false);
         assertColumn(t, "revision", "INT UNSIGNED", Types.INTEGER, 10, -1, false, false, false);
@@ -873,7 +873,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "test"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("id");
+        assertThat(t.retrieveColumnNames()).containsExactly("id");
         assertThat(t.primaryKeyColumnNames()).containsExactly("id");
         assertColumn(t, "id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
 
@@ -882,7 +882,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         t = tables.forTable(new TableId(null, null, "test"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("collection_id");
+        assertThat(t.retrieveColumnNames()).containsExactly("collection_id");
         assertThat(t.primaryKeyColumnNames()).containsExactly("collection_id");
         assertColumn(t, "collection_id", "INT UNSIGNED", Types.INTEGER, 11, -1, false, true, true);
     }
@@ -908,7 +908,7 @@ public class MySqlDdlParserTest {
 
         Table t = tables.forTable(new TableId(null, null, "roles"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("id", "name", "context", "organization_id", "client_id", "scope_action_ids");
+        assertThat(t.retrieveColumnNames()).containsExactly("id", "name", "context", "organization_id", "client_id", "scope_action_ids");
         assertThat(t.primaryKeyColumnNames()).containsExactly("id");
         assertColumn(t, "id", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
         assertColumn(t, "name", "VARCHAR", Types.VARCHAR, 100, -1, false, false, false);
@@ -1059,7 +1059,7 @@ public class MySqlDdlParserTest {
 
         Table t = tables.forTable(new TableId(null, null, "customfield"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("ENCODEDKEY", "ID", "CREATIONDATE", "LASTMODIFIEDDATE", "DATATYPE",
+        assertThat(t.retrieveColumnNames()).containsExactly("ENCODEDKEY", "ID", "CREATIONDATE", "LASTMODIFIEDDATE", "DATATYPE",
                                                     "ISDEFAULT", "ISREQUIRED", "NAME", "VALUES", "AMOUNTS", "DESCRIPTION",
                                                     "TYPE", "VALUELENGTH", "INDEXINLIST", "CUSTOMFIELDSET_ENCODEDKEY_OID",
                                                     "STATE", "VALIDATIONPATTERN", "VIEWUSAGERIGHTSKEY", "EDITUSAGERIGHTSKEY",
@@ -1102,7 +1102,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, "s", "test"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("a", "b", "c");
+        assertThat(t.retrieveColumnNames()).containsExactly("a", "b", "c");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "a", "INT", Types.INTEGER, 11, -1, true, false, false);
         assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
@@ -1113,7 +1113,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         t = tables.forTable(new TableId(null, "s", "test"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("d", "b", "c");
+        assertThat(t.retrieveColumnNames()).containsExactly("d", "b", "c");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "d", "BIGINT", Types.BIGINT, 20, -1, false, true, true);
         assertColumn(t, "b", "INT", Types.INTEGER, -1, -1, true, false, false);
@@ -1173,7 +1173,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "ENUM", Types.CHAR, 1, -1, false, false, false);
         assertColumn(t, "c2", "ENUM", Types.CHAR, 1, -1, false, false, false);
@@ -1187,7 +1187,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2");
+        assertThat(t.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "BIT", Types.BIT, 2, -1, false, false, false);
         assertColumn(t, "c2", "BIT", Types.BIT, 2, -1, false, false, false);
@@ -1454,7 +1454,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3");
+        assertThat(t.retrieveColumnNames()).containsExactly("c1", "c2", "c3");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "DEC", Types.DECIMAL, 2, 0, false, false, false);
         assertColumn(t, "c2", "FIXED", Types.DECIMAL, 1, 0, false, false, false);
@@ -1469,7 +1469,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("c1", "c2", "c3");
+        assertThat(t.retrieveColumnNames()).containsExactly("c1", "c2", "c3");
         assertThat(t.primaryKeyColumnNames()).isEmpty();
         assertColumn(t, "c1", "DEC", Types.DECIMAL, 10, 0, false, false, false);
         assertColumn(t, "c2", "FIXED", Types.DECIMAL, 3, 0, false, false, false);
@@ -1485,7 +1485,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("id");
+        assertThat(t.retrieveColumnNames()).containsExactly("id");
         assertThat(t.primaryKeyColumnNames()).hasSize(1);
         assertColumn(t, "id", "INT", Types.INTEGER, -1, -1, false, false, false);
     }
@@ -1499,7 +1499,7 @@ public class MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
         assertThat(t).isNotNull();
-        assertThat(t.columnNames()).containsExactly("id", "myvalue");
+        assertThat(t.retrieveColumnNames()).containsExactly("id", "myvalue");
         assertThat(t.primaryKeyColumnNames()).hasSize(1);
         assertColumn(t, "myvalue", "INT", Types.INTEGER, -1, -1, true, false, false);
     }

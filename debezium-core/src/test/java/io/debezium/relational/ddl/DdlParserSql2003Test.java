@@ -51,7 +51,7 @@ public class DdlParserSql2003Test {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId(null,null,"foo"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).containsExactly("c1","c2");
+        assertThat(foo.retrieveColumnNames()).containsExactly("c1","c2");
         assertThat(foo.primaryKeyColumnNames()).containsExactly("c1");
         assertColumn(foo,"c1","INTEGER",Types.INTEGER,-1,-1,false,true,true);
         assertColumn(foo,"c2","VARCHAR",Types.VARCHAR,22,-1,true,false,false);
@@ -68,7 +68,7 @@ public class DdlParserSql2003Test {
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId("my",null,"foo"));
         assertThat(foo).isNotNull();
-        assertThat(foo.columnNames()).containsExactly("c1","c2");
+        assertThat(foo.retrieveColumnNames()).containsExactly("c1","c2");
         assertThat(foo.primaryKeyColumnNames()).containsExactly("c1");
         assertColumn(foo,"c1","INTEGER",Types.INTEGER,-1,-1,false,true,true);
         assertColumn(foo,"c2","VARCHAR",Types.VARCHAR,22,-1,true,false,false);

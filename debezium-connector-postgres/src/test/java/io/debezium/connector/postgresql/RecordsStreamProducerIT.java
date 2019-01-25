@@ -968,7 +968,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait(statement);
         Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
-        assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.columnNames());
+        assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
     }
 
     @Test
@@ -1013,7 +1013,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
-            assertEquals(Arrays.asList("pk", "text", "not_toast", "mandatory_text"), tbl.columnNames());
+            assertEquals(Arrays.asList("pk", "text", "not_toast", "mandatory_text"), tbl.retrieveColumnNames());
         });
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),

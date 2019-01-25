@@ -82,7 +82,7 @@ public class TableTest {
 
     @Test
     public void shouldHaveColumns() {
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3", "C4");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3", "C4");
         assertThat(table.columns()).containsExactly(c1, c2, c3, c4);
     }
 

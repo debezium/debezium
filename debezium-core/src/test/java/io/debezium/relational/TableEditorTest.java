@@ -72,7 +72,7 @@ public class TableEditorTest {
         assertThat(c2.position()).isEqualTo(2);
         assertThat(c3.position()).isEqualTo(3);
         table = editor.create();
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
         assertThat(table.columns()).containsExactly(c1, c2, c3);
         assertThat(table.primaryKeyColumnNames()).containsOnly("C1");
         assertValidPositions(editor);
@@ -102,7 +102,7 @@ public class TableEditorTest {
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         table = editor.create();
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
         table.columns().forEach(col -> {
             assertThat(table.isGenerated(col.name())).isEqualTo(col.isGenerated());
         });
@@ -118,7 +118,7 @@ public class TableEditorTest {
         editor.addColumns(c1, c2, c3);
         editor.setPrimaryKeyNames("C1");
         table = editor.create();
-        assertThat(table.columnNames()).containsExactly("C1", "C2", "C3");
+        assertThat(table.retrieveColumnNames()).containsExactly("C1", "C2", "C3");
         table.columns().forEach(col -> {
             assertThat(table.isAutoIncremented(col.name())).isEqualTo(col.isAutoIncremented());
         });
