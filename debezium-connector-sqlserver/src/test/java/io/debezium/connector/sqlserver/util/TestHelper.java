@@ -6,10 +6,17 @@
 
 package io.debezium.connector.sqlserver.util;
 
+import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Objects;
 
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +25,9 @@ import io.debezium.connector.sqlserver.SqlServerConnection;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Clock;
 import io.debezium.util.IoUtil;
+import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
 
 /**
@@ -209,5 +218,30 @@ public class TestHelper {
         Objects.requireNonNull(name);
         String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         connection.execute(disableCdcForTableStmt);
+    }
+
+    public static void waitForSnapshotToBeCompleted() throws InterruptedException {
+        int waitForSeconds = 60;
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
+
+        while (true) {
+            if (waitForSeconds-- <= 0) {
+                Assert.fail("Snapshot was not completed on time");
+            }
+            try {
+                final boolean completed = (boolean)mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"), "SnapshotCompleted");
+                if (completed) {
+                    break;
+                }
+            }
+            catch (InstanceNotFoundException e) {
+                // Metrics has not started yet
+            }
+            catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            metronome.pause();
+        }
     }
 }
