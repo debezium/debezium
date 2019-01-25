@@ -183,6 +183,8 @@ public final class EmbeddedEngine implements Runnable {
                                                                         OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
                                                                         INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
 
+    private static final int WAIT_FOR_COMPLETION_BEFORE_INTERRUPT = 2;
+
     /**
      * A callback function to be notified when the connector completes.
      */
@@ -986,6 +988,11 @@ public final class EmbeddedEngine implements Runnable {
         // Signal that the run() method should stop ...
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
+            try {
+                latch.await(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT, TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e) {
+            }
             logger.debug("Interruping the embedded engine's thread " + thread + " (already interrupted: " + thread.isInterrupted() + ")");
             // Interrupt the thread in case it is blocked while polling the task for records ...
             thread.interrupt();
