@@ -5,11 +5,11 @@
  */
 package io.debezium.relational;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import io.debezium.util.Strings;
 
@@ -18,7 +18,6 @@ final class TableImpl implements Table {
     private final TableId id;
     private final List<Column> columnDefs;
     private final List<String> pkColumnNames;
-    private final List<String> columnNames;
     private final Map<String, Column> columnsByLowercaseName;
     private final String defaultCharsetName;
 
@@ -31,13 +30,10 @@ final class TableImpl implements Table {
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
         Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
-        List<String> columnNames = new ArrayList<>();
         for (Column def : this.columnDefs) {
             defsByLowercaseName.put(def.name().toLowerCase(), def);
-            columnNames.add(def.name());
         }
         this.columnsByLowercaseName = Collections.unmodifiableMap(defsByLowercaseName);
-        this.columnNames = Collections.unmodifiableList(columnNames);
         this.defaultCharsetName = defaultCharsetName;
     }
 
@@ -52,13 +48,15 @@ final class TableImpl implements Table {
     }
 
     @Override
-    public List<String> columnNames() {
-        return columnNames;
+    public List<Column> columns() {
+        return columnDefs;
     }
 
     @Override
-    public List<Column> columns() {
-        return columnDefs;
+    public List<String> retrieveColumnNames() {
+        return columnDefs.stream()
+                .map(Column::name)
+                .collect(Collectors.toList());
     }
 
     @Override

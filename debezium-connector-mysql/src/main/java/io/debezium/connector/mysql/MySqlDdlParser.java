@@ -1100,7 +1100,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
             Map<String, Table> fromTables = parseSelectFromClause(start);
             if (fromTables.size() == 1) {
                 Table fromTable = fromTables.values().stream().findFirst().get();
-                List<String> fromTablePkColumnNames = fromTable.columnNames();
+                List<String> fromTablePkColumnNames = fromTable.retrieveColumnNames();
                 List<String> viewPkColumnNames = new ArrayList<>();
                 selectedColumnsByAlias.forEach((viewColumnName, fromTableColumn) -> {
                     if (fromTablePkColumnNames.contains(fromTableColumn.name())) {

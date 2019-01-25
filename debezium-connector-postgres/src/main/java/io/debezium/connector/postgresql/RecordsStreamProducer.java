@@ -443,14 +443,14 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
 
         // based on the schema columns, create the values on the same position as the columns
-        List<String> columnNames = table.columnNames();
+        List<Column> schemaColumns = table.columns();
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columns.size() < columnNames.size() ? columnNames.size() : columns.size()];
+        Object[] values = new Object[columns.size() < schemaColumns.size() ? schemaColumns.size() : columns.size()];
 
         for (ReplicationMessage.Column column : columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             String columnName = Strings.unquoteIdentifierPart(column.getName());
-            int position = columnNames.indexOf(columnName);
+            int position = table.columnWithName(columnName).position() - 1;
             if (position < 0) {
                 logger.warn(
                         "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
@@ -464,8 +464,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     private boolean schemaChanged(List<ReplicationMessage.Column> columns, Table table, boolean metadataInMessage) {
-        List<String> columnNames = table.columnNames();
-        int tableColumnCount = columnNames.size();
+        int tableColumnCount = table.columns().size();
         int replicationColumnCount = columns.size();
 
         boolean msgHasMissingColumns = tableColumnCount > replicationColumnCount;
@@ -539,9 +538,10 @@ public class RecordsStreamProducer extends RecordsProducer {
                 .collect(Collectors.toList());
 
         // Compute list of table columns not present in the replication message
-        List<String> missingColumnNames = table.columnNames()
+        List<String> missingColumnNames = table.columns()
                 .stream()
-                .filter(name -> !msgColumnNames.contains(name))
+                .filter(c -> !msgColumnNames.contains(c.name()))
+                .map(Column::name)
                 .collect(Collectors.toList());
 
         List<String> toastableColumns = schema().getToastableColumnsForTableId(table.id());
