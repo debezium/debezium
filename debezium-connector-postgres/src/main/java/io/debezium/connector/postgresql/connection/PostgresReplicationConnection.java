@@ -186,33 +186,38 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
         PGReplicationStream s;
+
         try {
-            s = startPgReplicationStream(lsn,
-                    plugin.forceRds() ? x -> messageDecoder.optionsWithoutMetadata(x.withSlotOption("include-unchanged-toast", 0)) : x -> messageDecoder.optionsWithMetadata(x.withSlotOption("include-unchanged-toast", 0)));
-            messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
-        }
-        catch (PSQLException e) {
-            LOGGER.debug("Could not register for streaming with include-unchanged-toast option, retrying without it", e);
             try {
+                s = startPgReplicationStream(lsn,
+                        plugin.forceRds()
+                                ? x -> messageDecoder.optionsWithoutMetadata(messageDecoder.tryOnceOptions(x))
+                                : x -> messageDecoder.optionsWithMetadata(messageDecoder.tryOnceOptions(x)));
+                messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
+            }
+            catch (PSQLException e) {
+                LOGGER.debug("Could not register for streaming, retrying without optional options", e);
+
                 s = startPgReplicationStream(lsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
                 messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
             }
-            catch (PSQLException ei) {
-                if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
-                    // It is possible we are connecting to an old wal2json plug-in
-                    LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
-                    s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
-                    messageDecoder.setContainsMetadata(false);
-                }
-                else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
-                    LOGGER.error("Cannot rewind to last processed WAL position", e);
-                    throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
-                }
-                else {
-                    throw ei;
-                }
+        }
+        catch (PSQLException e) {
+            if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
+                // It is possible we are connecting to an old wal2json plug-in
+                LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
+                s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
+                messageDecoder.setContainsMetadata(false);
+            }
+            else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
+                LOGGER.error("Cannot rewind to last processed WAL position", e);
+                throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
+            }
+            else {
+                throw e;
             }
         }
+
         final PGReplicationStream stream = s;
         final long lsnLong = lsn.asLong();
         return new ReplicationStream() {
