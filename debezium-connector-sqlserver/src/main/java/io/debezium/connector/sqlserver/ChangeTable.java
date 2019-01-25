@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 
 /**
@@ -25,9 +26,14 @@ public class ChangeTable {
     private final String captureInstance;
 
     /**
-     * The table from which the changes are captured
+     * The id of the table from which the changes are captured
      */
     private final TableId sourceTableId;
+
+    /**
+     * The table from which the changes are captured
+     */
+    private Table sourceTable;
 
     /**
      * The table that contains the changes for the source table
@@ -79,6 +85,14 @@ public class ChangeTable {
 
     public TableId getSourceTableId() {
         return sourceTableId;
+    }
+
+    public Table getSourceTable() {
+        return sourceTable;
+    }
+
+    public void setSourceTable(Table sourceTable) {
+        this.sourceTable = sourceTable;
     }
 
     public TableId getChangeTableId() {

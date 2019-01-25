@@ -38,17 +38,16 @@ public class ChangeTablePointer {
     private static final int COL_OPERATION = 3;
     private static final int COL_DATA = 5;
 
-    private final SqlServerDatabaseSchema schema;
     private final ChangeTable changeTable;
     private final ResultSet resultSet;
+    private final JdbcConnection.ResultSetMapper<Object[]> resultSetMapper;
     private boolean completed = false;
     private TxLogPosition currentChangePosition;
-    private JdbcConnection.ResultSetMapper<Object[]> resultSetMapper = null;
 
-    public ChangeTablePointer(SqlServerDatabaseSchema schema, ChangeTable changeTable, ResultSet resultSet) {
-        this.schema = schema;
+    public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) throws SQLException {
         this.changeTable = changeTable;
         this.resultSet = resultSet;
+        this.resultSetMapper = createResultSetMapper(changeTable.getSourceTable());
     }
 
     public ChangeTable getChangeTable() {
@@ -64,9 +63,6 @@ public class ChangeTablePointer {
     }
 
     public Object[] getData() throws SQLException {
-        if (resultSetMapper == null) {
-            resultSetMapper = createResultSetMapper(schema.tableFor(this.changeTable.getSourceTableId()));
-        }
         return resultSetMapper.apply(resultSet);
     }
 

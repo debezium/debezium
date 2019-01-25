@@ -129,7 +129,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         final ChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
-                            changeTables[i] = new ChangeTablePointer(schema, tables[i], resultSets[i]);
+                            changeTables[i] = new ChangeTablePointer(tables[i], resultSets[i]);
                             changeTables[i].next();
                         }
 
@@ -262,6 +262,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     futureTable = captures.get(0);
                 }
                 currentTable.setStopLsn(futureTable.getStartLsn());
+                futureTable.setSourceTable(connection.getTableSchemaFromTable(futureTable));
                 tables.add(futureTable);
                 LOGGER.info("Multiple capture instances present for the same table: {} and {}", currentTable, futureTable);
             }
@@ -278,6 +279,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         )
                 );
             }
+            currentTable.setSourceTable(schema.tableFor(currentTable.getSourceTableId()));
             tables.add(currentTable);
         }
 
