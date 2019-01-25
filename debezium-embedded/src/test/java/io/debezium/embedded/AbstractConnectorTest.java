@@ -133,6 +133,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     // Oracle connector needs longer time to complete shutdown
                     engine.await(60, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
+                    logger.warn("Engine has not stopped on time");
                     Thread.interrupted();
                 }
             }
@@ -140,19 +141,21 @@ public abstract class AbstractConnectorTest implements Testing {
                 List<Runnable> neverRunTasks = executor.shutdownNow();
                 assertThat(neverRunTasks).isEmpty();
                 try {
-                    while (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                    while (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
                         // wait for completion ...
                     }
                 } catch (InterruptedException e) {
+                    logger.warn("Executor has not stopped on time");
                     Thread.interrupted();
                 }
             }
             if (engine != null && engine.isRunning()) {
                 try {
-                    while (!engine.await(5, TimeUnit.SECONDS)) {
+                    while (!engine.await(60, TimeUnit.SECONDS)) {
                         // Wait for connector to stop completely ...
                     }
                 } catch (InterruptedException e) {
+                    logger.warn("Connector has not stopped on time");
                     Thread.interrupted();
                 }
             }
