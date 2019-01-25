@@ -54,6 +54,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Print.enable();
     }
 
     @After
@@ -69,11 +70,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int TABLES = 2;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -143,11 +147,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
 
         connection.setAutoCommit(false);
         final String[] tableBInserts = new String[RECORDS_PER_TABLE];
@@ -200,11 +207,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int ID_START = 10;
         final int ID_RESTART = 100;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -362,9 +372,15 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tableb")
                 .build();
+        connection.execute(
+                "INSERT INTO tableb VALUES(1, 'b')"
+        );
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -391,12 +407,18 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int TABLES = 1;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_BLACKLIST, "dbo.tablea")
                 .build();
+        connection.execute(
+                "INSERT INTO tableb VALUES(1, 'b')"
+        );
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -434,6 +456,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
 
         connection.execute("INSERT INTO blacklist_column_table_a VALUES(10, 'some_name', 120)");
         connection.execute("INSERT INTO blacklist_column_table_b VALUES(11, 'some_name', 447)");

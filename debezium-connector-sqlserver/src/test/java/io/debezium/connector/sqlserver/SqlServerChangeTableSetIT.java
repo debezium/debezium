@@ -64,6 +64,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -136,6 +137,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;
@@ -191,6 +193,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;
@@ -315,6 +318,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;
@@ -406,6 +410,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;
@@ -479,6 +484,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;
@@ -574,6 +580,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;

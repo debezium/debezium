@@ -51,10 +51,10 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
                 "CREATE TABLE tablenumb (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
                 "CREATE TABLE tablenumc (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)",
                 "CREATE TABLE tablenumd (id int IDENTITY(1,1) primary key, cola DECIMAL(8, 4),colb DECIMAL, colc numeric(8,1), cold numeric)");
-        TestHelper.enableTableCdc(connection, "tablea");
-        TestHelper.enableTableCdc(connection, "tableb");
-        TestHelper.enableTableCdc(connection, "tablec");
-        TestHelper.enableTableCdc(connection, "tabled");
+        TestHelper.enableTableCdc(connection, "tablenuma");
+        TestHelper.enableTableCdc(connection, "tablenumb");
+        TestHelper.enableTableCdc(connection, "tablenumc");
+        TestHelper.enableTableCdc(connection, "tablenumd");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -84,6 +84,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         connection.execute("INSERT INTO tablenuma VALUES (111.1111, 1111111, 1111111.1, 1111111 );");
         final SourceRecords records = consumeRecordsByTopic(1);
@@ -115,6 +116,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         connection.execute("INSERT INTO tablenumb VALUES (222.2222, 22222, 22222.2, 2222222 );");
         final SourceRecords records = consumeRecordsByTopic(1);
@@ -145,6 +147,7 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         connection.execute("INSERT INTO tablenumc VALUES (333.3333, 3333, 3333.3, 33333333 );");
         final SourceRecords records = consumeRecordsByTopic(1);

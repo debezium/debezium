@@ -189,6 +189,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
 
         testStreaming();
     }
@@ -252,8 +253,9 @@ public class SnapshotIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
+        TestHelper.waitForSnapshotToBeCompleted();
         final SourceRecord record = consumeRecord();
-
+        Assertions.assertThat(record).isNotNull();
         Assertions.assertThat(record.topic()).startsWith("__debezium-heartbeat");
     }
 
