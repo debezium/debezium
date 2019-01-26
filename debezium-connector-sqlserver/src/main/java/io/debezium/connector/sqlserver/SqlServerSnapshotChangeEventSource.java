@@ -79,6 +79,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
+        ((SqlServerSnapshotContext)snapshotContext).isolationLevelBeforeStart = jdbcConnection.connection().getTransactionIsolation();
+
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
             // Terminate any transaction in progress so we can change the isolation level
             jdbcConnection.connection().rollback();
@@ -181,10 +183,9 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     }
 
     @Override
-    protected void complete() {
+    protected void complete(SnapshotContext snapshotContext) {
         try {
-            // Revert to default transaction isolation level (read committed).
-            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            jdbcConnection.connection().setTransactionIsolation(((SqlServerSnapshotContext)snapshotContext).isolationLevelBeforeStart);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to set transaction isolation level.", e);
         }
@@ -206,6 +207,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
      */
     private static class SqlServerSnapshotContext extends SnapshotContext {
 
+        private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
         public SqlServerSnapshotContext(String catalogName) throws SQLException {

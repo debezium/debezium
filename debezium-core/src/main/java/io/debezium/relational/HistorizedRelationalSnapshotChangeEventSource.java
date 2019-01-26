@@ -89,7 +89,14 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         Connection connection = null;
 
-        try (SnapshotContext ctx = prepare(context)) {
+        final SnapshotContext ctx;
+        try {
+            ctx = prepare(context);
+        } catch (Exception e) {
+            LOGGER.error("Failed to initialize snapshot context.", e);
+            throw new RuntimeException(e);
+        }
+        try {
             LOGGER.info("Snapshot step 1 - Preparing");
             snapshotProgressListener.snapshotStarted();
 
@@ -164,7 +171,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             LOGGER.info("Snapshot step 8 - Finalizing");
 
-            complete();
+            complete(ctx);
         }
     }
 
@@ -386,8 +393,9 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
     /**
      * Completes the snapshot, doing any required clean-up (resource disposal etc.).
+     * @param snapshotContext snapshot context
      */
-    protected abstract void complete();
+    protected abstract void complete(SnapshotContext snapshotContext);
 
     private void rollbackTransaction(Connection connection) {
         if(connection != null) {
