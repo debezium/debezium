@@ -134,6 +134,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
         // read_uncommitted mode; snapshot mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
             jdbcConnection.connection().rollback(((SqlServerSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint);
+            LOGGER.info("Schema locks released.");
         }
     }
 
