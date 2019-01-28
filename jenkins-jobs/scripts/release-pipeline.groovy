@@ -43,11 +43,11 @@ IMAGE_TAG = VERSION_MAJOR_MINOR
 POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine']
 CORE_CONNECTORS_PER_VERSION = [
     '0.8': ['mongodb','mysql','postgres'],
-    '0.9': ['mongodb','mysql','postgres']
+    '0.9': ['mongodb','mysql','postgres','sqlserver']
 ]
 INCUBATOR_CONNECTORS_PER_VERSION = [
     '0.8': ['oracle'],
-    '0.9': ['oracle', 'sqlserver']
+    '0.9': ['oracle']
 ]
 
 CORE_CONNECTORS = CORE_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
