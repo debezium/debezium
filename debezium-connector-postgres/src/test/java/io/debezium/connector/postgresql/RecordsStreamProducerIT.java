@@ -145,7 +145,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
-        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
+        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a ton of records in the postgis schema
         consumer.setIgnoreExtraRecords(true);
         recordsProducer.start(consumer, blackHole);
 
@@ -171,7 +171,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test(timeout = 30000)
     public void shouldReceiveChangesForInsertsWithPostgisArrayTypes() throws Exception {
         TestHelper.executeDDL("postgis_create_tables.ddl");
-        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a tonne of records in the postgis schema
+        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a ton of records in the postgis schema
         consumer.setIgnoreExtraRecords(true);
         recordsProducer.start(consumer, blackHole);
 
