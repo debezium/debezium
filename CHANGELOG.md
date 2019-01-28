@@ -19,9 +19,10 @@ January 28th, 2019 [Detailed release notes](https://issues.jboss.org/secure/Rele
 
 ### Breaking changes since 0.9.0.Beta2
 
-SQL Server connector has re-worked semantics of snapshot modes.
-SQL Server connector also adds a new field to offsets in streaming mode which could prevent seamleass upgrading of versions.
-We recommend to re-register and restart the connector.
+SQL Server connector has re-worked semantics ([DBZ-1101](https://issues.jboss.org/browse/DBZ-1101)) of snapshot modes.\
+SQL Server connector also adds a new field to offsets in the streaming mode ([DBZ-1090](https://issues.jboss.org/browse/DBZ-1090)) which could prevent seamless upgrading of versions. We recommend to re-register and restart the connector.\
+SQL Server connector has changed the schema name of message schemas ([DBZ-1089](https://issues.jboss.org/browse/DBZ-1089)), superfluous database name has been dropped.
+
 
 ### Fixes since 0.9.0.Beta2
 
