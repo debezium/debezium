@@ -51,10 +51,10 @@ public class XStreamChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     private Object[] getColumnValues(ColumnValue[] columnValues) {
-        Object[] values = new Object[table.columnNames().size()];
+        Object[] values = new Object[table.columns().size()];
 
         for (ColumnValue columnValue : columnValues) {
-            int index = table.columnNames().indexOf(columnValue.getColumnName());
+            int index = table.columnWithName(columnValue.getColumnName()).position() - 1;
             values[index] = columnValue.getColumnData();
         }
 
