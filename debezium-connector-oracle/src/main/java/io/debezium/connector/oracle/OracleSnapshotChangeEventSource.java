@@ -238,7 +238,7 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
     }
 
     @Override
-    protected void complete() {
+    protected void complete(SnapshotContext snapshotContext) {
         if (connectorConfig.getPdbName() != null) {
             jdbcConnection.resetSessionToCdb();
         }
