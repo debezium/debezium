@@ -48,71 +48,7 @@
             <timezone>+2</timezone>
         </developer>
     </developers>
-    <properties>
-        <!-- Instruct the build to use only UTF-8 encoding for source code -->
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-
-        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>2.1.0</version.kafka>
-        <version.kafka.scala>2.12</version.kafka.scala>
-        <version.curator>2.11.0</version.curator>
-        <version.zookeeper>3.4.13</version.zookeeper>
-        <version.jackson>2.9.7</version.jackson>
-        <version.org.slf4j>1.7.25</version.org.slf4j>
-        <version.log4j>1.2.17</version.log4j>
-        <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>5.0.1</version.confluent.platform>
-
-        <!-- Databases -->
-        <version.postgresql.driver>42.2.5</version.postgresql.driver>
-        <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>8.0.13</version.mysql.driver>
-        <version.mysql.binlog>0.16.1</version.mysql.binlog>
-        <version.mongo.server>3.6</version.mongo.server>
-        <version.mongo.driver>3.9.0</version.mongo.driver>
-        <version.sqlserver.driver>6.4.0.jre8</version.sqlserver.driver>
-
-        <!-- Connectors -->
-        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
-
-        <!-- ANTLR -->
-        <antlr.version>4.7</antlr.version>
-
-        <!-- Testing -->
-        <version.junit>4.12</version.junit>
-        <version.fest>1.4</version.fest>
-        <version.jmh>1.21</version.jmh>
-        <version.mockito>2.13.0</version.mockito>
-
-        <!-- Maven Plugins -->
-        <version.resources.plugin>2.7</version.resources.plugin>
-        <version.dependency.plugin>2.10</version.dependency.plugin>
-        <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>
-        <version.jar.plugin>3.0.2</version.jar.plugin>
-        <version.source.plugin>3.0.1</version.source.plugin>
-        <version.assembly.plugin>2.4</version.assembly.plugin>
-        <version.war.plugin>2.5</version.war.plugin>
-        <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.26.0</version.docker.maven.plugin>
-        <version.staging.plugin>1.6.3</version.staging.plugin>
-        <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
-
-        <!-- Dockerfiles -->
-        <docker.maintainer>Debezium community</docker.maintainer>
-
-        <!--Skip long running tests by default-->
-        <skipLongRunningTests>true</skipLongRunningTests>
-
-        <!-- Don't skip integration tests by default -->
-        <skipITs>false</skipITs>
-
-        <!-- No debug options by default -->
-        <debug.argline />
-
-        <!-- No modules options by default -->
-        <modules.argline />
+    <properties>        <!-- Instruct the build to use only UTF-8 encoding for source code -->        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>        <maven.compiler.source>1.8</maven.compiler.source>        <maven.compiler.target>1.8</maven.compiler.target>        <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->        <version.kafka>2.1.0</version.kafka>        <version.kafka.scala>2.12</version.kafka.scala>        <version.curator>2.11.0</version.curator>        <version.zookeeper>3.4.13</version.zookeeper>        <version.jackson>2.9.7</version.jackson>        <version.org.slf4j>1.7.25</version.org.slf4j>        <version.log4j>1.2.17</version.log4j>        <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->        <version.confluent.platform>5.0.1</version.confluent.platform>        <!-- Databases -->        <version.postgresql.driver>42.2.5</version.postgresql.driver>        <version.mysql.server>5.7</version.mysql.server>        <version.mysql.driver>8.0.13</version.mysql.driver>        <version.mysql.binlog>0.16.1</version.mysql.binlog>        <version.mongo.server>3.6</version.mongo.server>        <version.mongo.driver>3.9.0</version.mongo.driver>        <version.sqlserver.driver>6.4.0.jre8</version.sqlserver.driver>        <!-- Connectors -->        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>        <!-- ANTLR -->        <antlr.version>4.7</antlr.version>        <!-- Testing -->        <version.junit>4.12</version.junit>        <version.fest>1.4</version.fest>        <version.jmh>1.21</version.jmh>        <version.mockito>2.13.0</version.mockito>        <!-- Maven Plugins -->        <version.resources.plugin>2.7</version.resources.plugin>        <version.dependency.plugin>2.10</version.dependency.plugin>        <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>        <version.jar.plugin>3.0.2</version.jar.plugin>        <version.source.plugin>3.0.1</version.source.plugin>        <version.assembly.plugin>2.4</version.assembly.plugin>        <version.war.plugin>2.5</version.war.plugin>        <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>        <version.docker.maven.plugin>0.26.0</version.docker.maven.plugin>        <version.staging.plugin>1.6.3</version.staging.plugin>        <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>        <!-- Dockerfiles -->        <docker.maintainer>Debezium community</docker.maintainer>        <!--Skip long running tests by default-->        <skipLongRunningTests>true</skipLongRunningTests>        <!-- Don't skip integration tests by default -->        <skipITs>false</skipITs>        <!-- No debug options by default -->        <debug.argline />        <!-- No modules options by default -->        <modules.argline /><javac.version>9+181-r4173-1</javac.version>
     </properties>
 
     <modules>
@@ -388,91 +324,27 @@
     <dependencies>
     </dependencies>
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-enforcer-plugin</artifactId>
-                    <version>${version.enforcer.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${version.compiler.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>${version.source.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>${version.javadoc.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-release-plugin</artifactId>
-                    <version>${version.release.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>${version.staging.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${version.surefire.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-checkstyle-plugin</artifactId>
-                    <version>${version.checkstyle.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-report-plugin</artifactId>
-                    <version>${version.surefire.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-resources-plugin</artifactId>
-                    <version>${version.resources.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-dependency-plugin</artifactId>
-                    <version>${version.dependency.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>${version.gpg.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>${version.failsafe.plugin}</version>
-                    <configuration>
-                        <argLine>${debug.argline} ${modules.argline}</argLine>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>com.googlecode.maven-java-formatter-plugin</groupId>
-                    <artifactId>maven-java-formatter-plugin</artifactId>
-                    <version>${version.google.formatter.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>io.fabric8</groupId>
-                    <artifactId>docker-maven-plugin</artifactId>
-                    <version>${version.docker.maven.plugin}</version>
-                </plugin>
-                <plugin>
-                    <groupId>com.github.os72</groupId>
-                    <artifactId>protoc-jar-maven-plugin</artifactId>
-                    <version>${version.protoc.maven.plugin}</version>
-                </plugin>
+        <pluginManagement>            <plugins>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-enforcer-plugin</artifactId>                    <version>${version.enforcer.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-compiler-plugin</artifactId>                    <version>${version.compiler.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-source-plugin</artifactId>                    <version>${version.source.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-javadoc-plugin</artifactId>                    <version>${version.javadoc.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-release-plugin</artifactId>                    <version>${version.release.plugin}</version>                </plugin>                <plugin>                    <groupId>org.sonatype.plugins</groupId>                    <artifactId>nexus-staging-maven-plugin</artifactId>                    <version>${version.staging.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-surefire-plugin</artifactId>                    <version>${version.surefire.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-checkstyle-plugin</artifactId>                    <version>${version.checkstyle.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-surefire-report-plugin</artifactId>                    <version>${version.surefire.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-resources-plugin</artifactId>                    <version>${version.resources.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-dependency-plugin</artifactId>                    <version>${version.dependency.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-gpg-plugin</artifactId>                    <version>${version.gpg.plugin}</version>                </plugin>                <plugin>                    <groupId>org.apache.maven.plugins</groupId>                    <artifactId>maven-failsafe-plugin</artifactId>                    <version>${version.failsafe.plugin}</version>                    <configuration>                        <argLine>${debug.argline} ${modules.argline}</argLine>                    </configuration>                </plugin>                <plugin>                    <groupId>com.googlecode.maven-java-formatter-plugin</groupId>                    <artifactId>maven-java-formatter-plugin</artifactId>                    <version>${version.google.formatter.plugin}</version>                </plugin>                <plugin>                    <groupId>io.fabric8</groupId>                    <artifactId>docker-maven-plugin</artifactId>                    <version>${version.docker.maven.plugin}</version>                </plugin>                <plugin>                    <groupId>com.github.os72</groupId>                    <artifactId>protoc-jar-maven-plugin</artifactId>                    <version>${version.protoc.maven.plugin}</version>                </plugin><plugin>
+<groupId>org.apache.maven.plugins</groupId>
+<artifactId>maven-compiler-plugin</artifactId>
+<version>3.5.1</version>
+<configuration>
+	<source>8</source>
+	<target>8</target>
+	<showWarnings>true</showWarnings>
+	<compilerArgs>
+		<arg>-XDcompilePolicy=simple</arg>
+		<arg>-Xplugin:ErrorProne -XepAllErrorsAsWarnings -Xep:AndroidJdkLibsChecker:ERROR -Xep:AssistedInjectAndInjectOnSameConstructor:ERROR -Xep:AutoFactoryAtInject:ERROR -Xep:ClassName:ERROR -Xep:ComparisonContractViolated:ERROR -Xep:DepAnn:ERROR -Xep:DivZero:ERROR -Xep:EmptyIf:ERROR -Xep:FuzzyEqualsShouldNotBeUsedInEqualsMethod:ERROR -Xep:InjectInvalidTargetingOnScopingAnnotation:ERROR -Xep:InjectMoreThanOneQualifier:ERROR -Xep:InjectScopeAnnotationOnInterfaceOrAbstractClass:ERROR -Xep:InjectScopeOrQualifierAnnotationRetention:ERROR -Xep:InjectedConstructorAnnotations:ERROR -Xep:InsecureCryptoUsage:ERROR -Xep:IterablePathParameter:ERROR -Xep:JMockTestWithoutRunWithOrRuleAnnotation:ERROR -Xep:Java7ApiChecker:ERROR -Xep:JavaxInjectOnFinalField:ERROR -Xep:LockMethodChecker:ERROR -Xep:LongLiteralLowerCaseSuffix:ERROR -Xep:NoAllocation:ERROR -Xep:NumericEquality:ERROR -Xep:ParameterPackage:ERROR -Xep:RestrictTo:ERROR -Xep:StaticOrDefaultInterfaceMethod:ERROR -Xep:UnlockMethod:ERROR -Xep:AnnotateFormatMethod:ERROR -Xep:AnnotationPosition:ERROR -Xep:AssertFalse:ERROR -Xep:AssistedInjectAndInjectOnConstructors:ERROR -Xep:BinderIdentityRestoredDangerously:ERROR -Xep:BindingToUnqualifiedCommonType:ERROR -Xep:ConstructorInvokesOverridable:ERROR -Xep:ConstructorLeaksThis:ERROR -Xep:EmptyTopLevelDeclaration:ERROR -Xep:EqualsBrokenForNull:ERROR -Xep:ExpectedExceptionChecker:ERROR -Xep:FunctionalInterfaceClash:ERROR -Xep:HardCodedSdCardPath:ERROR -Xep:InconsistentOverloads:ERROR -Xep:InvalidParam:ERROR -Xep:InvalidTag:ERROR -Xep:InvalidThrows:ERROR -Xep:MissingDefault:ERROR -Xep:MutableMethodReturnType:ERROR -Xep:NoFunctionalReturnType:ERROR -Xep:NonCanonicalStaticMemberImport:ERROR -Xep:NullableDereference:ERROR -Xep:PrimitiveArrayPassedToVarargsMethod:ERROR -Xep:ProtosAsKeyOfSetOrMap:ERROR -Xep:ProvidesFix:ERROR -Xep:QualifierWithTypeUse:ERROR -Xep:RedundantThrows:ERROR -Xep:ReturnFromVoid:ERROR -Xep:StaticQualifiedUsingExpression:ERROR -Xep:StringEquality:ERROR -Xep:SystemExitOutsideMain:ERROR -Xep:TestExceptionChecker:ERROR -Xep:UnnecessaryDefaultInEnumSwitch:ERROR -Xep:Unused:ERROR -Xep:UnusedException:ERROR -Xep:Var:ERROR -Xep:BooleanParameter:ERROR -Xep:ClassNamedLikeTypeParameter:ERROR -Xep:ConstantField:ERROR -Xep:EmptySetMultibindingContributions:ERROR -Xep:ExpectedExceptionRefactoring:ERROR -Xep:FieldCanBeFinal:ERROR -Xep:FieldMissingNullable:ERROR -Xep:ImmutableRefactoring:ERROR -Xep:LambdaFunctionalInterface:ERROR -Xep:MethodCanBeStatic:ERROR -Xep:MixedArrayDimensions:ERROR -Xep:MultiVariableDeclaration:ERROR -Xep:MultipleTopLevelClasses:ERROR -Xep:MultipleUnaryOperatorsInMethodCall:ERROR -Xep:PackageLocation:ERROR -Xep:ParameterComment:ERROR -Xep:ParameterNotNullable:ERROR -Xep:PrivateConstructorForNoninstantiableModule:ERROR -Xep:PrivateConstructorForUtilityClass:ERROR -Xep:RemoveUnusedImports:ERROR -Xep:ReturnMissingNullable:ERROR -Xep:ScopeOnModule:ERROR -Xep:SwitchDefault:ERROR -Xep:TestExceptionRefactoring:ERROR -Xep:ThrowsUncheckedException:ERROR -Xep:TryFailRefactoring:ERROR -Xep:TypeParameterNaming:ERROR -Xep:UngroupedOverloads:ERROR -Xep:UnnecessarySetDefault:ERROR -Xep:UnnecessaryStaticImport:ERROR -Xep:UseBinds:ERROR -Xep:WildcardImport:ERROR</arg>
+	</compilerArgs>
+	<annotationProcessorPaths>
+		<path>
+			<groupId>com.google.errorprone</groupId>
+			<artifactId>error_prone_core</artifactId>
+			<version>2.3.2</version>
+		</path>
+	</annotationProcessorPaths>
+</configuration>
+</plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -629,122 +501,25 @@
             </plugin>
         </plugins>
     </build>
-    <profiles>
-        <!--
-           ###################################################################
-           Enable remotely debugging on the command line
-           ###################################################################
-
-           To use, specify "-Ddebug=true" on the Maven command line
-           (typically used when running a single test). Then, start
-           remote debugger (on port 1044) and connect.
-       -->
-        <profile>
-            <id>debug</id>
-            <activation>
-                <property>
-                    <name>debug</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <properties>
-                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->
-                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>assembly</id>
-            <properties>
-                <skipLongRunningTests>false</skipLongRunningTests>
-            </properties>
-            <modules>
-                <!--module>integration-tests</module-->
-            </modules>
-        </profile>
-        <profile>
-            <id>release</id>
-            <properties>
-                <skipLongRunningTests>false</skipLongRunningTests>
-            </properties>
-        </profile>
-        <profile>
-            <id>performance</id>
-            <properties>
-                <skipLongRunningTests>false</skipLongRunningTests>
-            </properties>
-        </profile>
-        <profile>
-            <id>docs</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-                <property>
-                    <name>docs</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>${version.javadoc.plugin}</version>
-                        <configuration>
-                            <show>private</show>
-                            <nohelp>true</nohelp>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>attach-javadocs</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>attach-test-javadocs</id>
-                                <goals>
-                                    <goal>test-jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>release-sign-artifacts</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>jdk9</id>
-            <activation>
-                <jdk>9</jdk>
-            </activation>
-            <properties>
-                <modules.argline>--add-modules java.xml.bind</modules.argline>
-            </properties>
-        </profile>
+    <profiles>        <!--           ###################################################################           Enable remotely debugging on the command line           ###################################################################           To use, specify "-Ddebug=true" on the Maven command line           (typically used when running a single test). Then, start           remote debugger (on port 1044) and connect.       -->        <profile>            <id>debug</id>            <activation>                <property>                    <name>debug</name>                    <value>true</value>                </property>            </activation>            <properties>                <!-- Useful for remotely debugging the unit tests run by Surefire ... -->                <debug.argline>-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=1044</debug.argline>            </properties>        </profile>        <profile>            <id>assembly</id>            <properties>                <skipLongRunningTests>false</skipLongRunningTests>            </properties>            <modules>                <!--module>integration-tests</module-->            </modules>        </profile>        <profile>            <id>release</id>            <properties>                <skipLongRunningTests>false</skipLongRunningTests>            </properties>        </profile>        <profile>            <id>performance</id>            <properties>                <skipLongRunningTests>false</skipLongRunningTests>            </properties>        </profile>        <profile>            <id>docs</id>            <activation>                <activeByDefault>false</activeByDefault>                <property>                    <name>docs</name>                    <value>true</value>                </property>            </activation>            <build>                <plugins>                    <plugin>                        <groupId>org.apache.maven.plugins</groupId>                        <artifactId>maven-javadoc-plugin</artifactId>                        <version>${version.javadoc.plugin}</version>                        <configuration>                            <show>private</show>                            <nohelp>true</nohelp>                        </configuration>                        <executions>                            <execution>                                <id>attach-javadocs</id>                                <goals>                                    <goal>jar</goal>                                </goals>                            </execution>                            <execution>                                <id>attach-test-javadocs</id>                                <goals>                                    <goal>test-jar</goal>                                </goals>                            </execution>                        </executions>                    </plugin>                </plugins>            </build>        </profile>        <profile>            <id>release-sign-artifacts</id>            <activation>                <property>                    <name>performRelease</name>                    <value>true</value>                </property>            </activation>            <build>                <plugins>                    <plugin>                        <groupId>org.apache.maven.plugins</groupId>                        <artifactId>maven-gpg-plugin</artifactId>                        <executions>                            <execution>                                <id>sign-artifacts</id>                                <phase>verify</phase>                                <goals>                                    <goal>sign</goal>                                </goals>                            </execution>                        </executions>                    </plugin>                </plugins>            </build>        </profile>        <profile>            <id>jdk9</id>            <activation>                <jdk>9</jdk>            </activation>            <properties>                <modules.argline>--add-modules java.xml.bind</modules.argline>            </properties>        </profile><profile>
+<id>jdk8</id>
+<activation>
+	<jdk>1.8</jdk>
+</activation>
+<build>
+	<plugins>
+		<plugin>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-compiler-plugin</artifactId>
+			<configuration>
+				<fork>true</fork>
+				<compilerArgs combine.children="append">
+					<arg>-J-Xbootclasspath/p:${settings.localRepository}/com/google/errorprone/javac/${javac.version}/javac-${javac.version}.jar</arg>
+				</compilerArgs>
+			</configuration>
+		</plugin>
+	</plugins>
+</build>
+</profile>
     </profiles>
 </project>
