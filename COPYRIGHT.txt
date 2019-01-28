@@ -28,6 +28,7 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Gagan Agrawal
 Gunnar Morling
+Grzegorz Kołakowski
 Henryk Konsek
 Horia Chiorean
 Ian Axelrod
