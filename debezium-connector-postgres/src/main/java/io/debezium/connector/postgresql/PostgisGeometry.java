@@ -9,7 +9,7 @@ package io.debezium.connector.postgresql;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import javax.xml.bind.DatatypeConverter;
+import io.debezium.util.HexConverter;
 
 /**
  * A parser API for Postgres Geometry types
@@ -44,7 +44,7 @@ public class PostgisGeometry {
      * SRID is extracted from the EWKB
      */
     public static PostgisGeometry fromHexEwkb(String hexEwkb) {
-        byte[] ewkb = DatatypeConverter.parseHexBinary(hexEwkb);
+        byte[] ewkb = HexConverter.convertFromHex(hexEwkb);
         return fromEwkb(ewkb);
     }
 
