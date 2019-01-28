@@ -183,7 +183,8 @@ public final class EmbeddedEngine implements Runnable {
                                                                         OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
                                                                         INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
 
-    private static final int WAIT_FOR_COMPLETION_BEFORE_INTERRUPT = 2;
+    private static final Duration WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT = Duration.ofSeconds(2);
+    private static final String WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP = "debezium.embedded.shutdown.pause.before.interrupt.ms";
 
     /**
      * A callback function to be notified when the connector completes.
@@ -989,7 +990,7 @@ public final class EmbeddedEngine implements Runnable {
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
             try {
-                latch.await(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT, TimeUnit.SECONDS);
+                latch.await(Integer.parseInt(System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))), TimeUnit.MILLISECONDS);
             }
             catch (InterruptedException e) {
             }
