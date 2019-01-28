@@ -14,7 +14,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * Utilities for performing math operations with mixed native and advanced numeric types.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -51,20 +51,20 @@ public final class MathOps {
 
     public static Number add(Short first, short second) {
         int sum = first.shortValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         return Integer.valueOf(sum);
     }
 
     public static Number add(Short first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
 
     public static Number add(Short first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
@@ -132,21 +132,21 @@ public final class MathOps {
 
     public static Number add(Integer first, short second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
@@ -214,21 +214,21 @@ public final class MathOps {
 
     public static Number add(Long first, short second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
 
     public static Number add(Long first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
 
     public static Number add(Long first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return new Short((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
         return Long.valueOf(sum);
     }
