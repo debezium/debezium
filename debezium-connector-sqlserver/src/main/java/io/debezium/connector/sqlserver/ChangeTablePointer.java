@@ -11,11 +11,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
 /**
@@ -102,7 +104,9 @@ public class ChangeTablePointer {
      * a subset of columns
      */
     private JdbcConnection.ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
-        final List<String> sourceTableColumns = table.columnNames();
+        final List<String> sourceTableColumns = table.columns().stream()
+                .map(Column::name)
+                .collect(Collectors.toList());
         final List<String> resultColumns = getResultColumnNames();
         final int sourceColumnCount = sourceTableColumns.size();
         final int resultColumnCount = resultColumns.size();
