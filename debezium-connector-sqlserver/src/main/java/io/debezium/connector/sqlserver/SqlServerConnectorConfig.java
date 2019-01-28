@@ -109,7 +109,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     /**
-     * The set of predefined Snapshot Isolation Mode options.
+     * The set of predefined snapshot isolation mode options.
      */
     public static enum SnapshotIsolationMode implements EnumeratedValue {
 
@@ -121,13 +121,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         EXCLUSIVE("exclusive"),
 
         /**
-         * This mode uses SNAPSHOT isolation level.  This way reads and writes are not blocked for the entire duration
+         * This mode uses SNAPSHOT isolation level. This way reads and writes are not blocked for the entire duration
          * of the snapshot.  Snapshot consistency is guaranteed as long as DDL statements are not executed at the time.
          */
         SNAPSHOT("snapshot"),
 
         /**
-         * This mode uses REPEATABLE READ isolation level.  This mode will avoid taking any table
+         * This mode uses REPEATABLE READ isolation level. This mode will avoid taking any table
          * locks during the snapshot process, except schema snapshot phase where exclusive table
          * locks are acquired for a short period.  Since phantom reads can occur, it does not fully
          * guarantee consistency.
@@ -135,7 +135,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         REPEATABLE_READ("repeatable_read"),
 
         /**
-         * This mode uses READ UNCOMMITTED isolation level.  This mode takes neither table locks nor row-level locks
+         * This mode uses READ UNCOMMITTED isolation level. This mode takes neither table locks nor row-level locks
          * during the snapshot process.  This way other transactions are not affected by initial snapshot process.
          * However, snapshot consistency is not guaranteed.
          */

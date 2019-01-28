@@ -92,10 +92,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         final SnapshotContext ctx;
         try {
             ctx = prepare(context);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
             throw new RuntimeException(e);
         }
+
         try {
             LOGGER.info("Snapshot step 1 - Preparing");
             snapshotProgressListener.snapshotStarted();

@@ -186,7 +186,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     protected void complete(SnapshotContext snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((SqlServerSnapshotContext)snapshotContext).isolationLevelBeforeStart);
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new RuntimeException("Failed to set transaction isolation level.", e);
         }
     }
