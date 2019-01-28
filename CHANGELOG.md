@@ -2,6 +2,62 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.9.0.CR1
+January 28th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12340263)
+
+### New features since 0.9.0.Beta2
+
+* Snapshot isolation level overhaul [DBZ-947](https://issues.jboss.org/browse/DBZ-947)
+* Kafka docker image - support for topic cleanup policy [DBZ-1038](https://issues.jboss.org/browse/DBZ-1038)
+* Optimize sys.fn_cdc_map_lsn_to_time() calls [DBZ-1078](https://issues.jboss.org/browse/DBZ-1078)
+* Fallback to restart_lsn if confirmed_flush_lsn is not found [DBZ-1081](https://issues.jboss.org/browse/DBZ-1081)
+* table.whitelist option update for an existing connector doesn't work [DBZ-175](https://issues.jboss.org/browse/DBZ-175)
+* EmbeddedEngine should allow for more flexible record consumption [DBZ-1080](https://issues.jboss.org/browse/DBZ-1080)
+* Client-side column blacklisting in SQL Server connector [DBZ-1067](https://issues.jboss.org/browse/DBZ-1067)
+* column.propagate.source.type missing scale [DBZ-1073](https://issues.jboss.org/browse/DBZ-1073)
+
+
+### Breaking changes since 0.9.0.Beta2
+
+SQL Server connector has re-worked semantics of snapshot modes.
+SQL Server connector also adds a new field to offsets in streaming mode which could prevent seamleass upgrading of versions.
+We recommend to re-register and restart the connector.
+
+### Fixes since 0.9.0.Beta2
+
+* ArrayIndexOutOfBoundsException when a column is deleted (Postgres) [DBZ-996](https://issues.jboss.org/browse/DBZ-996)
+* Messages from tables without PK and with REPLICA IDENTITY FULL [DBZ-1029](https://issues.jboss.org/browse/DBZ-1029)
+* Inconsistent schema name in streaming and snapshotting phase [DBZ-1051](https://issues.jboss.org/browse/DBZ-1051)
+* "watch-topic" and "create-topic" commands fail [DBZ-1057](https://issues.jboss.org/browse/DBZ-1057)
+* Antlr Exception: mismatched input '.' expecting {<EOF>, '--'} [DBZ-1059](https://issues.jboss.org/browse/DBZ-1059)
+* MySQL JDBC Context sets the wrong truststore password [DBZ-1062](https://issues.jboss.org/browse/DBZ-1062)
+* Unsigned smallint column in mysql failing due to out of range error [DBZ-1063](https://issues.jboss.org/browse/DBZ-1063)
+* NULL Values are replaced by default values even in NULLABLE fields [DBZ-1064](https://issues.jboss.org/browse/DBZ-1064)
+* Uninformative "Found previous offset" log [DBZ-1066](https://issues.jboss.org/browse/DBZ-1066)
+* SQL Server connector does not persist LSNs in Kafka [DBZ-1069](https://issues.jboss.org/browse/DBZ-1069)
+* [debezium] ERROR: option \"include-unchanged-toast\" = \"0\" is unknown [DBZ-1083](https://issues.jboss.org/browse/DBZ-1083)
+* Debezium fails when consuming table without primary key with turned on topic routing [DBZ-1086](https://issues.jboss.org/browse/DBZ-1086)
+* Wrong message key and event used when primary key is updated [DBZ-1088](https://issues.jboss.org/browse/DBZ-1088)
+* Connect schema name is wrong for SQL Server [DBZ-1089](https://issues.jboss.org/browse/DBZ-1089)
+* Incorrect LSN tracking - possible data loss [DBZ-1090](https://issues.jboss.org/browse/DBZ-1090)
+* Race condition in EmbeddedEngine shutdown [DBZ-1103](https://issues.jboss.org/browse/DBZ-1103)
+
+
+### Other changes since 0.9.0.Beta2
+
+* Intermittent failures in RecordsStreamProducerIT#shouldPropagateSourceColumnTypeToSchemaParameter() [DBZ-781](https://issues.jboss.org/browse/DBZ-781)
+* Assert MongoDB supported versions [DBZ-988](https://issues.jboss.org/browse/DBZ-988)
+* Describe how to do DDL changes for SQL Server [DBZ-993](https://issues.jboss.org/browse/DBZ-993)
+* Verify version of wal2json on RDS [DBZ-1056](https://issues.jboss.org/browse/DBZ-1056)
+* Move SQL Server connector to main repo [DBZ-1084](https://issues.jboss.org/browse/DBZ-1084)
+* Don't enqueue further records when connector is stopping [DBZ-1099](https://issues.jboss.org/browse/DBZ-1099)
+* Race condition in SQLServer tests during snapshot phase [DBZ-1101](https://issues.jboss.org/browse/DBZ-1101)
+* Remove columnNames field from TableImpl [DBZ-1105](https://issues.jboss.org/browse/DBZ-1105)
+* column.propagate.source.type missing scale [DBZ-387](https://issues.jboss.org/browse/DBZ-387)
+* write catch-up binlog reader [DBZ-387](https://issues.jboss.org/browse/DBZ-388)
+* changes to Snapshot and Binlog readers to allow for concurrent/partial running [DBZ-387](https://issues.jboss.org/browse/DBZ-389)
+
+
 ## 0.9.0.Beta2
 December 19th, 2018 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339976)
 
