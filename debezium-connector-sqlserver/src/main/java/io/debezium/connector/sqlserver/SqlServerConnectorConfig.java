@@ -26,6 +26,7 @@ import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -267,7 +268,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
-    private final Predicate<ColumnId> columnFilter;
+    private final ColumnNameFilter columnFilter;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
@@ -275,8 +276,20 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
-        this.columnFilter = Predicates.excludes(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST),
-                columnId -> String.format("%s.%s.%s", columnId.schema(), columnId.table(), columnId.columnName()));
+        this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+    }
+
+    private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
+        return new ColumnNameFilter() {
+
+            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
+
+            @Override
+            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                // ignore database name as it's not relevant here
+                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
+            }
+        };
     }
 
     public String getDatabaseName() {
@@ -291,7 +304,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         return snapshotMode;
     }
 
-    public Predicate<ColumnId> getColumnFilter() {
+    public ColumnNameFilter getColumnFilter() {
         return columnFilter;
     }
 

@@ -19,6 +19,7 @@ import java.util.function.Predicate;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.function.Predicates;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Collect;
@@ -64,6 +65,7 @@ public final class Tables {
      */
     @FunctionalInterface
     public static interface ColumnNameFilter {
+
         /**
          * Determine whether the named column should be included in the table's {@link Schema} definition.
          *
@@ -76,6 +78,28 @@ public final class Tables {
          * @return {@code true} if the table should be included, or {@code false} if the table should be excluded
          */
         boolean matches(String catalogName, String schemaName, String tableName, String columnName);
+
+        /**
+         * Build the {@link ColumnNameFilter} that determines whether a column identified by a given {@link ColumnId} is to be included,
+         * using the given comma-separated regular expression patterns defining which columns (if any) should be <i>excluded</i>.
+         * <p>
+         * Note that this predicate is completely independent of the table selection predicate, so it is expected that this predicate
+         * be used only <i>after</i> the table selection predicate determined the table containing the column(s) is to be used.
+         *
+         * @param fullyQualifiedColumnNames the comma-separated list of fully-qualified column names to exclude; may be null or
+         * @return a column name filter; never null
+         */
+        public static ColumnNameFilter getInstance(String fullyQualifiedColumnNames) {
+            Predicate<ColumnId> delegate = Predicates.excludes(fullyQualifiedColumnNames, ColumnId::toString);
+
+            return new ColumnNameFilter() {
+
+                @Override
+                public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
+                    return delegate.test(new ColumnId(new TableId(catalogName, schemaName, tableName), columnName));
+                }
+            };
+        }
     }
 
     private final FunctionalReadWriteLock lock = FunctionalReadWriteLock.reentrant();

@@ -8,11 +8,11 @@ package io.debezium.relational;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.DatabaseSchema;
@@ -29,7 +29,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final TopicSelector<TableId> topicSelector;
     private final TableSchemaBuilder schemaBuilder;
     private final TableFilter tableFilter;
-    private final Predicate<ColumnId> columnFilter;
+    private final ColumnNameFilter columnFilter;
     private final ColumnMappers columnMappers;
 
     private final String schemaPrefix;
@@ -37,7 +37,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final Tables tables;
 
     protected RelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
-            TableFilter tableFilter, Predicate<ColumnId> columnFilter, TableSchemaBuilder schemaBuilder,
+            TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
             boolean tableIdCaseInsensitive) {
 
         this.topicSelector = topicSelector;

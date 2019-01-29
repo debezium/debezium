@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -25,6 +24,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.util.SchemaNameAdjuster;
@@ -83,10 +83,11 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
+    public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, ColumnNameFilter filter, ColumnMappers mappers) {
         if (schemaPrefix == null) {
             schemaPrefix = "";
         }
+
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableSchemaName(tableId);
@@ -101,7 +102,7 @@ public class TableSchemaBuilder {
                 addField(keySchemaBuilder, column, null);
                 hasPrimaryKey.set(true);
             }
-            if (filter == null || filter.test(new ColumnId(tableId, column.name()))) {
+            if (filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name())) {
                 // Add the column to the value schema only if the column has not been filtered ...
                 ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
                 addField(valSchemaBuilder, column, mapper);
@@ -222,7 +223,7 @@ public class TableSchemaBuilder {
      * @return the value-generating function, or null if there is no value schema
      */
     protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
-                                                              Predicate<ColumnId> filter, ColumnMappers mappers) {
+            ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
@@ -296,14 +297,14 @@ public class TableSchemaBuilder {
      * @return the converters for each column in the rows; never null
      */
     protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
-                                                    Predicate<ColumnId> filter, ColumnMappers mappers) {
+            ColumnNameFilter filter, ColumnMappers mappers) {
 
         ValueConverter[] converters = new ValueConverter[columns.size()];
 
         for (int i = 0; i < columns.size(); i++) {
             Column column = columns.get(i);
 
-            if (filter != null && !filter.test(new ColumnId(tableId, column.name()))) {
+            if (filter != null && !filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name())) {
                 continue;
             }
 
