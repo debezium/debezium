@@ -106,7 +106,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 // creating a temporary slot if it should be dropped an we're on 10 or newer;
                 // this is not supported through the API yet
                 // see https://github.com/pgjdbc/pgjdbc/issues/1305
-                if (dropSlotOnClose && pgConnection().getServerMajorVersion() >= 10) {
+                if (useTemporarySlot()) {
                     try (Statement stmt = pgConnection().createStatement()) {
                         stmt.execute(String.format(
                                 "CREATE_REPLICATION_SLOT %s TEMPORARY LOGICAL %s",
@@ -164,13 +164,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
+    private boolean useTemporarySlot() throws SQLException {
+        return dropSlotOnClose && pgConnection().getServerMajorVersion() >= 10;
+    }
+
     @Override
-    public ReplicationStream startStreaming() throws SQLException {
+    public ReplicationStream startStreaming() throws SQLException, InterruptedException {
         return startStreaming(defaultStartingPos);
     }
 
     @Override
-    public ReplicationStream startStreaming(Long offset) throws SQLException {
+    public ReplicationStream startStreaming(Long offset) throws SQLException, InterruptedException {
         connect();
         if (offset == null || offset <= 0) {
             offset = defaultStartingPos;
@@ -184,7 +188,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return (PgConnection) connection(false);
     }
 
-    private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException {
+    private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException, InterruptedException {
         PGReplicationStream s;
 
         try {
@@ -198,6 +202,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             catch (PSQLException e) {
                 LOGGER.debug("Could not register for streaming, retrying without optional options", e);
 
+                if (useTemporarySlot()) {
+                    initReplicationSlot();
+                }
+
                 s = startPgReplicationStream(lsn, plugin.forceRds() ? messageDecoder::optionsWithoutMetadata : messageDecoder::optionsWithMetadata);
                 messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
             }
@@ -206,6 +214,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (e.getMessage().matches("(?s)ERROR: option .* is unknown.*")) {
                 // It is possible we are connecting to an old wal2json plug-in
                 LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
+
+                if (useTemporarySlot()) {
+                    initReplicationSlot();
+                }
+
                 s = startPgReplicationStream(lsn, messageDecoder::optionsWithoutMetadata);
                 messageDecoder.setContainsMetadata(false);
             }
