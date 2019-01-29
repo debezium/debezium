@@ -17,5 +17,7 @@ public interface ChangeEventSourceMetricsMXBean {
     long getTotalNumberOfEventsSeen();
     long getNumberOfEventsSkipped();
     String[] getMonitoredTables();
+    int getQueueTotalCapacity();
+    int getQueueRemainingCapacity();
     void reset();
 }

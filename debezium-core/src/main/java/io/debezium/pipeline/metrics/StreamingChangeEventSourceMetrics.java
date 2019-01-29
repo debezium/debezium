@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -31,8 +32,8 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<Map<String, String>>(Collections.emptyMap());
     private volatile String lastTransactionId;
 
-    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext) {
-        super(taskContext, "streaming");
+    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
+        super(taskContext, "streaming", changeEventQueueMetrics);
     }
 
     @Override
