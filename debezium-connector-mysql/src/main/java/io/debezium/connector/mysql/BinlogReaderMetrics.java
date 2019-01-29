@@ -5,12 +5,14 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
 import io.debezium.pipeline.metrics.Metrics;
+import io.debezium.util.Collect;
 
 /**
  * @author Randall Hauch
@@ -136,6 +138,20 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     @Override
     public String[] getMonitoredTables() {
         return schema.monitoredTablesAsStringArray();
+    }
+
+    @Override
+    public long getSecondsBehindSource() {
+        return getSecondsBehindMaster();
+    }
+
+    @Override
+    public Map<String, String> getSourceEventPosition() {
+        return Collect.hashMapOf(
+                "filename", getBinlogFilename(),
+                "position", Long.toString(getBinlogPosition()),
+                "gtid", getGtidSet()
+        );
     }
 
 }

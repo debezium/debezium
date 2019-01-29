@@ -139,5 +139,14 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
 
     @Override
     public void reset() {
+        super.reset();
+        snapshotRunning.set(false);
+        snapshotCompleted.set(false);
+        snapshotAborted.set(false);
+        startTime.set(0);
+        stopTime.set(0);
+        rowsScanned.clear();
+        remainingTables.clear();
+        monitoredTables.clear();
     }
 }

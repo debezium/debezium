@@ -12,11 +12,14 @@ import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
 
 /**
@@ -30,12 +33,12 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
     protected final AtomicLong numberOfEventsSkipped = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
+    private volatile String lastEvent;
 
     private final String contextName;
     protected final Clock clock;
     protected final CdcSourceTaskContext taskContext;
     private volatile ObjectName name;
-    private volatile String lastEvent;
 
     protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName) {
         this.contextName = contextName;
@@ -78,9 +81,9 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
-    public void onEvent(String event) {
-        lastEvent = event;
+    public void onEvent(Object source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
         updateCommonEventMetrics();
+        lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
     }
 
     private void updateCommonEventMetrics() {
@@ -118,5 +121,7 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     public void reset() {
         totalNumberOfEventsSeen.set(0);
         lastEventTimestamp.set(-1);
+        numberOfEventsSkipped.set(0);
+        lastEvent = null;
     }
 }
