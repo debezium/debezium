@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 
 /**
@@ -19,8 +20,8 @@ class SnapshotReaderMetrics extends SnapshotChangeEventSourceMetrics implements 
 
     private final MySqlSchema schema;
 
-    public SnapshotReaderMetrics(MySqlTaskContext taskContext, MySqlSchema schema) {
-        super(taskContext);
+    public SnapshotReaderMetrics(MySqlTaskContext taskContext, MySqlSchema schema, ChangeEventQueueMetrics changeEventQueueMetrics) {
+        super(taskContext, changeEventQueueMetrics);
         this.schema = schema;
     }
 

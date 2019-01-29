@@ -246,7 +246,7 @@ public class BinlogReader extends AbstractReader {
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...
-        metrics = new BinlogReaderMetrics(client, context, name);
+        metrics = new BinlogReaderMetrics(client, context, name, changeEventQueueMetrics);
         heartbeat = Heartbeat.create(context.config(), context.topicSelector().getHeartbeatTopic(),
                 context.getConnectorConfig().getLogicalName());
     }

@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
@@ -38,8 +39,8 @@ public class SnapshotChangeEventSourceMetrics extends Metrics implements Snapsho
 
     private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
 
-    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext) {
-        super(taskContext, "snapshot");
+    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
+        super(taskContext, "snapshot", changeEventQueueMetrics);
     }
 
     @Override

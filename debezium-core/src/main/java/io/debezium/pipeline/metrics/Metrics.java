@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -38,12 +39,14 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     private final String contextName;
     protected final Clock clock;
     protected final CdcSourceTaskContext taskContext;
+    private final ChangeEventQueueMetrics changeEventQueueMetrics;
     private volatile ObjectName name;
 
-    protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName) {
+    protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics) {
         this.contextName = contextName;
         this.taskContext = taskContext;
         this.clock = taskContext.getClock();
+        this.changeEventQueueMetrics = changeEventQueueMetrics;
     }
 
     /**
@@ -123,5 +126,15 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
         lastEventTimestamp.set(-1);
         numberOfEventsSkipped.set(0);
         lastEvent = null;
+    }
+
+    @Override
+    public int getQueueTotalCapacity() {
+        return changeEventQueueMetrics.totalCapacity();
+    }
+
+    @Override
+    public int getQueueRemainingCapacity() {
+        return changeEventQueueMetrics.remainingCapacity();
     }
 }
