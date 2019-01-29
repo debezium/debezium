@@ -722,13 +722,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             else if (data instanceof Number) {
                 Number value = (Number) data;
-                r.deliver(new Short(value.shortValue()));
+                r.deliver(Short.valueOf(value.shortValue()));
             }
             else if (data instanceof Boolean) {
                 r.deliver(NumberConversions.getShort((Boolean)data));
             }
             else if (data instanceof String) {
-                r.deliver(Short.parseShort((String)data));
+                r.deliver(Short.valueOf((String)data));
             }
         });
     }
@@ -755,7 +755,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getInteger((Boolean)data));
             }
             else if (data instanceof String) {
-                r.deliver(Integer.parseInt((String)data));
+                r.deliver(Integer.valueOf((String)data));
             }
         });
     }
@@ -782,7 +782,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getLong((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Long.parseLong((String) data));
+                r.deliver(Long.valueOf((String) data));
             }
         });
     }

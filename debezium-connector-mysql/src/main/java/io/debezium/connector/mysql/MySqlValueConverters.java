@@ -392,7 +392,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 r.deliver(adjustYear(((java.sql.Date) data).getYear()));
             }
             else if (data instanceof String) {
-                mutData = Integer.parseInt((String) data);
+                mutData = Integer.valueOf((String) data);
             }
             if (mutData instanceof Number) {
                 // MySQL JDBC driver sometimes returns a short ...

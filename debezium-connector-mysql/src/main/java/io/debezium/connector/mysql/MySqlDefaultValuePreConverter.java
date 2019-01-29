@@ -161,7 +161,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToInteger(String value) {
-        return Integer.parseInt(value);
+        return Integer.valueOf(value);
     }
 
     /**
@@ -235,7 +235,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToSmallInt(String value) {
-        return Short.parseShort(value);
+        return Short.valueOf(value);
     }
 
     /**

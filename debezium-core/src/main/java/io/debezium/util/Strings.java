@@ -254,12 +254,20 @@ public final class Strings {
         Iterator<T> iter = values.iterator();
         if (!iter.hasNext()) return "";
         StringBuilder sb = new StringBuilder();
-        sb.append(iter.next());
+        String first = conversion.apply(iter.next());
+        boolean delimit = false;
+        if (first != null) {
+            sb.append(first);
+            delimit = true;
+        }
         while (iter.hasNext()) {
-            String convertedValue = conversion.apply(iter.next());
-            if (convertedValue != null) {
-                sb.append(delimiter);
-                sb.append(convertedValue);
+            String next = conversion.apply(iter.next());
+            if (next != null) {
+                if (delimit) {
+                    sb.append(delimiter);
+                }
+                sb.append(next);
+                delimit = true;
             }
         }
         return sb.toString();

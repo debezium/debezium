@@ -460,7 +460,7 @@ public class JdbcConnection implements AutoCloseable {
      * Execute multiple SQL prepared queries where each query is executed with the same set of parameters.
      *
      * @param multiQuery the array of prepared queries
-     * @param preparer the array of functions that supply arguments to the prepared statements; may not be null
+     * @param preparers the array of functions that supply arguments to the prepared statements; may not be null
      * @param resultConsumer the consumer of the query results
      * @return this object for chaining methods together
      * @throws SQLException if there is an error connecting to the database or executing the statements
@@ -564,6 +564,26 @@ public class JdbcConnection implements AutoCloseable {
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
      */
+    public JdbcConnection prepareQuery(String preparedQueryString, StatementPreparer preparer, BlockingResultSetConsumer resultConsumer)
+            throws SQLException, InterruptedException {
+        final PreparedStatement statement = createPreparedStatement(preparedQueryString);
+        preparer.accept(statement);
+        try (ResultSet resultSet = statement.executeQuery();) {
+            if (resultConsumer != null) resultConsumer.accept(resultSet);
+        }
+        return this;
+    }
+
+    /**
+     * Execute a SQL prepared query.
+     *
+     * @param preparedQueryString the prepared query string
+     * @param preparer the function that supplied arguments to the prepared statement; may not be null
+     * @param resultConsumer the consumer of the query results
+     * @return this object for chaining methods together
+     * @throws SQLException if there is an error connecting to the database or executing the statements
+     * @see #execute(Operations)
+     */
     public JdbcConnection prepareQuery(String preparedQueryString, StatementPreparer preparer, ResultSetConsumer resultConsumer)
             throws SQLException {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
@@ -580,7 +600,7 @@ public class JdbcConnection implements AutoCloseable {
      *
      * @param preparedQueryString the prepared query string
      * @param preparer the function that supplied arguments to the prepared statement; may not be null
-     * @param resultConsumer the consumer of the query results
+     * @param mapper the function processing the query results
      * @return the result of the mapper calculation
      * @throws SQLException if there is an error connecting to the database or executing the statements
      * @see #execute(Operations)
