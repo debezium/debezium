@@ -112,7 +112,8 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new);
+                DataChangeEvent::new,
+                new SqlServerEventMetadataProvider());
 
         coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,

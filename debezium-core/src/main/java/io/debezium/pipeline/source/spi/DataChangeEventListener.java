@@ -5,7 +5,10 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.spi.OffsetContext;
 
 /**
  * A class invoked by {@link EventDispatcher} whenever an event is available for processing.
@@ -18,7 +21,7 @@ public interface DataChangeEventListener {
     /**
      * Invoked if an event is processed for a captured table.
      */
-    void onEvent(String event);
+    void onEvent(Object source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider);
 
     /**
      * Invoked for events pertaining to non-whitelisted tables.
@@ -32,7 +35,7 @@ public interface DataChangeEventListener {
         }
 
         @Override
-        public void onEvent(String event) {
+        public void onEvent(Object source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
         }
     };
 }
