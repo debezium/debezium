@@ -633,7 +633,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
         }
         if (!tokens.canConsumeAnyOf("E", "e")) {
             if (decimal) return Double.parseDouble(sb.toString());
-            return Integer.parseInt(sb.toString());
+            return Integer.valueOf(sb.toString());
         }
         sb.append('E');
         if (tokens.matchesAnyOf("+", "-")) {

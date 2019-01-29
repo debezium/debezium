@@ -1166,7 +1166,7 @@ public interface Configuration {
         String value = getString(key);
         if (value != null) {
             try {
-                return Integer.parseInt(value);
+                return Integer.valueOf(value);
             } catch (NumberFormatException e) {}
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsInt() : null;
@@ -1186,7 +1186,7 @@ public interface Configuration {
         String value = getString(key);
         if (value != null) {
             try {
-                return Long.parseLong(value);
+                return Long.valueOf(value);
             } catch (NumberFormatException e) {}
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsLong() : null;
@@ -1910,7 +1910,7 @@ public interface Configuration {
     default <T> void forEachMatchingFieldNameWithInteger(Pattern regex, int groupNumber, BiConsumer<String, Integer> function) {
         BiFunction<String, String, Integer> extractor = (fieldName, strValue) -> {
             try {
-                return Integer.parseInt(strValue);
+                return Integer.valueOf(strValue);
             } catch (NumberFormatException e) {
                 LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
                                                           strValue, fieldName, regex);

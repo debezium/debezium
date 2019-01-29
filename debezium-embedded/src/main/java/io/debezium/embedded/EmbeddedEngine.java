@@ -990,7 +990,7 @@ public final class EmbeddedEngine implements Runnable {
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
             try {
-                latch.await(Integer.parseInt(System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))), TimeUnit.MILLISECONDS);
+                latch.await(Long.valueOf(System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))), TimeUnit.MILLISECONDS);
             }
             catch (InterruptedException e) {
             }
