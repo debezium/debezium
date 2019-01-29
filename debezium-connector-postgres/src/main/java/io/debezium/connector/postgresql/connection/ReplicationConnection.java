@@ -37,7 +37,7 @@ public interface ReplicationConnection extends AutoCloseable {
      * @return a {@link PGReplicationStream} from which data is read; never null
      * @throws SQLException if there is a problem obtaining the replication stream
      */
-    ReplicationStream startStreaming() throws SQLException;
+    ReplicationStream startStreaming() throws SQLException, InterruptedException;
 
     /**
      * Opens a stream for reading logical replication changes from a given LSN position.
@@ -52,7 +52,7 @@ public interface ReplicationConnection extends AutoCloseable {
      * @see org.postgresql.replication.LogSequenceNumber
      * @throws SQLException if anything fails
      */
-    ReplicationStream startStreaming(Long offset) throws SQLException;
+    ReplicationStream startStreaming(Long offset) throws SQLException, InterruptedException;
 
     /**
      * Checks whether this connection is open or not
