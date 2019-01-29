@@ -17,6 +17,7 @@
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
         <version.postgres.server>9.6</version.postgres.server>
+        <postgres.host>${docker.host.address}</postgres.host>
         <postgres.port>5432</postgres.port>
         <postgres.user>postgres</postgres.user>
         <postgres.password>postgres</postgres.password>
@@ -213,7 +214,7 @@
                     <enableAssertions>true</enableAssertions>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
-                        <database.hostname>${docker.host.address}</database.hostname>
+                        <database.hostname>${postgres.host}</database.hostname>
                         <database.port>${postgres.port}</database.port>
                         <database.user>${postgres.user}</database.user>
                         <database.password>${postgres.password}</database.password>

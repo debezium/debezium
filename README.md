@@ -48,8 +48,6 @@ Data is often stored in multiple places, especially when it is used for differen
 
 The [Command Query Responsibility Separation (CQRS)](http://martinfowler.com/bliki/CQRS.html) architectural pattern uses a one data model for updating and one or more other data models for reading. As changes are recorded on the update-side, those changes are then processed and used to update the various read representations. As a result CQRS applications are usually more complicated, especially when they need to ensure reliable and totally-ordered processing. Debezium and CDC can make this more approachable: writes are recorded as normal, but Debezium captures those changes in durable, totally ordered streams that are consumed by the services that asynchronously update the read-only views. The write-side tables can represent domain-oriented entities, or when CQRS is paired with [Event Sourcing](http://martinfowler.com/eaaDev/EventSourcing.html) the write-side tables are the append-only event log of commands.
 
-
-
 ## Building Debezium
 
 The following software is required to work with the Debezium codebase and build it locally:
@@ -65,7 +63,6 @@ See the links above for installation instructions on your platform. You can veri
     $ javac -version
     $ mvn -version
     $ docker --version
-
 
 ### Why Docker?
 
@@ -119,6 +116,12 @@ To run the integration tests of the PG connector using wal2json, enable the "wal
 
 A few tests currently don't pass when using the wal2json plug-in.
 Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
+
+### Running tests of the Postgres connector against an external database, e.g. Amazon RDS
+
+    $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder \
+         -Ddocker.skip.build=true -Ddocker.skip.run=true -Dpostgres.host=<your PG host> \
+         -Dpostgres.user=<your user> -Dpostgres.password=<your password>
 
 ## Contributing
 
