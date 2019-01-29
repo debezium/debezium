@@ -5,9 +5,8 @@
  */
 package io.debezium.relational;
 
-import java.util.function.Predicate;
-
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
@@ -30,7 +29,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     private final DatabaseHistory databaseHistory;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
-            TableFilter tableFilter, Predicate<ColumnId> columnFilter, TableSchemaBuilder schemaBuilder,
+            TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
             boolean tableIdCaseInsensitive) {
         super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);
 

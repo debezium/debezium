@@ -322,18 +322,4 @@ public class Selectors {
             }
         }
     }
-
-    /**
-     * Build the {@link Predicate} that determines whether a column identified by a given {@link ColumnId} is to be included,
-     * using the given comma-separated regular expression patterns defining which columns (if any) should be <i>excluded</i>.
-     * <p>
-     * Note that this predicate is completely independent of the table selection predicate, so it is expected that this predicate
-     * be used only <i>after</i> the table selection predicate determined the table containing the column(s) is to be used.
-     *
-     * @param fullyQualifiedColumnNames the comma-separated list of fully-qualified column names to exclude; may be null or
-     * @return this builder so that methods can be chained together; never null
-     */
-    public static Predicate<ColumnId> excludeColumns(String fullyQualifiedColumnNames) {
-        return Predicates.excludes(fullyQualifiedColumnNames, ColumnId::toString);
-    }
 }
