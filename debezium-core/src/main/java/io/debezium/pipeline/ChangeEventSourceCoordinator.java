@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
@@ -60,9 +61,9 @@ public class ChangeEventSourceCoordinator {
         this.eventDispatcher = eventDispatcher;
     }
 
-    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext) {
-        this.snapshotMetrics = new SnapshotChangeEventSourceMetrics(taskContext);
-        this.streamingMetrics = new StreamingChangeEventSourceMetrics(taskContext);
+    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
+        this.snapshotMetrics = new SnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics);
+        this.streamingMetrics = new StreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics);
         running = true;
 
         // run the snapshot source on a separate thread so start() won't block

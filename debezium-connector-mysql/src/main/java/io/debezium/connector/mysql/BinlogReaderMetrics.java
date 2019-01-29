@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.pipeline.metrics.Metrics;
 import io.debezium.util.Collect;
 
@@ -28,8 +29,8 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
 
-    public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name) {
-        super(taskContext, name);
+    public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name, ChangeEventQueueMetrics changeEventQueueMetrics) {
+        super(taskContext, name, changeEventQueueMetrics);
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
         this.schema = taskContext.dbSchema();

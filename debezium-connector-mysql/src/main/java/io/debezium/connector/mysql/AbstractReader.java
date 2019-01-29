@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.time.Temporals;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -49,6 +50,7 @@ public abstract class AbstractReader implements Reader {
     private final Metronome metronome;
     private final AtomicReference<Runnable> uponCompletion = new AtomicReference<>();
     private final Duration pollInterval;
+    protected final ChangeEventQueueMetrics changeEventQueueMetrics;
 
     private final HaltingPredicate acceptAndContinue;
 
@@ -71,6 +73,18 @@ public abstract class AbstractReader implements Reader {
         this.pollInterval = context.getConnectorConfig().getPollInterval();
         this.metronome = Metronome.parker(pollInterval, Clock.SYSTEM);
         this.acceptAndContinue = acceptAndContinue == null? new AcceptAllPredicate() : acceptAndContinue;
+        this.changeEventQueueMetrics = new ChangeEventQueueMetrics() {
+
+            @Override
+            public int totalCapacity() {
+                return context.getConnectorConfig().getMaxQueueSize();
+            }
+
+            @Override
+            public int remainingCapacity() {
+                return records.remainingCapacity();
+            }
+        };
     }
 
     @Override

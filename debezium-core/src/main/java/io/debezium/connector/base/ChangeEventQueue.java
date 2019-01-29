@@ -51,12 +51,13 @@ import io.debezium.util.Threads.Timer;
  *            producers to the consumer, a custom type wrapping source records
  *            may be used.
  */
-public class ChangeEventQueue<T> {
+public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChangeEventQueue.class);
 
     private final Duration pollInterval;
     private final int maxBatchSize;
+    private final int maxQueueSize;
     private final BlockingQueue<T> queue;
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
@@ -66,6 +67,7 @@ public class ChangeEventQueue<T> {
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier) {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
+        this.maxQueueSize = maxQueueSize;
         this.queue = new LinkedBlockingDeque<>(maxQueueSize);
         this.metronome = Metronome.sleeper(pollInterval, Clock.SYSTEM);
         this.loggingContextSupplier = loggingContextSupplier;
@@ -167,5 +169,15 @@ public class ChangeEventQueue<T> {
         if (producerFailure != null) {
             throw new ConnectException("An exception ocurred in the change event producer. This connector will be stopped.", producerFailure);
         }
+    }
+
+    @Override
+    public int totalCapacity() {
+        return maxQueueSize;
+    }
+
+    @Override
+    public int remainingCapacity() {
+        return queue.remainingCapacity();
     }
 }

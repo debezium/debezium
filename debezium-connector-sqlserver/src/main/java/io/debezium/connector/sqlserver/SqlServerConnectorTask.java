@@ -124,7 +124,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 dispatcher
         );
 
-        coordinator.start(taskContext);
+        coordinator.start(taskContext, this.queue);
     }
 
     /**
