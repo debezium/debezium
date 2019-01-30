@@ -1268,7 +1268,9 @@ public class MySqlDdlParser extends LegacyDdlParser {
                 tokens.canConsume("COLUMN");
                 parseCreateDefinitionList(start, table);
             } else if (tokens.canConsume("PARTITION", "(")) {
-                parsePartitionDefinition(start, table);
+                do {
+                    parsePartitionDefinition(start, table);
+                } while (tokens.canConsume(','));
                 tokens.consume(')');
             } else {
                 parseCreateDefinition(start, table, true);

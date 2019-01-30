@@ -629,7 +629,10 @@ alterSpecification
     | IMPORT TABLESPACE                                             #alterByImportTablespace
     | FORCE                                                         #alterByForce
     | validationFormat=(WITHOUT | WITH) VALIDATION                  #alterByValidate
-    | ADD PARTITION '(' partitionDefinition ')'                     #alterByAddPartition
+    | ADD PARTITION
+        '('
+          partitionDefinition (',' partitionDefinition)*
+        ')'                                                         #alterByAddPartition
     | DROP PARTITION uidList                                        #alterByDropPartition
     | DISCARD PARTITION (uidList | ALL) TABLESPACE                  #alterByDiscardPartition
     | IMPORT PARTITION (uidList | ALL) TABLESPACE                   #alterByImportPartition
