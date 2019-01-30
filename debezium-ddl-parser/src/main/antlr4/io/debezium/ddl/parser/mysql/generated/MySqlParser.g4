@@ -644,7 +644,7 @@ alterSpecification
         ')'                                                         #alterByReorganizePartition
     | EXCHANGE PARTITION uid WITH TABLE tableName
       (validationFormat=(WITH | WITHOUT) VALIDATION)?               #alterByExchangePartition
-    | ANALYZE PARTITION (uidList | ALL)                             #alterByAnalyzePartitiion
+    | ANALYZE PARTITION (uidList | ALL)                             #alterByAnalyzePartition
     | CHECK PARTITION (uidList | ALL)                               #alterByCheckPartition
     | OPTIMIZE PARTITION (uidList | ALL)                            #alterByOptimizePartition
     | REBUILD PARTITION (uidList | ALL)                             #alterByRebuildPartition
