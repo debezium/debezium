@@ -380,6 +380,16 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1113")
+    public void parseAddMultiplePartitions() {
+        String ddl =
+                "CREATE TABLE test (id INT, PRIMARY KEY (id));"
+              + "ALTER TABLE test ADD PARTITION (PARTITION p1 VALUES LESS THAN (10), PARTITION p_max VALUES LESS THAN MAXVALUE);";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
+    @Test
     @FixFor("DBZ-688")
     public void parseGeomCollection() {
         String ddl = "CREATE TABLE geomtable (id int(11) PRIMARY KEY, collection GEOMCOLLECTION DEFAULT NULL)";
