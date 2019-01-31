@@ -417,6 +417,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics()).hasSize(1);
         assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).hasSize(1);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -451,6 +454,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -472,6 +478,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // so the given statements will be executed multiple times, resulting in multiple
         // records; here we're interested just in the first insert for s2.a
         assertValueField(actualRecords.allRecordsInOrder().get(6), "after/bb", "hello; world");
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -536,6 +545,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsFromSnapshot(4, 1, 2, 1, 2);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -578,6 +590,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 3, 3);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
