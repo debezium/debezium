@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
@@ -28,6 +29,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
+    private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name, ChangeEventQueueMetrics changeEventQueueMetrics) {
         super(taskContext, name, changeEventQueueMetrics);
@@ -98,6 +100,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
         numberOfRolledBackTransactions.set(0);
         numberOfNotWellFormedTransactions.set(0);
         numberOfLargeTransactions.set(0);
+        lastTransactionId.set(null);
     }
 
     @Override
@@ -136,6 +139,10 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
         numberOfLargeTransactions.incrementAndGet();
     }
 
+    public void onGtidChange(String gtid) {
+        lastTransactionId.set(gtid);
+    }
+
     @Override
     public String[] getMonitoredTables() {
         return schema.monitoredTablesAsStringArray();
@@ -153,6 +160,11 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
                 "position", Long.toString(getBinlogPosition()),
                 "gtid", getGtidSet()
         );
+    }
+
+    @Override
+    public String getLastTransactionId() {
+        return lastTransactionId.get();
     }
 
 }
