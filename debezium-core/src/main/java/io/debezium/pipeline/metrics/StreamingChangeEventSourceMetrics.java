@@ -30,7 +30,7 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     private final AtomicLong secondsBehindSource = new AtomicLong(-1);
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<Map<String, String>>(Collections.emptyMap());
-    private volatile String lastTransactionId;
+    private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
         super(taskContext, "streaming", changeEventQueueMetrics);
@@ -76,8 +76,8 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
 
         final String transactionId = metadataProvider.getTransactionId(source, offset, key, value);
         if (transactionId != null) {
-            if (!transactionId.equals(lastTransactionId)) {
-                lastTransactionId = transactionId;
+            if (!transactionId.equals(lastTransactionId.get())) {
+                lastTransactionId.set(transactionId);
                 numberOfCommittedTransactions.incrementAndGet();
             }
         }
@@ -89,12 +89,17 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     }
 
     @Override
+    public String getLastTransactionId() {
+        return lastTransactionId.get();
+    }
+
+    @Override
     public void reset() {
         super.reset();
         connected.set(false);
         secondsBehindSource.set(-1);
         numberOfCommittedTransactions.set(0);
         sourceEventPosition.set(Collections.emptyMap());
-        lastTransactionId = null;
+        lastTransactionId.set(null);
     }
 }

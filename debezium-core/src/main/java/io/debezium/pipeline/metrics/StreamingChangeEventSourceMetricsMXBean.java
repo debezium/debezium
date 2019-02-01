@@ -18,4 +18,5 @@ public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSour
     long getSecondsBehindSource();
     long getNumberOfCommittedTransactions();
     Map<String, String> getSourceEventPosition();
+    String getLastTransactionId();
 }

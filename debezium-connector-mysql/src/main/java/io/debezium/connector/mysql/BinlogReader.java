@@ -603,6 +603,7 @@ public class BinlogReader extends AbstractReader {
                 ignoreDmlEventByGtidSource = true;
             }
         }
+        metrics.onGtidChange(gtid);
     }
 
     /**
