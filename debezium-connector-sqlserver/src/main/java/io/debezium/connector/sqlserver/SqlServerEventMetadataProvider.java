@@ -55,15 +55,4 @@ class SqlServerEventMetadataProvider implements EventMetadataProvider {
         }
         return sourceInfo.getString(SourceInfo.COMMIT_LSN_KEY);
     }
-
-    @Override
-    public String toSummaryString(Object source, OffsetContext offset, Object key, Struct value) {
-        if (value != null) {
-            final String operation = value.getString(Envelope.FieldName.OPERATION);
-            if (operation != null) {
-                return "operation = " + operation + ", source = " + source + ", id = " + key + ", offset = " + offset.getSourceInfo();
-            }
-        }
-       return "source = " + source + ", id = " + key + ", offset = " + offset.getSourceInfo();
-    }
 }
