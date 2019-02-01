@@ -38,5 +38,11 @@ public interface EventMetadataProvider {
     /**
      * @return s String that describes the event
      */
-    String toSummaryString(Object source, OffsetContext offset, Object key, Struct value);
+    default String toSummaryString(Object source, OffsetContext offset, Object key, Struct value) {
+        return new EventFromatter()
+            .sourcePosition(getEventSourcePosition(source, offset, key, value))
+            .key(key)
+            .value(value)
+            .toString();
+    }
 }
