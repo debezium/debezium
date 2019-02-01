@@ -367,6 +367,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     protected void generateReadRecord(TableId tableId, Object[] rowData) {
+        // Clear the existing record to prevent reprocessing stale data.
+        currentRecord.set(null);
+
         if (rowData.length == 0) {
             return;
         }
