@@ -31,8 +31,23 @@ import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
 /**
- * A {@link StreamingChangeEventSource} based on SQL Server change data capture functionality.
- * A main polls database DDL change and change data tables and turns them into change events.
+ * <p>A {@link StreamingChangeEventSource} based on SQL Server change data capture functionality.
+ * A main loop polls database DDL change and change data tables and turns them into change events.</p>
+ *
+ * <p>The connector uses CDC functionality of SQL Server that is implemented as as a process that monitors
+ * source table and write changes from the table into the change table.</p>
+ * 
+ * <p>The main loop keeps a pointer to the LSN of changes that were already processed. It queries all change
+ * tables and get result set of changes. It always finds the smallest LSN across all tables and the change
+ * is converted into the event message and sent downstream. The process repeats until all result sets are
+ * empty. The LSN is marked and the procedure repeats.</p>
+ *
+ * <p>The schema changes detection follows the procedure recommended by SQL Server CDC documentation.
+ * The database operator should create one more capture process (and table) when a table schema is updated.
+ * The code detects presence of two change tables for a single source table. It decides which table is the new one
+ * depending on LSNs stored in them. The loop streams changes from the older table till there are events in new
+ * table with the LSN larger than in the old one. Then the change table is switched and streaming is executed
+ * from the new one.</p>
  *
  * @author Jiri Pechanec
  */
