@@ -115,6 +115,9 @@
         <!-- No modules options by default -->
         <modules.argline />
 
+        <!-- No test options by default -->
+        <test.argline />
+
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
     </properties>
@@ -464,7 +467,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
-                        <argLine>${debug.argline} ${modules.argline}</argLine>
+			    <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
                     </configuration>
                 </plugin>
                 <plugin>

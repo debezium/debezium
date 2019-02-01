@@ -18,6 +18,7 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.awaitility.Awaitility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,6 +252,20 @@ public final class TestHelper {
         }
         catch (Exception e) {
             LOGGER.debug("Error while dropping default replication slot", e);
+        }
+    }
+
+    protected static void waitForDefaultReplicationSlotBeActive() {
+        try (PostgresConnection connection = create()) {
+            Awaitility.await().atMost(org.awaitility.Duration.FIVE_SECONDS).until(() ->
+                connection.prepareQueryAndMap(
+                    "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ? and active = true", statement -> {
+                        statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+                        statement.setString(2, "postgres");
+                        statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
+                    },
+                    rs -> rs.next()
+               ));
         }
     }
 }

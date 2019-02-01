@@ -60,6 +60,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Strings;
+import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link io.debezium.embedded.EmbeddedEngine}
@@ -485,6 +486,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
+        Testing.Print.enable();
+        TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                                          .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
@@ -492,6 +495,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                          .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
@@ -503,6 +508,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
+        Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                                          .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
@@ -783,7 +789,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
         return connection.prepareQueryAndMap(
                 "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                    statement.setString(1, "debezium");
+                    statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
                     statement.setString(2, "postgres");
                     statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
                 },
