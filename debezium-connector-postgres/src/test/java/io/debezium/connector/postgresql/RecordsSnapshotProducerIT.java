@@ -13,11 +13,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -323,6 +326,87 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicNameStringEncodedDecimals();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+
+        // check the offset information for each record
+        while (!consumer.isEmpty()) {
+            SourceRecord record = consumer.remove();
+            assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
+            assertSourceInfo(record);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1118")
+    public void shouldGenerateSnapshotsForParitionedTables() throws Exception {
+        TestHelper.dropAllSchemas();
+
+        String ddl = "CREATE TABLE first_table (pk integer, user_id integer, PRIMARY KEY(pk));" +
+
+                "CREATE TABLE partitioned (pk serial, user_id integer, aa integer) PARTITION BY RANGE (user_id);" +
+
+                "CREATE TABLE partitioned_1_100 PARTITION OF partitioned " +
+                "(CONSTRAINT p_1_100_pk PRIMARY KEY (pk)) " +
+                "FOR VALUES FROM (1) TO (101);" +
+
+                "CREATE TABLE partitioned_101_200 PARTITION OF partitioned " +
+                "(CONSTRAINT p_101_200_pk PRIMARY KEY (pk)) " +
+                "FOR VALUES FROM (101) TO (201);";
+
+        TestHelper.execute(ddl);
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                        .build());
+
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                TestHelper.getSchema(config),
+                selector
+        );
+
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+
+        TestConsumer consumer = testConsumer(31);
+
+        // add 1 record to `first_table`. To reproduce the bug we must process at
+        // least one row before processing the partitioned table.
+        TestHelper.execute("INSERT INTO first_table (pk, user_id) VALUES (1000, 1);");
+
+        // add 10 random records to the first partition, 20 to the second
+        TestHelper.execute("INSERT INTO partitioned (user_id, aa) " +
+                "SELECT RANDOM() * 99 + 1, RANDOM() * 100000 " +
+                "FROM generate_series(1, 10);");
+        TestHelper.execute("INSERT INTO partitioned (user_id, aa) " +
+                "SELECT RANDOM() * 99 + 101, RANDOM() * 100000 " +
+                "FROM generate_series(1, 20);");
+
+        // then start the producer and validate all records are there
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        Set<Integer> ids = new HashSet<>();
+
+        Map<String, Integer> topicCounts = Collect.hashMapOf(
+                "test_server.public.first_table", 0,
+                "test_server.public.partitioned", 0,
+                "test_server.public.partitioned_1_100", 0,
+                "test_server.public.partitioned_101_200", 0);
+
+        consumer.process(record -> {
+            Struct key = (Struct) record.key();
+            ids.add(key.getInt32("pk"));
+            topicCounts.put(record.topic(), topicCounts.get(record.topic()) + 1);
+        });
+
+        // verify distinct records
+        assertEquals(31, ids.size());
+
+        // verify each topic contains exactly the number of input records
+        assertEquals(1, topicCounts.get("test_server.public.first_table").intValue());
+        assertEquals(0, topicCounts.get("test_server.public.partitioned").intValue());
+        assertEquals(10, topicCounts.get("test_server.public.partitioned_1_100").intValue());
+        assertEquals(20, topicCounts.get("test_server.public.partitioned_101_200").intValue());
 
         // check the offset information for each record
         while (!consumer.isEmpty()) {
