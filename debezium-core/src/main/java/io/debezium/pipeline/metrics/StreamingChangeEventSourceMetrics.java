@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,7 +30,7 @@ import io.debezium.schema.DataCollectionId;
 public class StreamingChangeEventSourceMetrics extends Metrics implements StreamingChangeEventSourceMetricsMXBean, DataChangeEventListener {
 
     private final AtomicBoolean connected = new AtomicBoolean();
-    private final AtomicLong secondsBehindSource = new AtomicLong(-1);
+    private final AtomicReference<Duration> lagBehindSource = new AtomicReference<>();
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<Map<String, String>>(Collections.emptyMap());
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
@@ -57,8 +59,9 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     }
 
     @Override
-    public long getSecondsBehindSource() {
-        return secondsBehindSource.get();
+    public long getMilliSecondsBehindSource() {
+        Duration lag = lagBehindSource.get();
+        return lag != null ? lag.toMillis() : -1;
     }
 
     @Override
@@ -70,9 +73,9 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         super.onEvent(source, offset, key, value);
 
-        final long eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
-        if (eventTimestamp != -1) {
-            secondsBehindSource.set((System.currentTimeMillis() - eventTimestamp) / 1000);
+        final Instant eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
+        if (eventTimestamp != null) {
+            lagBehindSource.set(Duration.between(eventTimestamp, Instant.now()));
         }
 
         final String transactionId = metadataProvider.getTransactionId(source, offset, key, value);
@@ -98,7 +101,7 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     public void reset() {
         super.reset();
         connected.set(false);
-        secondsBehindSource.set(-1);
+        lagBehindSource.set(null);
         numberOfCommittedTransactions.set(0);
         sourceEventPosition.set(Collections.emptyMap());
         lastTransactionId.set(null);
