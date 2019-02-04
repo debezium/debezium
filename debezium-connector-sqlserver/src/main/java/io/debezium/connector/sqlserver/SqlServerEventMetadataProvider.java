@@ -12,12 +12,13 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 class SqlServerEventMetadataProvider implements EventMetadataProvider {
 
     @Override
-    public long getEventTimestamp(Object source, OffsetContext offset, Object key, Struct value) {
+    public long getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         if (value == null) {
             return -1;
         }
@@ -30,7 +31,7 @@ class SqlServerEventMetadataProvider implements EventMetadataProvider {
     }
 
     @Override
-    public Map<String, String> getEventSourcePosition(Object source, OffsetContext offset, Object key, Struct value) {
+    public Map<String, String> getEventSourcePosition(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         if (value == null) {
             return null;
         }
@@ -45,7 +46,7 @@ class SqlServerEventMetadataProvider implements EventMetadataProvider {
     }
 
     @Override
-    public String getTransactionId(Object source, OffsetContext offset, Object key, Struct value) {
+    public String getTransactionId(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         if (value == null) {
             return null;
         }
