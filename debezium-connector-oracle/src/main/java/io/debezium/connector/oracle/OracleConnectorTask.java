@@ -101,7 +101,7 @@ public class OracleConnectorTask extends BaseSourceTask {
                 dispatcher
         );
 
-        coordinator.start(taskContext);
+        coordinator.start(taskContext, this.queue, new OracleEventMetadataProvider());
     }
 
     @Override
