@@ -40,7 +40,7 @@ public interface EventMetadataProvider {
      * @return s String that describes the event
      */
     default String toSummaryString(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        return new EventFromatter()
+        return new EventFormatter()
             .sourcePosition(getEventSourcePosition(source, offset, key, value))
             .key(key)
             .value(value)
