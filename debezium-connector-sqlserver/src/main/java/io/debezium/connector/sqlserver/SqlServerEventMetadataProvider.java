@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
@@ -18,16 +19,16 @@ import io.debezium.util.Collect;
 class SqlServerEventMetadataProvider implements EventMetadataProvider {
 
     @Override
-    public long getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
+    public Instant getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         if (value == null) {
-            return -1;
+            return null;
         }
         final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
         if (source == null) {
-            return -1;
+            return null;
         }
         final Long timestamp = sourceInfo.getInt64(SourceInfo.LOG_TIMESTAMP_KEY);
-        return timestamp == null ? -1 : timestamp;
+        return timestamp == null ? null : Instant.ofEpochMilli(timestamp);
     }
 
     @Override

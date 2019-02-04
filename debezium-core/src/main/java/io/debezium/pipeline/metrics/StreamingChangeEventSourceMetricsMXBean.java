@@ -15,7 +15,7 @@ import java.util.Map;
 public interface StreamingChangeEventSourceMetricsMXBean extends ChangeEventSourceMetricsMXBean {
 
     boolean isConnected();
-    long getSecondsBehindSource();
+    long getMilliSecondsBehindSource();
     long getNumberOfCommittedTransactions();
     Map<String, String> getSourceEventPosition();
     String getLastTransactionId();
