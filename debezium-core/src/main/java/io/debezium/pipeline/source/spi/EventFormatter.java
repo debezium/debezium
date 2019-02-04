@@ -10,87 +10,65 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaUtil;
 
 class EventFormatter {
-
-    private final String INDENT = "";
 
     private Map<String, String> sourcePosition;
     private Object key;
     private Struct value;
     private final StringBuilder string = new StringBuilder();
 
-    private void printStruct(Struct value, String indent) {
-        string.append("{");
-        value.schema().fields().forEach(field -> {
-            final Object fieldValue = value.get(field);
-            if (fieldValue != null) {
-                if (fieldValue instanceof Struct) {
-                    string
-                        .append(indent)
-                        .append(field.name());
-                    printStruct((Struct)fieldValue, indent + INDENT);
-                }
-                else {
-                    printSimpleValue(field.name(), fieldValue, indent);
-                }
-                addComma();
-            }
-        });
-        removeComma();
-        string.append("}");
+    private void printStruct(Struct value) {
+        string.append(SchemaUtil.asDetailedString(value));
     }
 
-    private StringBuilder addComma() {
-        return string.append(',');
+    private StringBuilder addDelimiter() {
+        return string.append(", ");
     }
 
-    private void printSimpleValue(Object key, Object value, String indent) {
+    private void printSimpleValue(Object key, Object value) {
         string
-            .append(INDENT)
             .append(key)
             .append(": ")
             .append(value);
     }
 
-    private void printSimpleValue(Object key, Object value) {
-        printSimpleValue(key, value, "");
-    }
-
-    private void removeComma() {
-        if (string.charAt(string.length() - 1) == ',') {
-            string.deleteCharAt(string.length() - 1);
+    private void removeDelimiter() {
+        if (string.length() >= 2 && string.charAt(string.length() - 2) == ',' && string.charAt(string.length() - 1) == ' ') {
+            string.delete(string.length() - 2, string.length());
         }
     }
+
     @Override
     public String toString() {
         if (value != null) {
             final String operation = value.getString(Envelope.FieldName.OPERATION);
             if (operation != null) {
                 printSimpleValue("operation", operation);
-                addComma();
+                addDelimiter();
             }
         }
         if (sourcePosition != null) {
             string.append("position: {");
             sourcePosition.forEach((k, v) -> {
-                printSimpleValue(k, v, INDENT);
-                addComma();
+                printSimpleValue(k, v);
+                addDelimiter();
             });
-            removeComma();
+            removeDelimiter();
             string.append("}");
-            addComma();
+            addDelimiter();
         }
         if (key != null) {
             if (key instanceof Struct) {
                 string
                     .append("key: ");
-                printStruct((Struct)key, INDENT);
+                printStruct((Struct)key);
             }
             else {
                 printSimpleValue("key", key);
             }
-            addComma();
+            addDelimiter();
         }
         if (value != null) {
             final Struct before = value.getStruct(Envelope.FieldName.BEFORE);
@@ -98,17 +76,17 @@ class EventFormatter {
             if (before != null) {
                 string
                     .append("before: ");
-                printStruct(before, INDENT);
-                addComma();
+                printStruct(before);
+                addDelimiter();
             }
             if (after != null) {
                 string
                     .append("after: ");
-                printStruct(after, INDENT);
-                addComma();
+                printStruct(after);
+                addDelimiter();
             }
         }
-        removeComma();
+        removeDelimiter();
         return string.toString();
     }
 
