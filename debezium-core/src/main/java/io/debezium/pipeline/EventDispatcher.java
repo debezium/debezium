@@ -19,7 +19,6 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
-import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
@@ -53,7 +52,6 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
     private final Heartbeat heartbeat;
-    private final EventMetadataProvider eventMetadataProvider;
     private DataChangeEventListener eventListener = DataChangeEventListener.NO_OP;
 
     /**
@@ -63,7 +61,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
             DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-            ChangeEventCreator changeEventCreator, EventMetadataProvider eventMetadataProvider) {
+            ChangeEventCreator changeEventCreator) {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.historizedSchema = schema instanceof HistorizedDatabaseSchema
@@ -73,7 +71,6 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.filter = filter;
         this.changeEventCreator = changeEventCreator;
         this.streamingReceiver = new StreamingChangeRecordReceiver();
-        this.eventMetadataProvider = eventMetadataProvider;
 
         heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
                 connectorConfig.getLogicalName());
@@ -94,7 +91,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             @Override
             public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
                     OffsetContext offset) throws InterruptedException {
-                eventListener.onEvent(dataCollectionSchema.id(), offset, key, value, eventMetadataProvider);
+                eventListener.onEvent(dataCollectionSchema.id(), offset, key, value);
                 receiver.changeRecord(dataCollectionSchema, operation, key, value, offset);
             }
         });
@@ -130,7 +127,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 @Override
                 public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
                         OffsetContext offset) throws InterruptedException {
-                    eventListener.onEvent(dataCollectionId, offset, key, value, eventMetadataProvider);
+                    eventListener.onEvent(dataCollectionId, offset, key, value);
                     streamingReceiver.changeRecord(schema, operation, key, value, offset);
                 }
             });

@@ -22,7 +22,7 @@ public interface DataChangeEventListener {
     /**
      * Invoked if an event is processed for a captured table.
      */
-    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider);
+    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value);
 
     /**
      * Invoked for events pertaining to non-whitelisted tables.
@@ -36,7 +36,7 @@ public interface DataChangeEventListener {
         }
 
         @Override
-        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
+        public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         }
     };
 }

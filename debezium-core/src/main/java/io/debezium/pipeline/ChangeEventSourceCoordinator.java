@@ -22,6 +22,7 @@ import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -61,9 +62,9 @@ public class ChangeEventSourceCoordinator {
         this.eventDispatcher = eventDispatcher;
     }
 
-    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
-        this.snapshotMetrics = new SnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics);
-        this.streamingMetrics = new StreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics);
+    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+        this.snapshotMetrics = new SnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
+        this.streamingMetrics = new StreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
         running = true;
 
         // run the snapshot source on a separate thread so start() won't block

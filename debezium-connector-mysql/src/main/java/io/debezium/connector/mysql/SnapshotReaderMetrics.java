@@ -21,7 +21,7 @@ class SnapshotReaderMetrics extends SnapshotChangeEventSourceMetrics implements 
     private final MySqlSchema schema;
 
     public SnapshotReaderMetrics(MySqlTaskContext taskContext, MySqlSchema schema, ChangeEventQueueMetrics changeEventQueueMetrics) {
-        super(taskContext, changeEventQueueMetrics);
+        super(taskContext, changeEventQueueMetrics, null);
         this.schema = schema;
     }
 

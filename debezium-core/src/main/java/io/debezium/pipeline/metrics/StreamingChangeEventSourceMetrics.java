@@ -33,8 +33,8 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<Map<String, String>>(Collections.emptyMap());
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
-    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics) {
-        super(taskContext, "streaming", changeEventQueueMetrics);
+    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+        super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
     }
 
     @Override
@@ -67,8 +67,8 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
-        super.onEvent(source, offset, key, value, metadataProvider);
+    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
+        super.onEvent(source, offset, key, value);
 
         final long eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
         if (eventTimestamp != -1) {
