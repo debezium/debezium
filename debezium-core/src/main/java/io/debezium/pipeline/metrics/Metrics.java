@@ -21,6 +21,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
 /**
@@ -84,7 +85,7 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
-    public void onEvent(Object source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
+    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
         updateCommonEventMetrics();
         lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
     }

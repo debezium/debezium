@@ -94,7 +94,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             @Override
             public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
                     OffsetContext offset) throws InterruptedException {
-                eventListener.onEvent(dataCollectionSchema, offset, key, value, eventMetadataProvider);
+                eventListener.onEvent(dataCollectionSchema.id(), offset, key, value, eventMetadataProvider);
                 receiver.changeRecord(dataCollectionSchema, operation, key, value, offset);
             }
         });

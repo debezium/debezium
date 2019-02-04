@@ -19,6 +19,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * @author Randall Hauch, Jiri Pechanec
@@ -66,7 +67,7 @@ public class StreamingChangeEventSourceMetrics extends Metrics implements Stream
     }
 
     @Override
-    public void onEvent(Object source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
+    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
         super.onEvent(source, offset, key, value, metadataProvider);
 
         final long eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
