@@ -36,7 +36,7 @@ import io.debezium.util.Metronome;
  *
  * <p>The connector uses CDC functionality of SQL Server that is implemented as as a process that monitors
  * source table and write changes from the table into the change table.</p>
- * 
+ *
  * <p>The main loop keeps a pointer to the LSN of changes that were already processed. It queries all change
  * tables and get result set of changes. It always finds the smallest LSN across all tables and the change
  * is converted into the event message and sent downstream. The process repeats until all result sets are
@@ -200,7 +200,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                                     operation,
                                                     data,
                                                     dataNext,
-                                                    schema.tableFor(tableId),
                                                     clock
                                             )
                                     );
@@ -273,7 +272,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             }
             if (schema.tableFor(currentTable.getSourceTableId()) == null) {
                 LOGGER.info("Table {} is new to be monitored by capture instance {}", currentTable.getSourceTableId(), currentTable.getCaptureInstance());
-                // We need to read the source table schema - primary key information cannot be obtained from change table
+                // We need to read the source table schema - nullability information cannot be obtained from change table
                 dispatcher.dispatchSchemaChangeEvent(
                         currentTable.getSourceTableId(),
                         new SqlServerSchemaChangeEventEmitter(
