@@ -43,7 +43,6 @@ public interface EventMetadataProvider {
         return new EventFormatter()
             .sourcePosition(getEventSourcePosition(source, offset, key, value))
             .key(key)
-            .value(value)
             .toString();
     }
 }
