@@ -11,7 +11,8 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.data.Envelope;
 
-public class EventFromatter {
+class EventFormatter {
+
     private final String INDENT = "";
 
     private Map<String, String> sourcePosition;
@@ -61,6 +62,7 @@ public class EventFromatter {
             string.deleteCharAt(string.length() - 1);
         }
     }
+    @Override
     public String toString() {
         if (value != null) {
             final String operation = value.getString(Envelope.FieldName.OPERATION);
@@ -110,17 +112,17 @@ public class EventFromatter {
         return string.toString();
     }
 
-    public EventFromatter sourcePosition(Map<String, String> sourcePosition) {
+    public EventFormatter sourcePosition(Map<String, String> sourcePosition) {
         this.sourcePosition = sourcePosition;
         return this;
     }
 
-    public EventFromatter key(Object key) {
+    public EventFormatter key(Object key) {
         this.key = key;
         return this;
     }
 
-    public EventFromatter value(Struct value) {
+    public EventFormatter value(Struct value) {
         this.value = value;
         return this;
     }
