@@ -149,8 +149,8 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     }
 
     @Override
-    public long getSecondsBehindSource() {
-        return getSecondsBehindMaster();
+    public long getMilliSecondsBehindSource() {
+        return getSecondsBehindMaster() * 1000;
     }
 
     @Override

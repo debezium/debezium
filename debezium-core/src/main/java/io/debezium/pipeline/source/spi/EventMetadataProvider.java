@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
@@ -22,9 +23,9 @@ import io.debezium.schema.DataCollectionId;
 public interface EventMetadataProvider {
 
     /**
-     * @return source event timestamp in milliseconds
+     * @return source event timestamp
      */
-    long getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value);
+    Instant getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value);
 
     /**
      * @return one or more values uniquely position the event in the transaction log - e.g. LSN
