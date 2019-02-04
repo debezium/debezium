@@ -8,12 +8,13 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion.POSTGRES_10;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.util.List;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -24,8 +25,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -42,6 +47,9 @@ import io.debezium.util.Collect;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
+
+    @Rule
+    public final TestRule skip = new SkipTestDependingOnDatabaseVersionRule();
 
     private RecordsSnapshotProducer snapshotProducer;
     private PostgresTaskContext context;
@@ -337,7 +345,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1118")
-    public void shouldGenerateSnapshotsForParitionedTables() throws Exception {
+    @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
+    public void shouldGenerateSnapshotsForPartitionedTables() throws Exception {
         TestHelper.dropAllSchemas();
 
         String ddl = "CREATE TABLE first_table (pk integer, user_id integer, PRIMARY KEY(pk));" +
