@@ -32,6 +32,7 @@ import io.debezium.util.Clock;
 @ThreadSafe
 public abstract class Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
 
+    protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
     protected final AtomicLong numberOfEventsSkipped = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
@@ -43,11 +44,12 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     private final ChangeEventQueueMetrics changeEventQueueMetrics;
     private volatile ObjectName name;
 
-    protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics) {
+    protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
         this.contextName = contextName;
         this.taskContext = taskContext;
         this.clock = taskContext.getClock();
         this.changeEventQueueMetrics = changeEventQueueMetrics;
+        this.metadataProvider = metadataProvider;
     }
 
     /**
@@ -85,7 +87,7 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value, EventMetadataProvider metadataProvider) {
+    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         updateCommonEventMetrics();
         lastEvent = metadataProvider.toSummaryString(source, offset, key, value);
     }

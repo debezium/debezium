@@ -32,7 +32,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name, ChangeEventQueueMetrics changeEventQueueMetrics) {
-        super(taskContext, name, changeEventQueueMetrics);
+        super(taskContext, name, changeEventQueueMetrics, null);
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
         this.schema = taskContext.dbSchema();
