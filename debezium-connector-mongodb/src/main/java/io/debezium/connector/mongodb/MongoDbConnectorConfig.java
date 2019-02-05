@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.config.EnumeratedValue;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -21,6 +22,71 @@ import io.debezium.config.Field.ValidationOutput;
  * The configuration properties.
  */
 public class MongoDbConnectorConfig extends CommonConnectorConfig {
+
+    /**
+     * The set of predefined SnapshotMode options or aliases.
+     */
+    public static enum SnapshotMode implements EnumeratedValue {
+
+        /**
+         * Always perform a snapshot when starting.
+         */
+        ALWAYS("always", true),
+
+        /**
+         * Never perform a snapshot and only receive new data changes.
+         */
+        NONE("none", false);
+
+        private final String value;
+        private final boolean includeData;
+
+        private SnapshotMode(String value, boolean includeData) {
+            this.value = value;
+            this.includeData = includeData;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+
+            for (SnapshotMode option : SnapshotMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotMode parse(String value, String defaultValue) {
+            SnapshotMode mode = parse(value);
+
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+
+            return mode;
+        }
+    }
 
     /**
      * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
@@ -215,6 +281,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      .withImportance(Importance.MEDIUM)
                                                      .withDescription("");
 
+    public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
+                                                     .withDisplayName("Snapshot mode")
+                                                     .withEnum(SnapshotMode.class, SnapshotMode.ALWAYS)
+                                                     .withWidth(Width.SHORT)
+                                                     .withImportance(Importance.LOW)
+                                                     .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                                                              + "Options include: "
+                                                              + "'always' (the default) to specify the connector should always perform an initial sync; "
+                                                              + "'none' to specify the connector should never perform an initial sync ");
+
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
                                                 .withDescription("Internal use only")
                                                 .withValidation(Field::isInteger)
@@ -236,7 +313,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      DATABASE_WHITELIST,
                                                      DATABASE_BLACKLIST,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS);
+                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+                                                     SNAPSHOT_MODE);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -252,7 +330,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                CommonConnectorConfig.SNAPSHOT_DELAY_MS);
+                CommonConnectorConfig.SNAPSHOT_DELAY_MS, SNAPSHOT_MODE);
         return config;
     }
 

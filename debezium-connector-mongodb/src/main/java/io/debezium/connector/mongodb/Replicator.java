@@ -146,7 +146,7 @@ public class Replicator {
                 if (establishConnectionToPrimary()) {
                     if (isInitialSyncExpected()) {
                         recordCurrentOplogPosition();
-                        if (!performInitialSync()) {
+                        if (context.isSnapshotAllowed() && !performInitialSync()) {
                             return;
                         }
                     }

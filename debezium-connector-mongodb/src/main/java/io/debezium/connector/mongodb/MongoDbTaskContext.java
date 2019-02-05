@@ -10,6 +10,7 @@ import java.util.Collections;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.schema.TopicSelector;
 
@@ -25,6 +26,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     private final boolean emitTombstoneOnDelete;
     private final String serverName;
     private final ConnectionContext connectionContext;
+    private final String snapshotMode;
 
     /**
      * @param config the configuration
@@ -39,6 +41,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.connectionContext = new ConnectionContext(config);
+        this.snapshotMode = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
     }
 
     public TopicSelector<CollectionId> topicSelector() {
@@ -63,5 +66,18 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     public ConnectionContext getConnectionContext() {
         return connectionContext;
+    }
+
+    public boolean isSnapshotAllowed() {
+        return snapshotMode() == SnapshotMode.ALWAYS;
+    }
+
+    public boolean isSnapshotNeverAllowed() {
+        return snapshotMode() == SnapshotMode.NONE;
+    }
+
+    protected SnapshotMode snapshotMode() {
+        String value = this.snapshotMode;
+        return SnapshotMode.parse(value, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 }
