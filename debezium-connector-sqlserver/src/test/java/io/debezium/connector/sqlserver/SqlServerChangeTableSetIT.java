@@ -5,7 +5,10 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -18,7 +21,11 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.document.Array;
+import io.debezium.document.Document;
+import io.debezium.document.DocumentReader;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
 /**
@@ -469,6 +476,32 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                         .build()
             );
         });
+
+        // Validate history change types
+        final DocumentReader reader = DocumentReader.defaultReader();
+        final List<Document> changes = new ArrayList<>();
+        IoUtil.readLines(TestHelper.DB_HISTORY_PATH, line -> {
+            try {
+                changes.add(reader.read(line));
+            }
+            catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        // 3 tables from snapshot + 1 ALTER
+        Assertions.assertThat(changes).hasSize(3 + 1);
+        changes.subList(0, 3).forEach(change -> {
+            final Array changeArray = change.getArray("tableChanges");
+            Assertions.assertThat(changeArray.size()).isEqualTo(1);
+            final String type = changeArray.get(0).asDocument().getString("type");
+            Assertions.assertThat(type).isEqualTo("CREATE");
+        });
+        final Array changeArray = changes.get(3).getArray("tableChanges");
+        Assertions.assertThat(changeArray.size()).isEqualTo(1);
+        final String type = changeArray.get(0).asDocument().getString("type");
+        final String tableIid = changeArray.get(0).asDocument().getString("id");
+        Assertions.assertThat(type).isEqualTo("ALTER");
+        Assertions.assertThat(tableIid).isEqualTo("testDB.dbo.tableb");
     }
 
     @Test

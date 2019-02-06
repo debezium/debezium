@@ -52,6 +52,11 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
             tableChanges = new TableChanges();
             tableChanges.create(table);
         }
+        else if (schemaChange.getType() == SchemaChangeEventType.ALTER) {
+            tableChanges = new TableChanges();
+            tableChanges.alter(table);
+        }
+
 
         record(schemaChange, tableChanges);
     }

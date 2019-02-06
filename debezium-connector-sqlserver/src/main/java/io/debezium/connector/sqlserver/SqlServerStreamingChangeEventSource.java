@@ -27,6 +27,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -224,7 +225,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             throws InterruptedException, SQLException {
         final ChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
-        dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, connection.getTableSchemaFromTable(newTable)));
+        dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(), new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, connection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
     }
 
     private ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, ChangeTable[] currentChangeTables) throws Exception {
@@ -278,7 +279,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         new SqlServerSchemaChangeEventEmitter(
                                 offsetContext,
                                 currentTable,
-                                connection.getTableSchemaFromTable(currentTable)
+                                connection.getTableSchemaFromTable(currentTable),
+                                SchemaChangeEventType.CREATE
                         )
                 );
             }

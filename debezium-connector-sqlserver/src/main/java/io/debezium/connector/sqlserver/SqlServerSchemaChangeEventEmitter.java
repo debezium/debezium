@@ -25,11 +25,13 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
     private final SqlServerOffsetContext offsetContext;
     private final ChangeTable changeTable;
     private final Table tableSchema;
+    private final SchemaChangeEventType eventType;
 
-    public SqlServerSchemaChangeEventEmitter(SqlServerOffsetContext offsetContext, ChangeTable changeTable, Table tableSchema) {
+    public SqlServerSchemaChangeEventEmitter(SqlServerOffsetContext offsetContext, ChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
+        this.eventType = eventType;
     }
 
     @Override
@@ -41,7 +43,7 @@ public class SqlServerSchemaChangeEventEmitter implements SchemaChangeEventEmitt
                 changeTable.getSourceTableId().schema(),
                 "N/A",
                 tableSchema,
-                SchemaChangeEventType.CREATE,
+                eventType,
                 false
         );
 
