@@ -74,14 +74,19 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 try {
                     // Make sure the file exists ...
                     if (!Files.exists(path)) {
-                        Files.createDirectories(path.getParent());
+                        // Create parent directories if we have them ...
+                        if (path.getParent() != null) {
+                            Files.createDirectories(path.getParent());
+                        }
                         try {
                             Files.createFile(path);
-                        } catch (FileAlreadyExistsException e) {
+                        }
+                        catch (FileAlreadyExistsException e) {
                             // do nothing
                         }
                     }
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new DatabaseHistoryException("Unable to create history file at " + path + ": " + e.getMessage(), e);
                 }
             }
@@ -137,7 +142,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
             }
         });
     }
-    
+
     @Override
     public boolean exists() {
         return Files.exists(path);
