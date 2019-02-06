@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
@@ -193,7 +194,7 @@ public class MySqlDefaultValuePreConverter  {
      */
     private Object convertToDecimal(Column column, String value) {
         return column.scale().isPresent() ?
-                new BigDecimal(value).setScale(column.scale().get()) :
+                new BigDecimal(value).setScale(column.scale().get(), RoundingMode.HALF_UP) :
                 new BigDecimal(value);
     }
 
