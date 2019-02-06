@@ -87,7 +87,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                         }
                     }
                 }
-                else if (ddl != null) {
+                else if (ddl != null && ddlParser != null) {
                     if (recovered.databaseName() != null) {
                         ddlParser.setCurrentDatabase(recovered.databaseName()); // may be null
                     }

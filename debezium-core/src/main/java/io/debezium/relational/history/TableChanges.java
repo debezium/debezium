@@ -45,6 +45,9 @@ public class TableChanges implements Iterable<TableChange> {
             if (change.getType() == TableChangeType.CREATE) {
                 tableChanges.create(change.table);
             }
+            else if (change.getType() == TableChangeType.ALTER) {
+                tableChanges.alter(change.table);
+            }
         }
 
         return tableChanges;
@@ -52,6 +55,11 @@ public class TableChanges implements Iterable<TableChange> {
 
     public TableChanges create(Table table) {
         changes.add(new TableChange(TableChangeType.CREATE, table));
+        return this;
+    }
+
+    public TableChanges alter(Table table) {
+        changes.add(new TableChange(TableChangeType.ALTER, table));
         return this;
     }
 
@@ -112,7 +120,7 @@ public class TableChanges implements Iterable<TableChange> {
             TableId id = TableId.parse(document.getString("id"));
             Table table = null;
 
-            if (type == TableChangeType.CREATE) {
+            if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
                 table = fromDocument(id, document.getDocument("table"));
             }
 
