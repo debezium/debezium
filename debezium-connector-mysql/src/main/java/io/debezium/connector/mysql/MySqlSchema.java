@@ -304,7 +304,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             this.ddlParser.parse(ddlStatements, tables());
         } catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDDL) {
-                logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements);
+                logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements, e);
             } else {
                 throw e;
             }
