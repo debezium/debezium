@@ -307,14 +307,14 @@ public abstract class AbstractMysqlDefaultValueTest {
     public void parseNumericAndDecimalToDoubleDefaultValue() {
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
-                "  B DECIMAL NOT NULL DEFAULT 2.321,\n" +
+                "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
                 "  C NUMERIC NULL DEFAULT '12.678'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "NUMERIC_DECIMAL_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(1.23d);
+        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(1.0d);
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo(2.321d);
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(12.678d);
+        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(13d);
     }
 
     @Test
@@ -325,14 +325,14 @@ public abstract class AbstractMysqlDefaultValueTest {
         final AbstractDdlParser parser = parserProducer.apply(converters);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
-                "  B DECIMAL NOT NULL DEFAULT 2.321,\n" +
+                "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
                 "  C NUMERIC NULL DEFAULT '12.678'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "NUMERIC_DECIMAL_TABLE"));
-        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(BigDecimal.valueOf(1.23));
+        assertThat(table.columnWithName("A").defaultValue()).isEqualTo(BigDecimal.valueOf(1));
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo(BigDecimal.valueOf(2.321));
-        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(BigDecimal.valueOf(12.678));
+        assertThat(table.columnWithName("C").defaultValue()).isEqualTo(BigDecimal.valueOf(13));
     }
 
     @Test
