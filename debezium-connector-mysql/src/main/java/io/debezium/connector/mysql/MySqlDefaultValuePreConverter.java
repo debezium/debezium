@@ -70,7 +70,7 @@ public class MySqlDefaultValuePreConverter  {
 
         case Types.NUMERIC:
         case Types.DECIMAL:
-            return convertToDecimal(value);
+            return convertToDecimal(column, value);
 
         case Types.FLOAT:
         case Types.DOUBLE:
@@ -187,11 +187,14 @@ public class MySqlDefaultValuePreConverter  {
     /**
      * Converts a string object for an expected JDBC type of {@link Types#DECIMAL}.
      *
+     * @param column the column definition describing the {@code data} value; never null
      * @param value the string object to be converted into a {@link Types#DECIMAL} type;
      * @return the converted value;
      */
-    private Object convertToDecimal(String value) {
-        return new BigDecimal(value);
+    private Object convertToDecimal(Column column, String value) {
+        return column.scale().isPresent() ?
+                new BigDecimal(value).setScale(column.scale().get()) :
+                new BigDecimal(value);
     }
 
     /**
