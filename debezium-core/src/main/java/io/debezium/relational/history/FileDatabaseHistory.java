@@ -74,7 +74,10 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                 try {
                     // Make sure the file exists ...
                     if (!Files.exists(path)) {
-                        Files.createDirectories(path.getParent());
+                        // Create parent directories if we have them ...
+                        if (path.getParent() != null){
+                            Files.createDirectories(path.getParent());
+                        }
                         try {
                             Files.createFile(path);
                         } catch (FileAlreadyExistsException e) {
