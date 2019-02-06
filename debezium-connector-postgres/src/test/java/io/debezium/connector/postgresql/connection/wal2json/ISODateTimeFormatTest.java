@@ -5,15 +5,19 @@
  */
 package io.debezium.connector.postgresql.connection.wal2json;
 
+import org.fest.assertions.Assertions;
+import org.junit.Test;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
-
-import org.fest.assertions.Assertions;
-import org.junit.Test;
+import java.time.chrono.IsoEra;
+import java.time.format.TextStyle;
+import java.util.Locale;
 
 public class ISODateTimeFormatTest {
+    private static final String BCE_DISPLAY_NAME = IsoEra.BCE.getDisplayName(TextStyle.SHORT, Locale.getDefault());
 
     @Test
     public void testTimestamp() {
@@ -22,7 +26,7 @@ public class ISODateTimeFormatTest {
         Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30.123000")).isEqualTo(1478267490_123_000_000l);
         Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30.123456")).isEqualTo(1478267490_123_456_000l);
         Assertions.assertThat(DateTimeFormat.get().timestamp("2016-11-04 13:51:30.123456")).isEqualTo(1478267490_123_456_000l);
-        Assertions.assertThat(DateTimeFormat.get().timestamp("0002-12-01 17:00:00 BC")).isEqualTo(-6829604178_871_345_152l);
+        Assertions.assertThat(DateTimeFormat.get().timestamp("0002-12-01 17:00:00 " + BCE_DISPLAY_NAME)).isEqualTo(-6829604178_871_345_152l);
     }
 
     @Test
@@ -32,13 +36,13 @@ public class ISODateTimeFormatTest {
         Assertions.assertThat(DateTimeFormat.get().timestampWithTimeZone("2016-11-04 13:51:30.123000+02")).isEqualTo(1478260290_123_000_000l);
         Assertions.assertThat(DateTimeFormat.get().timestampWithTimeZone("2016-11-04 13:51:30.123789+02")).isEqualTo(1478260290_123_789_000l);
         Assertions.assertThat(DateTimeFormat.get().timestampWithTimeZone("2016-11-04 13:51:30.123789+02:30")).isEqualTo(1478258490_123_789_000l);
-        Assertions.assertThat(DateTimeFormat.get().timestampWithTimeZone("2016-11-04 13:51:30.123789+02:30 BC")).isEqualTo(3399351806_090_650_312l);
+        Assertions.assertThat(DateTimeFormat.get().timestampWithTimeZone("2016-11-04 13:51:30.123789+02:30 " + BCE_DISPLAY_NAME)).isEqualTo(3399351806_090_650_312l);
     }
 
     @Test
     public void testDate() {
         Assertions.assertThat(DateTimeFormat.get().date("2016-11-04")).isEqualTo(LocalDate.of(2016, 11, 4));
-        Assertions.assertThat(DateTimeFormat.get().date("2016-11-04 BC")).isEqualTo(LocalDate.of(-2015, 11, 4));
+        Assertions.assertThat(DateTimeFormat.get().date("2016-11-04 " + BCE_DISPLAY_NAME)).isEqualTo(LocalDate.of(-2015, 11, 4));
     }
 
     @Test
