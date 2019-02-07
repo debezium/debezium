@@ -308,13 +308,15 @@ public abstract class AbstractMysqlDefaultValueTest {
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
                 "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
-                "  C NUMERIC NULL DEFAULT '12.678'\n" +
+                "  C NUMERIC NULL DEFAULT '12.678',\n" +
+                "  D DECIMAL(5,2) NULL DEFAULT '12.678'\n" +
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "NUMERIC_DECIMAL_TABLE"));
         assertThat(table.columnWithName("A").defaultValue()).isEqualTo(1.0d);
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo(2.321d);
         assertThat(table.columnWithName("C").defaultValue()).isEqualTo(13d);
+        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(12.68d);
     }
 
     @Test
