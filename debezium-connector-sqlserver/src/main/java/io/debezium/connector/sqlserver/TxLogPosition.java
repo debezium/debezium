@@ -74,7 +74,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
     @Override
     public int compareTo(TxLogPosition o) {
         final int comparison = commitLsn.compareTo(o.getCommitLsn());
-        return comparison == 0 ? inTxLsn.compareTo(inTxLsn) : comparison;
+        return comparison == 0 ? inTxLsn.compareTo(o.inTxLsn) : comparison;
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn) {
