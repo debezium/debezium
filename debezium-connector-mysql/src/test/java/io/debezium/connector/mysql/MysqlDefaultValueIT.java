@@ -44,8 +44,8 @@ import io.debezium.util.Testing;
  */
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
-    // 4 meta events (set character_set etc.) and then 14 tables with 3 events each (drop DDL, create DDL, insert)
-    private static final int EVENT_COUNT = 4 + 14 * 3;
+    // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
+    private static final int EVENT_COUNT = 4 + 15 * 3;
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("myServer1", "default_value")
@@ -733,5 +733,37 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(customerTypeSchema.defaultValue()).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1123")
+    public void generatedValueTest() throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.DDL_PARSER_MODE, "antlr")
+                .build();
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
+        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("GENERATED_TABLE")).get(0);
+        validate(record);
+
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        Integer recordB = ((Struct)record.value()).getStruct("after").getInt32("B");
+        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
+        Integer recordC = ((Struct)record.value()).getStruct("after").getInt32("C");
+
+        // Calculated default value is reported as null in schema
+        assertThat(schemaB.isOptional()).isEqualTo(true);
+        assertThat(schemaB.defaultValue()).isEqualTo(null);
+        assertThat(schemaC.isOptional()).isEqualTo(false);
+        assertThat(schemaC.defaultValue()).isEqualTo(null);
+
+        assertThat(recordB).isEqualTo(30);
+        assertThat(recordC).isEqualTo(45);
+
+        validate(record);
     }
 }
