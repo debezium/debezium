@@ -93,6 +93,10 @@ public class SqlServerOffsetContext implements OffsetContext {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
     }
 
+    public boolean isSnapshotCompleted() {
+        return snapshotCompleted;
+    }
+
     @Override
     public void preSnapshotStart() {
         sourceInfo.setSnapshot(true);

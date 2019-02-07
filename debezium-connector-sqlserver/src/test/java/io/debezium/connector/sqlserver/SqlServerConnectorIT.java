@@ -527,7 +527,124 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         });
     }
 
+    @Test
+    @FixFor("DBZ-1128")
+    public void restartInTheMiddleOfTx() throws Exception {
+        final int RECORDS_PER_TABLE = 30;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final int ID_RESTART = 1000;
+        final int HALF_ID = ID_START + RECORDS_PER_TABLE / 2;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        start(SqlServerConnector.class, config, record -> {
+            if (!"server1.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
+                return false;
+            }
+            final Struct envelope = (Struct)record.value();
+            final Struct after = envelope.getStruct("after");
+            final Integer id = after.getInt32("id");
+            final String value = after.getString("cola");
+            return id != null && id == HALF_ID && "a".equals(value);
+        });
+        assertConnectorIsRunning();
+
+        // Wait for snapshot to be completed
+        consumeRecordsByTopic(1);
+
+        connection.setAutoCommit(false);
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.executeWithoutCommitting(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.executeWithoutCommitting(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+        }
+        connection.connection().commit();
+        List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
+
+        assertThat(records).hasSize(RECORDS_PER_TABLE);
+        SourceRecord lastRecordForOffset = records.get(RECORDS_PER_TABLE - 1);
+        Struct value = (Struct)lastRecordForOffset.value();
+        final List<SchemaAndValueField> expectedLastRow = Arrays.asList(
+                new SchemaAndValueField("id", Schema.INT32_SCHEMA, HALF_ID - 1),
+                new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+        assertRecord((Struct)value.get("after"), expectedLastRow);
+
+        stopConnector();
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        records = sourceRecords.allRecordsInOrder();
+        assertThat(records).hasSize(RECORDS_PER_TABLE);
+
+        List<SourceRecord> tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
+        List<SourceRecord> tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+        for (int i = 0; i < RECORDS_PER_TABLE / 2; i++) {
+            final int id = HALF_ID + i;
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowA = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "a"));
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct valueA = (Struct)recordA.value();
+            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            assertNull(valueA.get("before"));
+
+            final Struct valueB = (Struct)recordB.value();
+            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_RESTART + i;
+            connection.executeWithoutCommitting(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.executeWithoutCommitting(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+            connection.connection().commit();
+        }
+
+        sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
+        tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
+
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = i + ID_RESTART;
+            final SourceRecord recordA = tableA.get(i);
+            final SourceRecord recordB = tableB.get(i);
+            final List<SchemaAndValueField> expectedRowA = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "a"));
+            final List<SchemaAndValueField> expectedRowB = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct valueA = (Struct)recordA.value();
+            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            assertNull(valueA.get("before"));
+
+            final Struct valueB = (Struct)recordB.value();
+            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            assertNull(valueB.get("before"));
+        }
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
- }
+}
