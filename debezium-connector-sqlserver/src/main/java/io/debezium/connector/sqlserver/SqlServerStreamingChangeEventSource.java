@@ -94,6 +94,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             LOGGER.info("Last position recorded in offsets is {}", lastProcessedPositionOnStart);
 
             TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
+
+            // LSN should be increased for the first run only immediately after snapshot completion
+            // otherwise we might skip an incomplete transaction after restart
+            boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
                 final Lsn currentMaxLsn = connection.getMaxLsn();
 
@@ -104,15 +108,17 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     continue;
                 }
                 // There is no change in the database
-                if (currentMaxLsn.equals(lastProcessedPosition.getCommitLsn())) {
+                if (currentMaxLsn.equals(lastProcessedPosition.getCommitLsn()) && shouldIncreaseFromLsn) {
                     LOGGER.debug("No change in the database");
                     metronome.pause();
                     continue;
                 }
 
-                // Reading interval is inclusive so we need to move LSN forward
-                final Lsn fromLsn = lastProcessedPosition.getCommitLsn().isAvailable() ? connection.incrementLsn(lastProcessedPosition.getCommitLsn())
+                // Reading interval is inclusive so we need to move LSN forward but not for first
+                // run as TX might not be streamed completely
+                final Lsn fromLsn = lastProcessedPosition.getCommitLsn().isAvailable() && shouldIncreaseFromLsn ? connection.incrementLsn(lastProcessedPosition.getCommitLsn())
                         : lastProcessedPosition.getCommitLsn();
+                shouldIncreaseFromLsn = true;
 
                 while (!schemaChangeCheckpoints.isEmpty()) {
                     migrateTable(schemaChangeCheckpoints);
