@@ -75,6 +75,9 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
 
+        // By default do not load whole result sets into memory
+        config = config.edit().withDefault("database.responseBuffering", "adaptive").withDefault("database.fetchSize", 10000).build();
+
         final Configuration jdbcConfig = config.filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
         jdbcConnection = new SqlServerConnection(jdbcConfig);
