@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
@@ -42,14 +42,13 @@ public class ChangeTablePointer {
 
     private final ChangeTable changeTable;
     private final ResultSet resultSet;
-    private final JdbcConnection.ResultSetMapper<Object[]> resultSetMapper;
     private boolean completed = false;
     private TxLogPosition currentChangePosition;
+    private ResultSetMapper<Object[]> resultSetMapper;
 
-    public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) throws SQLException {
+    public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) {
         this.changeTable = changeTable;
         this.resultSet = resultSet;
-        this.resultSetMapper = createResultSetMapper(changeTable.getSourceTable());
     }
 
     public ChangeTable getChangeTable() {
@@ -65,6 +64,9 @@ public class ChangeTablePointer {
     }
 
     public Object[] getData() throws SQLException {
+        if (resultSetMapper == null) {
+            this.resultSetMapper = createResultSetMapper(changeTable.getSourceTable());
+        }
         return resultSetMapper.apply(resultSet);
     }
 
@@ -103,7 +105,7 @@ public class ChangeTablePointer {
      * @return a mapper which adjusts order of values in case the capture instance contains only
      * a subset of columns
      */
-    private JdbcConnection.ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
+    private ResultSetMapper<Object[]> createResultSetMapper(Table table) throws SQLException {
         final List<String> sourceTableColumns = table.columns().stream()
                 .map(Column::name)
                 .collect(Collectors.toList());
