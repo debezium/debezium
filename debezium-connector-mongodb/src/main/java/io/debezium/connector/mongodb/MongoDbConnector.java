@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -118,7 +119,7 @@ public class MongoDbConnector extends SourceConnector {
             // Set up and start the thread that monitors the members of all of the replica sets ...
             replicaSetMonitorExecutor = Threads.newSingleThreadExecutor(MongoDbConnector.class, taskContext.serverName(), "replica-set-monitor");
             ReplicaSetDiscovery monitor = new ReplicaSetDiscovery(taskContext);
-            monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, connectionContext.pollPeriodInSeconds(), TimeUnit.SECONDS,
+            monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, Duration.ofSeconds(connectionContext.pollPeriodInSeconds()),
                     Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
             replicaSetMonitorExecutor.execute(monitorThread);
             logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica sets", connectionContext.hosts());

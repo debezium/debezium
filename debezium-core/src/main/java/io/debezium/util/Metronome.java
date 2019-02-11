@@ -39,12 +39,11 @@ public interface Metronome {
      * be used when specifying a {@code period} of 20 milliseconds or smaller.
      *
      * @param period the period of time that the metronome ticks and for which {@link #pause()} waits
-     * @param unit the unit of time; may not be null
      * @param timeSystem the time system that will provide the current time; may not be null
      * @return the new metronome; never null
      */
-    public static Metronome sleeper(long period, TimeUnit unit, Clock timeSystem) {
-        long periodInMillis = unit.toMillis(period);
+    public static Metronome sleeper(Duration period, Clock timeSystem) {
+        long periodInMillis = period.toMillis();
         return new Metronome() {
             private long next = timeSystem.currentTimeInMillis() + periodInMillis;
 
@@ -67,10 +66,6 @@ public interface Metronome {
         };
     }
 
-    public static Metronome sleeper(Duration period, Clock timeSystem) {
-        return sleeper(period.toNanos(), TimeUnit.NANOSECONDS, timeSystem);
-    }
-
     /**
      * Create a new metronome that starts ticking immediately and that uses {@link LockSupport#parkNanos(long)} to wait.
      * <p>
@@ -83,12 +78,11 @@ public interface Metronome {
      * be used when specifying a {@code period} of 10-15 milliseconds or smaller.
      *
      * @param period the period of time that the metronome ticks and for which {@link #pause()} waits
-     * @param unit the unit of time; may not be null
      * @param timeSystem the time system that will provide the current time; may not be null
      * @return the new metronome; never null
      */
-    public static Metronome parker(long period, TimeUnit unit, Clock timeSystem) {
-        long periodInNanos = unit.toNanos(period);
+    public static Metronome parker(Duration period, Clock timeSystem) {
+        long periodInNanos = period.toNanos();
         return new Metronome() {
             private long next = timeSystem.currentTimeInNanos() + periodInNanos;
 
@@ -108,9 +102,5 @@ public interface Metronome {
                 return "Metronome (park for " + TimeUnit.NANOSECONDS.toMillis(periodInNanos) + " ms)";
             }
         };
-    }
-
-    public static Metronome parker(Duration period, Clock timeSystem) {
-        return parker(period.toNanos(), TimeUnit.NANOSECONDS, timeSystem);
     }
 }

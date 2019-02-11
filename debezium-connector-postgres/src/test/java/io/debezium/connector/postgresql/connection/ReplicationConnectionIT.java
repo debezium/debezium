@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -282,7 +283,7 @@ public class ReplicationConnectionIT {
 
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Semaphore latch = new Semaphore(0);
-        Metronome metronome = Metronome.sleeper(50, TimeUnit.MILLISECONDS, Clock.SYSTEM);
+        Metronome metronome = Metronome.sleeper(Duration.ofMillis(50), Clock.SYSTEM);
         Future<?> result = executorService.submit(() -> {
             while (!Thread.interrupted()) {
                 for(;;) {
