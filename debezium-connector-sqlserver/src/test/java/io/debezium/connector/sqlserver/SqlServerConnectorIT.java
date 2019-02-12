@@ -25,6 +25,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
@@ -527,9 +528,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         });
     }
 
-    @Test
-    @FixFor("DBZ-1128")
-    public void restartInTheMiddleOfTx() throws Exception {
+    private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) throws Exception {
         final int RECORDS_PER_TABLE = 30;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -538,6 +537,16 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
+
+        if (restartJustAfterSnapshot) {
+            start(SqlServerConnector.class, config);
+            assertConnectorIsRunning();
+
+            // Wait for snapshot to be completed
+            consumeRecordsByTopic(1);
+            stopConnector();
+            connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
+        }
 
         start(SqlServerConnector.class, config, record -> {
             if (!"server1.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
@@ -551,8 +560,17 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         });
         assertConnectorIsRunning();
 
-        // Wait for snapshot to be completed
+        // Wait for snapshot to be completed or a first streaming message delivered
         consumeRecordsByTopic(1);
+
+        if (afterStreaming) {
+            connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
+            final SourceRecords records = consumeRecordsByTopic(1);
+            final List<SchemaAndValueField> expectedRow = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, -2),
+                    new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "-a"));
+            assertRecord(((Struct)records.allRecordsInOrder().get(0).value()).getStruct(Envelope.FieldName.AFTER), expectedRow);
+        }
 
         connection.setAutoCommit(false);
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -642,6 +660,24 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             assertRecord((Struct)valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
+    }
+
+    @Test
+    @FixFor("DBZ-1128")
+    public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
+        restartInTheMiddleOfTx(true, false);
+    }
+
+    @Test
+    @FixFor("DBZ-1128")
+    public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
+        restartInTheMiddleOfTx(false, true);
+    }
+
+    @Test
+    @FixFor("DBZ-1128")
+    public void restartInTheMiddleOfTx() throws Exception {
+        restartInTheMiddleOfTx(false, false);
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
