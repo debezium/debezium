@@ -42,6 +42,7 @@ public class ReplicatorIT extends AbstractMongoIT {
         useConfiguration(config.edit()
                                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
                                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
+                               .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                                .build());
 
         TestHelper.cleanDatabase(primary, "dbA");
@@ -254,6 +255,110 @@ public class ReplicatorIT extends AbstractMongoIT {
         assertThat(records.size()).isEqualTo(1);
         Object[] allExpectedNames = { "Sally Hamm" };
         assertThat(foundNames).containsOnly(allExpectedNames);
+
+    }
+
+    @Test
+    public void shouldNotReplicateSnapshot() throws InterruptedException {
+
+        // ------------------------------------------------------------------------------
+        // SET SNAPSHOT MODE TO NEVER
+        // ------------------------------------------------------------------------------
+
+        Testing.Print.disable();
+        // Update the configuration to add a collection filter ...
+        useConfiguration(config.edit()
+                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .build());
+
+        TestHelper.cleanDatabase(primary, "dbA");
+
+        // ------------------------------------------------------------------------------
+        // ADD A DOCUMENT
+        // ------------------------------------------------------------------------------
+        // Add a document to the 'contacts' database ...
+        primary.execute("shouldCreateContactsDatabase", mongo -> {
+            Testing.debug("Populating the 'dbA.contacts' collection");
+
+            // Create a database and a collection in that database ...
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(Document.parse("{ \"name\":\"Jon Snow\"}"), insertOptions);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(1);
+        });
+
+        // Start the replicator ...
+        List<SourceRecord> records = new LinkedList<>();
+        Replicator replicator = new Replicator(context, replicaSet, records::add, (x) -> {});
+        Thread thread = new Thread(replicator::run);
+        thread.start();
+
+        // Sleep for 2 seconds ...
+        Thread.sleep(2000);
+
+        // Stop the replicator ...
+        replicator.stop();
+
+        // ------------------------------------------------------------------------------
+        // VERIFY WE FOUND NO NEW EVENTS (SNAPSHOT IS NEVER)
+        // ------------------------------------------------------------------------------
+        //
+        // We should not have found any new records ...
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+        });
+        assertThat(records.isEmpty()).isTrue();
+
+        // Start the replicator again ...
+        records = new LinkedList<>();
+        replicator = new Replicator(context, replicaSet, records::add, (x) ->  {});
+        thread = new Thread(replicator::run);
+        thread.start();
+
+        // Sleep for 2 seconds ...
+        Thread.sleep(2000);
+
+        primary.execute("shouldCreateContactsDatabase", mongo -> {
+            Testing.debug("Populating the 'dbA.contacts' collection");
+
+            // Create a database and a collection in that database ...
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(Document.parse("{ \"name\":\"Ygritte\"}"), insertOptions);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
+
+            Testing.debug("Completed document to 'dbA.contacts' collection");
+        });
+
+
+        // For a minimum number of events or max time ...
+        int numEventsExpected = 1; // both documents
+        long stop = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(3);
+        while (records.size() < numEventsExpected && System.currentTimeMillis() < stop) {
+            Thread.sleep(100);
+        }
+
+        // ------------------------------------------------------------------------------
+        // STOP REPLICATOR AND VERIFY WE FOUND A TOTAL OF 1 EVENT (CREATE)
+        // ------------------------------------------------------------------------------
+        replicator.stop();
+
+        // Verify each record is valid and that we found the one record we expect ...
+        final Set<String> foundNames = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+            Struct value = (Struct) record.value();
+            String after = value.getString("after");
+            Document afterDoc = Document.parse(after);
+            foundNames.add(afterDoc.getString("name"));
+            Operation op = Operation.forCode(value.getString("op"));
+            assertThat(op == Operation.CREATE).isTrue();
+        });
+        assertThat(records.size()).isEqualTo(1);
     }
 
 }
