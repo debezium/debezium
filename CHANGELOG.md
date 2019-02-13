@@ -2,8 +2,50 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 0.9.1.Final
+February 13th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12340576)
+
+### New features since 0.9.0.Final
+
+* Provide new container image with tooling for examples and demos [DBZ-1125](https://issues.jboss.org/browse/DBZ-1125)
+
+
+### Breaking changes since 0.9.0.Final
+
+None
+
+
+### Fixes since 0.9.0.Final
+
+* BigDecimal has mismatching scale value for given Decimal schema error due to permissive mysql ddl [DBZ-983](https://issues.jboss.org/browse/DBZ-983)
+* Primary key changes cause UnsupportedOperationException [DBZ-997](https://issues.jboss.org/browse/DBZ-997)
+* java.lang.IllegalArgumentException: timeout value is negative [DBZ-1019](https://issues.jboss.org/browse/DBZ-1019)
+* Connector consumes huge amount of memory [DBZ-1065](https://issues.jboss.org/browse/DBZ-1065)
+* Strings.join() doesn't apply conversation for first element [DBZ-1112](https://issues.jboss.org/browse/DBZ-1112)
+* NPE if database history filename has no parent folder [DBZ-1122](https://issues.jboss.org/browse/DBZ-1122)
+* Generated columns not supported by DDL parser [DBZ-1123](https://issues.jboss.org/browse/DBZ-1123)
+* Advancing LSN in the first iteration - possible data loss [DBZ-1128](https://issues.jboss.org/browse/DBZ-1128)
+* Incorrect LSN comparison can cause out of order processing [DBZ-1131](https://issues.jboss.org/browse/DBZ-1131)
+
+
+### Other changes since 0.9.0.Final
+
+* io.debezium.connector.postgresql.PostgisGeometry shouldn't use DatatypeConverter [DBZ-962](https://issues.jboss.org/browse/DBZ-962)
+* Schema change events should be of type ALTER when table is modified [DBZ-1121](https://issues.jboss.org/browse/DBZ-1121)
+* Wal2json ISODateTimeFormatTest fails with a locale other than Locale.ENGLISH [DBZ-1126](https://issues.jboss.org/browse/DBZ-1126)
+
+
+### Known issues
+
+A potential [race condition](https://github.com/shyiko/mysql-binlog-connector-java/pull/260) was identified in upstream library for MySQL's binary log processing.
+The problem exhibits as the issue [DBZ-1132](https://issues.jboss.org/projects/DBZ/issues/DBZ-1132).
+If you are affected by it we propose as the workaround to increase Kafka Connect configuration options `task.shutdown.graceful.timeout.ms` and `connect.rebalance.timeout.ms`.
+If the problem persists please disable keepalive thread via Debezium configration option `connect.keep.alive`.
+
+
+
 ## 0.9.0.Final
-January 5th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12340275)
+February 5th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12340275)
 
 ### New features since 0.9.0.CR1
 
@@ -23,7 +65,7 @@ None
 * Data from Postgres partitioned table written to wrong topic during snapshot [DBZ-1118](https://issues.jboss.org/browse/DBZ-1118)
 
 
-### Other changes since 0.9.0.Beta2
+### Other changes since 0.9.0.CR1
 
 * Clarify whether DDL parser is actually needed for SQL Server connector [DBZ-1096](https://issues.jboss.org/browse/DBZ-1096)
 * Add design description to SqlServerStreamingChangeEventSource [DBZ-1097](https://issues.jboss.org/browse/DBZ-1097)
