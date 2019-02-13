@@ -461,6 +461,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                 "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                                                                 "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field STREAM_PARAMS = Field.create("slot.stream_params")
+                                                        .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
+                                                        .withType(Type.STRING)
+                                                        .withWidth(Width.LONG)
+                                                        .withImportance(Importance.LOW)
+                                                        .withDescription(
+                                                                "Any optional parameters used by logical decoding plugin. Semi-colon separated. E.G. 'add-tables=public.table,public.table2;include-lsn=true'");
+
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
                                               .withDisplayName("Hostname")
                                               .withType(Type.STRING)
@@ -745,7 +753,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP,
+    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, STREAM_PARAMS,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -817,6 +825,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected boolean dropSlotOnStop() {
         return config.getBoolean(DROP_SLOT_ON_STOP);
+    }
+    
+    protected String streamParams() {
+        return config.getString(STREAM_PARAMS);
     }
 
     protected Integer statusUpdateIntervalMillis() {
@@ -906,7 +918,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
+                    DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,

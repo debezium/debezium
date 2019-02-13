@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -46,6 +47,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Integer statusUpdateIntervalMillis;
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
+    private final Properties streamParams;
 
     private long defaultStartingPos;
 
@@ -66,7 +68,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
                                          Integer statusUpdateIntervalMillis,
-                                         TypeRegistry typeRegistry) {
+                                         TypeRegistry typeRegistry,
+                                         Properties streamParams) {
         super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
@@ -76,6 +79,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
         this.messageDecoder = plugin.messageDecoder();
         this.typeRegistry = typeRegistry;
+        this.streamParams = streamParams;
 
         try {
             initReplicationSlot();
@@ -317,7 +321,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .replicationStream()
                 .logical()
                 .withSlotName(slotName)
-                .withStartPosition(lsn);
+                .withStartPosition(lsn)
+                .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder);
 
         if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
@@ -371,6 +376,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Integer statusUpdateIntervalMillis;
         private TypeRegistry typeRegistry;
+        private Properties slotStreamParams = new Properties();
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -398,6 +404,24 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public ReplicationConnectionBuilder streamParams(final String slotStreamParams) {
+            if(slotStreamParams != null && !slotStreamParams.isEmpty()) {
+                this.slotStreamParams = new Properties();
+                String[] paramsWithValues = slotStreamParams.split(";");
+                for(String paramsWithValue : paramsWithValues) {
+                    String[] paramAndValue = paramsWithValue.split("=");
+                    if(paramAndValue.length == 2) {
+                        this.slotStreamParams.setProperty(paramAndValue[0], paramAndValue[1]);
+                    }
+                    else {
+                        LOGGER.warn("The following STREAM_PARAMS value is invalid: " + paramsWithValue);
+                    }
+                }
+            }
+            return this;
+        }
+
+        @Override
         public ReplicationConnectionBuilder statusUpdateIntervalMillis(final Integer statusUpdateIntervalMillis) {
             this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
             return this;
@@ -406,7 +430,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry, slotStreamParams);
         }
 
         @Override

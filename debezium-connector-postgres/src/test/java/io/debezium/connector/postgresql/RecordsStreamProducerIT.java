@@ -1103,6 +1103,22 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expectedAfter, deletedRecord, Envelope.FieldName.AFTER);
     }
 
+    @Test()
+    public void testPassingStreamParams() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.STREAM_PARAMS, "debug-mode=1")
+                .build());
+        setupRecordsProducer(config);
+        String statement = "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.stream_test (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.stream_test (aa) VALUES (11);";
+
+        consumer = testConsumer(0);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
     private void assertHeartBeatRecordInserted() {
         assertFalse("records not generated", consumer.isEmpty());
 
