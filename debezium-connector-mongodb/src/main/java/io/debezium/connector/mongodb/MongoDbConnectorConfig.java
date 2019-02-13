@@ -29,14 +29,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public static enum SnapshotMode implements EnumeratedValue {
 
         /**
-         * Always perform a snapshot when starting.
+         * Always perform an initial snapshot when starting.
          */
-        ALWAYS("always", true),
+        INITIAL("initial", true),
 
         /**
          * Never perform a snapshot and only receive new data changes.
          */
-        NONE("none", false);
+        NEVER("never", false);
 
         private final String value;
         private final boolean includeData;
@@ -283,13 +283,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
                                                      .withDisplayName("Snapshot mode")
-                                                     .withEnum(SnapshotMode.class, SnapshotMode.ALWAYS)
+                                                     .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
                                                      .withWidth(Width.SHORT)
                                                      .withImportance(Importance.LOW)
                                                      .withDescription("The criteria for running a snapshot upon startup of the connector. "
                                                               + "Options include: "
-                                                              + "'always' (the default) to specify the connector should always perform an initial sync; "
-                                                              + "'none' to specify the connector should never perform an initial sync ");
+                                                              + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
+                                                              + "'never' to specify the connector should never perform an initial sync ");
 
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")

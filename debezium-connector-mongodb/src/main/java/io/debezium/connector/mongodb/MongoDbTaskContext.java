@@ -69,11 +69,11 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     }
 
     public boolean isSnapshotAllowed() {
-        return snapshotMode() == SnapshotMode.ALWAYS;
+        return snapshotMode() == SnapshotMode.INITIAL;
     }
 
     public boolean isSnapshotNeverAllowed() {
-        return snapshotMode() == SnapshotMode.NONE;
+        return snapshotMode() == SnapshotMode.NEVER;
     }
 
     protected SnapshotMode snapshotMode() {
