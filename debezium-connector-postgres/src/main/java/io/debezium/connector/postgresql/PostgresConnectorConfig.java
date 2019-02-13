@@ -461,7 +461,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                 "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                                                                 "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
-    public static final Field STREAM_PARAMS = Field.create("slot.stream_params")
+    public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
                                                         .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
                                                         .withType(Type.STRING)
                                                         .withWidth(Width.LONG)

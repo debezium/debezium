@@ -1105,17 +1105,27 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test()
     public void testPassingStreamParams() throws Exception {
+        // Verify that passing stream parameters works by using the WAL2JSON add-tables parameter which acts as a
+        // whitelist.
+
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.STREAM_PARAMS, "debug-mode=1")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, "wal2json")
+                .with(PostgresConnectorConfig.STREAM_PARAMS, "add-tables=s1.should_stream")
                 .build());
         setupRecordsProducer(config);
         String statement = "CREATE SCHEMA s1;" +
-                "CREATE TABLE s1.stream_test (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
-                "INSERT INTO s1.stream_test (aa) VALUES (11);";
+                "CREATE TABLE s1.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.should_stream (aa) VALUES (123);" +
+                "INSERT INTO s1.should_not_stream (aa) VALUES (456);";
 
-        consumer = testConsumer(0);
+        // Verify only one record made it
+        consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
         executeAndWait(statement);
+
+        // Verify the record that made it was from the whitelisted table
+        assertRecordInserted("s1.should_stream", PK_FIELD, 1);
         assertThat(consumer.isEmpty()).isTrue();
     }
 
