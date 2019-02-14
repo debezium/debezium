@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
