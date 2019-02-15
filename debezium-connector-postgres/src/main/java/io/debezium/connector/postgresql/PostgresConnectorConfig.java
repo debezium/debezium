@@ -467,7 +467,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                         .withWidth(Width.LONG)
                                                         .withImportance(Importance.LOW)
                                                         .withDescription(
-                                                                "Any optional parameters used by logical decoding plugin. Semi-colon separated. E.G. 'add-tables=public.table,public.table2;include-lsn=true'");
+                                                                "Any optional parameters used by logical decoding plugin. Semi-colon separated. E.g. 'add-tables=public.table,public.table2;include-lsn=true'");
 
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
                                               .withDisplayName("Hostname")
