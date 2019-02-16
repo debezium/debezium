@@ -352,7 +352,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), (r) -> {
+        String fallback = ZonedTimestamp.toIsoString(OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
+                defaultOffset, adjuster);
+
+        return convertValue(column, fieldDefn, data, fallback, (r) -> {
             try {
                 r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
             } catch (IllegalArgumentException e) {
@@ -378,7 +381,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), (r) -> {
+        String fallback = ZonedTime.toIsoString(OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), defaultOffset, adjuster);
+
+        return convertValue(column, fieldDefn, data, fallback, (r) -> {
             try {
                 r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
             } catch (IllegalArgumentException e) {
@@ -1001,7 +1006,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        return convertValue(column, fieldDefn, data, false, (r) -> {
+        return convertValue(column, fieldDefn, data, new byte[0], (r) -> {
             if (data instanceof Boolean) {
                 Boolean value = (Boolean) data;
                 r.deliver(new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 });

@@ -487,7 +487,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertMoney(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, BigDecimal.ZERO, (r) -> {
             if (data instanceof Double) {
                 r.deliver(BigDecimal.valueOf((Double) data));
             }
