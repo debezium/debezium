@@ -59,6 +59,32 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(tables.size()).isEqualTo(3);
     }
 
+    @Test
+    @FixFor("DBZ-1150")
+    public void shouldParseCheckTableKeywords() {
+        String ddl =
+                "CREATE TABLE my_table (\n" +
+                "  user_id varchar(64) NOT NULL,\n" +
+                "  upgrade varchar(256),\n" +
+                "  quick varchar(256),\n" +
+                "  fast varchar(256),\n" +
+                "  medium varchar(256),\n" +
+                "  extended varchar(256),\n" +
+                "  changed varchar(256),\n" +
+                "  UNIQUE KEY call_states_userid (user_id)\n" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        final Table table = tables.forTable(null, null, "my_table");
+        assertThat(table.columnWithName("upgrade")).isNotNull();
+        assertThat(table.columnWithName("quick")).isNotNull();
+        assertThat(table.columnWithName("fast")).isNotNull();
+        assertThat(table.columnWithName("medium")).isNotNull();
+        assertThat(table.columnWithName("extended")).isNotNull();
+        assertThat(table.columnWithName("changed")).isNotNull();
+    }
+
     @Override
     public void shouldParseAlterStatementsWithoutCreate() {
         // ignore this test - antlr equivalent for it is shouldGetExceptionOnParseAlterStatementsWithoutCreate test
