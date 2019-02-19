@@ -509,6 +509,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
         Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
         Schema schemaJ = record.valueSchema().fields().get(1).schema().fields().get(9).schema();
+        Schema schemaL = record.valueSchema().fields().get(1).schema().fields().get(11).schema();
+        Schema schemaM = record.valueSchema().fields().get(1).schema().fields().get(12).schema();
 //         Number of days since epoch for date 1976-08-23
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
 
@@ -534,6 +536,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaH.defaultValue()).isEqualTo(82800700000L);
         assertThat(schemaI.defaultValue()).isEqualTo(82800123456L);
 
+        assertThat(schemaL.defaultValue()).isEqualTo(-82800700000L);
+        assertThat(schemaM.defaultValue()).isEqualTo(442800123456L);
         //current timestamp will be replaced with epoch timestamp
         ZonedDateTime t5 = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
         String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);

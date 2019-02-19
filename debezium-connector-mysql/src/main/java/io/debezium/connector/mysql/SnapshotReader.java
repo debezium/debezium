@@ -12,9 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -28,7 +26,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -54,11 +51,6 @@ import io.debezium.util.Threads;
  * @author Randall Hauch
  */
 public class SnapshotReader extends AbstractReader {
-
-    /**
-     * Used to parse values of TIME columns. Format: 000:00:00.000000.
-     */
-    private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
 
     private final boolean includeData;
     private RecordRecorder recorder;
@@ -159,50 +151,13 @@ public class SnapshotReader extends AbstractReader {
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);
         if (b == null) return null; // Don't continue parsing time field if it is null
-        String timeString;
 
         try {
-            timeString = new String(b.getBytes(1, (int) (b.length())), "UTF-8");
+            return MySqlValueConverters.stringToDuration(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
         } catch (UnsupportedEncodingException e) {
             logger.error("Could not read MySQL TIME value as UTF-8");
             throw new RuntimeException(e);
         }
-
-        Matcher matcher = TIME_FIELD_PATTERN.matcher(timeString);
-        if (!matcher.matches()) {
-            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
-        }
-
-        long hours = Long.parseLong(matcher.group(1));
-        long minutes = Long.parseLong(matcher.group(2));
-        long seconds = Long.parseLong(matcher.group(3));
-        long nanoSeconds = 0;
-        String microSecondsString = matcher.group(5);
-        if (microSecondsString != null) {
-            nanoSeconds = Long.parseLong(rightPad(microSecondsString, 9, '0'));
-        }
-
-        if (hours >= 0) {
-            return Duration.ofHours(hours)
-                    .plusMinutes(minutes)
-                    .plusSeconds(seconds)
-                    .plusNanos(nanoSeconds);
-        }
-        else {
-            return Duration.ofHours(hours)
-                    .minusMinutes(minutes)
-                    .minusSeconds(seconds)
-                    .minusNanos(nanoSeconds);
-        }
-    }
-
-    private String rightPad(String input, int length, char c) {
-        char[] padded = new char[length];
-
-        System.arraycopy(input.toCharArray(), 0, padded, 0, input.length());
-        Arrays.fill(padded, input.length(), length, c);
-
-        return new String(padded);
     }
 
     /**

@@ -13,7 +13,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -152,7 +151,7 @@ public class MySqlDefaultValuePreConverter  {
      * @return the converted value;
      */
     private Object convertToDuration(Column column, String value) {
-        return Duration.between(LocalTime.MIN, LocalTime.from(timeFormat(column.length()).parse(value)));
+        return MySqlValueConverters.stringToDuration(value);
     }
 
     /**
