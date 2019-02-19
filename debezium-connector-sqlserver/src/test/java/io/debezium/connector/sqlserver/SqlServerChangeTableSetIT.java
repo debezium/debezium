@@ -501,7 +501,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         final String type = changeArray.get(0).asDocument().getString("type");
         final String tableIid = changeArray.get(0).asDocument().getString("id");
         Assertions.assertThat(type).isEqualTo("ALTER");
-        Assertions.assertThat(tableIid).isEqualTo("testDB.dbo.tableb");
+        Assertions.assertThat(tableIid).isEqualTo("\"testDB\".\"dbo\".\"tableb\"");
     }
 
     @Test

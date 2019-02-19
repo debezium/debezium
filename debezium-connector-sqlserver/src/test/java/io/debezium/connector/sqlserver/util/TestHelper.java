@@ -188,7 +188,7 @@ public class TestHelper {
     public static void enableTableCdc(SqlServerConnection connection, String name) throws SQLException {
         Objects.requireNonNull(name);
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
-        String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name);
+        String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name.replaceAll("\\$", "\\\\\\$"));
         connection.execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
     }
 

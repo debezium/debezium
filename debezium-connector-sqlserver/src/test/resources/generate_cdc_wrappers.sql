@@ -13,21 +13,21 @@ ELSE
 
         DECLARE @create_script NVARCHAR(MAX)
 
-        DECLARE #hfunctions CURSOR LOCAL FAST_FORWARD
+        DECLARE [#hfunctions] CURSOR LOCAL FAST_FORWARD
         FOR
             SELECT create_script
             FROM @wrapper_functions
 
-        OPEN #hfunctions
-        FETCH #hfunctions
+        OPEN [#hfunctions]
+        FETCH [#hfunctions]
         INTO @create_script
         WHILE (@@fetch_status <> -1)
             BEGIN
                 EXEC sp_executesql @create_script
-                FETCH #hfunctions
+                FETCH [#hfunctions]
                 INTO @create_script
             END
 
-        CLOSE #hfunctions
-        DEALLOCATE #hfunctions
+        CLOSE [#hfunctions]
+        DEALLOCATE [#hfunctions]
     END
