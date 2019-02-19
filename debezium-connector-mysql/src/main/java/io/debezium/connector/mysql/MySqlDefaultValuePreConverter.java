@@ -155,26 +155,6 @@ public class MySqlDefaultValuePreConverter  {
     }
 
     /**
-     * Converts a string object for an expected JDBC type of {@link Types#INTEGER}.
-     *
-     * @param value the string object to be converted into a {@link Types#INTEGER} type;
-     * @return the converted value;
-     */
-    private Object convertToInteger(String value) {
-        return Integer.valueOf(value);
-    }
-
-    /**
-     * Converts a string object for an expected JDBC type of {@link Types#INTEGER}.
-     *
-     * @param value the string object to be converted into a {@link Types#INTEGER} type;
-     * @return the converted value;
-     */
-    private Object convertToBigInt(String value) {
-        return Long.valueOf(value);
-    }
-
-    /**
      * Converts a string object for an expected JDBC type of {@link Types#DOUBLE}.
      *
      * @param value the string object to be converted into a {@link Types#DOUBLE} type;
@@ -232,16 +212,6 @@ public class MySqlDefaultValuePreConverter  {
     }
 
     /**
-     * Converts a string object for an expected JDBC type of {@link Types#SMALLINT}.
-     *
-     * @param value the string object to be converted into a {@link Types#SMALLINT} type;
-     * @return the converted value;
-     */
-    private Object convertToSmallInt(String value) {
-        return Short.valueOf(value);
-    }
-
-    /**
      * Converts a string object for an expected JDBC type of {@link Types#BOOLEAN}.
      * @param value the string object to be converted into a {@link Types#BOOLEAN} type;
      *
@@ -253,15 +223,6 @@ public class MySqlDefaultValuePreConverter  {
         } catch (NumberFormatException ignore) {
             return Boolean.parseBoolean(value);
         }
-    }
-
-    private DateTimeFormatter timeFormat(int length) {
-        final DateTimeFormatterBuilder dtf = new DateTimeFormatterBuilder()
-                .appendPattern("HH:mm:ss");
-        if (length !=-1) {
-            dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
-        }
-        return dtf.toFormatter();
     }
 
     private DateTimeFormatter timestampFormat(int length) {

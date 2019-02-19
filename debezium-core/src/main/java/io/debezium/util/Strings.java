@@ -909,15 +909,6 @@ public final class Strings {
         return bytes;
     }
 
-    public static String rightPad(String input, int length, char c) {
-        char[] padded = new char[length];
-
-        System.arraycopy(input.toCharArray(), 0, padded, 0, input.length());
-        Arrays.fill(padded, input.length(), length, c);
-
-        return new String(padded);
-    }
-
     private static Character deriveQuotingChar(String identifierPart) {
         char first = identifierPart.charAt(0);
         char last = identifierPart.charAt(identifierPart.length() - 1);

@@ -775,7 +775,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         long nanoSeconds = 0;
         String microSecondsString = matcher.group(5);
         if (microSecondsString != null) {
-            nanoSeconds = Long.parseLong(Strings.rightPad(microSecondsString, 9, '0'));
+            nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
         }
 
         if (hours >= 0) {
