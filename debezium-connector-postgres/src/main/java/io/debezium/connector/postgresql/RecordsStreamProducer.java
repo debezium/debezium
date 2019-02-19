@@ -451,9 +451,16 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         for (ReplicationMessage.Column column : columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
-            String columnName = Strings.unquoteIdentifierPart(column.getName());
-            int position = table.columnWithName(columnName).position() - 1;
-            if (position < 0) {
+            final String columnName = Strings.unquoteIdentifierPart(column.getName());
+            final Column tableColumn = table.columnWithName(columnName);
+            if (tableColumn == null) {
+                logger.warn(
+                        "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
+                        column.getName());
+                continue;
+            }
+            int position = tableColumn.position() - 1;
+            if (position < 0 || position >= values.length) {
                 logger.warn(
                         "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
                         column.getName());
