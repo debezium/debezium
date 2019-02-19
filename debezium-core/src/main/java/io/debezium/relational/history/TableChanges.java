@@ -143,7 +143,7 @@ public class TableChanges implements Iterable<TableChange> {
             Document document = Document.create();
 
             document.setString("type", type.name());
-            document.setString("id", id.toString());
+            document.setString("id", id.toDoubleQuotedString());
             document.setDocument("table", toDocument(table));
             return document;
         }
