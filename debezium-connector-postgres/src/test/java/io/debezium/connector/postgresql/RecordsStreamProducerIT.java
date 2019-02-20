@@ -153,10 +153,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1141")
     public void shouldProcessNotNullColumnsConnectDateTypes() throws Exception {
+        testProcessNotNullColumns(TemporalPrecisionMode.CONNECT);
+    }
+
+    @Test
+    @FixFor("DBZ-1141")
+    public void shouldProcessNotNullColumnsAdaptiveDateTypes() throws Exception {
+        testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
+    }
+
+    @Test
+    @FixFor("DBZ-1141")
+    public void shouldProcessNotNullColumnsAdaptiveMsDateTypes() throws Exception {
+        testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+    }
+
+    private void testProcessNotNullColumns(TemporalPrecisionMode temporalMode) throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
-                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, temporalMode)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -164,11 +180,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
 
-        executeAndWait("INSERT INTO timestamp_not_null_table VALUES (default, 30, '2019-02-10 11:34:58', '2019-02-10 11:35:00', '10:20:11', '10:20:12', '2019-02-01')");
+        executeAndWait("INSERT INTO not_null_table VALUES (default, 30, '2019-02-10 11:34:58', '2019-02-10 11:35:00', '10:20:11', '10:20:12', '2019-02-01', '$20', B'101')");
         consumer.remove();
 
         consumer.expects(1);
-        executeAndWait("UPDATE timestamp_not_null_table SET val=40");
+        executeAndWait("UPDATE not_null_table SET val=40");
         final SourceRecord record = consumer.remove();
         VerifyRecord.isValidUpdate(record, "pk", 1);
         VerifyRecord.isValid(record);
