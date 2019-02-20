@@ -460,7 +460,7 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForMoneyTypes() {
-        return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(0).optional().build(),
+        return Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(2).optional().build(),
                                                                  BigDecimal.valueOf(1234.11d)));
     }
 

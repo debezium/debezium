@@ -91,7 +91,7 @@ public class PostgresSchemaIT {
             assertTableSchema("public.string_table", "vc, vcv, ch, c, t, ct",
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
-            assertTableSchema("public.cash_table", "csh", Decimal.builder(0).optional().build());
+            assertTableSchema("public.cash_table", "csh", Decimal.builder(2).optional().build());
             assertTableSchema("public.bitbin_table", "ba, bol, bs, bv",
                               Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Bits.builder(2).optional().build(),
                               Bits.builder(2).optional().build());
