@@ -494,9 +494,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertMoney(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, BigDecimal.ZERO, (r) -> {
+        return convertValue(column, fieldDefn, data, BigDecimal.ZERO.setScale(2), (r) -> {
             if (data instanceof Double) {
-                r.deliver(BigDecimal.valueOf((Double) data));
+                r.deliver(BigDecimal.valueOf((Double) data).setScale(2));
             }
             else if (data instanceof Number) {
                 // the plugin will return a 64bit signed integer where the last 2 are always decimals
