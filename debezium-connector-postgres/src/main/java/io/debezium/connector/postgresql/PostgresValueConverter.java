@@ -154,7 +154,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.POINT:
                 return Point.builder();
             case PgOid.MONEY:
-                return Decimal.builder(column.scale().get());
+                // Money has always scale 2
+                return Decimal.builder(2);
             case PgOid.NUMERIC:
                 return numericSchema(column);
             case PgOid.BYTEA:
