@@ -30,6 +30,8 @@ CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_mul (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_null (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_special (pk serial, hs hstore, PRIMARY KEY(pk));
+CREATE TABLE timestamp_not_null_table (pk serial, val numeric(20,8), created_at timestamp not null, created_at_tz timestamptz not null, ctime time not null, ctime_tz timetz not null, cdate date not null, PRIMARY KEY(pk));
+
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";
 -- GRANT ALL ON ALL TABLES IN SCHEMA "Quoted_Schema" TO postgres;

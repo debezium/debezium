@@ -40,6 +40,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
 import io.debezium.relational.Table;
@@ -147,6 +148,30 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // custom types + null value
         assertInsert(INSERT_CUSTOM_TYPES_STMT, 1, schemasAndValuesForCustomTypes());
 
+    }
+
+    @Test
+    @FixFor("DBZ-1141")
+    public void shouldProcessNotNullColumnsConnectDateTypes() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
+                .build());
+        setupRecordsProducer(config);
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        executeAndWait("INSERT INTO timestamp_not_null_table VALUES (default, 30, '2019-02-10 11:34:58', '2019-02-10 11:35:00', '10:20:11', '10:20:12', '2019-02-01')");
+        consumer.remove();
+
+        consumer.expects(1);
+        executeAndWait("UPDATE timestamp_not_null_table SET val=40");
+        final SourceRecord record = consumer.remove();
+        VerifyRecord.isValidUpdate(record, "pk", 1);
+        VerifyRecord.isValid(record);
     }
 
     @Test(timeout = 30000)
