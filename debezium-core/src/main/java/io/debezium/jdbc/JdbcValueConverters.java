@@ -1010,7 +1010,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertBits(Column column, Field fieldDefn, Object data, int numBytes) {
-        return convertValue(column, fieldDefn, data, false, (r) -> {
+        return convertValue(column, fieldDefn, data, new byte[0], (r) -> {
             if (data instanceof Boolean) {
                 Boolean value = (Boolean) data;
                 r.deliver(new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 });
