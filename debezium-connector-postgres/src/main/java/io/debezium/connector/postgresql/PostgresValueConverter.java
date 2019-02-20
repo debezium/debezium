@@ -14,6 +14,7 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -107,16 +108,21 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private final JsonFactory jsonFactory;
 
+    private final String zonedTimestampEpoch;
+    private final String zonedTimeEpoch;
+
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
             TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
             BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
             HStoreHandlingMode hStoreMode) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset,null, bigIntUnsignedMode);
+        super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.databaseCharset = databaseCharset;
         this.jsonFactory = new JsonFactory();
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
         this.hStoreMode = hStoreMode;
+        zonedTimestampEpoch = ZonedTimestamp.toIsoString(OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), null);
+        zonedTimeEpoch = ZonedTime.toIsoString(OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), null);
     }
 
     @Override
@@ -554,7 +560,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             // back to GMT
             data = OffsetDateTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
         }
-        return super.convertTimestampWithZone(column, fieldDefn, data);
+        return super.convertTimestampWithZone(column, fieldDefn, data, zonedTimestampEpoch);
     }
 
     @Override
@@ -567,7 +573,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             // back to GMT
             data = OffsetTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
         }
-        return super.convertTimeWithZone(column, fieldDefn, data);
+        return super.convertTimeWithZone(column, fieldDefn, data, zonedTimeEpoch);
     }
 
     private static LocalDateTime nanosToLocalDateTimeUTC(long epocNanos) {
