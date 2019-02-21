@@ -6,10 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.ALWAYS;
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.INITIAL;
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.INITIAL_ONLY;
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode.NEVER;
+import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static junit.framework.TestCase.assertEquals;
@@ -151,7 +148,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_WHITELIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_BLACKLIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.COLUMN_BLACKLIST, null);
-        validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL);
+        validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
         validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, PostgresConnectorConfig.DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE);
         validateField(validatedConfig, PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.PRECISE);
@@ -188,7 +185,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldProduceEventsWithInitialSnapshot() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -253,7 +250,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             TestHelper.execute(INSERT_STMT);
         }
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, recordCount / 2)
                                                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 10)
                                                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1");
@@ -358,7 +355,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldIgnoreEventsForDeletedTable() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -393,7 +390,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 "CREATE VIEW s1.myview AS SELECT * from s1.a;"
         );
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -425,7 +422,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldExecuteOnConnectStatements() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                .with(PostgresConnectorConfig.ON_CONNECT_STATEMENTS, "INSERT INTO s1.a (aa) VALUES (2); INSERT INTO s2.a (aa, bb) VALUES (2, 'hello;; world');")
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
@@ -445,7 +442,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
+                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                                          .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                                          .build();
         start(PostgresConnector.class, config);
@@ -463,7 +460,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL_ONLY.getValue())
+                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
                                          .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                                          .build();
         start(PostgresConnector.class, config);
@@ -483,7 +480,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldProduceEventsWhenAlwaysTakingSnapshots() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, ALWAYS.getValue())
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.getValue())
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -512,7 +509,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         String setupStmt = SETUP_TABLES_STMT + INSERT_STMT;
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
             if (error != null) {
@@ -558,7 +555,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                            "INSERT INTO s2.a (aa) VALUES (5);";
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                                                         .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "s2")
                                                         .with(PostgresConnectorConfig.TABLE_BLACKLIST, ".+b")
@@ -597,7 +594,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                                                         .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
                                                         .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.dbz_878_some\\|test@data");
@@ -623,7 +620,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         final int recordCount = 10;
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
+                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                                          .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                                          .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
                                          .build();
@@ -650,6 +647,60 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Theoretically the LSN should change for each record but in reality there can be
         // unfortunate timings so let's suppose the chane will happen in 75 % of cases
         Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+    }
+
+    @Test
+    @FixFor("DBZ-1082")
+    public void shouldAllowForCustomSnapshot() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs).isNull();
+
+        SourceRecord record = s1recs.get(0);
+        VerifyRecord.isValidRead(record, PK_FIELD, 1);
+
+        TestHelper.execute(INSERT_STMT);
+        actualRecords = consumeRecordsByTopic(2);
+
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        record = s1recs.get(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+        record = s2recs.get(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+        stopConnector();
+
+        config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        actualRecords = consumeRecordsByTopic(4);
+
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(2);
+        assertThat(s2recs.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(s1recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s1recs.get(1), PK_FIELD, 2);
+        VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 2);
     }
 
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
@@ -687,7 +738,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, NEVER.getValue())
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -721,7 +772,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL_ONLY.getValue())
+                                                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
                                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
         final long recordsCount = 1000000;
         final int batchSize = 1000;

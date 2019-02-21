@@ -14,8 +14,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -62,14 +61,16 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     private final Optional<RecordsStreamProducer> streamProducer;
 
     private final AtomicReference<SourceRecord> currentRecord;
+    private final Snapshotter snapshotter;
 
     public RecordsSnapshotProducer(PostgresTaskContext taskContext,
                                    SourceInfo sourceInfo,
-                                   boolean continueStreamingAfterCompletion) {
+                                   Snapshotter snapshotter) {
         super(taskContext, sourceInfo);
         executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         currentRecord = new AtomicReference<>();
-        if (continueStreamingAfterCompletion) {
+        this.snapshotter = snapshotter;
+        if (snapshotter.shouldStream()) {
             // we need to create the stream producer here to make sure it creates the replication connection;
             // otherwise we can't stream back changes happening while the snapshot is taking place
             streamProducer = Optional.of(new RecordsStreamProducer(taskContext, sourceInfo));
@@ -207,26 +208,30 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
-            sourceInfo.update(xlogStart, clock().currentTime(), txId, null);
+            // use the old xmin, as we don't want to update it if in xmin recovery
+            sourceInfo.update(xlogStart, clock().currentTime(), txId, null, sourceInfo.xmin());
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
-            final Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
 
             for(TableId tableId : schema.tableIds()) {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
                 try {
-                    // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-                    final String selectStatement = selectOverrides.getOrDefault(tableId, "SELECT * FROM " + tableId.toDoubleQuotedString());
-                    logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
+                    final Optional<String> selectStatement = snapshotter.buildSnapshotQuery(tableId);
+                    if (!selectStatement.isPresent()) {
+                        logger.warn("For table '{}' the select statement was not provided, skipping table", tableId);
+                    }
+                    else {
+                        logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
 
-                    connection.queryWithBlockingConsumer(selectStatement,
-                            this::readTableStatement,
-                            rs -> readTable(tableId, rs, consumer, rowsCounter));
-                    logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
-                            tableId, Strings.duration(clock().currentTimeInMillis() - exportStart));
-                    rowsCounter.set(0);
+                        connection.queryWithBlockingConsumer(selectStatement.get(),
+                                this::readTableStatement,
+                                rs -> readTable(tableId, rs, consumer, rowsCounter));
+                        logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
+                                tableId, Strings.duration(clock().currentTimeInMillis() - exportStart));
+                        rowsCounter.set(0);
+                    }
                 } catch (SQLException e) {
                     throw new ConnectException(e);
                 }
@@ -412,27 +417,5 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         }
         //send the last generated record
         consumer.accept(new ChangeEvent(record, sourceInfo.lsn()));
-    }
-
-    /**
-     * Returns any SELECT overrides, if present.
-     */
-    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
-        String tableList = taskContext.getConfig().snapshotSelectOverrides();
-
-        if (tableList == null) {
-            return Collections.emptyMap();
-        }
-
-        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
-
-        for (String table : tableList.split(",")) {
-            snapshotSelectOverridesByTable.put(
-                TableId.parse(table),
-                taskContext.getConfig().snapshotSelectOverrideForTable(table)
-            );
-        }
-
-        return snapshotSelectOverridesByTable;
     }
 }

@@ -6,6 +6,8 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import io.debezium.connector.postgresql.spi.SlotState;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -139,31 +141,63 @@ public class ServerInfo {
      * Information about a server replication slot
      */
     protected static class ReplicationSlot {
-        protected static final ReplicationSlot INVALID = new ReplicationSlot(false, null);
+        protected static final ReplicationSlot INVALID = new ReplicationSlot(false, null, null, null);
         
         private boolean active;
-        private Long latestFlushedLSN;
-        
-        protected ReplicationSlot(boolean active, Long latestFlushedLSN) {
+        private Long latestFlushedLsn;
+        private Long restartLsn;
+        private Long catalogXmin;
+
+        protected ReplicationSlot(boolean active, Long latestFlushedLsn, Long restartLsn, Long catalogXmin) {
             this.active = active;
-            this.latestFlushedLSN = latestFlushedLSN;
+            this.latestFlushedLsn = latestFlushedLsn;
+            this.restartLsn = restartLsn;
+            this.catalogXmin = catalogXmin;
         }
         
         protected boolean active() {
             return active;
         }
-        
-        protected Long latestFlushedLSN() {
-            return latestFlushedLSN;
+
+        /**
+         * Represents the `confirmed_flushed_lsn` field of the replication slot.
+         *
+         * This value represents the latest LSN that the logical replication
+         * consumer has reported back to postgres.
+         * @return the latestFlushedLsn
+         */
+        protected Long latestFlushedLsn() {
+            return latestFlushedLsn;
+        }
+
+        /**
+         * Represents the `restart_lsn` field of the replication slot.
+         *
+         * The restart_lsn will be the LSN the slot restarts from
+         * in the event of the disconnect. This can be distinct from
+         * the `confirmed_flushed_lsn` as the two pointers are moved
+         * independently
+         * @return the restartLsn
+         */
+        protected Long restartLsn() {
+            return restartLsn;
+        }
+
+        protected Long catalogXmin() {
+            return catalogXmin;
         }
         
-        protected boolean hasValidFlushedLSN() {
-            return latestFlushedLSN != null;
+        protected boolean hasValidFlushedLsn() {
+            return latestFlushedLsn != null;
+        }
+
+        protected SlotState asSlotState() {
+            return new SlotState(latestFlushedLsn, restartLsn, catalogXmin, active);
         }
 
         @Override
         public String toString() {
-            return "ReplicationSlot [active=" + active + ", latestFlushedLSN=" + latestFlushedLSN + "]";
+            return "ReplicationSlot [active=" + active + ", latestFlushedLsn=" + latestFlushedLsn + ", catalogXmin=" + catalogXmin + "]";
         }
     }
 }
