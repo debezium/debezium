@@ -6,19 +6,26 @@
 
 package io.debezium.connector.postgresql;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
+import io.debezium.config.Field;
+
+import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
+import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
+import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.Configuration;
-import io.debezium.config.EnumeratedValue;
-import io.debezium.config.Field;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
@@ -95,34 +102,52 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     /**
-     * The set of predefined SnapshotMode options or aliases.
+     * The set of predefined Snapshotter options or aliases.
      */
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Always perform a snapshot when starting.
          */
-        ALWAYS("always"),
+        ALWAYS("always", (c) -> new AlwaysSnapshotter()),
 
         /**
          * Perform a snapshot only upon initial startup of a connector.
          */
-        INITIAL("initial"),
+        INITIAL("initial", (c) -> new InitialSnapshotter()),
 
         /**
          * Never perform a snapshot and only receive logical changes.
          */
-        NEVER("never"),
+        NEVER("never", (c) -> new NeverSnapshotter()),
 
         /**
          * Perform a snapshot and then stop before attempting to receive any logical changes.
          */
-        INITIAL_ONLY("initial_only");
+        INITIAL_ONLY("initial_only", (c) -> new InitialOnlySnapshotter()),
+
+        /**
+         * Inject a custom snapshotter, which allows for more control over snapshots.
+         */
+        CUSTOM("custom", (c) -> {
+            return c.getInstance(SNAPSHOT_MODE_CLASS, Snapshotter.class);
+        });
+
+        @FunctionalInterface
+        public interface SnapshotterBuilder {
+            Snapshotter buildSnapshotter(Configuration config);
+        }
 
         private final String value;
+        private final SnapshotterBuilder builderFunc;
 
-        SnapshotMode(String value) {
+        SnapshotMode(String value, SnapshotterBuilder buildSnapshotter) {
             this.value = value;
+            this.builderFunc = buildSnapshotter;
+        }
+
+        public Snapshotter getSnapshotter(Configuration config) {
+            return builderFunc.buildSnapshotter(config);
         }
 
         @Override
@@ -667,8 +692,24 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "Options include: "
                                                            + "'always' to specify that the connector run a snapshot each time it starts up; "
                                                            + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
-                                                           + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes; and"
-                                                           + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server");
+                                                           + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes;"
+                                                           + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server; and"
+                                                           + "'custom' to specify a custom class with 'snapshot.custom_class' which will be loaded and used to determine the snapshot, see docs for more details.");
+
+    public static final Field SNAPSHOT_MODE_CLASS = Field.create("snapshot.custom.class")
+                                                         .withDisplayName("Snapshot Mode Custom Class")
+                                                         .withType(Type.STRING)
+                                                         .withWidth(Width.MEDIUM)
+                                                         .withImportance(Importance.MEDIUM)
+                                                         .withValidation((config, field, output) -> {
+                                                             if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field).isEmpty()) {
+                                                                output.accept(field, "", "snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
+                                                                return 1;
+                                                             }
+                                                             return 0;
+                                                         })
+                                                         .withDescription("When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
+                                                                         + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
                                                               .withDisplayName("Snapshot lock timeout (ms)")
@@ -750,6 +791,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "This setting can improve connector performance significantly if there are frequently-updated tables that " +
                     "have TOASTed data that are rarely part of these updates. However, it is possible for the in-memory schema to " +
                     "become outdated if TOASTable columns are dropped from the table.");
+
+    public static final Field XMIN_FETCH_INTERVAL = Field.create("xmin.fetch.interval.ms")
+            .withDisplayName("Xmin fetch interval (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withDefault(0L)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how often (in ms) the xmin will be fetched from the replication slot. " +
+                    "This xmin value is exposed by the slot which gives a lower bound of where a new replication slot could start from. " +
+                    "The lower the value, the more likely this value is to be the current 'true' value, but the bigger the performance cost. " +
+                    "The bigger the value, the less likely this value is to be the current 'true' value, but the lower the performance penalty. " +
+                    "The default is set to 0 ms, which disables tracking xmin.")
+            .withValidation(Field::isNonNegativeLong);
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -767,7 +821,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
 
     private final Configuration config;
     private final TemporalPrecisionMode temporalPrecisionMode;
@@ -890,23 +945,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return config.getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
     }
 
-    protected boolean snapshotNeverAllowed() {
-        return SnapshotMode.NEVER == this.snapshotMode;
+    protected Snapshotter getSnapshotter() {
+        return this.snapshotMode.getSnapshotter(config);
     }
 
-    protected boolean alwaysTakeSnapshot() {
-        return SnapshotMode.ALWAYS == this.snapshotMode;
-    }
-
-    protected boolean initialOnlySnapshot() {
-        return SnapshotMode.INITIAL_ONLY == this.snapshotMode;
-    }
-
-    protected String snapshotSelectOverrides() {
+    public String snapshotSelectOverrides() {
         return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
 
-    protected String snapshotSelectOverrideForTable(String table) {
+    public String snapshotSelectOverrideForTable(String table) {
         return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
     }
 
@@ -914,11 +961,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
 
+    protected Duration xminFetchInterval() {
+        return Duration.ofMillis(config.getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
+    }
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
+                    DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,

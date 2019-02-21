@@ -22,6 +22,8 @@ import java.util.function.Consumer;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.DECODERBUFS;
 
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
@@ -71,6 +73,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Before
     public void before() throws Exception {
+        // ensure the slot is deleted for each test
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+        }
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
         String statements =
@@ -1284,6 +1290,56 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // Expecting one heartbeat for the empty DDL change
         assertHeartBeatRecordInserted();
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1082")
+    public void shouldHaveNoXminWhenNotEnabled() throws Exception {
+        // Verify that passing multiple stream parameters and multiple parameter values works.
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.XMIN_FETCH_INTERVAL, "0")
+                .build());
+        setupRecordsProducer(config);
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        String statement = "INSERT INTO test_table (text) VALUES ('no_xmin');";
+        executeAndWait(statement);
+
+        // Verify the record that made it does not have an xmin
+        SourceRecord rec = assertRecordInserted("public.test_table", PK_FIELD, 2);
+        assertSourceInfo(rec, "postgres", "public", "test_table");
+
+        Struct source = ((Struct) rec.value()).getStruct("source");
+        assertThat(source.getInt64("xmin")).isNull();
+
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1082")
+    public void shouldHaveXminWhenEnabled() throws Exception {
+        // Verify that passing multiple stream parameters and multiple parameter values works.
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.XMIN_FETCH_INTERVAL, "10")
+                .build());
+        setupRecordsProducer(config);
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
+        String statement = "INSERT INTO test_table (text) VALUES ('with_xmin');";
+        executeAndWait(statement);
+
+        // Verify the record that made it does not have an xmin
+        SourceRecord rec = assertRecordInserted("public.test_table", PK_FIELD, 2);
+        assertSourceInfo(rec, "postgres", "public", "test_table");
+
+        Struct source = ((Struct) rec.value()).getStruct("source");
+        assertThat(source.getInt64("xmin")).isGreaterThan(0L);
+
         assertThat(consumer.isEmpty()).isTrue();
     }
 

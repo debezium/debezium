@@ -18,6 +18,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.relational.TableId;
 import io.debezium.time.Conversions;
 
@@ -76,13 +77,14 @@ import io.debezium.time.Conversions;
  * @author Horia Chiorean
  */
 @NotThreadSafe
-final class SourceInfo extends AbstractSourceInfo {
+public final class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String DB_NAME_KEY = "db";
     public static final String TIMESTAMP_KEY = "ts_usec";
     public static final String TXID_KEY = "txId";
+    public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
     public static final String SCHEMA_NAME_KEY = "schema";
     public static final String TABLE_NAME_KEY = "table";
@@ -103,6 +105,7 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                      .field(LAST_SNAPSHOT_RECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                                                     .field(XMIN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .build();
 
     private final String serverName;
@@ -111,6 +114,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     private Long lsn;
     private Long txId;
+    private Long xmin;
     private Long useconds;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
@@ -127,6 +131,7 @@ final class SourceInfo extends AbstractSourceInfo {
     protected void load(Map<String, Object> lastStoredOffset) {
         this.lsn = ((Number) lastStoredOffset.get(LSN_KEY)).longValue();
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
+        this.xmin = (Long) lastStoredOffset.get(XMIN_KEY);
         this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_KEY);
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
         if (this.snapshot) {
@@ -163,6 +168,9 @@ final class SourceInfo extends AbstractSourceInfo {
         if (lsn != null) {
             result.put(LSN_KEY, lsn);
         }
+        if (xmin != null) {
+            result.put(XMIN_KEY, xmin);
+        }
         if (snapshot) {
             result.put(SNAPSHOT_KEY, true);
             result.put(LAST_SNAPSHOT_RECORD_KEY, lastSnapshotRecord);
@@ -170,21 +178,27 @@ final class SourceInfo extends AbstractSourceInfo {
         return result;
     }
 
+    public OffsetState asOffsetState() {
+        return new OffsetState(lsn, txId, xmin, Conversions.toInstantFromMicros(useconds), isSnapshotInEffect());
+    }
+
     /**
      * Updates the source with information about a particular received or read event.
      *
      * @param lsn the position in the server WAL for a particular event; may be null indicating that this information is not
      * available
-     * @param useconds the commit time (in microseconds since epoch) of the transaction that generated the event;
+     * @param commitTime the commit time (in microseconds since epoch) of the transaction that generated the event;
      * may be null indicating that this information is not available
-     * @param txId the ID of the transaction that generated the transaction; may be null if this information nis not available
+     * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
      * @param tableId the table that should be included in the source info; may be null
+     * @param xmin the xmin of the slot, may be null
      * @return this instance
      */
-    protected SourceInfo update(Long lsn, Instant commitTime, Long txId, TableId tableId) {
+    protected SourceInfo update(Long lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lsn = lsn;
         this.useconds = Conversions.toEpochMicros(commitTime);
         this.txId = txId;
+        this.xmin = xmin;
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();
         }
@@ -230,7 +244,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
      * complies with the {@link #SCHEMA} for the Postgres connector.
      * <p>
-     * This method should always be called after {@link #update(Long, Long, Long, TableId)}.
+     * This method should always be called after {@link #update(Long, Instant, Long, TableId, Long)}.
      *
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
@@ -255,7 +269,7 @@ final class SourceInfo extends AbstractSourceInfo {
      *
      * @return {@code true} if a snapshot is in effect, or {@code false} otherwise
      */
-    protected boolean isSnapshotInEffect() {
+    public boolean isSnapshotInEffect() {
         return snapshot && (this.lastSnapshotRecord == null || !this.lastSnapshotRecord);
     }
 
@@ -274,11 +288,15 @@ final class SourceInfo extends AbstractSourceInfo {
         this.snapshot = false;
     }
 
-    protected Long lsn() {
+    public Long lsn() {
         return this.lsn;
     }
 
-    protected boolean hasLastKnownPosition() {
+    public Long xmin() {
+        return this.xmin;
+    }
+
+    public boolean hasLastKnownPosition() {
         return this.lsn != null;
     }
 
@@ -292,6 +310,9 @@ final class SourceInfo extends AbstractSourceInfo {
         }
         if (txId != null) {
             sb.append(", txId=").append(txId);
+        }
+        if (xmin != null) {
+            sb.append(", xmin=").append(xmin);
         }
         if (useconds != null) {
             sb.append(", useconds=").append(useconds);

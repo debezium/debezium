@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
@@ -48,11 +50,12 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
 
     private RecordsSnapshotProducer snapshotProducer;
     private PostgresTaskContext context;
+    private PostgresConnectorConfig config;
 
     public void before(Configuration overrides) throws SQLException {
         TestHelper.dropAllSchemas();
 
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(overrides).build());
+        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(overrides).build());
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
         context = new PostgresTaskContext(
                 config,
@@ -74,7 +77,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 100")
                 .build());
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildStreamProducer(context, config);
 
         final int expectedRecordsCount = 3 + 6;
 
@@ -96,7 +99,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 101")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t2", "SELECT * FROM over.t2 WHERE pk > 100")
                 .build());
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildStreamProducer(context, config);
 
         final int expectedRecordsCount = 2 + 3;
 
@@ -121,5 +124,9 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         return recordsByTopic;
     }
 
-
+    private RecordsSnapshotProducer buildStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
+        Snapshotter sn = new InitialOnlySnapshotter();
+        sn.init(config, null, null);
+        return new RecordsSnapshotProducer(ctx, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), sn);
+    }
 }

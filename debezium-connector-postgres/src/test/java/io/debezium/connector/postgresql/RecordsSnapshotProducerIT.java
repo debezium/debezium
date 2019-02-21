@@ -21,6 +21,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
+import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -80,7 +83,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldGenerateSnapshotsForDefaultDatatypes() throws Exception {
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .build());
+        snapshotProducer = buildNoStreamProducer(context, config);
 
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted__");
 
@@ -116,7 +121,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.getSchema(config),
                 PostgresTopicSelector.create(config)
         );
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildNoStreamProducer(context, config);
 
         final TestConsumer consumer = testConsumer(1, "public");
 
@@ -154,7 +159,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                             insertStmt;
         TestHelper.execute(statements);
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
+        snapshotProducer = buildWithStreamProducer(context, config);
         TestConsumer consumer = testConsumer(2, "s1", "s2");
         snapshotProducer.start(consumer, e -> {});
 
@@ -186,7 +191,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // start a new producer back up, take a new snapshot (we expect all the records to be read back)
         int expectedRecordsCount = 6;
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
+        snapshotProducer = buildWithStreamProducer(context, config);
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
@@ -237,7 +242,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), true);
+        snapshotProducer = buildWithStreamProducer(context, config);
         TestConsumer consumer = testConsumer(2);
         snapshotProducer.start(consumer, e -> {});
 
@@ -247,13 +252,24 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         final SourceRecord first = consumer.remove();
         VerifyRecord.isValidRead(first, PK_FIELD, 1);
         assertRecordOffsetAndSnapshotSource(first, true, true);
-        System.out.println(first);
         final SourceRecord second = consumer.remove();
         assertThat(second.topic()).startsWith("__debezium-heartbeat");
         assertRecordOffsetAndSnapshotSource(second, false, false);
 
         // now shut down the producers and insert some more records
         snapshotProducer.stop();
+    }
+
+    private RecordsSnapshotProducer buildNoStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
+        Snapshotter sn = new InitialOnlySnapshotter();
+        sn.init(config, null, null);
+        return new RecordsSnapshotProducer(ctx, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), sn);
+    }
+
+    private RecordsSnapshotProducer buildWithStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
+        Snapshotter sn = new AlwaysSnapshotter();
+        sn.init(config, null, null);
+        return new RecordsSnapshotProducer(ctx, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), sn);
     }
 
     private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTopicName) {
@@ -279,7 +295,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildNoStreamProducer(context, config);
 
         TestConsumer consumer = testConsumer(ALL_STMTS.size(), "public", "Quoted__");
 
@@ -321,7 +337,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildNoStreamProducer(context, config);
 
         TestConsumer consumer = testConsumer(1, "public", "Quoted_\"");
 
@@ -374,7 +390,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildNoStreamProducer(context, config);
 
         TestConsumer consumer = testConsumer(31);
 
@@ -443,7 +459,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 selector
         );
 
-        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+        snapshotProducer = buildNoStreamProducer(context, config);
 
         TestConsumer consumer = testConsumer(1, "public", "Quoted_\"");
 
