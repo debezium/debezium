@@ -24,6 +24,7 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -146,22 +147,49 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1141")
     public void shouldProcessNotNullColumnsConnectDateTypes() throws Exception {
-        testProcessNotNullColumns(TemporalPrecisionMode.CONNECT);
+        final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.CONNECT);
+        if (before != null) {
+            Assertions.assertThat(before.get("created_at")).isEqualTo(new java.util.Date(0));
+            Assertions.assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            Assertions.assertThat(before.get("ctime")).isEqualTo(new java.util.Date(0));
+            Assertions.assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            Assertions.assertThat(before.get("cdate")).isEqualTo(new java.util.Date(0));
+            Assertions.assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            Assertions.assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+        }
     }
 
     @Test
     @FixFor("DBZ-1141")
     public void shouldProcessNotNullColumnsAdaptiveDateTypes() throws Exception {
-        testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
+        final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
+        if (before != null) {
+            Assertions.assertThat(before.get("created_at")).isEqualTo(0L);
+            Assertions.assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            Assertions.assertThat(before.get("ctime")).isEqualTo(0L);
+            Assertions.assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            Assertions.assertThat(before.get("cdate")).isEqualTo(0);
+            Assertions.assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            Assertions.assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+        }
     }
 
     @Test
     @FixFor("DBZ-1141")
     public void shouldProcessNotNullColumnsAdaptiveMsDateTypes() throws Exception {
-        testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+        final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+        if (before != null) {
+            Assertions.assertThat(before.get("created_at")).isEqualTo(0L);
+            Assertions.assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            Assertions.assertThat(before.get("ctime")).isEqualTo(0L);
+            Assertions.assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            Assertions.assertThat(before.get("cdate")).isEqualTo(0);
+            Assertions.assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            Assertions.assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+        }
     }
 
-    private void testProcessNotNullColumns(TemporalPrecisionMode temporalMode) throws Exception {
+    private Struct testProcessNotNullColumns(TemporalPrecisionMode temporalMode) throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
@@ -181,6 +209,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         final SourceRecord record = consumer.remove();
         VerifyRecord.isValidUpdate(record, "pk", 1);
         VerifyRecord.isValid(record);
+        return ((Struct)record.value()).getStruct("before");
     }
 
     @Test(timeout = 30000)
