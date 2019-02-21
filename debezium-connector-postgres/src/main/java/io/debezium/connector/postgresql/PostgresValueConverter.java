@@ -14,7 +14,6 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -108,9 +107,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private final JsonFactory jsonFactory;
 
-    private final String zonedTimestampEpoch;
-    private final String zonedTimeEpoch;
-
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
             TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
             BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
@@ -121,8 +117,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
         this.hStoreMode = hStoreMode;
-        zonedTimestampEpoch = ZonedTimestamp.toIsoString(OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), null);
-        zonedTimeEpoch = ZonedTime.toIsoString(OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), null);
     }
 
     @Override
@@ -556,12 +550,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof Long) {
             LocalDateTime localDateTime = nanosToLocalDateTimeUTC((Long) data);
             data = OffsetDateTime.of(localDateTime, ZoneOffset.UTC);
-        } else if (data instanceof java.util.Date) {
+        }
+        else if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
             data = OffsetDateTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
         }
-        return super.convertTimestampWithZone(column, fieldDefn, data, zonedTimestampEpoch);
+
+        return super.convertTimestampWithZone(column, fieldDefn, data);
     }
 
     @Override
@@ -569,12 +565,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof Long) {
             LocalTime localTime = LocalTime.ofNanoOfDay((Long) data);
             data = OffsetTime.of(localTime, ZoneOffset.UTC);
-        } else if (data instanceof java.util.Date) {
+        }
+        else if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
             data = OffsetTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
         }
-        return super.convertTimeWithZone(column, fieldDefn, data, zonedTimeEpoch);
+
+        return super.convertTimeWithZone(column, fieldDefn, data);
     }
 
     private static LocalDateTime nanosToLocalDateTimeUTC(long epocNanos) {
