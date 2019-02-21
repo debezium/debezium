@@ -28,6 +28,11 @@ public interface Clock {
         public long currentTimeInNanos() {
             return System.nanoTime();
         }
+
+        @Override
+        public Instant currentTimeAsInstant() {
+            return Instant.now();
+        }
     };
 
     /**
@@ -55,6 +60,15 @@ public interface Clock {
      */
     default long currentTimeInMicros() {
         return TimeUnit.MICROSECONDS.convert(currentTimeInMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Get the current time as an instant
+     *
+     * @return the current time as an instant.
+     */
+    default Instant currentTimeAsInstant() {
+        return Instant.ofEpochMilli(currentTimeInMillis());
     }
 
     /**

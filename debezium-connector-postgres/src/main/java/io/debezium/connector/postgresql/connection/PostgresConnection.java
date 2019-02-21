@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.debezium.connector.postgresql.spi.SlotState;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.TypeInfo;
@@ -120,35 +121,84 @@ public class PostgresConnection extends JdbcConnection {
         }, rs -> {
             if (rs.next()) {
                 replIdentity.append(rs.getString(1));
-            } else {
+            }
+            else {
                 LOGGER.warn("Cannot determine REPLICA IDENTITY information for table '{}'", tableId);
             }
         });
         return ServerInfo.ReplicaIdentity.parseFromDB(replIdentity.toString());
     }
 
+    /**
+     * Returns the current state of the replication slot
+     * @param slotName the name of the slot
+     * @param pluginName the name of the plugin used for the desired slot
+     * @return the {@link SlotState} or null, if no slot state is found
+     * @throws SQLException
+     */
+    public SlotState getReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
+        ServerInfo.ReplicationSlot slot = fetchReplicationSlotInfo(slotName, pluginName);
+        if (slot.equals(ServerInfo.ReplicationSlot.INVALID)) {
+            return null;
+        }
+        else {
+            return slot.asSlotState();
+        }
+    }
+
+    /**
+     * Fetches the state of a replication stage given a slot name and plugin name
+     * @param slotName the name of the slot
+     * @param pluginName the name of the plugin used for the desired slot
+     * @return the {@link ServerInfo.ReplicationSlot} object or a {@link ServerInfo.ReplicationSlot#INVALID} if
+     *         the slot is not valid
+     * @throws SQLException is thrown by the underlying JDBC
+     */
+    protected ServerInfo.ReplicationSlot fetchReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
+        final String database = database();
+        final ServerInfo.ReplicationSlot slot = queryForSlot(slotName, database, pluginName,
+                rs -> {
+                    if (rs.next()) {
+                        boolean active = rs.getBoolean("active");
+                        Long confirmedFlushedLsn = parseConfirmedFlushLsn(slotName, pluginName, database, rs);
+                        if (confirmedFlushedLsn == null) {
+                            return null;
+                        }
+                        Long restartLsn = parseRestartLsn(slotName, pluginName, database, rs);
+                        if (restartLsn == null) {
+                            return null;
+                        }
+                        Long xmin = rs.getLong("catalog_xmin");
+                        return new ServerInfo.ReplicationSlot(active, confirmedFlushedLsn, restartLsn, xmin);
+                    }
+                    else {
+                        LOGGER.debug("No replication slot '{}' is present for plugin '{}' and database '{}'", slotName,
+                                pluginName, database);
+                        return ServerInfo.ReplicationSlot.INVALID;
+                    }
+                }
+        );
+        return slot;
+    }
+
+    /**
+     * Fetches a replication slot, repeating the query until either the slot is created or until
+     * the max number of attempts has been reached
+     *
+     * To fetch the slot without teh retries, use the {@link PostgresConnection#fetchReplicationSlotInfo} call
+     * @param slotName the slot name
+     * @param pluginName the name of the plugin
+     * @return the {@link ServerInfo.ReplicationSlot} object or a {@link ServerInfo.ReplicationSlot#INVALID} if
+     *         the slot is not valid
+     * @throws SQLException is thrown by the underyling jdbc driver
+     * @throws InterruptedException is thrown if we don't return an answer within the set number of retries
+     */
     protected ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException, InterruptedException {
         final String database = database();
         final Metronome metronome = Metronome.parker(PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS, Clock.SYSTEM);
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT; attempt++) {
-            final ServerInfo.ReplicationSlot slot = queryForSlot(slotName, database, pluginName,
-                    rs -> {
-                        if (rs.next()) {
-                            boolean active = rs.getBoolean("active");
-                            Long confirmedFlushedLSN = parseConfirmedFlushLsn(slotName, pluginName, database, rs);
-                            if (confirmedFlushedLSN == null) {
-                                return null;
-                            }
-                            return new ServerInfo.ReplicationSlot(active, confirmedFlushedLSN);
-                        }
-                        else {
-                            LOGGER.debug("No replication slot '{}' is present for plugin '{}' and database '{}'", slotName,
-                                         pluginName, database);
-                            return ServerInfo.ReplicationSlot.INVALID;
-                        }
-                    }
-               );
+            final ServerInfo.ReplicationSlot slot = fetchReplicationSlotInfo(slotName, pluginName);
             if (slot != null) {
                 LOGGER.info("Obtained valid replication slot {}", slot);
                 return slot;
@@ -191,6 +241,18 @@ public class PostgresConnection extends JdbcConnection {
         }
 
         return confirmedFlushedLsn;
+    }
+
+    private Long parseRestartLsn(String slotName, String pluginName, String database, ResultSet rs) {
+        Long restartLsn = null;
+        try {
+            restartLsn = tryParseLsn(slotName, pluginName, database, rs, "restart_lsn");
+        }
+        catch (SQLException e) {
+            throw new ConnectException("restart_lsn could be found");
+        }
+
+        return restartLsn;
     }
 
     private Long tryParseLsn(String slotName, String pluginName, String database, ResultSet rs, String column) throws ConnectException, SQLException {
