@@ -19,6 +19,10 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
+
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -53,6 +57,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;
     private final Consumer<Throwable> blackHole = t -> {};
+
+    @Rule
+    public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
@@ -1101,6 +1108,64 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         expectedAfter = null;
         assertRecordSchemaAndValues(expectedAfter, deletedRecord, Envelope.FieldName.AFTER);
+    }
+
+    @Test()
+    @FixFor("DBZ-1130")
+    @SkipWhenDecoderPluginNameIsNot(WAL2JSON)
+    public void testPassingStreamParams() throws Exception {
+        // Verify that passing stream parameters works by using the WAL2JSON add-tables parameter which acts as a
+        // whitelist.
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.STREAM_PARAMS, "add-tables=s1.should_stream")
+                .build());
+        setupRecordsProducer(config);
+        String statement = "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.should_not_stream (aa) VALUES (456);" +
+                "INSERT INTO s1.should_stream (aa) VALUES (123);";
+
+
+        // Verify only one record made it
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+
+        // Verify the record that made it was from the whitelisted table
+        assertRecordInserted("s1.should_stream", PK_FIELD, 1);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test()
+    @FixFor("DBZ-1130")
+    @SkipWhenDecoderPluginNameIsNot(WAL2JSON)
+    public void testPassingStreamMultipleParams() throws Exception {
+        // Verify that passing multiple stream parameters and multiple parameter values works.
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.STREAM_PARAMS, "add-tables=s1.should_stream,s2.*;filter-tables=s2.should_not_stream")
+                .build());
+        setupRecordsProducer(config);
+        String statement = "CREATE SCHEMA s1;" + "CREATE SCHEMA s2;" +
+                "CREATE TABLE s1.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s2.should_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s1.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s2.should_not_stream (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.should_not_stream (aa) VALUES (456);" +
+                "INSERT INTO s2.should_not_stream (aa) VALUES (111);" +
+                "INSERT INTO s1.should_stream (aa) VALUES (123);" +
+                "INSERT INTO s2.should_stream (aa) VALUES (999);";
+
+
+        // Verify only the whitelisted record from s1 and s2 made it.
+        consumer = testConsumer(2);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+
+        // Verify the record that made it was from the whitelisted table
+        assertRecordInserted("s1.should_stream", PK_FIELD, 1);
+        assertRecordInserted("s2.should_stream", PK_FIELD, 1);
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     private void assertHeartBeatRecordInserted() {

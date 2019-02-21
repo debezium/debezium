@@ -130,6 +130,16 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder withTypeRegistry(TypeRegistry typeRegistry);
 
         /**
+         * Optional parameters to pass to the logical decoder when the stream starts.
+         *
+         * @param streamParams String of key and value pairs declared with "=". Pairs are separated by ";".
+         *                     Example: "add-tables=public.table,public.table2;include-lsn=true"
+         * @return this instance
+         * @see #STREAM_PARAMS
+         */
+        Builder streamParams(final String streamParams);
+
+        /**
          * Creates a new {@link ReplicationConnection} instance
          * @return a connection, never null
          */
