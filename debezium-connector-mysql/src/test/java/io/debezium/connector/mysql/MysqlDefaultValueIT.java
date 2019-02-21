@@ -256,9 +256,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("UNSIGNED_BIGINT_TABLE")).get(0);
 
-        // TODO can't validate due to https://github.com/confluentinc/schema-registry/issues/833
-        // enable once that's resolved upstream
-        // validate(record);
+        validate(record);
 
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -475,9 +473,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
         SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("NUMERIC_DECIMAL_TABLE")).get(0);
 
-        // TODO can't validate due to https://github.com/confluentinc/schema-registry/issues/833
-        // enable once that's resolved upstream
-        // validate(record);
+        validate(record);
 
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
@@ -615,9 +611,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(7);
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
 
-        // TODO can't validate due to https://github.com/confluentinc/schema-registry/issues/833
-        // enable once that's resolved upstream
-        // validate(record);
+        validate(record);
 
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
