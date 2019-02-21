@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb;
 
 import java.util.concurrent.TimeUnit;
 
-import io.debezium.config.EnumeratedValue;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -15,6 +14,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 
@@ -318,8 +318,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
+    private final SnapshotMode snapshotMode;
+
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME));
+
+        String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
+        this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
     protected static ConfigDef configDef() {
@@ -366,5 +371,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             return 1;
         }
         return 0;
+    }
+
+    public SnapshotMode getSnapshotMode() {
+        return snapshotMode;
     }
 }

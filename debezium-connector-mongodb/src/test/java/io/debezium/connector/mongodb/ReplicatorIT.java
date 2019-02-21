@@ -299,9 +299,6 @@ public class ReplicatorIT extends AbstractMongoIT {
         // Sleep for 2 seconds ...
         Thread.sleep(2000);
 
-        // Stop the replicator ...
-        replicator.stop();
-
         // ------------------------------------------------------------------------------
         // VERIFY WE FOUND NO NEW EVENTS (SNAPSHOT IS NEVER)
         // ------------------------------------------------------------------------------
@@ -311,15 +308,6 @@ public class ReplicatorIT extends AbstractMongoIT {
             VerifyRecord.isValid(record);
         });
         assertThat(records.isEmpty()).isTrue();
-
-        // Start the replicator again ...
-        records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add, (x) ->  {});
-        thread = new Thread(replicator::run);
-        thread.start();
-
-        // Sleep for 2 seconds ...
-        Thread.sleep(2000);
 
         primary.execute("shouldCreateContactsDatabase", mongo -> {
             Testing.debug("Populating the 'dbA.contacts' collection");
@@ -331,12 +319,11 @@ public class ReplicatorIT extends AbstractMongoIT {
             contacts.insertOne(Document.parse("{ \"name\":\"Ygritte\"}"), insertOptions);
             assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
 
-            Testing.debug("Completed document to 'dbA.contacts' collection");
+            Testing.debug("Added document to 'dbA.contacts' collection");
         });
 
-
         // For a minimum number of events or max time ...
-        int numEventsExpected = 1; // both documents
+        int numEventsExpected = 1; // one document inserted during streaming
         long stop = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(3);
         while (records.size() < numEventsExpected && System.currentTimeMillis() < stop) {
             Thread.sleep(100);
@@ -349,7 +336,7 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Verify each record is valid and that we found the one record we expect ...
         final Set<String> foundNames = new HashSet<>();
-        records.forEach(record -> {
+        for (SourceRecord record : records) {
             VerifyRecord.isValid(record);
             Struct value = (Struct) record.value();
             String after = value.getString("after");
@@ -357,8 +344,9 @@ public class ReplicatorIT extends AbstractMongoIT {
             foundNames.add(afterDoc.getString("name"));
             Operation op = Operation.forCode(value.getString("op"));
             assertThat(op == Operation.CREATE).isTrue();
-        });
+        }
+
+        assertThat(foundNames).containsOnly("Ygritte");
         assertThat(records.size()).isEqualTo(1);
     }
-
 }

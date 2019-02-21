@@ -38,6 +38,7 @@ import com.mongodb.client.model.Filters;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BufferedBlockingConsumer;
@@ -146,8 +147,11 @@ public class Replicator {
                 if (establishConnectionToPrimary()) {
                     if (isInitialSyncExpected()) {
                         recordCurrentOplogPosition();
-                        if (context.isSnapshotAllowed() && !performInitialSync()) {
-                            return;
+                        if (context.getConnectorConfig().getSnapshotMode() == SnapshotMode.INITIAL) {
+                            boolean snapshotCompleted = performInitialSync();
+                            if (!snapshotCompleted) {
+                                return;
+                            }
                         }
                     }
                     readOplog();
