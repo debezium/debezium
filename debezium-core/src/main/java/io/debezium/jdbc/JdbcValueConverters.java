@@ -72,7 +72,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-    protected final ZoneOffset defaultOffset;
+
+    private final ZoneOffset defaultOffset;
+
+    /**
+     * Fallback value for TIMESTAMP WITH TZ is epoch
+     */
+    private final String fallbackTimestampWithTimeZone;
+
+    /**
+     * Fallback value for TIME WITH TZ is 00:00
+     */
+    private final String fallbackTimeWithTimeZone;
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
     protected final DecimalMode decimalMode;
@@ -111,6 +122,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
+
+        this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
+                OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
+                defaultOffset,
+                adjuster
+        );
+        this.fallbackTimeWithTimeZone = ZonedTime.toIsoString(
+                OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
+                defaultOffset,
+                adjuster
+        );
     }
 
     @Override
@@ -351,15 +373,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        String fallback = ZonedTimestamp.toIsoString(OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
-                defaultOffset, adjuster);
-
-        return convertTimestampWithZone(column, fieldDefn, data, fallback);
-    }
-
-    protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data, Object fallback) {
-        return convertValue(column, fieldDefn, data, fallback, (r) -> {
+        return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
                 r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
             } catch (IllegalArgumentException e) {
@@ -384,13 +398,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
-        String fallback = ZonedTime.toIsoString(OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), defaultOffset, adjuster);
-        return convertTimeWithZone(column, fieldDefn, data, fallback);
-    }
-
-    protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data, Object fallback) {
-        return convertValue(column, fieldDefn, data, fallback, (r) -> {
+        return convertValue(column, fieldDefn, data, fallbackTimeWithTimeZone, (r) -> {
             try {
                 r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
             } catch (IllegalArgumentException e) {
@@ -486,7 +494,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, connectDateTypesUsed() ? new java.util.Date(0) : 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
             try {
                 r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
             } catch (IllegalArgumentException e) {
@@ -586,7 +594,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTimeToMillisPastMidnightAsDate(Column column, Field fieldDefn, Object data) {
         // epoch is the fallback value
-        return convertValue(column, fieldDefn, data, connectDateTypesUsed() ? new java.util.Date(0) : 0L, (r) -> {
+        return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
             try {
                 r.deliver(new java.util.Date(Time.toMilliOfDay(data, adjuster)));
             } catch (IllegalArgumentException e) {
@@ -1176,9 +1184,5 @@ public class JdbcValueConverters implements ValueConverterProvider {
         final ResultReceiver r = ResultReceiver.create();
         callback.convert(r);
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
-    }
-
-    protected boolean connectDateTypesUsed() {
-        return !(adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode);
     }
 }
