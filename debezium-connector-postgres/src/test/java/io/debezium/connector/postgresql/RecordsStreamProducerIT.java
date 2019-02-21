@@ -1241,8 +1241,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1146")
-    public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValue() throws Exception {
+    public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValueTableFromSnapshot() throws Exception {
         testReceiveChangesForReplicaIdentityFullTableWithToastedValue(SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST, true);
+    }
+
+    @Test
+    @FixFor("DBZ-1146")
+    public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValueTableFromStreaming() throws Exception {
         testReceiveChangesForReplicaIdentityFullTableWithToastedValue(SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST, false);
     }
 
@@ -1260,6 +1265,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             );
         }
 
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+
+        final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
+
         if (!tablesBeforeStart) {
             TestHelper.execute(
                     "DROP TABLE IF EXISTS test_table;",
@@ -1267,11 +1277,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     "ALTER TABLE test_table REPLICA IDENTITY FULL"
             );
         }
-
-        consumer = testConsumer(1);
-        recordsProducer.start(consumer, blackHole);
-
-        final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
 
         // INSERT
         String statement = "INSERT INTO test_table (not_toast, text) VALUES (10,'" + toastedValue + "');";
@@ -1298,6 +1303,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)
         ), updatedRecord, Envelope.FieldName.AFTER);
+
+        recordsProducer.stop();
     }
 
     private void assertHeartBeatRecordInserted() {
