@@ -1301,7 +1301,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         ), updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
         ), updatedRecord, Envelope.FieldName.AFTER);
 
         recordsProducer.stop();
