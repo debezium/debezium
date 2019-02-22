@@ -62,4 +62,14 @@ public class DecoderDifferences {
     public static boolean areSpecialFPValuesUnsupported() {
         return wal2Json();
     }
+
+    /**
+     * wal2json plugin does not include toasted column in the update
+     *
+     * @author Jiri Pechanec
+     *
+     */
+    public static boolean areToastedValuesPresentInSchema() {
+        return !wal2Json();
+    }
 }

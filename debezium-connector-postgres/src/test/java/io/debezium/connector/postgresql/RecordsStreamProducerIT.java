@@ -1251,6 +1251,18 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         testReceiveChangesForReplicaIdentityFullTableWithToastedValue(SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST, false);
     }
 
+    @Test
+    @FixFor("DBZ-1146")
+    public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValueTableFromSnapshotFullDiff() throws Exception {
+        testReceiveChangesForReplicaIdentityFullTableWithToastedValue(SchemaRefreshMode.COLUMNS_DIFF, true);
+    }
+
+    @Test
+    @FixFor("DBZ-1146")
+    public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValueTableFromStreamingFullDiff() throws Exception {
+        testReceiveChangesForReplicaIdentityFullTableWithToastedValue(SchemaRefreshMode.COLUMNS_DIFF, false);
+    }
+
     private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart) throws Exception{
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, mode)
@@ -1294,16 +1306,28 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait("UPDATE test_table set not_toast = 20");
         SourceRecord updatedRecord = consumer.remove();
 
-        assertRecordSchemaAndValues(Arrays.asList(
-                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)
-        ), updatedRecord, Envelope.FieldName.BEFORE);
-        assertRecordSchemaAndValues(Arrays.asList(
-                new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
-        ), updatedRecord, Envelope.FieldName.AFTER);
+        if (DecoderDifferences.areToastedValuesPresentInSchema()) {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)
+            ), updatedRecord, Envelope.FieldName.BEFORE);
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)
+            ), updatedRecord, Envelope.FieldName.AFTER);
+        }
+        else {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10)
+            ), updatedRecord, Envelope.FieldName.BEFORE);
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)
+            ), updatedRecord, Envelope.FieldName.AFTER);
+        }
 
         recordsProducer.stop();
     }
