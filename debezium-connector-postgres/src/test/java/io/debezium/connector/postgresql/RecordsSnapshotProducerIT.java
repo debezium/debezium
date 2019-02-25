@@ -424,4 +424,40 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertSourceInfo(record);
         }
     }
+    @Test
+    @FixFor("DBZ-1162")
+    public void shouldGenerateSnapshotsForHstores() throws Exception {
+        // PostGIS must not be used
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                        .build());
+
+        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
+        context = new PostgresTaskContext(
+                config,
+                TestHelper.getSchema(config),
+                selector
+        );
+
+        snapshotProducer = new RecordsSnapshotProducer(context, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), false);
+
+        TestConsumer consumer = testConsumer(1, "public", "Quoted_\"");
+
+        //insert data for each of different supported types
+        TestHelper.execute(INSERT_HSTORE_TYPE_STMT);
+
+        //then start the producer and validate all records are there
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.hstore_table", schemaAndValueFieldForJsonEncodedHStoreType());
+
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+    }
+
 }
