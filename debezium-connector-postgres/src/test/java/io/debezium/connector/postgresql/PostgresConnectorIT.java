@@ -244,6 +244,29 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1161")
+    public void shouldConsumeMessagesFromSnapshot() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        final int recordCount = 100;
+
+        for (int i = 0; i < recordCount - 1; i++) {
+            TestHelper.execute(INSERT_STMT);
+        }
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, recordCount / 2)
+                                               .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 10)
+                                               .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(recordCount);
+        Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-997")
     public void shouldReceiveChangesForChangePKColumnDefinition() throws Exception {
         final String slotName = "pkcolumndef" + new Random().nextInt(100);
