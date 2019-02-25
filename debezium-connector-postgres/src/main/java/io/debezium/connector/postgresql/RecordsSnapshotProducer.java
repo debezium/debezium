@@ -84,8 +84,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
             CompletableFuture.runAsync(this::delaySnapshotIfNeeded, executorService)
-                             .thenRun(() -> this.takeSnapshot(eventConsumer))
-                             .thenRun(() -> this.startStreaming(eventConsumer, failureConsumer))
+                             .thenRunAsync(() -> this.takeSnapshot(eventConsumer), executorService)
+                             .thenRunAsync(() -> this.startStreaming(eventConsumer, failureConsumer), executorService)
                              .exceptionally(e -> {
                                  logger.error("unexpected exception", e.getCause() != null ? e.getCause() : e);
                                  // always stop to clean up data
