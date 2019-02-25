@@ -208,7 +208,16 @@ public class TableSchemaBuilder {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
                     Object value = row[recordIndexes[i]];
+
                     ValueConverter converter = converters[i];
+
+                    if (converter != null) {
+                      LOGGER.trace("converter for value object: *** {} ***", converter.toString());
+                    }
+                    else {
+                      LOGGER.trace("converter is null...");
+                    }
+
                     if (converter != null) {
                         try {
                             value = converter.convert(value);

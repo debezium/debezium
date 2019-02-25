@@ -1160,9 +1160,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
             final Object schemaDefault = fieldDefn.schema().defaultValue();
             return schemaDefault != null ? schemaDefault : fallback;
         }
+        logger.trace("Value from data object: *** {} ***", data.toString());
 
         final ResultReceiver r = ResultReceiver.create();
         callback.convert(r);
+        logger.trace("Callback toString: {}", callback.toString());
+        logger.trace("Value from ResultReceiver: {}", r.toString());
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
     }
 }

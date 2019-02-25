@@ -431,18 +431,32 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
+          logger.trace("in ANON: value from data object: *** {} ***", data.toString());
+          logger.trace("in ANON: object type is: *** {} ***", data.getClass());
             if (data instanceof String) {
                 r.deliver(changePlainStringRepresentationToJsonStringRepresentation(((String) data)));
             }
             else if (data instanceof byte[]) {
                 r.deliver(changePlainStringRepresentationToJsonStringRepresentation(asHstoreString((byte[]) data)));
             }
+            else if (data instanceof java.util.HashMap) {
+                r.deliver(convertMapToJsonStringRepresentation((Map<String, String>)data));
+            }
         });
     }
 
     private String changePlainStringRepresentationToJsonStringRepresentation(String text){
-        Map<String, String> map = HStoreConverter.fromString(text);
+        logger.trace("text value is: " + text);
+        try {
+            Map<String, String> map = HStoreConverter.fromString(text);
+            return convertMapToJsonStringRepresentation(map);
+        }
+        catch(Exception e) {
+            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + text, e);
+        }
+    }
 
+    private String convertMapToJsonStringRepresentation(Map<String, String> map) {
         StringWriter writer = new StringWriter();
         try (JsonGenerator jsonGenerator = jsonFactory.createGenerator(writer)) {
             jsonGenerator.writeStartObject();
@@ -454,7 +468,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return writer.getBuffer().toString();
         }
         catch(Exception e) {
-            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + text, e);
+            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + map.toString(), e);
         }
     }
 
