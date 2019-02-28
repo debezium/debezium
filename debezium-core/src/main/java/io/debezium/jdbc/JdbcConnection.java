@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.relational.ddl.PostgresAuxColumnMetadata;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
@@ -951,6 +953,7 @@ public class JdbcConnection implements AutoCloseable {
     public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
                            TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
+
         // Before we make any changes, get the copy of the set of table IDs ...
         Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
 
@@ -969,8 +972,28 @@ public class JdbcConnection implements AutoCloseable {
         }
 
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+
+        List<PostgresAuxColumnMetadata> auxColumnMeta = null;
+
+        //special way to get columns metadata when postgres is used: DBZ-961
+        //when a column uses postgresql domain insted of general type debezium couldn't recognize real type and skkiped replication
+        if ( this.getClass().getSimpleName().equalsIgnoreCase("PostgresConnection") ) {
+            PreparedStatement stm = this.createPreparedStatement("select t.oid, c.table_catalog, c.table_schema, c.table_name, c.column_name, c.udt_name, c.numeric_scale " +
+                    "FROM information_schema.\"columns\" c " +
+                    "   ,pg_catalog.pg_type t " +
+                    "where t.typname = c.udt_name ");
+
+            ResultSet rs = stm.executeQuery();
+        
+            auxColumnMeta = new ArrayList<>();
+            while (rs.next()) {
+                auxColumnMeta.add(new PostgresAuxColumnMetadata(rs.getInt("oid"), rs.getString("table_catalog"), rs.getString("table_schema"), rs.getString("table_name"), rs.getString("column_name"), rs.getString("udt_name"), rs.getInt("numeric_scale")));
+            }
+        }
+
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, null, null)) {
             while (columnMetadata.next()) {
+            
                 String catalogName = columnMetadata.getString(1);
                 String schemaName = columnMetadata.getString(2);
                 String tableName = columnMetadata.getString(3);
@@ -983,12 +1006,24 @@ public class JdbcConnection implements AutoCloseable {
                 }
 
                 // add all whitelisted columns
-                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
-                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
-                        .add(column.create());
-                });
+                if ( auxColumnMeta == null || auxColumnMeta.isEmpty() ) {
+                    readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
+                        columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
+                            .add(column.create());
+                    });
+                } 
+                else {
+                    String columnName = columnMetadata.getString(4);
+                    PostgresAuxColumnMetadata auxCol = auxColumnMeta.stream().filter(a -> a.getTableSchema().equalsIgnoreCase(schemaName) && a.getTableName().equalsIgnoreCase(tableName) && a.getColumnName().equalsIgnoreCase(columnName)).findFirst().orElse(null);
+
+                    readTableColumn(columnMetadata, tableId, columnFilter, auxCol.getOid(), auxCol.getTypeName(), auxCol.getTypeName().equalsIgnoreCase("numeric") ? auxCol.getScale() : null ).ifPresent(column -> {
+                        columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
+                            .add(column.create());
+                    });
+                }
             }
         }
+
 
         // Read the metadata for the primary keys ...
         for (Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
@@ -1013,16 +1048,18 @@ public class JdbcConnection implements AutoCloseable {
      * Returns a {@link ColumnEditor} representing the current record of the given result set of column metadata, if
      * included in the column whitelist.
      */
-    protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+    protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter, Integer realOid, String realColumnType, Integer realScale) throws SQLException {
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
-            column.jdbcType(columnMetadata.getInt(5));
-            column.type(columnMetadata.getString(6));
+            column.jdbcType(realOid != null ? realOid : columnMetadata.getInt(5));
+            column.type(realColumnType != null ? realColumnType : columnMetadata.getString(6));
             column.length(columnMetadata.getInt(7));
             if (columnMetadata.getObject(9) != null) {
                 column.scale(columnMetadata.getInt(9));
             }
+            if ( realScale != null )
+                column.scale(realScale);
             column.optional(isNullable(columnMetadata.getInt(11)));
             column.position(columnMetadata.getInt(17));
             column.autoIncremented("YES".equalsIgnoreCase(columnMetadata.getString(23)));
@@ -1041,6 +1078,17 @@ public class JdbcConnection implements AutoCloseable {
         }
 
         return Optional.empty();
+    }
+    /**
+     * overload created to resolve real column datatypes to postgresql when domain type is used on column DBZ-961
+     * @param columnMetadata
+     * @param tableId
+     * @param columnFilter
+     * @return
+     * @throws SQLException
+     */
+    protected Optional<ColumnEditor> readTableColumn(ResultSet columnMetadata, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        return this.readTableColumn(columnMetadata, tableId, columnFilter, null, null, null);
     }
 
     protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {

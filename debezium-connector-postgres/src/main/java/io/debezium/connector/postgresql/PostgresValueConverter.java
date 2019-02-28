@@ -122,7 +122,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = column.nativeType();
-
+        
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
@@ -138,10 +138,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return ZonedTime.builder();
             case PgOid.OID:
                 return SchemaBuilder.int64();
+            case PgOid.INT4:
+                return SchemaBuilder.int8();
+            case PgOid.INT8:
+                return SchemaBuilder.int64();
+            case PgOid.DATE:
+                return io.debezium.time.Date.builder();
             case PgOid.JSONB_OID:
             case PgOid.JSON:
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
+                return SchemaBuilder.string();
+            case PgOid.VARCHAR:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -268,10 +276,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertTimeWithZone(column, fieldDefn, data);
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
+            case PgOid.INT4:
+                return data -> convertInteger(column, fieldDefn, data);
+            case PgOid.INT8:
+                return data -> convertBigInt(column, fieldDefn, data);
+            case PgOid.DATE:
+                return data -> super.convertDateToEpochDaysAsDate(column, fieldDefn, data);
             case PgOid.JSONB_OID:
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
+                return data -> super.convertString(column, fieldDefn, data);
+            case PgOid.VARCHAR:
                 return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
@@ -367,6 +383,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertDecimal(Column column, Field fieldDefn, Object data, DecimalMode mode) {
+        
         SpecialValueDecimal value;
         BigDecimal newDecimal;
 

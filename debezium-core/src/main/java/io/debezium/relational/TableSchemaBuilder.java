@@ -210,7 +210,7 @@ public class TableSchemaBuilder {
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
-                        try {
+                        try {                                
                             value = converter.convert(value);
                             result.put(fields[i], value);
                         } catch (DataException|IllegalArgumentException e) {

@@ -53,10 +53,20 @@ public class PostgresConnection extends JdbcConnection {
     protected static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
                                                                                     org.postgresql.Driver.class.getName(),
                                                                                     PostgresConnection.class.getClassLoader());
-
-    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name "
-            + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
+/*private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name "
++ "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
++ "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
+*/
+    private static final String SQL_NON_ARRAY_TYPES = "select distinct " +
+            "   case when t.typtype = 'd' then t.typbasetype else t.oid end as oid, " +
+            "   case when t.typtype = 'd' then base_pg_type.typname else t.typname end as name " +
+            "FROM pg_catalog.pg_type t " +
+            "JOIN pg_catalog.pg_namespace n " +
+            "   ON (t.typnamespace = n.oid) " +
+            "left join pg_catalog.pg_type base_pg_type " +
+            "   on base_pg_type.oid = t.typbasetype " +
+            "WHERE n.nspname != 'pg_toast' " +
+            "   AND t.typcategory <> 'A'";
 
     private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "

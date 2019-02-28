@@ -328,6 +328,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
     private Object valueForColumn(ResultSet rs, int colIdx, ResultSetMetaData metaData) throws SQLException {
         try {
+
             final String columnTypeName = metaData.getColumnTypeName(colIdx);
             final PostgresType type = taskContext.schema().getTypeRegistry().get(columnTypeName);
 

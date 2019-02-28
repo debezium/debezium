@@ -199,6 +199,7 @@ public class TypeRegistry {
         if (r == null) {
             LOGGER.warn("Unknown type named {} requested", name);
             r = PostgresType.UNKNOWN;
+            
         }
         return r;
     }

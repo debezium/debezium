@@ -789,8 +789,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, 0L, (r) -> {
+    protected Object convertBigInt(Column column, Field fieldDefn, Object data) {       
+        Object result = convertValue(column, fieldDefn, data, 0L, (r) -> {
             if (data instanceof Long) {
                 r.deliver(data);
             }
@@ -805,6 +805,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Long.valueOf((String) data));
             }
         });
+        
+        
+        return result;
     }
 
     /**
