@@ -84,6 +84,19 @@ public class TestHelper {
                 .build();
     }
 
+    /**
+     * Returns a JDBC configuration for database admin user (NOT the XStream user).
+     */
+    private static JdbcConfiguration adminJdbcConfig() {
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database.admin."))
+                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.PORT, 1521)
+                .withDefault(JdbcConfiguration.USER, "sys as sysdba")
+                .withDefault(JdbcConfiguration.PASSWORD, "top_secret")
+                .withDefault(JdbcConfiguration.DATABASE, "ORCLPDB1")
+                .build();
+    }
+
     private static Configuration.Builder testConfig() {
         JdbcConfiguration jdbcConfiguration = testJdbcConfig();
         Configuration.Builder builder = Configuration.create();
@@ -95,8 +108,40 @@ public class TestHelper {
         return builder;
     }
 
+    private static Configuration.Builder adminConfig() {
+        JdbcConfiguration jdbcConfiguration = adminJdbcConfig();
+        Configuration.Builder builder = Configuration.create();
+
+        jdbcConfiguration.forEach(
+                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
+        );
+
+        return builder;
+    }
+
     public static OracleConnection testConnection() {
         Configuration config = testConfig().build();
+        Configuration jdbcConfig = config.subset("database.", true);
+
+        OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());
+        try {
+            jdbcConnection.setAutoCommit(false);
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        String pdbName = new OracleConnectorConfig(config).getPdbName();
+
+        if (pdbName != null) {
+            jdbcConnection.setSessionToPdb(pdbName);
+        }
+
+        return jdbcConnection;
+    }
+
+    public static OracleConnection adminConnection() {
+        Configuration config = adminConfig().build();
         Configuration jdbcConfig = config.subset("database.", true);
 
         OracleConnection jdbcConnection = new OracleConnection(jdbcConfig, new OracleConnectionFactory());

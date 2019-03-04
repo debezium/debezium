@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -102,7 +101,7 @@ public class OracleConnection extends JdbcConnection {
         super.readSchema(tables, null, schemaNamePattern, null, columnFilter, removeTablesNotFoundInJdbc);
 
         Set<TableId> tableIds = tables.tableIds().stream().filter(x -> schemaNamePattern.equals(x.schema())).collect(Collectors.toSet());
-        
+
         for (TableId tableId : tableIds) {
             // super.readSchema() populates ids without the catalog; hence we apply the filtering only
             // here and if a table is included, overwrite it with a new id including the catalog
