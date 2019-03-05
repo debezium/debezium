@@ -90,7 +90,7 @@ public class ChangeEventSourceCoordinator {
                 Thread.interrupted();
                 LOGGER.warn("Change event source executor was interrupted", e);
             }
-            catch (Exception e) {
+            catch (Throwable e) {
                 errorHandler.setProducerThrowable(e);
             }
             finally {
