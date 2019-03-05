@@ -70,7 +70,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
                 xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
             }
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             throw new RuntimeException(e);
         }
         finally {
