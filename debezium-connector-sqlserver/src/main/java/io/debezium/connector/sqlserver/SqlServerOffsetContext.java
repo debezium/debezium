@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext implements OffsetContext {
@@ -71,8 +72,8 @@ public class SqlServerOffsetContext implements OffsetContext {
     }
 
     @Override
-    public Struct getSourceInfo() {
-        return sourceInfo.struct();
+    public Struct getSourceInfo(TableId tableId) {
+        return sourceInfo.struct(tableId);
     }
 
     public TxLogPosition getChangePosition() {

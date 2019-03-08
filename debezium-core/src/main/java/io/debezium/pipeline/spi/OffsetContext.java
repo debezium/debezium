@@ -10,6 +10,8 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.relational.TableId;
+
 /**
  * Keeps track of the current offset within the source DB's change stream. This reflects in the offset as committed to
  * Kafka and in the source info block contained within CDC messages themselves.
@@ -30,7 +32,7 @@ public interface OffsetContext {
     Map<String, ?> getPartition();
     Map<String, ?> getOffset();
     Schema getSourceInfoSchema();
-    Struct getSourceInfo();
+    Struct getSourceInfo(TableId tableId);
 
     /**
      * Whether this offset indicates that an (uncompleted) snapshot is currently running or not.

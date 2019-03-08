@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.relational.RelationalDatabaseSourceInfo;
 import io.debezium.relational.TableId;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,5 +34,12 @@ public class SourceInfoTest {
     @Test
     public void connectorIsPresent() {
         assertThat(source.source().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+    }
+
+    @Test
+    public void tableIdIsPresent() {
+        assertThat(source.source().getString(RelationalDatabaseSourceInfo.DB_NAME_KEY)).isEqualTo("databaseX");
+        assertThat(source.source().getString(RelationalDatabaseSourceInfo.SCHEMA_NAME_KEY)).isEqualTo("schemaNameX");
+        assertThat(source.source().getString(RelationalDatabaseSourceInfo.TABLE_NAME_KEY)).isEqualTo("tableNameX");
     }
 }

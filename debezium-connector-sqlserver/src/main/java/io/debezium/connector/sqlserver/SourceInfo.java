@@ -11,7 +11,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.relational.RelationalDatabaseSourceInfo;
+import io.debezium.relational.TableId;
 
 /**
  * Coordinates from the database log to establish the relation between the change streamed and the source log position.
@@ -21,7 +22,7 @@ import io.debezium.connector.AbstractSourceInfo;
  *
  */
 @NotThreadSafe
-public class SourceInfo extends AbstractSourceInfo {
+public class SourceInfo extends RelationalDatabaseSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String LOG_TIMESTAMP_KEY = "ts_ms";
@@ -104,8 +105,8 @@ public class SourceInfo extends AbstractSourceInfo {
      * @return the coordinates encoded as a {@code Struct}
      */
     @Override
-    public Struct struct() {
-        final Struct ret = super.struct()
+    public Struct struct(TableId tableId) {
+        final Struct ret = super.struct(tableId)
                 .put(SERVER_NAME_KEY, serverName)
                 .put(LOG_TIMESTAMP_KEY, sourceTime == null ? null : sourceTime.toEpochMilli())
                 .put(SNAPSHOT_KEY, snapshot);

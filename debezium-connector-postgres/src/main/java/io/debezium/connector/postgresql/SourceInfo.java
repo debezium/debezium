@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.debezium.relational.TableId;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -18,6 +17,8 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.relational.RelationalDatabaseSourceInfo;
+import io.debezium.relational.TableId;
 
 /**
  * Information about the source of information, which for normal events contains information about the transaction id and the
@@ -74,23 +75,20 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
  * @author Horia Chiorean
  */
 @NotThreadSafe
-final class SourceInfo extends AbstractSourceInfo {
+final class SourceInfo extends RelationalDatabaseSourceInfo {
 
     public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
-    public static final String DB_NAME_KEY = "db";
     public static final String TIMESTAMP_KEY = "ts_usec";
     public static final String TXID_KEY = "txId";
     public static final String LSN_KEY = "lsn";
-    public static final String SCHEMA_NAME_KEY = "schema";
-    public static final String TABLE_NAME_KEY = "table";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
     /**
      * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
      */
-    public static final Schema SCHEMA = schemaBuilder()
+    public static final Schema SCHEMA = AbstractSourceInfo.schemaBuilder()
                                                      .name("io.debezium.connector.postgresql.Source")
                                                      .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.STRING_SCHEMA)
@@ -112,8 +110,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private Long useconds;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
-    private String schemaName;
-    private String tableName;
+    private TableId tableId;
 
     protected SourceInfo(String serverName, String dbName) {
         super(Module.version());
@@ -183,22 +180,16 @@ final class SourceInfo extends AbstractSourceInfo {
         this.lsn = lsn;
         this.useconds = useconds;
         this.txId = txId;
-        if (tableId != null && tableId.schema() != null) {
-            this.schemaName = tableId.schema();
-        }
-        if (tableId != null && tableId.table() != null) {
-            this.tableName = tableId.table();
+        if (tableId != null) {
+            this.tableId = tableId;
         }
         return this;
     }
 
     protected SourceInfo update(Long useconds, TableId tableId) {
         this.useconds = useconds;
-        if (tableId != null && tableId.schema() != null) {
-            this.schemaName = tableId.schema();
-        }
-        if (tableId != null && tableId.table() != null) {
-            this.tableName = tableId.table();
+        if (tableId != null) {
+            this.tableId = tableId;
         }
         return this;
     }
@@ -236,13 +227,10 @@ final class SourceInfo extends AbstractSourceInfo {
     protected Struct source() {
         assert serverName != null
                 && dbName != null
-                && schemaName != null
-                && tableName != null;
-        Struct result = super.struct();
+                && tableId != null;
+        Struct result = super.struct(tableId);
         result.put(SERVER_NAME_KEY, serverName);
         result.put(DB_NAME_KEY, dbName);
-        result.put(SCHEMA_NAME_KEY, schemaName);
-        result.put(TABLE_NAME_KEY, tableName);
         // use the offset information without the snapshot part (see below)
         offset().forEach(result::put);
         return result;
@@ -299,11 +287,8 @@ final class SourceInfo extends AbstractSourceInfo {
         if (snapshotInEffect) {
             sb.append(", last_snapshot_record=").append(lastSnapshotRecord);
         }
-        if (schemaName != null) {
-            sb.append(", schema=").append(schemaName);
-        }
-        if (tableName != null) {
-            sb.append(", table=").append(tableName);
+        if (tableId != null) {
+            sb.append(", tableId=").append(tableId);
         }
         sb.append(']');
         return sb.toString();

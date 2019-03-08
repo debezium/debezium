@@ -16,9 +16,9 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
+import io.debezium.relational.RelationalDatabaseSourceInfo;
 import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
@@ -92,7 +92,7 @@ import io.debezium.util.Collect;
  * @author Randall Hauch
  */
 @NotThreadSafe
-final class SourceInfo extends AbstractSourceInfo {
+final class SourceInfo extends RelationalDatabaseSourceInfo {
 
     // Avro Schema doesn't allow "-" to be included as field name, use "_" instead.
     // Ref https://issues.apache.org/jira/browse/AVRO-838.
@@ -109,8 +109,6 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String THREAD_KEY = "thread";
-    public static final String DB_NAME_KEY = "db";
-    public static final String TABLE_NAME_KEY = "table";
     public static final String QUERY_KEY = "query";
     public static final String DATABASE_WHITELIST_KEY = "database_whitelist";
     public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
@@ -132,8 +130,6 @@ final class SourceInfo extends AbstractSourceInfo {
                                                      .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
                                                      .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
                                                      .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .field(QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                                                      .build();
 
@@ -330,7 +326,6 @@ final class SourceInfo extends AbstractSourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    @Override
     public Struct struct() {
         return struct(null);
     }
@@ -347,7 +342,7 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public Struct struct(TableId tableId) {
         assert serverName != null;
-        Struct result = super.struct();
+        Struct result = super.struct(tableId);
         result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
         if (currentGtid != null) {
@@ -364,10 +359,6 @@ final class SourceInfo extends AbstractSourceInfo {
         }
         if (threadId >= 0) {
             result.put(THREAD_KEY, threadId);
-        }
-        if (tableId != null) {
-            result.put(DB_NAME_KEY, tableId.catalog());
-            result.put(TABLE_NAME_KEY, tableId.table());
         }
         if (currentQuery != null) {
             result.put(QUERY_KEY, currentQuery);

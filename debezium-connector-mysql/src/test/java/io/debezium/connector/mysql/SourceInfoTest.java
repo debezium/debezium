@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -14,18 +15,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import io.debezium.config.Configuration;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import io.confluent.connect.avro.AvroData;
+import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
+import io.debezium.relational.RelationalDatabaseSourceInfo;
+import io.debezium.relational.TableId;
 
 public class SourceInfoTest {
 
@@ -46,6 +47,22 @@ public class SourceInfoTest {
         inTxn = false;
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
+    }
+
+    @Test
+    public void shouldhaveTableId() {
+        source.setBinlogStartPoint(FILENAME, 0);
+        source.setServerName("mysql");
+
+        Struct struct = this.source.struct(new TableId("c", "s", "t"));
+        assertThat(struct.get(RelationalDatabaseSourceInfo.DB_NAME_KEY)).isEqualTo("c");
+        assertThat(struct.get(RelationalDatabaseSourceInfo.SCHEMA_NAME_KEY)).isEqualTo("s");
+        assertThat(struct.get(RelationalDatabaseSourceInfo.TABLE_NAME_KEY)).isEqualTo("t");
+
+        struct = this.source.struct();
+        assertThat(struct.get(RelationalDatabaseSourceInfo.DB_NAME_KEY)).isNull();
+        assertThat(struct.get(RelationalDatabaseSourceInfo.SCHEMA_NAME_KEY)).isNull();
+        assertThat(struct.get(RelationalDatabaseSourceInfo.TABLE_NAME_KEY)).isNull();
     }
 
     @Test

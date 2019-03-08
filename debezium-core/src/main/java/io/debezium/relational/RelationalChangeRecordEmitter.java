@@ -63,7 +63,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(tableSchema.id()), clock.currentTimeInMillis());
 
         receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
     }
@@ -73,7 +73,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(tableSchema.id()), clock.currentTimeInMillis());
 
         receiver.changeRecord(tableSchema, Operation.READ, newKey, envelope, offsetContext);
     }
@@ -91,15 +91,15 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
 
         // regular update
         if (Objects.equals(oldKey, newKey)) {
-            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(tableSchema.id()), clock.currentTimeInMillis());
             receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, offsetContext);
         }
         // PK update -> emit as delete and re-insert with new key
         else {
-            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(tableSchema.id()), clock.currentTimeInMillis());
             receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
 
-            envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(tableSchema.id()), clock.currentTimeInMillis());
             receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
         }
     }
@@ -109,7 +109,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
-        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(tableSchema.id()), clock.currentTimeInMillis());
         receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
     }
 
