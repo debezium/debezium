@@ -852,10 +852,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected TopicSelectionStrategy topicSelectionStrategy() {
-        //TODO author=Horia Chiorean date=04/11/2016 description=implement this fully once the changes for MySQL are merged
-        //String value = config.getString(PostgresConnectorConfig.TOPIC_SELECTION_STRATEGY);
-        //return PostgresConnectorConfig.TopicSelectionStrategy.parse(value);
-        return PostgresConnectorConfig.TopicSelectionStrategy.TOPIC_PER_TABLE;
+        String value = config.getString(PostgresConnectorConfig.TOPIC_SELECTION_STRATEGY);
+        return PostgresConnectorConfig.TopicSelectionStrategy.parse(value);
     }
 
     protected Map<String, ConfigValue> validate() {
