@@ -18,6 +18,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -212,6 +213,34 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
+    }
+
+    @Test
+    @FixFor("DBZ-1174")
+    public void shouldUseMicrosecondsForTransactionCommitTime() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        start(PostgresConnector.class, TestHelper.defaultConfig().build());
+        assertConnectorIsRunning();
+
+        // check records from snapshot
+        Instant inst = Instant.now();
+        // Microseconds since epoch, may overflow
+        final long microsSnapshot = TimeUnit.SECONDS.toMicros(inst.getEpochSecond()) + TimeUnit.NANOSECONDS.toMicros(inst.getNano());
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        actualRecords.forEach(sourceRecord -> assertSourceInfoTransactionTimestamp(sourceRecord, microsSnapshot, TimeUnit.MINUTES.toMicros(1L)));
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        // check records from streaming
+        inst = Instant.now();
+        // Microseconds since epoch, may overflow
+        final long microsStream = TimeUnit.SECONDS.toMicros(inst.getEpochSecond()) + TimeUnit.NANOSECONDS.toMicros(inst.getNano());
+        actualRecords = consumeRecordsByTopic(2);
+        actualRecords.forEach(sourceRecord -> assertSourceInfoTransactionTimestamp(sourceRecord, microsStream, TimeUnit.MINUTES.toMicros(1L)));
+
+        //now stop the connector
+        stopConnector();
+        assertNoRecordsToConsume();
     }
 
     @Test
@@ -747,6 +776,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
         assertThat(recordsForTopicS2.size()).isEqualTo(expectedCountPerSchema);
         IntStream.range(0, expectedCountPerSchema).forEach(i -> VerifyRecord.isValidInsert(recordsForTopicS2.remove(0), PK_FIELD, pks[i]));
+    }
+
+    protected void assertSourceInfoTransactionTimestamp(SourceRecord record, Long ts_usec, Long tolerance_usec) {
+        assertTrue(record.value() instanceof Struct);
+        Struct source = ((Struct) record.value()).getStruct("source");
+        // 1 minute difference is okay
+        System.out.println("TS_USEC\t" + source.getInt64("ts_usec"));
+        assertTrue(Math.abs(ts_usec - source.getInt64("ts_usec")) < tolerance_usec);
     }
 
     private <T> void validateField(Config config, Field field, T expectedValue) {

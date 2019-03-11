@@ -241,9 +241,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         assert tableId != null;
 
         // update the source info with the coordinates for this message
-        long commitTimeNs = message.getCommitTime();
+        long commitTimeMicros = message.getCommitTime();
         long txId = message.getTransactionId();
-        sourceInfo.update(lsn, commitTimeNs, txId, tableId);
+        sourceInfo.update(lsn, commitTimeMicros, txId, tableId);
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
         }

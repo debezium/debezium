@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
 import org.apache.kafka.connect.data.Field;
@@ -85,7 +86,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
     @Override
     public long getCommitTime() {
-        return commitTime;
+        return TimeUnit.NANOSECONDS.toMicros(commitTime);
     }
 
     @Override
