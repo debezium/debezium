@@ -331,6 +331,10 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             final String columnTypeName = metaData.getColumnTypeName(colIdx);
             final PostgresType type = taskContext.schema().getTypeRegistry().get(columnTypeName);
 
+            logger.trace("Type of incoming data is: " + String.valueOf(type.getOid()));
+            logger.trace("ColumnTypeName is: " + columnTypeName);
+            logger.trace("Type toString: " + type.toString());
+
             if (type.isArrayType()) {
                 Array array = rs.getArray(colIdx);
 
@@ -357,7 +361,11 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     return value.isPresent() ? value.get() : new SpecialValueDecimal(rs.getBigDecimal(colIdx));
 
                 default:
-                    return rs.getObject(colIdx);
+                    Object x = rs.getObject(colIdx);
+                    if(x != null) {
+                        logger.trace("rs getobject returns class: {}; rs getObject toString is: {}", x.getClass(), x.toString());
+                    }
+                    return x;
             }
         }
         catch (SQLException e) {
@@ -373,11 +381,15 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         if (rowData.length == 0) {
             return;
         }
+        logger.trace("tableId value is: {}", tableId.toString());
         TableSchema tableSchema = schema().schemaFor(tableId);
         assert tableSchema != null;
         Object key = tableSchema.keyFromColumnData(rowData);
         Struct value = tableSchema.valueFromColumnData(rowData);
+
+        //note this is different than implementation in Streams producer. See DBZ-1163
         if (key == null || value == null) {
+            logger.trace("key: {}; value: {}; One is null", String.valueOf(key), String.valueOf(value) );
             return;
         }
         Schema keySchema = tableSchema.keySchema();

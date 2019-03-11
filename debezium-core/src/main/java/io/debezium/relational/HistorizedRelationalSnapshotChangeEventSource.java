@@ -164,7 +164,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             snapshotProgressListener.snapshotAborted();
             throw e;
         }
-        catch(Exception e) {
+        catch(Throwable e) {
             snapshotProgressListener.snapshotAborted();
             throw new RuntimeException(e);
         }

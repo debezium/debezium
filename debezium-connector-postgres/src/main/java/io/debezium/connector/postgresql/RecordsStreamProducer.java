@@ -289,6 +289,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         TableSchema tableSchema = schema().schemaFor(tableId);
         assert tableSchema != null;
         Object key = tableSchema.keyFromColumnData(rowData);
+        logger.trace("key value is: {}", String.valueOf(key));
         Struct value = tableSchema.valueFromColumnData(rowData);
         if (value == null) {
             logger.warn("no values found for table '{}' from create message at '{}'; skipping record" , tableId, sourceInfo);

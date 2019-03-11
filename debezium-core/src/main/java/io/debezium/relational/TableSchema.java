@@ -16,6 +16,10 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.schema.DataCollectionSchema;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given {@link Table table definition}, and which can
  * be used to send rows of data that match the table definition to Kafka Connect.
@@ -48,6 +52,8 @@ import io.debezium.schema.DataCollectionSchema;
  */
 @Immutable
 public class TableSchema implements DataCollectionSchema {
+
+    private static final Logger logger = LoggerFactory.getLogger(TableSchema.class);
 
     private final TableId id;
     private final Schema keySchema;
@@ -121,6 +127,8 @@ public class TableSchema implements DataCollectionSchema {
      * @return the key, or null if the {@code columnData}
      */
     public Object keyFromColumnData(Object[] columnData) {
+        logger.trace("columnData from current stack: {}", String.valueOf(columnData));
+        logger.trace("key from column data stack: " , new Throwable());
         return columnData == null ? null : keyGenerator.apply(columnData);
     }
 
