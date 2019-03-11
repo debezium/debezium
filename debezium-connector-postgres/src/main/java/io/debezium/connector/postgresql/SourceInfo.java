@@ -6,11 +6,11 @@
 
 package io.debezium.connector.postgresql;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.debezium.relational.TableId;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -18,6 +18,8 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.relational.TableId;
+import io.debezium.time.Conversions;
 
 /**
  * Information about the source of information, which for normal events contains information about the transaction id and the
@@ -179,9 +181,9 @@ final class SourceInfo extends AbstractSourceInfo {
      * @param tableId the table that should be included in the source info; may be null
      * @return this instance
      */
-    protected SourceInfo update(Long lsn, Long useconds, Long txId, TableId tableId) {
+    protected SourceInfo update(Long lsn, Instant commitTime, Long txId, TableId tableId) {
         this.lsn = lsn;
-        this.useconds = useconds;
+        this.useconds = Conversions.toEpochMicros(commitTime);
         this.txId = txId;
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();

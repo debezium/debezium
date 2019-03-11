@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import java.time.Instant;
 import java.util.List;
 
 import io.debezium.connector.postgresql.PostgresType;
@@ -58,7 +59,7 @@ public interface ReplicationMessage {
     /**
      * @return Transaction commit time for this change
      */
-    public long getCommitTime();
+    public Instant getCommitTime();
 
     /**
      * @return An id of transaction to which this change belongs
