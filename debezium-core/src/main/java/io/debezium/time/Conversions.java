@@ -234,4 +234,12 @@ public final class Conversions {
     public static long toEpochNanos(Instant instant) {
         return TimeUnit.NANOSECONDS.convert(instant.getEpochSecond() * MICROSECONDS_PER_SECOND + instant.getNano() / NANOSECONDS_PER_MICROSECOND, TimeUnit.MICROSECONDS);
     }
+
+    public static long toEpochMicros(Instant instant) {
+        return TimeUnit.SECONDS.toMicros(instant.getEpochSecond()) + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
+    }
+
+    public static Instant toInstant(long epochNanos) {
+        return Instant.ofEpochSecond(0, epochNanos);
+    }
 }

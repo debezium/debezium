@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql.connection.pgproto;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
@@ -68,8 +69,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     }
 
     @Override
-    public long getCommitTime() {
-        return rawMessage.getCommitTime();
+    public Instant getCommitTime() {
+        // value is microseconds
+        return Instant.ofEpochSecond(0, rawMessage.getCommitTime() * 1_000);
     }
 
     @Override

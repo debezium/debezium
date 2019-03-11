@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -241,9 +242,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         assert tableId != null;
 
         // update the source info with the coordinates for this message
-        long commitTimeMicros = message.getCommitTime();
+        Instant commitTime = message.getCommitTime();
         long txId = message.getTransactionId();
-        sourceInfo.update(lsn, commitTimeMicros, txId, tableId);
+        sourceInfo.update(lsn, commitTime, txId, tableId);
         if (logger.isDebugEnabled()) {
             logger.debug("received new message at position {}\n{}", ReplicationConnection.format(lsn), message);
         }

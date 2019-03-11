@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection.wal2json;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -24,6 +25,7 @@ import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
+import io.debezium.time.Conversions;
 
 /**
  * A non-streaming version of JSON deserialization of a message sent by
@@ -53,7 +55,7 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
             LOGGER.debug("Message arrived for decoding {}", message);
             final long txId = message.getLong("xid");
             final String timestamp = message.getString("timestamp");
-            final long commitTime = dateTime.systemTimestamp(timestamp);
+            final Instant commitTime = Conversions.toInstant(dateTime.systemTimestamp(timestamp));
             final Array changes = message.getArray("change");
 
             Iterator<Entry> it = changes.iterator();

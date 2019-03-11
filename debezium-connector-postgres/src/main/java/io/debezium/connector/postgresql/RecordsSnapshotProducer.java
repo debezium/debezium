@@ -207,7 +207,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
-            sourceInfo.update(xlogStart, clock().currentTimeInMicros(), txId, null);
+            sourceInfo.update(xlogStart, clock().currentTime(), txId, null);
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
