@@ -389,9 +389,9 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForTstzRangeTypes() {
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSxxx");
-        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00:00", Instant::from);
-        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00:00", Instant::from);
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
+        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
+        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
 
         // Acknowledge timezone expectation of the system running the test
         String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(begin);
