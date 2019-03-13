@@ -524,6 +524,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                  .withType(Type.STRING)
                                                  .withWidth(Width.MEDIUM)
                                                  .withImportance(Importance.HIGH)
+                                                 .withValidation(Field::isRequired)
                                                  .withDescription("Unique name that identifies the database server and all recorded offsets, and"
                                                          + "that is used as a prefix for all schemas and topics. "
                                                          + "Each distinct Postgres installation should have a separate namespace and monitored by "
@@ -779,7 +780,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected PostgresConnectorConfig(Configuration config) {
         super(
                 config,
-                getLogicalName(config),
+                config.getString(SERVER_NAME),
                 null, // TODO whitelist handling implemented locally here for the time being
                 null
         );
@@ -791,16 +792,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.hStoreHandlingMode = hStoreHandlingMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
-    }
-
-    private static String getLogicalName(Configuration config) {
-        String logicalName = config.getString(PostgresConnectorConfig.SERVER_NAME);
-
-        if (logicalName == null) {
-            logicalName = config.getString(HOSTNAME) + ":" + config.getInteger(PORT) + "/" + config.getString(DATABASE_NAME);
-        }
-
-        return logicalName;
     }
 
     protected String hostname() {
