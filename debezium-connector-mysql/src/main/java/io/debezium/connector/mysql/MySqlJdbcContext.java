@@ -206,8 +206,8 @@ public class MySqlJdbcContext implements AutoCloseable {
         AtomicReference<String> gtidSetStr = new AtomicReference<String>();
         try {
             jdbc.query("SELECT @@global.gtid_purged", rs -> {
-                if (rs.next() && rs.getMetaData().getColumnCount() > 1) {
-                    gtidSetStr.set(rs.getString(2));// GTID set, may be null, blank, or contain a GTID set
+                if (rs.next() && rs.getMetaData().getColumnCount() > 0) {
+                    gtidSetStr.set(rs.getString(1));// GTID set, may be null, blank, or contain a GTID set
                 }
             });
         }
