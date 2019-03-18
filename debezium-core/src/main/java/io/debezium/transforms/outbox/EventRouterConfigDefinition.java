@@ -101,14 +101,6 @@ public class EventRouterConfigDefinition {
             .withDefault("aggregateid")
             .withDescription("The column which contains the Payload ID within the outbox table");
 
-    static final Field FIELD_PAYLOAD_TYPE = Field.create("table.field.payload.type")
-            .withDisplayName("Event Payload Type Field")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault("aggregatetype")
-            .withDescription("The column which contains the Payload Type within the outbox table");
-
     static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Field to route events by")
             .withType(ConfigDef.Type.STRING)
@@ -160,7 +152,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Table",
-                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_PAYLOAD_TYPE
+                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID
         );
         Field.group(
                 config,

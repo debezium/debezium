@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
+import org.apache.kafka.connect.transforms.RegexRouter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouter.class);
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
+    private final RegexRouter<R> regexRouter = new RegexRouter<>();
     private EventRouterConfigDefinition.InvalidOperationBehavior invalidOperationBehavior;
 
     private String fieldEventId;
@@ -40,7 +42,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private String fieldEventType;
     private String fieldPayload;
     private String fieldPayloadId;
-    private String fieldPayloadType;
+
+    private String routeByField;
 
     private Schema valueSchema;
 
@@ -76,7 +79,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         String eventType = eventStruct.getString(fieldEventType);
         String payload = eventStruct.getString(fieldPayload);
         String payloadId = eventStruct.getString(fieldPayloadId);
-        String payloadType = eventStruct.getString(fieldPayloadType);
 
         Headers headers = r.headers();
         headers.addString("id", eventId);
@@ -85,8 +87,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 .put("eventType", eventType)
                 .put("payload", payload);
 
-        return r.newRecord(
-                payloadType.toLowerCase(),
+        R newRecord = r.newRecord(
+                eventStruct.getString(routeByField).toLowerCase(),
                 null,
                 Schema.STRING_SCHEMA,
                 defineRecordKey(eventStruct, payloadId),
@@ -95,6 +97,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 timestamp,
                 headers
         );
+
+        return regexRouter.apply(newRecord);
     }
 
     private String defineRecordKey(Struct eventStruct, String fallbackKey) {
@@ -141,7 +145,14 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         fieldEventType = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TYPE);
         fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
         fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
-        fieldPayloadType = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_TYPE);
+
+        routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
+
+        final Map<String, String> regexRouterConfig = new HashMap<>();
+        regexRouterConfig.put("regex", config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX));
+        regexRouterConfig.put("replacement", config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REPLACEMENT));
+
+        regexRouter.configure(regexRouterConfig);
 
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", Envelope.FieldName.AFTER);
