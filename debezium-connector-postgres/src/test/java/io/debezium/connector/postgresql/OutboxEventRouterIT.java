@@ -106,6 +106,6 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
 
         assertThat(routedEvent).isNotNull();
-        assertThat(routedEvent.topic()).isEqualTo("user");
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
     }
 }
