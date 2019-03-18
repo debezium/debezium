@@ -271,7 +271,7 @@ public class RecordMakersTest {
 
         record = produced.get(1);
         key = (Struct) record.key();
-        assertThat(key.get("id")).isEqualTo("\"123\"");
+        assertThat(key.get("id")).isEqualTo("123");
 
         record = produced.get(2);
         key = (Struct) record.key();

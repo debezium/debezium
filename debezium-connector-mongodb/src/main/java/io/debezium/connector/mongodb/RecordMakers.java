@@ -225,12 +225,17 @@ public class RecordMakers {
             if (idObj == null) {
                 return null;
             }
-            if (!(idObj instanceof Document)) {
-                return jsonSerializer.serialize(idObj);
+            if (idObj instanceof Document) {
+                Object idValue = ((Document) idObj).get(DBCollection.ID_FIELD_NAME);
+                /*
+                 * Special treatment for String as com.mongodb.util.StringSerializer adds quotes around original string
+                 */
+                if (idValue instanceof String) {
+                    return (String) idValue;
+                }
+                return jsonSerializer.serialize(idValue);
             }
-            return jsonSerializer.serialize(
-                    ((Document)idObj).get(DBCollection.ID_FIELD_NAME)
-            );
+            return jsonSerializer.serialize(idObj);
         }
 
         protected Struct keyFor(String objId) {
