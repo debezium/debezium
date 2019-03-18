@@ -120,19 +120,59 @@ public class EventRouterTest {
     }
 
     @Test
+    public void canRouteBasedOnField() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.ROUTE_BY_FIELD.name(),
+                "aggregatetype"
+        );
+        router.configure(config);
+
+        final SourceRecord userEventRecord = createEventRecord();
+        final SourceRecord userEventRouted = router.apply(userEventRecord);
+
+        assertThat(userEventRouted).isNotNull();
+        assertThat(userEventRouted.topic()).isEqualTo("outbox.event.user");
+
+        final SourceRecord userUpdatedEventRecord = createEventRecord(
+                "ab720dd3-176d-40a6-96f3-6cf961d7df6a",
+                "UserUpdate",
+                "10711fa5",
+                "User",
+                "{}"
+        );
+        final SourceRecord userUpdatedEventRouted = router.apply(userUpdatedEventRecord);
+
+        assertThat(userUpdatedEventRouted).isNotNull();
+        assertThat(userUpdatedEventRouted.topic()).isEqualTo("outbox.event.user");
+
+        final SourceRecord addressCreatedEventRecord = createEventRecord(
+                "ab720dd3-176d-40a6-96f3-6cf961d7df6a",
+                "AddressCreated",
+                "10711fa5",
+                "Address",
+                "{}"
+        );
+        final SourceRecord addressCreatedEventRouted = router.apply(addressCreatedEventRecord);
+
+        assertThat(addressCreatedEventRouted).isNotNull();
+        assertThat(addressCreatedEventRouted.topic()).isEqualTo("outbox.event.address");
+    }
+
+    @Test
     public void canConfigureEveryTableField() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put(EventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
-        config.put(EventRouterConfigDefinition.FIELD_PAYLOAD_TYPE.name(), "payload_type");
         config.put(EventRouterConfigDefinition.FIELD_PAYLOAD_ID.name(), "payload_id");
         config.put(EventRouterConfigDefinition.FIELD_EVENT_TYPE.name(), "event_type");
         config.put(EventRouterConfigDefinition.FIELD_PAYLOAD.name(), "payload_body");
+        config.put(EventRouterConfigDefinition.ROUTE_BY_FIELD.name(), "payload_id");
         router.configure(config);
 
         final Schema recordSchema = SchemaBuilder.struct()
                 .field("event_id", SchemaBuilder.string())
-                .field("payload_type", SchemaBuilder.string())
                 .field("payload_id", SchemaBuilder.string())
                 .field("event_type", SchemaBuilder.string())
                 .field("payload_body", SchemaBuilder.string())
@@ -146,7 +186,6 @@ public class EventRouterTest {
 
         final Struct before = new Struct(recordSchema);
         before.put("event_id", "da8d6de6-3b77-45ff-8f44-57db55a7a06c");
-        before.put("payload_type", "User");
         before.put("payload_id", "10711fa5");
         before.put("event_type", "UserCreated");
         before.put("payload_body", "{}");
@@ -161,6 +200,22 @@ public class EventRouterTest {
     }
 
     private SourceRecord createEventRecord() {
+        return createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{}"
+        );
+    }
+
+    private SourceRecord createEventRecord(
+            String eventId,
+            String eventType,
+            String payloadId,
+            String payloadType,
+            String payload
+    ) {
         final Schema recordSchema = SchemaBuilder.struct()
                 .field("id", SchemaBuilder.string())
                 .field("aggregatetype", SchemaBuilder.string())
@@ -176,13 +231,13 @@ public class EventRouterTest {
                 .build();
 
         final Struct before = new Struct(recordSchema);
-        before.put("id", "da8d6de6-3b77-45ff-8f44-57db55a7a06c");
-        before.put("aggregatetype", "User");
-        before.put("aggregateid", "10711fa5");
-        before.put("type", "UserCreated");
-        before.put("payload", "{}");
+        before.put("id", eventId);
+        before.put("aggregatetype", payloadType);
+        before.put("aggregateid", payloadId);
+        before.put("type", eventType);
+        before.put("payload", payload);
 
-        final Struct payload = envelope.create(before, null, System.nanoTime());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), payload);
+        final Struct body = envelope.create(before, null, System.nanoTime());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), body);
     }
 }
