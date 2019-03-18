@@ -16,15 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -998,73 +995,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     private Struct getAfter(SourceRecord record) {
         return (Struct)((Struct)record.value()).get("after");
-    }
-
-    private boolean isGtidModeEnabled() throws SQLException {
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
-            return MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).queryAndMap(
-                    "SHOW GLOBAL VARIABLES LIKE 'GTID_MODE'",
-                    rs -> {
-                        if (rs.next()) {
-                            return !"OFF".equalsIgnoreCase(rs.getString(2));
-                        }
-                        throw new IllegalStateException("Cannot obtain GTID status");
-                    });
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-1184")
-    public void shouldProcessPurgedGtidSet() throws SQLException, InterruptedException {
-        Testing.Files.delete(DB_HISTORY_PATH);
-
-        if (!isGtidModeEnabled()) {
-            logger.warn("GTID is not enabled, skipping shouldProcessPurgedGtidSet");
-            return;
-        }
-
-        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
-            try (JdbcConnection connection = db.connect()) {
-                connection.execute("FLUSH LOGS");
-                connection.execute("PURGE BINARY LOGS TO 'mysql-bin.000004'");
-            }
-        }
-        final UniqueDatabase database = new UniqueDatabase("myServer1", "connector_test")
-                .withDbHistoryPath(DB_HISTORY_PATH);
-        final UniqueDatabase ro_database = new UniqueDatabase("myServer2", "connector_test_ro", database)
-                .withDbHistoryPath(DB_HISTORY_PATH);
-        ro_database.createAndInitialize();
-
-        // Use the DB configuration to define the connector's configuration ...
-        config = ro_database.defaultConfig()
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, ro_database.qualifiedTableName("customers"))
-                              .build();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
-        // Consume the first records due to startup and initialization of the database ...
-        // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(6 + 4); // 6 DDL changes
-        assertThat(records.recordsForTopic(ro_database.topicForTable("customers")).size()).isEqualTo(4);
-        assertThat(records.topics().size()).isEqualTo(1 + 1);
-        assertThat(records.ddlRecordsForDatabase(ro_database.getDatabaseName()).size()).isEqualTo(6);
-
-        // Check that all records are valid, can be serialized and deserialized ...
-        records.forEach(this::validate);
-
-        // Check that records have GTID that does not contain purged interval
-        records.recordsForTopic(ro_database.topicForTable("customers")).forEach(record -> {
-            final String gtids = (String)record.sourceOffset().get("gtids");
-            final Pattern p = Pattern.compile(".*(.*):(.*)-(.*).*");
-            final Matcher m = p.matcher(gtids);
-            m.matches();
-            Assertions.assertThat(m.group(2)).isNotEqualTo("1");
-        });
-
-        stopConnector();
     }
 
     @Test

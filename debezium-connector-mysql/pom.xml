@@ -329,6 +329,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
                     </systemPropertyVariables>
+                    <runOrder>alphabetical</runOrder>
                 </configuration>
                 <executions>
                     <execution>
@@ -444,6 +445,7 @@
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
+                                <runOrder>alphabetical</runOrder>
                             </systemPropertyVariables>
                         </configuration>
                         <executions>
