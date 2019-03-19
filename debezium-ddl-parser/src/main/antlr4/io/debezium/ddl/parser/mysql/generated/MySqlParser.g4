@@ -585,7 +585,7 @@ alterView
 // details
 
 alterSpecification
-    : tableOption                                                   #alterByTableOption
+    : tableOption (','? tableOption)*                               #alterByTableOption
     | ADD COLUMN? uid columnDefinition (FIRST | AFTER uid)?         #alterByAddColumn
     | ADD COLUMN? 
         '(' 

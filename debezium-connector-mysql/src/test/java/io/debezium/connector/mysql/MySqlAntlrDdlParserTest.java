@@ -60,6 +60,18 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1186")
+    public void shouldParseAlterTableMultiTableOptions() {
+        String ddl =
+                "CREATE TABLE t1 (id int, PRIMARY KEY (id)) STATS_PERSISTENT=1, STATS_AUTO_RECALC=1, STATS_SAMPLE_PAGES=25;"
+              + "ALTER TABLE t1 STATS_AUTO_RECALC=DEFAULT STATS_SAMPLE_PAGES=50;"
+              + "ALTER TABLE t1 STATS_AUTO_RECALC=DEFAULT, STATS_SAMPLE_PAGES=50";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+    }
+
+    @Test
     @FixFor("DBZ-1150")
     public void shouldParseCheckTableKeywords() {
         String ddl =
