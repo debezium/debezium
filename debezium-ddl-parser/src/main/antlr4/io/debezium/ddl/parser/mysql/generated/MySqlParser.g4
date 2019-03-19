@@ -358,6 +358,7 @@ columnConstraint
     | referenceDefinition                                           #referenceColumnConstraint
     | COLLATE collationName                                         #collateColumnConstraint
     | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED)? #generatedColumnConstraint
+    | SERIAL DEFAULT VALUE                                          #serialDefaultColumnConstraint
     ;
 
 tableConstraint
