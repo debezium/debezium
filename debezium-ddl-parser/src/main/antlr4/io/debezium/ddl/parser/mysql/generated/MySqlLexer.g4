@@ -251,6 +251,7 @@ MEDIUMTEXT:                          'MEDIUMTEXT';
 LONGTEXT:                            'LONGTEXT';
 ENUM:                                'ENUM';
 VARYING:                             'VARYING';
+SERIAL:                              'SERIAL';
 
 
 // Interval type Keywords
