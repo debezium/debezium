@@ -10,10 +10,12 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -70,7 +72,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 5;
+        int numCreateTables = 6;
         int numDataRecords = numCreateTables * 3; //Total data records
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
@@ -113,6 +115,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 assertBigintUnsignedPrecise(value);
             }
         });
+        assertSerialPrecise(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial")));
     }
 
     @Test
@@ -131,7 +134,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 5;
+        int numCreateTables = 6;
         int numDataRecords = numCreateTables * 3; //Total data records
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
@@ -148,6 +151,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 assertBigintUnsignedLong(value);
             }
         });
+        assertSerial(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial")));
     }
 
     @Test
@@ -162,7 +166,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         //Testing.Debug.enable();
-        int numTables = 5;
+        int numTables = 6;
         int numDataRecords = numTables * 3;
         int numDdlRecords =
                 numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
@@ -208,6 +212,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
                 assertBigintUnsignedLong(value);
             }
         });
+        assertSerial(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial")));
     }
 
     private void assertTinyintUnsigned(Struct value) {
@@ -417,4 +422,27 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         }
     }
 
+    private void assertSerial(List<SourceRecord> records) {
+        final long[] expected = new long[] {10, 11, -1};
+        assertThat(records).hasSize(3);
+        for (int i = 0; i < 3; i++) {
+            final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("id").schema()).isEqualTo(Schema.INT64_SCHEMA);
+            Long id = after.getInt64("id");
+            assertThat(id).isNotNull();
+            assertThat(id).isEqualTo(expected[i]);
+        }
+    }
+
+    private void assertSerialPrecise(List<SourceRecord> records) {
+        final BigDecimal[] expected = new BigDecimal[] {new BigDecimal(10), new BigDecimal(11), new BigDecimal("18446744073709551615")};
+        assertThat(records).hasSize(3);
+        for (int i = 0; i < 3; i++) {
+            final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("id").schema()).isEqualTo(Decimal.builder(0).schema());
+            final BigDecimal id = (BigDecimal)after.get("id");
+            assertThat(id).isNotNull();
+            assertThat(id).isEqualTo(expected[i]);
+        }
+    }
 }

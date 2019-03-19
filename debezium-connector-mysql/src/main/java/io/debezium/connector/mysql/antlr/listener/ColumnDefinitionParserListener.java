@@ -37,6 +37,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     private final DataTypeResolver dataTypeResolver;
     private final TableEditor tableEditor;
     private ColumnEditor columnEditor;
+    private boolean uniqueColumn;
 
     private final MySqlValueConverters converters;
     private final MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
@@ -62,17 +63,24 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+        uniqueColumn = false;
         resolveColumnDataType(ctx.dataType());
         super.enterColumnDefinition(ctx);
     }
 
     @Override
-    public void enterUniqueKeyColumnConstraint(MySqlParser.UniqueKeyColumnConstraintContext ctx) {
-        if (!tableEditor.hasPrimaryKey()) {
+    public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+        if (uniqueColumn && !tableEditor.hasPrimaryKey()) {
             // take the first unique constrain if no primary key is set
             tableEditor.addColumn(columnEditor.create());
             tableEditor.setPrimaryKeyNames(columnEditor.name());
         }
+        super.exitColumnDefinition(ctx);
+    }
+
+    @Override
+    public void enterUniqueKeyColumnConstraint(MySqlParser.UniqueKeyColumnConstraintContext ctx) {
+        uniqueColumn = true;
         super.enterUniqueKeyColumnConstraint(ctx);
     }
 
@@ -219,6 +227,12 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         if (dataTypeName.equals("ENUM") || dataTypeName.equals("SET")) {
             // type expression has to be set, because the value converter needs to know the enum or set options
             columnEditor.type(dataTypeName, getText(dataTypeContext));
+        }
+        else if (dataTypeName.equals("SERIAL")) {
+            // SERIAL is an alias for BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE
+            columnEditor.type("BIGINT UNSIGNED");
+            columnEditor.optional(false);
+            uniqueColumn = true;
         }
         else {
             columnEditor.type(dataTypeName);

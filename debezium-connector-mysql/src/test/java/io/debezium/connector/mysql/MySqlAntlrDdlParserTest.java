@@ -10,6 +10,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -45,6 +46,67 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(1);
         assertThat(tables.size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-1185")
+    public void shouldProcessSerialDatatype() {
+        final String ddl =
+                "CREATE TABLE foo1 (id SERIAL, val INT)" +
+                "CREATE TABLE foo2 (id SERIAL PRIMARY KEY, val INT)" +
+                "CREATE TABLE foo3 (id SERIAL, val INT, PRIMARY KEY(id))" +
+
+                "CREATE TABLE foo4 (id SERIAL, val INT PRIMARY KEY)" +
+                "CREATE TABLE foo5 (id SERIAL, val INT, PRIMARY KEY(val))" +
+
+                "CREATE TABLE foo6 (id SERIAL NULL, val INT)" +
+
+                "CREATE TABLE foo7 (id SERIAL NOT NULL, val INT)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        Stream.of("foo1", "foo2", "foo3"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    final Column id = table.columnWithName("id");
+                    assertThat(id.name()).isEqualTo("id");
+                    assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
+                    assertThat(id.length()).isEqualTo(-1);
+                    assertThat(id.isRequired()).isTrue();
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+                });
+
+        Stream.of("foo4", "foo5"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
+                });
+
+        Stream.of("foo6"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    final Column id = table.columnWithName("id");
+                    assertThat(id.name()).isEqualTo("id");
+                    assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
+                    assertThat(id.length()).isEqualTo(-1);
+                    assertThat(id.isOptional()).isTrue();
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+                });
+
+        Stream.of("foo7"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    final Column id = table.columnWithName("id");
+                    assertThat(id.name()).isEqualTo("id");
+                    assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
+                    assertThat(id.length()).isEqualTo(-1);
+                    assertThat(id.isRequired()).isTrue();
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+                });
     }
 
     @Test
