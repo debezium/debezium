@@ -2002,7 +2002,7 @@ dataType
       lengthTwoOptionalDimension? (SIGNED | UNSIGNED)? ZEROFILL?               #dimensionDataType
     | typeName=(
         DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB
-        | BOOL | BOOLEAN
+        | BOOL | BOOLEAN | SERIAL
       )                                                             #simpleDataType
     | typeName=(
         BIT | TIME | TIMESTAMP | DATETIME | BINARY
