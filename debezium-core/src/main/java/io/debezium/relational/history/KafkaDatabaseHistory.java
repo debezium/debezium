@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -335,11 +336,13 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
             // Find default replication factor
             Config brokerConfig = getKafkaBrokerConfig(admin);
+            String defaultReplicationFactorValue = brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value();
             final short replicationFactor;
             // Ensure that the default replication factor property was returned by the Admin Client
-            if (brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value() != null) {
-                replicationFactor = Short.parseShort(brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
-            } else {
+            if (defaultReplicationFactorValue != null) {
+                replicationFactor = Short.parseShort(defaultReplicationFactorValue);
+            } 
+            else {
                 // Otherwise warn that no property was obtained and default it to 1 - users can increase this later if desired
                 logger.warn("Unable to obtain the default replication factor from the brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS) + " - Setting value to 1 instead");
                 replicationFactor = 1;
