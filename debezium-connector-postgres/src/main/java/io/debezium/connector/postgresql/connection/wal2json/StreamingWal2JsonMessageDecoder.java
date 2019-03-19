@@ -236,13 +236,12 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
 
     private void doProcessMessage(ReplicationMessageProcessor processor, TypeRegistry typeRegistry, byte[] content, boolean lastMessage)
             throws IOException, SQLException, InterruptedException {
-        if(content != null) {
+        if (content != null) {
             final Document change = DocumentReader.floatNumbersAsTextReader().read(content);
             LOGGER.trace("Change arrived for decoding {}", change);
             processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry));
         }
-        else
-        {
+        else {
             // If content is null then this is an empty change event that WAL2JSON can generate for events like DDL,
             // truncate table, materialized views, etc. The transaction still needs to be processed for the heartbeat
             // to fire.

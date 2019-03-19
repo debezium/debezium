@@ -60,7 +60,7 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
 
             // WAL2JSON may send empty changes that still have a txid. These events are from things like vacuum,
             // materialized view, DDL, etc. They still need to be processed for the heartbeat to fire.
-            if(changes.isEmpty()) {
+            if (changes.isEmpty()) {
                 processor.process(null);
             }
             else {
