@@ -10,6 +10,7 @@ import static io.debezium.antlr.AntlrDdlParser.getText;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -38,6 +39,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     private final TableEditor tableEditor;
     private ColumnEditor columnEditor;
     private boolean uniqueColumn;
+    private Optional<Boolean> optionalColumn;
 
     private final MySqlValueConverters converters;
     private final MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
@@ -64,12 +66,14 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     @Override
     public void enterColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
         uniqueColumn = false;
+        optionalColumn = Optional.empty();
         resolveColumnDataType(ctx.dataType());
         super.enterColumnDefinition(ctx);
     }
 
     @Override
     public void exitColumnDefinition(MySqlParser.ColumnDefinitionContext ctx) {
+        optionalColumn.ifPresent(optional -> columnEditor.optional(optional.booleanValue()));
         if (uniqueColumn && !tableEditor.hasPrimaryKey()) {
             // take the first unique constrain if no primary key is set
             tableEditor.addColumn(columnEditor.create());
@@ -88,7 +92,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     public void enterPrimaryKeyColumnConstraint(MySqlParser.PrimaryKeyColumnConstraintContext ctx) {
         // this rule will be parsed only if no primary key is set in a table
         // otherwise the statement can't be executed due to multiple primary key error
-        columnEditor.optional(false);
+        optionalColumn = Optional.of(Boolean.FALSE);
         tableEditor.addColumn(columnEditor.create());
         tableEditor.setPrimaryKeyNames(columnEditor.name());
         super.enterPrimaryKeyColumnConstraint(ctx);
@@ -96,7 +100,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
     @Override
     public void enterNullNotnull(MySqlParser.NullNotnullContext ctx) {
-        columnEditor.optional(ctx.NOT() == null);
+        optionalColumn = Optional.of(Boolean.valueOf(ctx.NOT() == null));
         super.enterNullNotnull(ctx);
     }
 
@@ -143,6 +147,12 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         columnEditor.autoIncremented(true);
         columnEditor.generated(true);
         super.enterAutoIncrementColumnConstraint(ctx);
+    }
+
+    @Override
+    public void enterSerialDefaultColumnConstraint(MySqlParser.SerialDefaultColumnConstraintContext ctx) {
+        serialColumn();
+        super.enterSerialDefaultColumnConstraint(ctx);
     }
 
     private void resolveColumnDataType(MySqlParser.DataTypeContext dataTypeContext) {
@@ -231,8 +241,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         else if (dataTypeName.equals("SERIAL")) {
             // SERIAL is an alias for BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE
             columnEditor.type("BIGINT UNSIGNED");
-            columnEditor.optional(false);
-            uniqueColumn = true;
+            serialColumn();
         }
         else {
             columnEditor.type(dataTypeName);
@@ -256,7 +265,17 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         }
     }
 
+    private void serialColumn() {
+        if (!optionalColumn.isPresent()) {
+            optionalColumn = Optional.of(Boolean.FALSE);
+        }
+        uniqueColumn = true;
+        columnEditor.autoIncremented(true);
+        columnEditor.generated(true);
+    }
+
     private void convertDefaultValueToSchemaType(ColumnEditor columnEditor) {
+        optionalColumn.ifPresent(optional -> columnEditor.optional(optional.booleanValue()));
         final Column column = columnEditor.create();
         // if converters is not null and the default value is not null, we need to convert default value
         if (converters != null && columnEditor.defaultValue() != null) {

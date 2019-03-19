@@ -72,7 +72,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 6;
+        int numCreateTables = 7;
         int numDataRecords = numCreateTables * 3; //Total data records
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
@@ -134,7 +134,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         Testing.Debug.enable();
         int numCreateDatabase = 1;
-        int numCreateTables = 6;
+        int numCreateTables = 7;
         int numDataRecords = numCreateTables * 3; //Total data records
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
         stopConnector();
@@ -152,6 +152,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             }
         });
         assertSerial(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial")));
+        assertSerialDefaultValue(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial_default_value")));
     }
 
     @Test
@@ -166,7 +167,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
         //Testing.Debug.enable();
-        int numTables = 6;
+        int numTables = 7;
         int numDataRecords = numTables * 3;
         int numDdlRecords =
                 numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
@@ -213,6 +214,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             }
         });
         assertSerial(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial")));
+        assertSerialDefaultValue(records.recordsForTopic(DATABASE.topicForTable("dbz_1185_serial_default_value")));
     }
 
     private void assertTinyintUnsigned(Struct value) {
@@ -428,7 +430,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         for (int i = 0; i < 3; i++) {
             final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.schema().field("id").schema()).isEqualTo(Schema.INT64_SCHEMA);
-            Long id = after.getInt64("id");
+            final Long id = after.getInt64("id");
             assertThat(id).isNotNull();
             assertThat(id).isEqualTo(expected[i]);
         }
@@ -441,6 +443,18 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.schema().field("id").schema()).isEqualTo(Decimal.builder(0).schema());
             final BigDecimal id = (BigDecimal)after.get("id");
+            assertThat(id).isNotNull();
+            assertThat(id).isEqualTo(expected[i]);
+        }
+    }
+
+    private void assertSerialDefaultValue(List<SourceRecord> records) {
+        final int[] expected = new int[] {10, 11, 1000};
+        assertThat(records).hasSize(3);
+        for (int i = 0; i < 3; i++) {
+            final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.schema().field("id").schema()).isEqualTo(Schema.INT32_SCHEMA);
+            final Integer id = after.getInt32("id");
             assertThat(id).isNotNull();
             assertThat(id).isEqualTo(expected[i]);
         }

@@ -81,3 +81,12 @@ CREATE TABLE dbz_1185_serial (
 INSERT INTO dbz_1185_serial VALUES (10);
 INSERT INTO dbz_1185_serial VALUES (default);
 INSERT INTO dbz_1185_serial VALUES (18446744073709551615);
+
+-- DBZ-1185 handle SERIAL default value
+CREATE TABLE dbz_1185_serial_default_value (
+  id SMALLINT UNSIGNED SERIAL DEFAULT VALUE NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+INSERT INTO dbz_1185_serial_default_value VALUES (10);
+INSERT INTO dbz_1185_serial_default_value VALUES (default);
+INSERT INTO dbz_1185_serial_default_value VALUES (1000);
