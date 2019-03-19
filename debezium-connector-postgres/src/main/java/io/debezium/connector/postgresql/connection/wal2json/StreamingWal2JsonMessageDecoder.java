@@ -182,9 +182,7 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
         }
         else if (firstChar == RIGHT_BRACKET) {
             // No more changes
-            if (currentChunk != null) {
-                doProcessMessage(processor, typeRegistry, currentChunk, true);
-            }
+            doProcessMessage(processor, typeRegistry, currentChunk, true);
             messageInProgress = false;
         }
         else {
@@ -238,10 +236,20 @@ public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
 
     private void doProcessMessage(ReplicationMessageProcessor processor, TypeRegistry typeRegistry, byte[] content, boolean lastMessage)
             throws IOException, SQLException, InterruptedException {
-        final Document change = DocumentReader.floatNumbersAsTextReader().read(content);
+        if(content != null) {
+            final Document change = DocumentReader.floatNumbersAsTextReader().read(content);
+            LOGGER.trace("Change arrived for decoding {}", change);
+            processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry));
+        }
+        else
+        {
+            // If content is null then this is an empty change event that WAL2JSON can generate for events like DDL,
+            // truncate table, materialized views, etc. The transaction still needs to be processed for the heartbeat
+            // to fire.
+            LOGGER.trace("Empty change arrived");
+            processor.process(null);
+        }
 
-        LOGGER.trace("Change arrived for decoding {}", change);
-        processor.process(new Wal2JsonReplicationMessage(txId, commitTime, change, containsMetadata, lastMessage, typeRegistry));
     }
 
     @Override
