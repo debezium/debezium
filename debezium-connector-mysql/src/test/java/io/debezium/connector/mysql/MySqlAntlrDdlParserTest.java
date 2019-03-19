@@ -52,16 +52,18 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     @FixFor("DBZ-1185")
     public void shouldProcessSerialDatatype() {
         final String ddl =
-                "CREATE TABLE foo1 (id SERIAL, val INT)" +
-                "CREATE TABLE foo2 (id SERIAL PRIMARY KEY, val INT)" +
-                "CREATE TABLE foo3 (id SERIAL, val INT, PRIMARY KEY(id))" +
+                "CREATE TABLE foo1 (id SERIAL, val INT);" +
+                "CREATE TABLE foo2 (id SERIAL PRIMARY KEY, val INT);" +
+                "CREATE TABLE foo3 (id SERIAL, val INT, PRIMARY KEY(id));" +
 
-                "CREATE TABLE foo4 (id SERIAL, val INT PRIMARY KEY)" +
-                "CREATE TABLE foo5 (id SERIAL, val INT, PRIMARY KEY(val))" +
+                "CREATE TABLE foo4 (id SERIAL, val INT PRIMARY KEY);" +
+                "CREATE TABLE foo5 (id SERIAL, val INT, PRIMARY KEY(val));" +
 
-                "CREATE TABLE foo6 (id SERIAL NULL, val INT)" +
+                "CREATE TABLE foo6 (id SERIAL NULL, val INT);" +
 
-                "CREATE TABLE foo7 (id SERIAL NOT NULL, val INT)";
+                "CREATE TABLE foo7 (id SERIAL NOT NULL, val INT);" +
+
+                "CREATE TABLE serial (serial INT);";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
@@ -115,14 +117,14 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     @FixFor("DBZ-1185")
     public void shouldProcessSerialDefaultValue() {
         final String ddl =
-                "CREATE TABLE foo1 (id SMALLINT SERIAL DEFAULT VALUE, val INT)" +
-                "CREATE TABLE foo2 (id SMALLINT SERIAL DEFAULT VALUE PRIMARY KEY, val INT)" +
-                "CREATE TABLE foo3 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(id))" +
+                "CREATE TABLE foo1 (id SMALLINT SERIAL DEFAULT VALUE, val INT);" +
+                "CREATE TABLE foo2 (id SMALLINT SERIAL DEFAULT VALUE PRIMARY KEY, val INT);" +
+                "CREATE TABLE foo3 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(id));" +
 
-                "CREATE TABLE foo4 (id SMALLINT SERIAL DEFAULT VALUE, val INT PRIMARY KEY)" +
-                "CREATE TABLE foo5 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(val))" +
+                "CREATE TABLE foo4 (id SMALLINT SERIAL DEFAULT VALUE, val INT PRIMARY KEY);" +
+                "CREATE TABLE foo5 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(val));" +
 
-                "CREATE TABLE foo6 (id SMALLINT(3) NULL SERIAL DEFAULT VALUE, val INT)" +
+                "CREATE TABLE foo6 (id SMALLINT(3) NULL SERIAL DEFAULT VALUE, val INT);" +
 
                 "CREATE TABLE foo7 (id SMALLINT(5) UNSIGNED SERIAL DEFAULT VALUE NOT NULL, val INT)";
         parser.parse(ddl, tables);
