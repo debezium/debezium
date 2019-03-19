@@ -74,6 +74,8 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
                     assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
                     assertThat(id.length()).isEqualTo(-1);
                     assertThat(id.isRequired()).isTrue();
+                    assertThat(id.isAutoIncremented()).isTrue();
+                    assertThat(id.isGenerated()).isTrue();
                     assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
                 });
 
@@ -104,6 +106,69 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
                     assertThat(id.name()).isEqualTo("id");
                     assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
                     assertThat(id.length()).isEqualTo(-1);
+                    assertThat(id.isRequired()).isTrue();
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+                });
+    }
+
+    @Test
+    @FixFor("DBZ-1185")
+    public void shouldProcessSerialDefaultValue() {
+        final String ddl =
+                "CREATE TABLE foo1 (id SMALLINT SERIAL DEFAULT VALUE, val INT)" +
+                "CREATE TABLE foo2 (id SMALLINT SERIAL DEFAULT VALUE PRIMARY KEY, val INT)" +
+                "CREATE TABLE foo3 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(id))" +
+
+                "CREATE TABLE foo4 (id SMALLINT SERIAL DEFAULT VALUE, val INT PRIMARY KEY)" +
+                "CREATE TABLE foo5 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(val))" +
+
+                "CREATE TABLE foo6 (id SMALLINT(3) NULL SERIAL DEFAULT VALUE, val INT)" +
+
+                "CREATE TABLE foo7 (id SMALLINT(5) UNSIGNED SERIAL DEFAULT VALUE NOT NULL, val INT)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        Stream.of("foo1", "foo2", "foo3"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    final Column id = table.columnWithName("id");
+                    assertThat(id.name()).isEqualTo("id");
+                    assertThat(id.typeName()).isEqualTo("SMALLINT");
+                    assertThat(id.length()).isEqualTo(-1);
+                    assertThat(id.isRequired()).isTrue();
+                    assertThat(id.isAutoIncremented()).isTrue();
+                    assertThat(id.isGenerated()).isTrue();
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+                });
+
+        Stream.of("foo4", "foo5"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
+                });
+
+        Stream.of("foo6"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    final Column id = table.columnWithName("id");
+                    assertThat(id.name()).isEqualTo("id");
+                    assertThat(id.typeName()).isEqualTo("SMALLINT");
+                    assertThat(id.length()).isEqualTo(3);
+                    assertThat(id.isOptional()).isTrue();
+                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+                });
+
+        Stream.of("foo7"
+                ).forEach(tableName -> {
+                    final Table table = tables.forTable(null, null, tableName);
+                    assertThat(table.columns().size()).isEqualTo(2);
+                    final Column id = table.columnWithName("id");
+                    assertThat(id.name()).isEqualTo("id");
+                    assertThat(id.typeName()).isEqualTo("SMALLINT UNSIGNED");
+                    assertThat(id.length()).isEqualTo(5);
                     assertThat(id.isRequired()).isTrue();
                     assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
                 });
