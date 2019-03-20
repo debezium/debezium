@@ -163,29 +163,25 @@ public class UnusedImports extends UnusedImportsCheck {
                 String methodCall = matcher.group(2);
                 processClassOrMethodReference(methodCall);
             }
-        } else {
-            if (tag.isParamTag()) {
-                String paramText = tag.getArg1();
-                print("Found parameter text: ", paramText);
-                // Find the links to classe
-                Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(paramText);
-                while (paramsMatcher.find()) {
-                    // Found a link ...
-                    String linkValue = paramsMatcher.group(1);
-                    processClassOrMethodReference(linkValue);
-                }
-            } else {
-                if (tag.isReturnTag()) {
-                    String returnText = tag.getArg1();
-                    print("Found return text: ", returnText);
-                    // Find the links to classe
-                    Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(returnText);
-                    while (paramsMatcher.find()) {
-                        // Found a link ...
-                        String linkValue = paramsMatcher.group(1);
-                        processClassOrMethodReference(linkValue);
-                    }
-                }
+        } else if (tag.isParamTag()) {
+            String paramText = tag.getArg1();
+            print("Found parameter text: ", paramText);
+            // Find the links to classe
+            Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(paramText);
+            while (paramsMatcher.find()) {
+                // Found a link ...
+                String linkValue = paramsMatcher.group(1);
+                processClassOrMethodReference(linkValue);
+            }
+        } else if (tag.isReturnTag()) {
+            String returnText = tag.getArg1();
+            print("Found return text: ", returnText);
+            // Find the links to classe
+            Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(returnText);
+            while (paramsMatcher.find()) {
+                // Found a link ...
+                String linkValue = paramsMatcher.group(1);
+                processClassOrMethodReference(linkValue);
             }
         }
     }
