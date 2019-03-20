@@ -440,7 +440,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SchemaRefreshMode parse(String value) {
-            if (value == null) return null;
+            if (value == null){
+                return null;
+            }
             value = value.trim();
             for (SchemaRefreshMode option : SchemaRefreshMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)){

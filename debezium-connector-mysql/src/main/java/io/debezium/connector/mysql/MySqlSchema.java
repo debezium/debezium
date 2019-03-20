@@ -297,7 +297,9 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     public boolean applyDdl(SourceInfo source, String databaseName, String ddlStatements,
                             DatabaseStatementStringConsumer statementConsumer) {
         Set<TableId> changes;
-        if (ignoredQueryStatements.contains(ddlStatements)) return false;
+        if (ignoredQueryStatements.contains(ddlStatements)) {
+            return false;
+        }
         try {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);

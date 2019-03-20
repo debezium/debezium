@@ -328,8 +328,9 @@ public class SnapshotReader extends AbstractReader {
                     List<TableId> tablesMatchedByPattern = tableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
                             .collect(Collectors.toList());
                                         tablesMatchedByPattern.forEach(t -> {
-                                                if (!tableIdsSorted.contains(t))
+                                                if (!tableIdsSorted.contains(t)){
                                                     tableIdsSorted.add(t);
+                                                }
                                         });
                 });
                 tableIds.sort(Comparator.comparing(tableIdsSorted::indexOf));
@@ -503,7 +504,9 @@ public class SnapshotReader extends AbstractReader {
                                     // but far more efficient for large InnoDB tables.
                                     sql.set("SHOW TABLE STATUS LIKE '" + tableId.table() + "';");
                                     mysql.query(sql.get(), rs -> {
-                                        if (rs.next()) numRows.set(rs.getLong(5));
+                                        if (rs.next()){
+                                            numRows.set(rs.getLong(5));
+                                        }
                                     });
                                     if (numRows.get() <= largeTableCount) {
                                         statementFactory = this::createStatement;
