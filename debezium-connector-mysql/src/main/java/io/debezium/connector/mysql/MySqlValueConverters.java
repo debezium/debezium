@@ -284,8 +284,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
-                if (adaptiveTimeMicrosecondsPrecisionMode)
-                    return data -> convertDurationToMicroseconds(column, fieldDefn, data);
+                if (adaptiveTimeMicrosecondsPrecisionMode){
+                    return data->convertDurationToMicroseconds(column,fieldDefn,data);
+                }
             case Types.TIMESTAMP:
                 return ((ValueConverter)(data-> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             default:
@@ -481,7 +482,9 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return {@code true} if the type matches the specified type, or {@code false} otherwise
      */
     protected boolean matches(String upperCaseTypeName, String upperCaseMatch) {
-        if (upperCaseTypeName == null) return false;
+        if (upperCaseTypeName == null){
+            return false;
+        }
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");
     }
 
