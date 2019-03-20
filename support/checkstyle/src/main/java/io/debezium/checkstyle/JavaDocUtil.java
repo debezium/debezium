@@ -57,38 +57,36 @@ public final class JavaDocUtil {
                 }
             }
             // No block tag, so look for inline validTags
-            else {
-                if (aTagType.equals(JavadocTagType.ALL) || aTagType.equals(JavadocTagType.INLINE)) {
-                    // Match JavaDoc text after comment characters
-                    final Pattern commentPattern = Utils.createPattern("^\\s*(?:/\\*{2,}|\\*+)\\s*(.*)");
-                    final Matcher commentMatcher = commentPattern.matcher(s);
-                    final String commentContents;
-                    final int commentOffset; // offset including comment characters
-                    if (!commentMatcher.find()) {
-                        commentContents = s; // No leading asterisks, still valid
-                        commentOffset = 0;
-                    } else {
-                        commentContents = commentMatcher.group(1);
-                        commentOffset = commentMatcher.start(1) - 1;
-                    }
-                    final Pattern tagPattern = Utils.createPattern(".*?\\{@(\\p{Alpha}+)\\s+([^\\}]*)"); // The last '}' may
-                    // appear on the next
-                    // line ...
-                    final Matcher tagMatcher = tagPattern.matcher(commentContents);
-                    while (tagMatcher.find()) {
-                        if (tagMatcher.groupCount() == 2) {
-                            final String tagName = tagMatcher.group(1);
-                            final String tagValue = tagMatcher.group(2).trim();
-                            final int line = aCmt.getStartLineNo() + i;
-                            int col = commentOffset + (tagMatcher.start(1) - 1);
-                            if (i == 0) {
-                                col += aCmt.getStartColNo();
-                            }
-                            if (JavadocTagInfo.isValidName(tagName)) {
-                                tags.add(new JavadocTag(line, col, tagName, tagValue));
-                            } else {
-                                invalidTags.add(new InvalidJavadocTag(line, col, tagName));
-                            }
+            else if (aTagType.equals(JavadocTagType.ALL) || aTagType.equals(JavadocTagType.INLINE)) {
+                // Match JavaDoc text after comment characters
+                final Pattern commentPattern = Utils.createPattern("^\\s*(?:/\\*{2,}|\\*+)\\s*(.*)");
+                final Matcher commentMatcher = commentPattern.matcher(s);
+                final String commentContents;
+                final int commentOffset; // offset including comment characters
+                if (!commentMatcher.find()) {
+                    commentContents = s; // No leading asterisks, still valid
+                    commentOffset = 0;
+                } else {
+                    commentContents = commentMatcher.group(1);
+                    commentOffset = commentMatcher.start(1) - 1;
+                }
+                final Pattern tagPattern = Utils.createPattern(".*?\\{@(\\p{Alpha}+)\\s+([^\\}]*)"); // The last '}' may
+                // appear on the next
+                // line ...
+                final Matcher tagMatcher = tagPattern.matcher(commentContents);
+                while (tagMatcher.find()) {
+                    if (tagMatcher.groupCount() == 2) {
+                        final String tagName = tagMatcher.group(1);
+                        final String tagValue = tagMatcher.group(2).trim();
+                        final int line = aCmt.getStartLineNo() + i;
+                        int col = commentOffset + (tagMatcher.start(1) - 1);
+                        if (i == 0) {
+                            col += aCmt.getStartColNo();
+                        }
+                        if (JavadocTagInfo.isValidName(tagName)) {
+                            tags.add(new JavadocTag(line, col, tagName, tagValue));
+                        } else {
+                            invalidTags.add(new InvalidJavadocTag(line, col, tagName));
                         }
                         // else Error: Unexpected match count for inline JavaDoc tag
                     }
