@@ -57,9 +57,13 @@ public class ZookeeperServer {
      * @throws IllegalStateException if the server is already running
      */
     public synchronized ZookeeperServer startup() throws IOException {
-        if (factory != null) throw new IllegalStateException("" + this + " is already running");
+        if (factory != null){
+            throw new IllegalStateException("" + this + " is already running");
+        }
 
-        if (this.port == -1) this.port = IoUtil.getAvailablePort();
+        if (this.port == -1){
+            this.port = IoUtil.getAvailablePort();
+        }
         this.factory = ServerCnxnFactory.createFactory(new InetSocketAddress("localhost", port), 1024);
         if ( this.dataDir == null ) {
             try {

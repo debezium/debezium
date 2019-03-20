@@ -45,10 +45,11 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     protected static interface TokenSet {
         void add(String token);
 
-        default void add(String firstToken, String... additionalTokens) {
+        default void add(String firstToken, String... additionalTokens){
             add(firstToken);
-            for (String token : additionalTokens)
+            for(String token: additionalTokens) {
                 add(token);
+            }
         }
     }
 
@@ -99,7 +100,9 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     }
 
     public void addListener(DdlParserListener listener) {
-        if (listener != null) listeners.add(listener);
+        if (listener != null) {
+            listeners.add(listener);
+        }
     }
 
     public boolean removeListener(DdlParserListener listener) {
@@ -121,9 +124,15 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     }
 
     protected int determineTokenType(int type, String token) {
-        if (statementStarts.contains(token)) type |= DdlTokenizer.STATEMENT_KEY;
-        if (keywords.contains(token)) type |= DdlTokenizer.KEYWORD;
-        if (terminator().equals(token)) type |= DdlTokenizer.STATEMENT_TERMINATOR;
+        if (statementStarts.contains(token)) {
+            type |= DdlTokenizer.STATEMENT_KEY;
+        }
+        if (keywords.contains(token)) {
+            type |= DdlTokenizer.KEYWORD;
+        }
+        if (terminator().equals(token)) {
+            type |= DdlTokenizer.STATEMENT_TERMINATOR;
+        }
         return type;
     }
 
@@ -176,10 +185,14 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     protected List<TableId> parseQualifiedTableNames(Marker start) {
         List<TableId> ids = new LinkedList<>();
         TableId id = parseQualifiedTableName(start);
-        if (id != null) ids.add(id);
-        while (tokens.canConsume(',')) {
+        if (id != null) {
+            ids.add(id);
+        }
+        while(tokens.canConsume(',')){
             id = parseQualifiedTableName(start);
-            if (id != null) ids.add(id);
+            if (id != null) {
+                ids.add(id);
+            }
         }
         return ids;
     }
@@ -481,7 +494,9 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
                 tokens.consume();
                 break;
             }
-            if (!tokens.hasNext()) return;
+            if (!tokens.hasNext()) {
+                return;
+            }
             tokens.consume();
         }
     }
@@ -632,7 +647,9 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             decimal = true;
         }
         if (!tokens.canConsumeAnyOf("E", "e")) {
-            if (decimal) return Double.parseDouble(sb.toString());
+            if (decimal) {
+                return Double.parseDouble(sb.toString());
+            }
             return Integer.valueOf(sb.toString());
         }
         sb.append('E');
@@ -649,7 +666,9 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             if (tokens.matches(DdlTokenizer.COMMENT)) {
                 parseComment(start);
             } else if (tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING, DdlTokenizer.DOUBLE_QUOTED_STRING)) {
-                if (sb.length() != 0) sb.append(' ');
+                if (sb.length() != 0) {
+                    sb.append(' ');
+                }
                 sb.append(tokens.consume());
             } else {
                 break;
@@ -846,7 +865,9 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
                 return;
             }
         }
-        if (fromTable != null) tablesByAlias.put(fromTable.id().table(), fromTable);
+        if (fromTable != null) {
+            tablesByAlias.put(fromTable.id().table(), fromTable);
+        }
     }
 
 }

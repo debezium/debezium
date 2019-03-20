@@ -70,7 +70,9 @@ public class KafkaServer {
      * @param port the desired port
      */
     public KafkaServer(Supplier<String> zookeeperConnection, int brokerId, int port) {
-        if (zookeeperConnection == null) throw new IllegalArgumentException("The Zookeeper connection string supplier may not be null");
+        if (zookeeperConnection == null){
+            throw new IllegalArgumentException("The Zookeeper connection string supplier may not be null");
+        }
         this.zkConnection = zookeeperConnection;
         this.brokerId = brokerId;
         this.config = new Properties();
@@ -107,7 +109,9 @@ public class KafkaServer {
      * @throws IllegalStateException if the server is running when this method is called
      */
     public KafkaServer setProperty(String name, String value) {
-        if (server != null) throw new IllegalStateException("Unable to change the properties when already running");
+        if (server != null){
+            throw new IllegalStateException("Unable to change the properties when already running");
+        }
         if (!KafkaConfig.ZkConnectProp().equalsIgnoreCase(name)
                 && !KafkaConfig.BrokerIdProp().equalsIgnoreCase(name)
                 && !KafkaConfig.HostNameProp().equalsIgnoreCase(name)) {
@@ -125,7 +129,9 @@ public class KafkaServer {
      * @throws IllegalStateException if the server is running when this method is called
      */
     public KafkaServer setProperties( Properties properties ) {
-        if (server != null) throw new IllegalStateException("Unable to change the properties when already running");
+        if (server != null){
+            throw new IllegalStateException("Unable to change the properties when already running");
+        }
         properties.stringPropertyNames().forEach(propName -> {
             setProperty(propName, properties.getProperty(propName));
         });
@@ -182,7 +188,9 @@ public class KafkaServer {
      * @throws IllegalStateException if the server is already running
      */
     public synchronized KafkaServer startup() {
-        if (server != null) throw new IllegalStateException("" + this + " is already running");
+        if (server != null){
+            throw new IllegalStateException("" + this + " is already running");
+        }
 
         // Determine the storage directory and adjust the configuration ...
         Properties config = config();
@@ -282,7 +290,9 @@ public class KafkaServer {
      */
     public void createTopics(int numPartitions, int replicationFactor, String... topics) {
         for (String topic : topics) {
-            if ( topic != null ) createTopic(topic, numPartitions, replicationFactor);
+            if ( topic != null ){
+                createTopic(topic, numPartitions, replicationFactor);
+            }
         }
     }
     

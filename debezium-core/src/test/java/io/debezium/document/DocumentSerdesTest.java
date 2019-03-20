@@ -57,7 +57,9 @@ public class DocumentSerdesTest implements Testing {
 
     protected void roundTrip(Document doc, IntConsumer sizeAccumulator) {
         byte[] bytes = SERDES.serialize("topicA", doc);
-        if (sizeAccumulator != null) sizeAccumulator.accept(bytes.length);
+        if (sizeAccumulator != null){
+            sizeAccumulator.accept(bytes.length);
+        }
         Document reconstituted = SERDES.deserialize("topicA", bytes);
         assertThat((Object) reconstituted).isEqualTo(doc);
     }

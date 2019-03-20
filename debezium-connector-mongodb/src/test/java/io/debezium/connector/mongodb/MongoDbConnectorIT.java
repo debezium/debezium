@@ -63,7 +63,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         try {
             stopConnector();
         } finally {
-            if (context != null) context.getConnectionContext().shutdown();
+            if (context != null) {
+                context.getConnectionContext().shutdown();
+            }
         }
     }
 

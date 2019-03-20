@@ -274,7 +274,9 @@ public abstract class AbstractReader implements Reader {
 
             // Check for failure after waking up ...
             failureException = this.failure.get();
-            if (failureException != null) throw failureException;
+            if (failureException != null) {
+                throw failureException;
+            }
             if (timeout.expired()) {
                 break;
             }

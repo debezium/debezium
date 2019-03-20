@@ -237,7 +237,9 @@ public class MySqlJdbcContext implements AutoCloseable {
                 while (rs.next()) {
                     String grants = rs.getString(1);
                     logger.debug(grants);
-                    if (grants == null) return;
+                    if (grants == null) {
+                        return;
+                    }
                     grants = grants.toUpperCase();
                     if (grants.contains("ALL") || grants.contains(grantName.toUpperCase())) {
                         result.set(true);
@@ -311,7 +313,9 @@ public class MySqlJdbcContext implements AutoCloseable {
             }
             sb.append(varName).append("=");
             String value = variables.get(varName);
-            if (value == null) value = "";
+            if (value == null) {
+                value = "";
+            }
             if (value.contains(",") || value.contains(";")) {
                 value = "'" + value + "'";
             }

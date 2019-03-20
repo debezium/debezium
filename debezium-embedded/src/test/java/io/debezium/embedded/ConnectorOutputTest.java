@@ -819,7 +819,9 @@ public abstract class ConnectorOutputTest {
                     // And possibly hand it to the test's recorder ...
                     try {
                         Document jsonRecord = serializeSourceRecord(actualRecord, keyConverter, valueConverter);
-                        if (jsonRecord != null) recorder.accept(jsonRecord);
+                        if (jsonRecord != null){
+                            recorder.accept(jsonRecord);
+                        }
                     } catch (IOException e) {
                         String msg = "Error converting JSON to SourceRecord";
                         Testing.debug(msg);

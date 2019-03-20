@@ -51,7 +51,9 @@ public class SchemaNameAdjusterTest {
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
         ReplacementOccurred handler = (original, replacement, conflict) -> {
-            if (conflict != null) conflicts.incrementAndGet();
+            if (conflict != null){
+                conflicts.incrementAndGet();
+            }
             counter.incrementAndGet();
         };
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler);
@@ -67,7 +69,9 @@ public class SchemaNameAdjusterTest {
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
         ReplacementOccurred handler = (original, replacement, conflict) -> {
-            if (conflict != null) conflicts.incrementAndGet();
+            if (conflict != null){
+                conflicts.incrementAndGet();
+            }
             counter.incrementAndGet();
         };
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler.firstTimeOnly());
@@ -83,7 +87,9 @@ public class SchemaNameAdjusterTest {
         AtomicInteger counter = new AtomicInteger();
         AtomicInteger conflicts = new AtomicInteger();
         ReplacementOccurred handler = (original, replacement, conflict) -> {
-            if (conflict != null) conflicts.incrementAndGet();
+            if (conflict != null){
+                conflicts.incrementAndGet();
+            }
             counter.incrementAndGet();
         };
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(handler.firstTimeOnly());

@@ -109,7 +109,9 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                     statement.executeUpdate("UPDATE products SET weight=100.12 WHERE id=109");
                     jdbc.rollback();
                     connection.query("SELECT * FROM products", rs -> {
-                        if (Testing.Print.isEnabled()) connection.print(rs);
+                        if (Testing.Print.isEnabled()) {
+                            connection.print(rs);
+                        }
                     });
                     connection.setAutoCommit(true);
                 }
@@ -172,7 +174,9 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 statement.executeUpdate("INSERT INTO customers VALUES(default, 'second', 'second', 'second')");
                 jdbc.commit();
                 connection.query("SELECT * FROM customers", rs -> {
-                    if (Testing.Print.isEnabled()) connection.print(rs);
+                    if (Testing.Print.isEnabled()) {
+                        connection.print(rs);
+                    }
                 });
                 connection.setAutoCommit(true);
             }
@@ -237,7 +241,9 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 }
                 jdbc.commit();
                 connection.query("SELECT * FROM customers", rs -> {
-                    if (Testing.Print.isEnabled()) connection.print(rs);
+                    if (Testing.Print.isEnabled()) {
+                        connection.print(rs);
+                    }
                 });
                 connection.setAutoCommit(true);
             }
@@ -310,7 +316,9 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                     jdbc.rollback(savepoint);
                     jdbc.commit();
                     connection.query("SELECT * FROM customers", rs -> {
-                        if (Testing.Print.isEnabled()) connection.print(rs);
+                        if (Testing.Print.isEnabled()) {
+                            connection.print(rs);
+                        }
                     });
                     connection.setAutoCommit(true);
                 }

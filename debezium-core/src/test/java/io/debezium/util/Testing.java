@@ -61,12 +61,15 @@ public interface Testing {
         }
     }
 
-    public static void print(int length, String leader, Object message) {
-        if (message != null && Print.enabled) {
-            int len = leader.length();
+    public static void print(int length,String leader,Object message){
+        if(message!=null&&Print.enabled){
+            int len=leader.length();
             System.out.print(leader);
-            if (len < length) for (int i = len; i != length; ++i)
-                System.out.print(" ");
+            if(len<length){
+                for(int i=len;i!=length;++i){
+                    System.out.print(" ");
+                }
+            }
             System.out.println(message);
         }
     }
@@ -271,7 +274,9 @@ public interface Testing {
          * @param path the path to the file or folder in the target directory
          */
         public static void delete(String path) {
-            if (path != null) delete(Paths.get(path));
+            if (path != null){
+                delete(Paths.get(path));
+            }
         }
 
         /**
@@ -281,7 +286,9 @@ public interface Testing {
          * @param fileOrFolder the file or folder in the target directory
          */
         public static void delete(File fileOrFolder) {
-            if (fileOrFolder != null) delete(fileOrFolder.toPath());
+            if (fileOrFolder != null){
+                delete(fileOrFolder.toPath());
+            }
         }
 
         /**
@@ -365,7 +372,9 @@ public interface Testing {
             sw.start();
             try {
                 sws.time(repeat, runnable, result -> {
-                    if (cleanup != null) cleanup.accept(result);
+                    if (cleanup != null){
+                        cleanup.accept(result);
+                    }
                 });
             } catch (Throwable t) {
                 t.printStackTrace();

@@ -28,7 +28,9 @@ public final class CollectionId implements DataCollectionId {
      */
     public static CollectionId parse(String str) {
         String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
-        if (parts.length < 3) return null;
+        if (parts.length < 3) {
+            return null;
+        }
         return new CollectionId(parts[0], parts[1], parts[2]);
     }
 
@@ -86,7 +88,9 @@ public final class CollectionId implements DataCollectionId {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof CollectionId) {
             CollectionId that = (CollectionId) obj;
             return this.replicaSetName.equals(that.replicaSetName) &&

@@ -108,16 +108,20 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public boolean equals(Object obj){
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
-        Lsn other = (Lsn) obj;
-        if (!Arrays.equals(binary, other.binary))
+        }
+        Lsn other = (Lsn)obj;
+        if (! Arrays.equals(binary,other.binary)) {
             return false;
+        }
         return true;
     }
 

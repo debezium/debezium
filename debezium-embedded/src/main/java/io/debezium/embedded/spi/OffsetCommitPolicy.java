@@ -76,7 +76,9 @@ public interface OffsetCommitPolicy {
      * @return the resulting policy; never null
      */
     default OffsetCommitPolicy or(OffsetCommitPolicy other) {
-        if ( other == null ) return this;
+        if ( other == null ) {
+            return this;
+        }
         return (number, time) -> this.performCommit(number, time) || other.performCommit(number, time);
     }
 
@@ -87,7 +89,9 @@ public interface OffsetCommitPolicy {
      * @return the resulting policy; never null
      */
     default OffsetCommitPolicy and(OffsetCommitPolicy other) {
-        if ( other == null ) return this;
+        if ( other == null ) {
+            return this;
+        }
         return (number, time) -> this.performCommit(number, time) && other.performCommit(number, time);
     }
 }

@@ -49,7 +49,9 @@ public class MySqlTaskContextTest {
     @Before
     public void beforeEach() {
         hostname = System.getProperty("database.hostname");
-        if (hostname == null) hostname = "localhost";
+        if (hostname == null) {
+            hostname = "localhost";
+        }
         String portStr = System.getProperty("database.port");
         if (portStr != null) {
             port = Integer.parseInt(portStr);

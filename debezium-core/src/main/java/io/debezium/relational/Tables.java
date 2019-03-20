@@ -202,7 +202,9 @@ public final class Tables {
     public Table renameTable(TableId existingTableId, TableId newTableId) {
         return lock.write(() -> {
             Table existing = forTable(existingTableId);
-            if (existing == null) return null;
+            if (existing == null) {
+                return null;
+            }
             tablesByTableId.remove(existing.id());
             TableImpl updated = new TableImpl(newTableId, existing.columns(),
                                               existing.primaryKeyColumnNames(), existing.defaultCharsetName());
@@ -315,7 +317,9 @@ public final class Tables {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof Tables) {
             Tables that = (Tables) obj;
             return this.tablesByTableId.equals(that.tablesByTableId);
@@ -324,7 +328,9 @@ public final class Tables {
     }
 
     public Tables subset(TableFilter filter) {
-        if (filter == null) return this;
+        if (filter == null) {
+            return this;
+        }
         return lock.read(() -> {
             Tables result = new Tables(tableIdCaseInsensitive);
             tablesByTableId.forEach((tableId, table) -> {
