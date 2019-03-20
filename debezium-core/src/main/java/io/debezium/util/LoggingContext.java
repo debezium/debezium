@@ -65,9 +65,15 @@ public class LoggingContext {
      * @throws IllegalArgumentException if any of the parameters are null
      */
     public static PreviousContext forConnector(String connectorType, String connectorName, String contextName) {
-        if (connectorType == null) throw new IllegalArgumentException("The MDC value for the connector type may not be null");
-        if (connectorName == null) throw new IllegalArgumentException("The MDC value for the connector name may not be null");
-        if (contextName == null) throw new IllegalArgumentException("The MDC value for the connector context may not be null");
+        if (connectorType == null) {
+            throw new IllegalArgumentException("The MDC value for the connector type may not be null");
+        }
+        if (connectorName == null) {
+            throw new IllegalArgumentException("The MDC value for the connector name may not be null");
+        }
+        if (contextName == null) {
+            throw new IllegalArgumentException("The MDC value for the connector context may not be null");
+        }
         PreviousContext previous = new PreviousContext();
         MDC.put(CONNECTOR_TYPE, connectorType);
         MDC.put(CONNECTOR_NAME, connectorName);
@@ -86,10 +92,18 @@ public class LoggingContext {
      * @throws IllegalArgumentException if any of the parameters are null
      */
     public static void temporarilyForConnector(String connectorType, String connectorName, String contextName, Runnable operation) {
-        if (connectorType == null) throw new IllegalArgumentException("The MDC value for the connector type may not be null");
-        if (connectorName == null) throw new IllegalArgumentException("The MDC value for the connector name may not be null");
-        if (contextName == null) throw new IllegalArgumentException("The MDC value for the connector context may not be null");
-        if (operation == null) throw new IllegalArgumentException("The operation may not be null");
+        if (connectorType == null) {
+            throw new IllegalArgumentException("The MDC value for the connector type may not be null");
+        }
+        if (connectorName == null) {
+            throw new IllegalArgumentException("The MDC value for the connector name may not be null");
+        }
+        if (contextName == null) {
+            throw new IllegalArgumentException("The MDC value for the connector context may not be null");
+        }
+        if (operation == null) {
+            throw new IllegalArgumentException("The operation may not be null");
+        }
         PreviousContext previous = new PreviousContext();
         try {
             forConnector(connectorType, connectorName, contextName);

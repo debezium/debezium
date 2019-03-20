@@ -135,7 +135,9 @@ final class ColumnImpl implements Column, Comparable<Column> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this){
+            return true;
+        }
         if (obj instanceof Column) {
             Column that = (Column) obj;
             return this.name().equalsIgnoreCase(that.name()) &&
@@ -169,9 +171,15 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (charsetName != null && !charsetName.isEmpty()) {
             sb.append(" CHARSET ").append(charsetName);
         }
-        if (!optional) sb.append(" NOT NULL");
-        if (autoIncremented) sb.append(" AUTO_INCREMENTED");
-        if (generated) sb.append(" GENERATED");
+        if (!optional) {
+            sb.append(" NOT NULL");
+        }
+        if (autoIncremented) {
+            sb.append(" AUTO_INCREMENTED");
+        }
+        if (generated) {
+            sb.append(" GENERATED");
+        }
         if (hasDefaultValue() && defaultValue() == null) {
             sb.append(" DEFAULT VALUE NULL");
         } else if (defaultValue != null) {

@@ -92,7 +92,9 @@ public class DdlChanges implements DdlParserListener {
      * @param consumer the consumer
      */
     public void groupEventsByDatabase(DatabaseEventConsumer consumer) {
-        if ( isEmpty() ) return;
+        if ( isEmpty() ) {
+            return;
+        }
         if ( databaseNames.size() <= 1 ) {
             consumer.consume(databaseNames.iterator().next(), events);
             return;

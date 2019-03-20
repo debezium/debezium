@@ -29,7 +29,9 @@ public class MaskStrings implements ColumnMapper {
      * @throws IllegalArgumentException if the {@code maxLength} is not positive
      */
     public MaskStrings(String maskValue) {
-        if (maskValue == null) throw new IllegalArgumentException("Mask value may not be null");
+        if (maskValue == null) {
+            throw new IllegalArgumentException("Mask value may not be null");
+        }
         this.converter = new MaskingValueConverter(maskValue);
     }
 

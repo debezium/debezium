@@ -199,8 +199,12 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
 
         @Override
         public void accept(List<SourceRecord> records) {
-            if (records.isEmpty()) return;
-            if (!logger.isInfoEnabled()) return;
+            if (records.isEmpty()) {
+                return;
+            }
+            if (!logger.isInfoEnabled()) {
+                return;
+            }
             summaryByReplicaSet.clear();
             records.forEach(record -> {
                 String replicaSetName = SourceInfo.replicaSetNameForPartition(record.sourcePartition());

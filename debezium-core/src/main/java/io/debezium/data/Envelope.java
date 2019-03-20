@@ -52,7 +52,9 @@ public final class Envelope {
 
         public static Operation forCode(String code) {
             for (Operation op : Operation.values()) {
-                if (op.code().equalsIgnoreCase(code)) return op;
+                if (op.code().equalsIgnoreCase(code)) {
+                    return op;
+                }
             }
             return null;
         }
@@ -211,7 +213,9 @@ public final class Envelope {
             }
 
             private void checkFieldIsDefined(String fieldName, boolean required) {
-                if (builder.field(fieldName) == null) missingFields.add(fieldName);
+                if (builder.field(fieldName) == null) {
+                    missingFields.add(fieldName);
+                }
             }
         };
     }
@@ -243,8 +247,12 @@ public final class Envelope {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.READ.code());
         struct.put(FieldName.AFTER, record);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (source != null) {
+            struct.put(FieldName.SOURCE, source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp);
+        }
         return struct;
     }
 
@@ -260,8 +268,12 @@ public final class Envelope {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.CREATE.code());
         struct.put(FieldName.AFTER, record);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (source != null) {
+            struct.put(FieldName.SOURCE, source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp);
+        }
         return struct;
     }
 
@@ -277,10 +289,16 @@ public final class Envelope {
     public Struct update(Object before, Struct after, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.UPDATE.code());
-        if (before != null) struct.put(FieldName.BEFORE, before);
-        struct.put(FieldName.AFTER, after);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (before != null) {
+            struct.put(FieldName.BEFORE,before);
+        }
+        struct.put(FieldName.AFTER,after);
+        if (source != null) {
+            struct.put(FieldName.SOURCE,source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp);
+        }
         return struct;
     }
 
@@ -295,9 +313,15 @@ public final class Envelope {
     public Struct delete(Object before, Struct source, Long timestamp) {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.DELETE.code());
-        if (before != null) struct.put(FieldName.BEFORE, before);
-        if (source != null) struct.put(FieldName.SOURCE, source);
-        if (timestamp != null) struct.put(FieldName.TIMESTAMP, timestamp);
+        if (before != null) {
+            struct.put(FieldName.BEFORE,before);
+        }
+        if (source != null) {
+            struct.put(FieldName.SOURCE,source);
+        }
+        if (timestamp != null) {
+            struct.put(FieldName.TIMESTAMP, timestamp);
+        }
         return struct;
     }
 

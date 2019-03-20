@@ -55,9 +55,13 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
         @Override
         default int compareTo(Field that) {
-            if (that == null) return 1;
+            if (that == null) {
+                return 1;
+            }
             int diff = this.getName().toString().compareTo(that.getName().toString());
-            if (diff != 0) return diff;
+            if (diff != 0) {
+                return diff;
+            }
             return this.getValue().compareTo(that.getValue());
         }
     }
@@ -153,7 +157,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         the path was invalid and could not be resolved (and {@code invalid} is invoked)
      */
     default Optional<Value> set(Path path, boolean addIntermediaries, Value value, Consumer<Path> invalid) {
-        if (path == null) return Optional.empty();
+        if (path == null) {
+            return Optional.empty();
+        }
         if (path.isRoot()) {
             // This is an invalid path, since we don't know what to do with the value given just a root path ...
             invalid.accept(path);
@@ -185,7 +191,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
                 }
             }, invalid);
         }
-        if (!parent.isPresent()) return Optional.empty();
+        if (!parent.isPresent()) {
+            return Optional.empty();
+        }
         String lastSegment = path.lastSegment().get();
         Value parentValue = parent.get();
         if (parentValue.isDocument()) {
@@ -232,7 +240,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         valid
      */
     default Optional<Value> find(Path path, BiFunction<Path, Integer, Optional<Value>> missingSegment, Consumer<Path> invalid) {
-        if (path == null) return Optional.empty();
+        if (path == null) {
+            return Optional.empty();
+        }
         if (path.isRoot()) {
             return Optional.of(Value.create(this));
         }
@@ -316,7 +326,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Stream<Field> children(Path path) {
         Value parent = find(path).orElse(Value.create(Document.create()));
-        if (!parent.isDocument()) return Stream.empty();
+        if (!parent.isDocument()){
+            return Stream.empty();
+        }
         return parent.asDocument().stream();
     }
 
@@ -333,7 +345,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Stream<Field> children(String fieldName) {
         Document doc = getDocument(fieldName);
-        if (doc == null) return Stream.empty();
+        if (doc == null) {
+            return Stream.empty();
+        }
         return doc.stream();
     }
 
@@ -831,7 +845,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
         for (Field field : this) {
             Value existing = get(field.getName());
             Value updated = transformer.apply(field.getName(), existing);
-            if (updated == null) updated = Value.nullValue();
+            if (updated == null) {
+                updated = Value.nullValue();
+            }
             if (updated != existing) {
                 setValue(field.getName(), updated);
             }
@@ -1089,7 +1105,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Document setDocument(CharSequence name,
                                  Document document) {
-        if (document == null) document = Document.create();
+        if (document == null){
+            document = Document.create();
+        }
         setValue(name, Value.create(document));
         return getDocument(name);
     }
@@ -1114,7 +1132,9 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Array setArray(CharSequence name,
                            Array array) {
-        if (array == null) array = Array.create();
+        if (array == null){
+            array = Array.create();
+        }
         setValue(name, Value.create(array));
         return getArray(name);
     }

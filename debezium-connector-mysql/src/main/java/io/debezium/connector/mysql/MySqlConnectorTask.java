@@ -177,7 +177,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             if (startWithSnapshot) {
                 // We're supposed to start with a snapshot, so set that up ...
                 SnapshotReader snapshotReader = new SnapshotReader("snapshot", taskContext);
-                if (snapshotEventsAreInserts) snapshotReader.generateInsertEvents();
+                if (snapshotEventsAreInserts) {
+                    snapshotReader.generateInsertEvents();
+                }
 
                 if (!taskContext.getConnectorConfig().getSnapshotDelay().isZero()) {
                     // Adding a timed blocking reader to delay the snapshot, can help to avoid initial rebalancing interruptions
@@ -453,7 +455,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             // Flush and stop database history, close all JDBC connections ...
-            if (this.taskContext != null) taskContext.shutdown();
+            if (this.taskContext != null) {
+                taskContext.shutdown();
+            }
         } catch (Throwable e) {
             logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
         } finally {
@@ -472,7 +476,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     protected boolean isBinlogAvailable() {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
-            if (gtidStr.trim().isEmpty()) return true; // start at beginning ...
+            if (gtidStr.trim().isEmpty()) {
+                return true; // start at beginning ...
+            }
             String availableGtidStr = connectionContext.knownGtidSet();
             if (availableGtidStr == null || availableGtidStr.trim().isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them ...
@@ -492,8 +498,12 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         }
 
         String binlogFilename = taskContext.source().binlogFilename();
-        if (binlogFilename == null) return true; // start at current position
-        if (binlogFilename.equals("")) return true; // start at beginning
+        if (binlogFilename == null) {
+            return true; // start at current position
+        }
+        if (binlogFilename.equals("")) {
+            return true; // start at beginning
+        }
 
         // Accumulate the available binlog filenames ...
         List<String> logNames = new ArrayList<>();
@@ -540,7 +550,9 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
         }
 
-        if (logNames.isEmpty()) return null;
+        if (logNames.isEmpty()) {
+            return null;
+        }
         return logNames.get(0);
     }
 

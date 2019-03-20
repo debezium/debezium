@@ -63,7 +63,9 @@ public class MongoUtil {
         }
         // Either a replica set name + an address, or just an IPv4 address ...
         int index = addresses.indexOf('/');
-        if (index < 0) return null;
+        if (index < 0) {
+            return null;
+        }
         return addresses.substring(0, index);
     }
 
@@ -180,7 +182,9 @@ public class MongoUtil {
     public static <T> boolean contains(MongoIterable<T> iterable, Predicate<T> matcher) {
         try (MongoCursor<T> cursor = iterable.iterator()) {
             while (cursor.hasNext()) {
-                if (matcher.test(cursor.next())) return true;
+                if (matcher.test(cursor.next())) {
+                    return true;
+                }
             }
         }
         return false;
@@ -278,7 +282,9 @@ public class MongoUtil {
                     }
                 }
                 ServerAddress newAddress = parseAddress(hostAndPort);
-                if (newAddress != null) addresses.add(newAddress);
+                if (newAddress != null) {
+                    addresses.add(newAddress);
+                }
             }
         }
         return addresses;

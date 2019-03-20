@@ -125,7 +125,9 @@ public class DataTypeParser {
         protected Collection<ParsingException> errors = null;
 
         protected void record(ParsingException e) {
-            if (errors == null) errors = new ArrayList<>();
+            if (errors == null) {
+                errors = new ArrayList<>();
+            }
             errors.add(e);
         }
 

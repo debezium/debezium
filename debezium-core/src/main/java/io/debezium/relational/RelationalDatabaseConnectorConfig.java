@@ -79,10 +79,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
          * @return the matching option, or null if no match is found
          */
         public static DecimalHandlingMode parse(String value) {
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
             value = value.trim();
             for (DecimalHandlingMode option : DecimalHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
             }
             return null;
         }
@@ -96,7 +100,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
          */
         public static DecimalHandlingMode parse(String value, String defaultValue) {
             DecimalHandlingMode mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }

@@ -104,7 +104,9 @@ public class RecordMakers {
      */
     public boolean hasTable(TableId tableId) {
         Long tableNumber = tableNumbersByTableId.get(tableId);
-        if ( tableNumber == null ) return false;
+        if ( tableNumber == null ) {
+            return false;
+        }
         Converter converter = convertersByTableNumber.get(tableNumber);
         return converter != null;
     }
@@ -119,7 +121,9 @@ public class RecordMakers {
      */
     public RecordsForTable forTable(long tableNumber, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
         Converter converter = convertersByTableNumber.get(tableNumber);
-        if (converter == null) return null;
+        if (converter == null) {
+            return null;
+        }
         return new RecordsForTable(converter, includedColumns, consumer);
     }
 
@@ -200,7 +204,9 @@ public class RecordMakers {
             return true;
         }
         TableSchema tableSchema = schema.schemaFor(id);
-        if (tableSchema == null) return false;
+        if (tableSchema == null) {
+            return false;
+        }
 
         String topicName = topicSelector.topicNameFor(id);
         Envelope envelope = tableSchema.getEnvelopeSchema();

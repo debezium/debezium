@@ -68,7 +68,9 @@ public interface JdbcConfiguration extends Configuration {
      * @return the ClientConfiguration; never null
      */
     public static JdbcConfiguration adapt(Configuration config) {
-        if (config instanceof JdbcConfiguration) return (JdbcConfiguration) config;
+        if (config instanceof JdbcConfiguration){
+            return (JdbcConfiguration) config;
+        }
         return new JdbcConfiguration() {
             @Override
             public Set<String> keys() {

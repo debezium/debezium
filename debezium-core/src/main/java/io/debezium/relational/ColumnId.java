@@ -39,7 +39,9 @@ public final class ColumnId implements Comparable<ColumnId> {
         Map<TableId,Set<String>> excludedColumnNamesByTable = new HashMap<>();
         columnExclusions.forEach(columnId->{
             excludedColumnNamesByTable.compute(columnId.tableId(), (tableId,columns)->{
-                if ( columns == null ) columns = new HashSet<String>();
+                if ( columns == null ){
+                    columns = new HashSet<String>();
+                }
                 columns.add(columnId.columnName().toLowerCase());
                 return columns;
             });
@@ -75,9 +77,13 @@ public final class ColumnId implements Comparable<ColumnId> {
      */
     private static ColumnId parse(String str, boolean useCatalogBeforeSchema) {
         String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
-        if ( parts.length < 2 ) return null;
+        if ( parts.length < 2 ){
+            return null;
+        }
         TableId tableId = TableId.parse(parts, parts.length - 1, useCatalogBeforeSchema);
-        if ( tableId == null ) return null;
+        if ( tableId == null ){
+            return null;
+        }
         return new ColumnId(tableId,parts[parts.length-1]);
     }
 
@@ -160,12 +166,16 @@ public final class ColumnId implements Comparable<ColumnId> {
 
     @Override
     public int compareTo(ColumnId that) {
-        if (this == that) return 0;
+        if (this == that){
+            return 0;
+        }
         return this.id.compareTo(that.id);
     }
 
     public int compareToIgnoreCase(ColumnId that) {
-        if (this == that) return 0;
+        if (this == that){
+            return 0;
+        }
         return this.id.compareToIgnoreCase(that.id);
     }
 

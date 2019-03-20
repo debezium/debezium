@@ -107,7 +107,9 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
     }
 
     protected void configure(JsonGenerator generator) {
-        if (pretty) generator.setPrettyPrinter(new DefaultPrettyPrinter());
+        if (pretty) {
+            generator.setPrettyPrinter(new DefaultPrettyPrinter());
+        }
     }
 
     protected void writeDocument(Document document, JsonGenerator generator) throws IOException {

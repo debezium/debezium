@@ -143,7 +143,9 @@ public interface Column extends Comparable<Column> {
 
     @Override
     default int compareTo(Column that) {
-        if (this == that) return 0;
+        if (this == that) {
+            return 0;
+        }
         return this.position() - that.position();
     }
 
