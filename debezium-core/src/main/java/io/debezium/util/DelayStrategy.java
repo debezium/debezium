@@ -51,7 +51,9 @@ public interface DelayStrategy {
      */
     public static DelayStrategy constant(long delayInMilliseconds) {
         return (criteria) -> {
-            if (!criteria) return false;
+            if (!criteria){
+                return false;
+            }
             try {
                 Thread.sleep(delayInMilliseconds);
             } catch (InterruptedException e) {
@@ -69,7 +71,9 @@ public interface DelayStrategy {
      * @return the strategy; never null
      */
     public static DelayStrategy linear(long delayInMilliseconds) {
-        if (delayInMilliseconds <= 0) throw new IllegalArgumentException("Initial delay must be positive");
+        if (delayInMilliseconds <= 0){
+            throw new IllegalArgumentException("Initial delay must be positive");
+        }
         return new DelayStrategy() {
             private long misses = 0;
 
@@ -114,10 +118,15 @@ public interface DelayStrategy {
      * @return the strategy
      */
     public static DelayStrategy exponential(long initialDelayInMilliseconds, long maxDelayInMilliseconds, double backOffMultiplier) {
-        if (backOffMultiplier <= 1.0) throw new IllegalArgumentException("Backup multiplier must be greater than 1");
-        if (initialDelayInMilliseconds <= 0) throw new IllegalArgumentException("Initial delay must be positive");
-        if (initialDelayInMilliseconds >= maxDelayInMilliseconds)
+        if (backOffMultiplier <= 1.0){
+            throw new IllegalArgumentException("Backup multiplier must be greater than 1");
+        }
+        if (initialDelayInMilliseconds <= 0){
+            throw new IllegalArgumentException("Initial delay must be positive");
+        }
+        if (initialDelayInMilliseconds >= maxDelayInMilliseconds){
             throw new IllegalArgumentException("Maximum delay must be greater than initial delay");
+        }
         return new DelayStrategy() {
             private long previousDelay = 0;
 

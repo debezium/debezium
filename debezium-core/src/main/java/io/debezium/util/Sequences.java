@@ -74,7 +74,9 @@ public class Sequences {
      */
     @SafeVarargs
     public static <T> Supplier<T> randomlySelect(T first, T... additional) {
-        if (additional == null || additional.length == 0) return () -> first;
+        if (additional == null || additional.length == 0){
+            return () -> first;
+        }
         Random rng = new Random(System.currentTimeMillis());
         int max = additional.length + 1;
         return () -> {
@@ -92,7 +94,9 @@ public class Sequences {
      */
     @SafeVarargs
     public static <T> Supplier<T> randomlySelect(T... values) {
-        if (values == null || values.length == 0) throw new IllegalArgumentException("The values array may not be null or empty");
+        if (values == null || values.length == 0){
+            throw new IllegalArgumentException("The values array may not be null or empty");
+        }
         Random rng = new Random(System.currentTimeMillis());
         return () -> values[rng.nextInt(values.length)];
     }

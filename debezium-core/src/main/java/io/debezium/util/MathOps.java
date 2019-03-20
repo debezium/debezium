@@ -21,63 +21,116 @@ import io.debezium.annotation.Immutable;
 public final class MathOps {
 
     public static Number add(Number first, Number second) {
-        if (second == null)
+        if (second == null){
             return first;
-        else if (first == null) return second;
-        if (first instanceof Short) return add((Short) first, second);
-        if (first instanceof Integer) return add((Integer) first, second);
-        if (first instanceof Long) return add((Long) first, second);
-        if (first instanceof Float) return add((Float) first, second);
-        if (first instanceof Double) return add((Double) first, second);
-        if (first instanceof BigInteger) return add((BigInteger) first, second);
-        if (first instanceof BigDecimal) return add((BigDecimal) first, second);
-        if (first instanceof AtomicLong) return add((AtomicLong) first, second);
-        if (first instanceof AtomicInteger) return add((AtomicInteger) first, second);
+        }
+        else if (first == null){
+            return second;
+        }
+        if (first instanceof Short){
+            return add((Short) first, second);
+        }
+        if (first instanceof Integer){
+            return add((Integer) first, second);
+        }
+        if (first instanceof Long){
+            return add((Long) first, second);
+        }
+        if (first instanceof Float){
+            return add((Float) first, second);
+        }
+        if (first instanceof Double){
+            return add((Double) first, second);
+        }
+        if (first instanceof BigInteger){
+            return add((BigInteger) first, second);
+        }
+        if (first instanceof BigDecimal){
+            return add((BigDecimal) first, second);
+        }
+        if (first instanceof AtomicLong){
+            return add((AtomicLong) first, second);
+        }
+        if (first instanceof AtomicInteger){
+            return add((AtomicInteger) first, second);
+        }
         throw new IllegalArgumentException();
     }
 
     public static Number add(Short first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
     public static Number add(Short first, short second) {
         int sum = first.shortValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
         return Integer.valueOf(sum);
     }
 
     public static Number add(Short first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Short first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Short first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Short first, double second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
@@ -118,48 +171,82 @@ public final class MathOps {
     }
 
     public static Number add(Integer first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
     public static Number add(Integer first, short second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Integer first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Integer first, double second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
@@ -200,48 +287,82 @@ public final class MathOps {
     }
 
     public static Number add(Long first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
     public static Number add(Long first, short second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Long first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Long first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) return Short.valueOf((short) sum);
-        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) return Integer.valueOf((int) sum);
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+            return Short.valueOf((short) sum);
+        }
+        if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum){
+            return Integer.valueOf((int) sum);
+        }
         return Long.valueOf(sum);
     }
 
     public static Number add(Long first, float second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Long first, double second) {
         double sum = first.doubleValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
@@ -282,45 +403,73 @@ public final class MathOps {
     }
 
     public static Number add(Float first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
     public static Number add(Float first, short second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Float first, int second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Float first, long second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Float first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Float first, double second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
@@ -361,45 +510,73 @@ public final class MathOps {
     }
 
     public static Number add(Double first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
     public static Number add(Double first, short second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Double first, int second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Double first, long second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Double first, float second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
     public static Number add(Double first, double second) {
         double sum = first.floatValue() + second;
-        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum) return Float.valueOf((float) sum);
+        if (Float.MAX_VALUE >= sum && Float.MIN_VALUE <= sum){
+            return Float.valueOf((float) sum);
+        }
         return Double.valueOf(sum);
     }
 
@@ -440,15 +617,33 @@ public final class MathOps {
     }
 
     public static Number add(BigInteger first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first,(Short)second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
@@ -509,15 +704,33 @@ public final class MathOps {
     }
 
     public static Number add(BigDecimal first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
@@ -578,15 +791,33 @@ public final class MathOps {
     }
 
     public static Number add(AtomicInteger first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 
@@ -647,15 +878,33 @@ public final class MathOps {
     }
 
     public static Number add(AtomicLong first, Number second) {
-        if (second instanceof Short) return add(first, (Short) second);
-        if (second instanceof Integer) return add(first, (Integer) second);
-        if (second instanceof Long) return add(first, (Long) second);
-        if (second instanceof Float) return add(first, (Float) second);
-        if (second instanceof Double) return add(first, (Double) second);
-        if (second instanceof BigInteger) return add(first, (BigInteger) second);
-        if (second instanceof BigDecimal) return add(first, (BigDecimal) second);
-        if (second instanceof AtomicInteger) return add(first, (AtomicInteger) second);
-        if (second instanceof AtomicLong) return add(first, (AtomicLong) second);
+        if (second instanceof Short){
+            return add(first, (Short) second);
+        }
+        if (second instanceof Integer){
+            return add(first, (Integer) second);
+        }
+        if (second instanceof Long){
+            return add(first, (Long) second);
+        }
+        if (second instanceof Float){
+            return add(first, (Float) second);
+        }
+        if (second instanceof Double){
+            return add(first, (Double) second);
+        }
+        if (second instanceof BigInteger){
+            return add(first, (BigInteger) second);
+        }
+        if (second instanceof BigDecimal){
+            return add(first, (BigDecimal) second);
+        }
+        if (second instanceof AtomicInteger){
+            return add(first, (AtomicInteger) second);
+        }
+        if (second instanceof AtomicLong){
+            return add(first, (AtomicLong) second);
+        }
         throw new IllegalArgumentException();
     }
 

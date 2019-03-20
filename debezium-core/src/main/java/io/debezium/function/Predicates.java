@@ -220,7 +220,9 @@ public class Predicates {
             String str = conversion.apply(t);
             if (str != null) {
                 for (Pattern p : patterns) {
-                    if (p.matcher(str).matches()) return Optional.of(p);
+                    if (p.matcher(str).matches()){
+                        return Optional.of(p);
+                    }
                 }
             }
             return Optional.empty();

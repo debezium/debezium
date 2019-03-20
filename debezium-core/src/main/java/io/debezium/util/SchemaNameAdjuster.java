@@ -110,7 +110,9 @@ public interface SchemaNameAdjuster {
          * @return the new function; never null
          */
         default ReplacementOccurred andThen(ReplacementOccurred next) {
-            if (next == null) return this;
+            if (next == null){
+                return this;
+            }
             return (original, replacement, conflictsWith) -> {
                 accept(original, replacement, conflictsWith);
                 next.accept(original, replacement, conflictsWith);
@@ -228,12 +230,18 @@ public interface SchemaNameAdjuster {
      * @return {@code true} if the fullname satisfies Avro rules, or {@code false} otherwise
      */
     public static boolean isValidFullname(String fullname) {
-        if (fullname.length() == 0) return true;
+        if (fullname.length() == 0){
+            return true;
+        }
         char c = fullname.charAt(0);
-        if (!isValidFullnameFirstCharacter(c)) return false;
+        if (!isValidFullnameFirstCharacter(c)){
+            return false;
+        }
         for (int i = 1; i != fullname.length(); ++i) {
             c = fullname.charAt(i);
-            if (!isValidFullnameNonFirstCharacter(c)) return false;
+            if (!isValidFullnameNonFirstCharacter(c)){
+                return false;
+            }
         }
         return true;
     }
@@ -301,7 +309,9 @@ public interface SchemaNameAdjuster {
      * @return the valid fullname for Avro; never null
      */
     public static String validFullname(String proposedName, ReplacementFunction replacement, ReplacementOccurred uponReplacement) {
-        if (proposedName.length() == 0) return proposedName;
+        if (proposedName.length() == 0){
+            return proposedName;
+        }
         StringBuilder sb = new StringBuilder();
         char c = proposedName.charAt(0);
         boolean changed = false;
@@ -320,7 +330,9 @@ public interface SchemaNameAdjuster {
                 changed = true;
             }
         }
-        if (!changed) return proposedName;
+        if (!changed){
+            return proposedName;
+        }
         // Otherwise, it is different ...
         String result = sb.toString();
         if (uponReplacement != null) {

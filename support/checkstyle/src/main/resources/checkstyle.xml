@@ -56,6 +56,7 @@
         <module name="CovariantEquals" />
 
         <module name="MissingOverride"/>
+        <module name="NeedBraces"/>
 
         <!-- Checks for blocks. You know, those {}'s -->
         <module name="LeftCurly">

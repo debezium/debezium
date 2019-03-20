@@ -50,11 +50,15 @@ public final class Strings {
      * @return the set of objects included in the list; never null
      */
     public static <T> Set<T> setOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
-        if (input == null) return Collections.emptySet();
+        if (input == null){
+            return Collections.emptySet();
+        }
         Set<T> matches = new HashSet<>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
-            if (obj != null) matches.add(obj);
+            if (obj != null){
+                matches.add(obj);
+            }
         }
         return matches;
     }
@@ -68,11 +72,15 @@ public final class Strings {
      * @return the list of objects included in the list; never null
      */
     public static <T> List<T> listOf(String input, Function<String, String[]> splitter, Function<String, T> factory) {
-        if (input == null) return Collections.emptyList();
+        if (input == null){
+            return Collections.emptyList();
+        }
         List<T> matches = new ArrayList<T>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
-                        if (obj != null) matches.add(obj);
+                        if (obj != null){
+                            matches.add(obj);
+                        }
         }
         return matches;
     }
@@ -160,7 +168,9 @@ public final class Strings {
      * @return the list of lines; never null but may be an empty (unmodifiable) list if the supplied content is null or empty
      */
     public static List<String> splitLines(final String content) {
-        if (content == null || content.length() == 0) return Collections.emptyList();
+        if (content == null || content.length() == 0){
+            return Collections.emptyList();
+        }
         String[] lines = content.split("[\\r]?\\n");
         return Arrays.asList(lines);
     }
@@ -174,9 +184,15 @@ public final class Strings {
      *         both are null), or a positive integer if the first sequence is greater than the second
      */
     public static int compareTo(CharSequence str1, CharSequence str2) {
-        if (str1 == str2) return 0;
-        if (str1 == null) return -1;
-        if (str2 == null) return 1;
+        if (str1 == str2){
+            return 0;
+        }
+        if (str1 == null){
+            return -1;
+        }
+        if (str2 == null){
+            return 1;
+        }
         return str1.toString().compareTo(str2.toString());
     }
 
@@ -189,8 +205,12 @@ public final class Strings {
      *         otherwise
      */
     public static boolean equalsIgnoreCase(String str1, String str2) {
-        if (str1 == str2) return true;
-        if (str1 == null) return str2 == null;
+        if (str1 == str2){
+            return true;
+        }
+        if (str1 == null){
+            return str2 == null;
+        }
         return str1.equalsIgnoreCase(str2);
     }
 
@@ -208,8 +228,12 @@ public final class Strings {
     public static String join(CharSequence delimiter, int[] values) {
         Objects.requireNonNull(delimiter);
         Objects.requireNonNull(values);
-        if (values.length == 0) return "";
-        if (values.length == 1) return Integer.toString(values[0]);
+        if (values.length == 0){
+            return "";
+        }
+        if (values.length == 1){
+            return Integer.toString(values[0]);
+        }
         StringBuilder sb = new StringBuilder();
         sb.append(values[0]);
         for (int i = 1; i != values.length; ++i) {
@@ -252,7 +276,9 @@ public final class Strings {
         Objects.requireNonNull(delimiter);
         Objects.requireNonNull(values);
         Iterator<T> iter = values.iterator();
-        if (!iter.hasNext()) return "";
+        if (!iter.hasNext()){
+            return "";
+        }
         StringBuilder sb = new StringBuilder();
         String first = conversion.apply(iter.next());
         boolean delimit = false;
@@ -296,7 +322,9 @@ public final class Strings {
      */
     public static String trim(String str, CharacterPredicate predicate) {
         int len = str.length();
-        if (len == 0) return str;
+        if (len == 0){
+            return str;
+        }
         int st = 0;
         while ((st < len) && predicate.test(str.charAt(st))) {
             st++;
@@ -336,7 +364,9 @@ public final class Strings {
     public static String pad(String original,
                              int length,
                              char padChar) {
-        if (original.length() >= length) return original;
+        if (original.length() >= length){
+            return original;
+        }
         StringBuilder sb = new StringBuilder(original);
         while (sb.length() < length) {
             sb.append(padChar);
@@ -527,7 +557,9 @@ public final class Strings {
      * @return the stack trace, or null if the supplied exception is null
      */
     public static String getStackTrace(Throwable throwable) {
-        if (throwable == null) return null;
+        if (throwable == null){
+            return null;
+        }
         final ByteArrayOutputStream bas = new ByteArrayOutputStream();
         final PrintWriter pw = new PrintWriter(bas);
         throwable.printStackTrace(pw);
@@ -744,13 +776,17 @@ public final class Strings {
      * @return the function that will replace variables in supplied strings; never null
      */
     public static String replaceVariables(String value, Function<String, String> replacementsByVariableName) {
-        if (value == null || value.trim().length() == 0) return value;
+        if (value == null || value.trim().length() == 0){
+            return value;
+        }
 
         StringBuilder sb = new StringBuilder(value);
 
         // Get the index of the first constant, if any
         int startName = sb.indexOf(CURLY_PREFIX);
-        if (startName == -1) return value;
+        if (startName == -1){
+            return value;
+        }
 
         // process as many different variable groupings that are defined, where one group will resolve to one property
         // substitution
@@ -832,7 +868,9 @@ public final class Strings {
      * @return {@code true} if the string is a valid representation of a UUID, or {@code false} otherwise
      */
     public static boolean isUuid(String str) {
-        if (str == null) return false;
+        if (str == null){
+            return false;
+        }
         try {
             UUID.fromString(str);
             return true;

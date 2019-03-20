@@ -27,7 +27,9 @@ public interface ValueConverter {
      * @return the new converter, or this converter if {@code fallback} is {@code null}
      */
     default ValueConverter or(ValueConverter fallback) {
-        if (fallback == null) return this;
+        if (fallback == null){
+            return this;
+        }
         return (data) -> {
             Object result = convert(data);
             return result != null || data == null ? result : fallback.convert(data);
@@ -41,7 +43,9 @@ public interface ValueConverter {
      * @return the new converter, or this converter if {@code delegate} is {@code null}
      */
     default ValueConverter and(ValueConverter delegate) {
-        if (delegate == null) return this;
+        if (delegate == null){
+            return this;
+        }
         return (data) -> {
             return delegate.convert(convert(data));
         };
@@ -54,7 +58,9 @@ public interface ValueConverter {
      */
     default ValueConverter nullOr() {
         return (data) -> {
-            if (data == null) return null;
+            if (data == null){
+                return null;
+            }
             return convert(data);
         };
     }

@@ -146,8 +146,12 @@ public class SchemaUtil {
                     appendFirst("type", schema.type());
                 }
                 appendAdditional("optional", schema.isOptional());
-                if (schema.doc() != null) appendAdditional("doc", schema.doc());
-                if (schema.version() != null) appendAdditional("version", schema.version());
+                if (schema.doc() != null){
+                    appendAdditional("doc", schema.doc());
+                }
+                if (schema.version() != null){
+                    appendAdditional("version", schema.version());
+                }
                 switch (schema.type()) {
                     case STRUCT:
                         appendAdditional("fields", schema.fields());
@@ -167,10 +171,12 @@ public class SchemaUtil {
                 sb.append('{');
                 boolean first = true;
                 for (Field field : s.schema().fields()) {
-                    if (first)
-                        first = false;
-                    else
+                    if (first){
+                        first=false;
+                    }
+                    else{
                         sb.append(", ");
+                    }
                     appendFirst(field.name(), s.get(field));
                 }
                 sb.append('}');
@@ -196,10 +202,12 @@ public class SchemaUtil {
                 sb.append('[');
                 boolean first = true;
                 for (Object value : list) {
-                    if (first)
-                        first = false;
-                    else
+                    if (first){
+                        first=false;
+                    }
+                    else{
                         sb.append(", ");
+                    }
                     append(value);
                 }
                 sb.append(']');

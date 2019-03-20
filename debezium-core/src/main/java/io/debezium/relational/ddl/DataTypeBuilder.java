@@ -24,11 +24,15 @@ public class DataTypeBuilder {
     public void addToName(String str) {
         if (length == -1) {
             // Length hasn't been set yet, so add to the prefix ...
-            if (prefix.length() != 0) prefix.append(' ');
+            if (prefix.length() != 0){
+                prefix.append(' ');
+            }
             prefix.append(str);
         } else {
             // Length has already been set, so add as a suffix ...
-            if (suffix.length() != 0) suffix.append(' ');
+            if (suffix.length() != 0){
+                suffix.append(' ');
+            }
             suffix.append(str);
         }
     }

@@ -131,7 +131,9 @@ public class DataTypeGrammarParser {
         Pattern pattern = null;
         while (stream.hasNext()) {
             Pattern inner = parsePattern(stream);
-            if (inner == null) return pattern;
+            if (inner == null){
+                return pattern;
+            }
             if ( stream.canConsume('|')) {
                 Pattern orPattern = parseMultiple(stream);
                 inner = new OrPattern(inner,orPattern);
@@ -265,7 +267,9 @@ public class DataTypeGrammarParser {
         public boolean match(TokenStream stream, DataTypeBuilder builder, Consumer<ParsingException> error) {
             Marker marker = stream.mark();
             try {
-                if (pattern1.match(stream, builder, error) && pattern2.match(stream, builder, error)) return true;
+                if (pattern1.match(stream, builder, error) && pattern2.match(stream, builder, error)){
+                    return true;
+                }
             } catch (ParsingException e) {
                 stream.rewind(marker);
             }
@@ -274,7 +278,9 @@ public class DataTypeGrammarParser {
 
         @Override
         public boolean determineFirstTokens(Consumer<String> tokens) {
-            if (!pattern1.determineFirstTokens(tokens)) return false;
+            if (!pattern1.determineFirstTokens(tokens)){
+                return false;
+            }
             return pattern2.determineFirstTokens(tokens);
         }
 
@@ -297,11 +303,15 @@ public class DataTypeGrammarParser {
         public boolean match(TokenStream stream, DataTypeBuilder builder, Consumer<ParsingException> error) {
             Marker marker = stream.mark();
             try {
-                if (pattern1.match(stream, builder, error)) return true;
+                if (pattern1.match(stream, builder, error)){
+                    return true;
+                }
             } catch (ParsingException e) {}
             stream.rewind(marker);
             try {
-                if (pattern2.match(stream, builder, error)) return true;
+                if (pattern2.match(stream, builder, error)){
+                    return true;
+                }
             } catch (ParsingException e) {}
             stream.rewind(marker);
             return false;
@@ -334,7 +344,9 @@ public class DataTypeGrammarParser {
         @Override
         public boolean match(TokenStream stream, DataTypeBuilder builder, Consumer<ParsingException> error) {
             stream.consume(literal);
-            if (addToBuilder) builder.addToName(literal);
+            if (addToBuilder){
+                builder.addToName(literal);
+            }
             return true;
         }
 
@@ -363,7 +375,9 @@ public class DataTypeGrammarParser {
         @Override
         public boolean match(TokenStream stream, DataTypeBuilder builder, Consumer<ParsingException> error) {
             String variableName = stream.consume();
-            if (addToBuilder) builder.addToName(variableName);
+            if (addToBuilder){
+                builder.addToName(variableName);
+            }
             return true;
         }
 

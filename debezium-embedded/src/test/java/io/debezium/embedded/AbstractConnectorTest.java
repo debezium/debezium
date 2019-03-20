@@ -159,7 +159,9 @@ public abstract class AbstractConnectorTest implements Testing {
                     Thread.interrupted();
                 }
             }
-            if (callback != null) callback.accept(engine != null ? engine.isRunning() : false);
+            if (callback != null){
+                callback.accept(engine != null ? engine.isRunning() : false);
+            }
         } finally {
             engine = null;
             executor = null;
@@ -255,7 +257,9 @@ public abstract class AbstractConnectorTest implements Testing {
         latch = new CountDownLatch(1);
         CompletionCallback wrapperCallback = (success, msg, error) -> {
             try {
-                if (callback != null) callback.handle(success, msg, error);
+                if (callback != null){
+                    callback.handle(success, msg, error);
+                }
             } finally {
                 if (!success) {
                     // we only unblock if there was an error; in all other cases we're unblocking when a task has been started
@@ -319,7 +323,9 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param unit the time unit; may not be null
      */
     protected void setConsumeTimeout(long timeout, TimeUnit unit) {
-        if (timeout < 0) throw new IllegalArgumentException("The timeout may not be negative");
+        if (timeout < 0){
+            throw new IllegalArgumentException("The timeout may not be negative");
+        }
         pollTimeoutInMs = unit.toMillis(timeout);
     }
 
@@ -408,7 +414,9 @@ public abstract class AbstractConnectorTest implements Testing {
             records.add(record);
             recordsByTopic.computeIfAbsent(record.topic(), (topicName) -> new ArrayList<SourceRecord>()).add(record);
             String dbName = getAffectedDatabase(record);
-            if (dbName != null) ddlRecordsByDbName.computeIfAbsent(dbName, key -> new ArrayList<>()).add(record);
+            if (dbName != null){
+                ddlRecordsByDbName.computeIfAbsent(dbName, key -> new ArrayList<>()).add(record);
+            }
         }
 
         protected String getAffectedDatabase(SourceRecord record) {
@@ -509,7 +517,9 @@ public abstract class AbstractConnectorTest implements Testing {
         long now = System.currentTimeMillis();
         long stop = now + unit.toMillis(timeout);
         while (System.currentTimeMillis() < stop) {
-            if (!consumedLines.isEmpty()) break;
+            if (!consumedLines.isEmpty()){
+                break;
+            }
         }
         return consumedLines.isEmpty() ? false : true;
     }

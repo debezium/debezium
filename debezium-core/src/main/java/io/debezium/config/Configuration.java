@@ -704,7 +704,9 @@ public interface Configuration {
 
         protected Builder changeString(String key, String defaultValue, Function<String, String> function) {
             String existing = props.getProperty(key);
-            if (existing == null) existing = defaultValue;
+            if (existing == null){
+                existing = defaultValue;
+            }
             String newValue = function.apply(existing);
             return with(key, newValue);
         }
@@ -777,7 +779,9 @@ public interface Configuration {
      */
     public static Configuration from(Properties properties) {
         Properties props = new Properties();
-        if (properties != null) props.putAll(properties);
+        if (properties != null){
+            props.putAll(properties);
+        }
         return new Configuration() {
             @Override
             public String getString(String key) {
@@ -805,7 +809,9 @@ public interface Configuration {
      */
     public static Configuration from(Map<String, ?> properties) {
         return from(properties, value -> {
-            if (value == null) return null;
+            if (value == null){
+                return null;
+            }
             if (value instanceof Collection<?>) {
                 return Strings.join(",", (List<?>) value);
             }
@@ -824,7 +830,9 @@ public interface Configuration {
      */
     public static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
         Map<String, Object> props = new HashMap<>();
-        if (properties != null) props.putAll(properties);
+        if (properties != null){
+            props.putAll(properties);
+        }
         return new Configuration() {
             @Override
             public String getString(String key) {
@@ -1061,7 +1069,9 @@ public interface Configuration {
      */
     default List<String> getStrings(String key, String regex) {
         String value = getString(key);
-        if (value == null) return null;
+        if (value == null){
+            return null;
+        }
         return Collect.arrayListOf(value.split(regex));
     }
 
@@ -1206,8 +1216,12 @@ public interface Configuration {
         String value = getString(key);
         if (value != null) {
             value = value.trim().toLowerCase();
-            if (Boolean.valueOf(value)) return Boolean.TRUE;
-            if (value.equals("false")) return false;
+            if (Boolean.valueOf(value)){
+                return Boolean.TRUE;
+            }
+            if (value.equals("false")){
+                return false;
+            }
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsBoolean() : null;
     }
@@ -1471,9 +1485,13 @@ public interface Configuration {
      * @return the subset of this Configuration; never null
      */
     default Configuration subset(String prefix, boolean removePrefix) {
-        if (prefix == null) return this;
+        if (prefix == null){
+            return this;
+        }
         prefix = prefix.trim();
-        if (prefix.isEmpty()) return this;
+        if (prefix.isEmpty()){
+            return this;
+        }
         String prefixWithSeparator = prefix.endsWith(".") ? prefix : prefix + ".";
         int minLength = prefixWithSeparator.length();
         Function<String, String> prefixRemover = removePrefix ? key -> key.substring(minLength) : key -> key;
@@ -1487,7 +1505,9 @@ public interface Configuration {
      * @return the subset Configuration; never null
      */
     default Configuration map(Function<String, String> mapper) {
-        if (mapper == null) return this;
+        if (mapper == null){
+            return this;
+        }
         Map<String, String> newToOld = new HashMap<>();
         keys().stream().filter(k -> k != null).forEach(oldKey -> {
             String newKey = mapper.apply(oldKey);
@@ -1521,7 +1541,9 @@ public interface Configuration {
      * @return the subset Configuration; never null
      */
     default Configuration filter(Predicate<? super String> matcher) {
-        if (matcher == null) return this;
+        if (matcher == null){
+            return this;
+        }
         return new Configuration() {
             @Override
             public Set<String> keys() {
@@ -1550,7 +1572,9 @@ public interface Configuration {
      * @return the Configuration with mapped values; never null
      */
     default Configuration mapped(BiFunction<? super String, ? super String, String> mapper) {
-        if (mapper == null) return this;
+        if (mapper == null){
+            return this;
+        }
         return new Configuration() {
             @Override
             public Set<String> keys() {
@@ -1628,7 +1652,9 @@ public interface Configuration {
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMasked(String keyRegex) {
-        if (keyRegex == null) return this;
+        if (keyRegex == null){
+            return this;
+        }
         return withMasked(Pattern.compile(keyRegex));
     }
 
@@ -1640,7 +1666,9 @@ public interface Configuration {
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMasked(Pattern keyRegex) {
-        if (keyRegex == null) return this;
+        if (keyRegex == null){
+            return this;
+        }
         return new Configuration() {
             @Override
             public Set<String> keys() {
@@ -1689,7 +1717,9 @@ public interface Configuration {
         // Add all values as-is ...
         keys().forEach(key -> {
             String value = getString(key);
-            if (key != null && value != null) props.setProperty(key, value);
+            if (key != null && value != null){
+                props.setProperty(key, value);
+            }
         });
         if (fields != null) {
             // Add the default values ...
@@ -1720,7 +1750,9 @@ public interface Configuration {
         // Add all values as-is ...
         keys().forEach(key -> {
             String value = getString(key);
-            if (key != null && value != null) props.put(key, value);
+            if (key != null && value != null){
+                props.put(key, value);
+            }
         });
         if (fields != null) {
             // Add the default values ...
@@ -1788,7 +1820,9 @@ public interface Configuration {
     default boolean validate(Iterable<Field> fields, ValidationOutput problems) {
         boolean valid = true;
         for (Field field : fields) {
-            if (!field.validate(this, problems)) valid = false;
+            if (!field.validate(this, problems)){
+                valid = false;
+            }
         }
         return valid;
     }
@@ -2037,7 +2071,9 @@ public interface Configuration {
             if (matcher.matches()) {
                 String groupValue = matcher.group(groupNumber);
                 T extractedValue = groupExtractor.apply(fieldName, groupValue);
-                if (extractedValue != null) function.accept(fieldValue, extractedValue);
+                if (extractedValue != null){
+                    function.accept(fieldValue, extractedValue);
+                }
             }
         });
     }

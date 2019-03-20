@@ -83,7 +83,9 @@ public class TableSchemaBuilder {
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
     public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, Predicate<ColumnId> filter, ColumnMappers mappers) {
-        if (schemaPrefix == null) schemaPrefix = "";
+        if (schemaPrefix == null){
+            schemaPrefix = "";
+        }
         // Build the schemas ...
         final TableId tableId = table.id();
         final String tableIdStr = tableSchemaName(tableId);
@@ -331,7 +333,9 @@ public class TableSchemaBuilder {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);
             }
-            if (column.isOptional()) fieldBuilder.optional();
+            if (column.isOptional()){
+                fieldBuilder.optional();
+            }
 
             // if the default value is provided
             if (column.hasDefaultValue()) {
