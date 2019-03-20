@@ -1,9 +1,10 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.checkstyle;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -38,7 +39,7 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * A regular expression for finding the first word within a JavaDoc "@link" text.
-     * 
+     *
      * <pre>
      * (.*?)(?:\s+|#|\$)(.*)
      * </pre>
@@ -47,7 +48,7 @@ public class UnusedImports extends UnusedImportsCheck {
     /**
      * A regular expression for finding the class name (group 1) and the method parameters (group 2) within a JavaDoc "@link"
      * reference.
-     * 
+     *
      * <pre>
      * ([\w.]+)(?:\#?\w+)?(?:\(([^\)]+)\))?.*
      * </pre>
@@ -56,7 +57,7 @@ public class UnusedImports extends UnusedImportsCheck {
             "([\\w.]+)(?:\\#?\\w+)?(?:\\(([^\\)]+)\\))?.*");
     /**
      * A regular expression for finding the first classname referenced in a "@link" reference.
-     * 
+     *
      * <pre>
      * \{\@link\s+([^}]*)
      * </pre>
@@ -73,13 +74,13 @@ public class UnusedImports extends UnusedImportsCheck {
     }
 
     @Override
-    public void setProcessJavadoc( boolean aValue ) {
+    public void setProcessJavadoc(boolean aValue) {
         super.setProcessJavadoc(aValue);
         processJavaDoc = aValue;
     }
 
     @Override
-    public void beginTree( DetailAST aRootAST ) {
+    public void beginTree(DetailAST aRootAST) {
         collect = false;
         imports.clear();
         referenced.clear();
@@ -87,43 +88,49 @@ public class UnusedImports extends UnusedImportsCheck {
     }
 
     @Override
-    public void visitToken( DetailAST aAST ) {
+    public void visitToken(DetailAST aAST) {
         if (aAST.getType() == TokenTypes.CLASS_DEF) {
             String classname = aAST.findFirstToken(TokenTypes.IDENT).getText();
             print = DEBUG_CLASSNAMES_SET.contains(classname);
         }
         if (aAST.getType() == TokenTypes.IDENT) {
             super.visitToken(aAST);
-            if (collect) processIdent(aAST);
-        } else if (aAST.getType() == TokenTypes.IMPORT) {
-            super.visitToken(aAST);
-            processImport(aAST);
-        } else if (aAST.getType() == TokenTypes.STATIC_IMPORT) {
-            super.visitToken(aAST);
-            processStaticImport(aAST);
+            if (collect) {
+                processIdent(aAST);
+            }
         } else {
-            collect = true;
-            if (processJavaDoc) {
-                processJavaDocLinkParameters(aAST);
+            if (aAST.getType() == TokenTypes.IMPORT) {
                 super.visitToken(aAST);
+                processImport(aAST);
+            } else {
+                if (aAST.getType() == TokenTypes.STATIC_IMPORT) {
+                    super.visitToken(aAST);
+                    processStaticImport(aAST);
+                } else {
+                    collect = true;
+                    if (processJavaDoc) {
+                        processJavaDocLinkParameters(aAST);
+                        super.visitToken(aAST);
+                    }
+                }
             }
         }
     }
 
     /**
      * Collects references made by IDENT.
-     * 
+     *
      * @param aAST the IDENT node to process {@link ArrayList stuff}
      */
-    protected void processIdent( DetailAST aAST ) {
+    protected void processIdent(DetailAST aAST) {
         final int parentType = aAST.getParent().getType();
         if (((parentType != TokenTypes.DOT) && (parentType != TokenTypes.METHOD_DEF))
-            || ((parentType == TokenTypes.DOT) && (aAST.getNextSibling() != null))) {
+                || ((parentType == TokenTypes.DOT) && (aAST.getNextSibling() != null))) {
             referenced.add(aAST.getText());
         }
     }
 
-    protected void processJavaDocLinkParameters( DetailAST aAST ) {
+    protected void processJavaDocLinkParameters(DetailAST aAST) {
         final FileContents contents = getFileContents();
         final int lineNo = aAST.getLineNo();
         final TextBlock cmt = contents.getJavadocBefore(lineNo);
@@ -138,7 +145,7 @@ public class UnusedImports extends UnusedImportsCheck {
         }
     }
 
-    protected void processJavaDocTag( JavadocTag tag ) {
+    protected void processJavaDocTag(JavadocTag tag) {
         print("tag: ", tag);
 
         if (tag.canReferenceImports()) {
@@ -156,30 +163,34 @@ public class UnusedImports extends UnusedImportsCheck {
                 String methodCall = matcher.group(2);
                 processClassOrMethodReference(methodCall);
             }
-        } else if (tag.isParamTag()) {
-            String paramText = tag.getArg1();
-            print("Found parameter text: ", paramText);
-            // Find the links to classe
-            Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(paramText);
-            while (paramsMatcher.find()) {
-                // Found a link ...
-                String linkValue = paramsMatcher.group(1);
-                processClassOrMethodReference(linkValue);
-            }
-        } else if (tag.isReturnTag()) {
-            String returnText = tag.getArg1();
-            print("Found return text: ", returnText);
-            // Find the links to classe
-            Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(returnText);
-            while (paramsMatcher.find()) {
-                // Found a link ...
-                String linkValue = paramsMatcher.group(1);
-                processClassOrMethodReference(linkValue);
+        } else {
+            if (tag.isParamTag()) {
+                String paramText = tag.getArg1();
+                print("Found parameter text: ", paramText);
+                // Find the links to classe
+                Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(paramText);
+                while (paramsMatcher.find()) {
+                    // Found a link ...
+                    String linkValue = paramsMatcher.group(1);
+                    processClassOrMethodReference(linkValue);
+                }
+            } else {
+                if (tag.isReturnTag()) {
+                    String returnText = tag.getArg1();
+                    print("Found return text: ", returnText);
+                    // Find the links to classe
+                    Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(returnText);
+                    while (paramsMatcher.find()) {
+                        // Found a link ...
+                        String linkValue = paramsMatcher.group(1);
+                        processClassOrMethodReference(linkValue);
+                    }
+                }
             }
         }
     }
 
-    protected void processClassOrMethodReference( String text ) {
+    protected void processClassOrMethodReference(String text) {
         print("Adding referenced: ", text);
         referenced.add(text);
         // Look for all the identifiers within the parameters ...
@@ -195,7 +206,9 @@ public class UnusedImports extends UnusedImportsCheck {
             if (params != null) {
                 print("Found params: ", params);
                 for (String param : params.split(",")) {
-                    if ("...".equals(param)) continue;
+                    if ("...".equals(param)) {
+                        continue;
+                    }
                     param = param.replace("...", "").trim();
                     print("Found param: ", param);
                     referenced.add(param);
@@ -206,10 +219,10 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * Collects the details of imports.
-     * 
+     *
      * @param aAST node containing the import details
      */
-    private void processImport( DetailAST aAST ) {
+    private void processImport(DetailAST aAST) {
         final FullIdent name = FullIdent.createFullIdentBelow(aAST);
         if ((name != null) && !name.getText().endsWith(".*")) {
             imports.add(name);
@@ -218,10 +231,10 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * Collects the details of static imports.
-     * 
+     *
      * @param aAST node containing the static import details
      */
-    private void processStaticImport( DetailAST aAST ) {
+    private void processStaticImport(DetailAST aAST) {
         final FullIdent name = FullIdent.createFullIdent(aAST.getFirstChild().getNextSibling());
         if ((name != null) && !name.getText().endsWith(".*")) {
             imports.add(name);
@@ -229,7 +242,7 @@ public class UnusedImports extends UnusedImportsCheck {
     }
 
     @Override
-    public void finishTree( DetailAST aRootAST ) {
+    public void finishTree(DetailAST aRootAST) {
         // loop over all the imports to see if referenced.
         for (final FullIdent imp : imports) {
             if (!referenced.contains(Utils.baseClassname(imp.getText()))) {
@@ -240,7 +253,7 @@ public class UnusedImports extends UnusedImportsCheck {
         }
     }
 
-    private void print( Object... messages ) {
+    private void print(Object... messages) {
         if (print) {
             // CHECKSTYLE IGNORE check FOR NEXT 4 LINES
             for (Object msg : messages) {

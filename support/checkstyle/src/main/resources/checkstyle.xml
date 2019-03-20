@@ -58,6 +58,12 @@
         <module name="MissingOverride"/>
         <module name="NeedBraces"/>
 
+        <module name="NeedBraces"/>
+
+        <module name="io.debezium.checkstyle.NeedBraces">
+            <property name="tokens" value="LITERAL_IF, LITERAL_ELSE"/>
+        </module>
+
         <!-- Checks for blocks. You know, those {}'s -->
         <module name="LeftCurly">
             <property name="option" value="eol" />
