@@ -119,7 +119,9 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this){
+            return true;
+        }
         if (obj instanceof ReplicaSet) {
             ReplicaSet that = (ReplicaSet) obj;
             return Objects.equals(this.shardName, that.shardName) && Objects.equals(this.replicaSetName, that.replicaSetName) &&
@@ -130,19 +132,31 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     @Override
     public int compareTo(ReplicaSet that) {
-        if (that == this) return 0;
+        if (that == this){
+            return 0;
+        }
         int diff = compareNullable(this.shardName, that.shardName);
-        if (diff != 0) return diff;
+        if (diff != 0){
+            return diff;
+        }
         diff = compareNullable(this.replicaSetName, that.replicaSetName);
-        if (diff != 0) return diff;
+        if (diff != 0){
+            return diff;
+        }
         Iterator<ServerAddress> thisIter = this.addresses.iterator();
         Iterator<ServerAddress> thatIter = that.addresses.iterator();
         while (thisIter.hasNext() && thatIter.hasNext()) {
             diff = compare(thisIter.next(), thatIter.next());
-            if (diff != 0) return diff;
+            if (diff != 0){
+                return diff;
+            }
         }
-        if (thisIter.hasNext()) return 1;
-        if (thatIter.hasNext()) return -1;
+        if (thisIter.hasNext()){
+            return 1;
+        }
+        if (thatIter.hasNext()){
+            return -1;
+        }
         return 0;
     }
 
@@ -156,7 +170,9 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
             sb.append(replicaSetName).append('/');
         }
         Iterator<ServerAddress> iter = addresses.iterator();
-        if (iter.hasNext()) sb.append(MongoUtil.toString(iter.next()));
+        if (iter.hasNext()){
+            sb.append(MongoUtil.toString(iter.next()));
+        }
         while (iter.hasNext()) {
             sb.append(',').append(MongoUtil.toString(iter.next()));
         }
@@ -164,22 +180,36 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     }
 
     protected static int compareServerAddresses(ServerAddress one, ServerAddress two) {
-        if (one == two) return 0;
-        if (one == null) return two == null ? 0 : -1;
-        if (two == null) return 1;
+        if (one == two){
+            return 0;
+        }
+        if (one == null){
+            return two == null ? 0 : -1;
+        }
+        if (two == null){
+            return 1;
+        }
         return compare(one, two);
     }
 
     protected static int compareNullable(String str1, String str2) {
-        if (str1 == str2) return 0;
-        if (str1 == null) return str2 == null ? 0 : -1;
-        if (str2 == null) return 1;
+        if (str1 == str2){
+            return 0;
+        }
+        if (str1 == null){
+            return str2 == null ? 0 : -1;
+        }
+        if (str2 == null){
+            return 1;
+        }
         return str1.compareTo(str2);
     }
 
     protected static int compare(ServerAddress address1, ServerAddress address2) {
         int diff = address1.getHost().compareTo(address2.getHost());
-        if (diff != 0) return diff;
+        if (diff != 0){
+            return diff;
+        }
         return address1.getPort() - address2.getPort();
     }
 

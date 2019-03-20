@@ -48,26 +48,33 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
+    public boolean equals(Object obj){
+        if(this==obj){
             return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        TxLogPosition other = (TxLogPosition) obj;
-        if (commitLsn == null) {
-            if (other.commitLsn != null)
-                return false;
         }
-        else if (!commitLsn.equals(other.commitLsn))
+        if(obj==null){
             return false;
+        }
+        if(getClass()!=obj.getClass()){
+            return false;
+        }
+        TxLogPosition other=(TxLogPosition)obj;
+        if(commitLsn==null){
+            if(other.commitLsn!=null){
+                return false;
+            }
+        }
+        else if(!commitLsn.equals(other.commitLsn)){
+                return false;
+    }
         if (inTxLsn == null) {
-            if (other.inTxLsn != null)
+            if (other.inTxLsn != null){
                 return false;
+            }
         }
-        else if (!inTxLsn.equals(other.inTxLsn))
+        else if (!inTxLsn.equals(other.inTxLsn)){
             return false;
+        }
         return true;
     }
 

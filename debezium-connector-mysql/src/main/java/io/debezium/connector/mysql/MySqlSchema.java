@@ -331,12 +331,16 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                         // to the same _affected_ database...
                         ddlChanges.groupStatementStringsByDatabase((dbName, ddl) -> {
                             if (filters.databaseFilter().test(dbName) || dbName == null || "".equals(dbName)) {
-                                if (dbName == null) dbName = "";
+                                if (dbName == null){
+                                    dbName = "";
+                                }
                                 statementConsumer.consume(dbName, ddlStatements);
                             }
                         });
                     } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
-                        if (databaseName == null) databaseName = "";
+                        if (databaseName == null){
+                            databaseName = "";
+                        }
                         statementConsumer.consume(databaseName, ddlStatements);
                     }
                 }

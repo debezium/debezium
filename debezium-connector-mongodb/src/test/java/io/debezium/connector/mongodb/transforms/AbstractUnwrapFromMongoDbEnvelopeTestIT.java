@@ -77,7 +77,9 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeTestIT extends AbstractCo
             stopConnector();
         }
         finally {
-            if (context != null) context.getConnectionContext().shutdown();
+            if (context != null){
+                context.getConnectionContext().shutdown();
+            }
         }
         transformation.close();
     }

@@ -79,10 +79,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if the match is not found
          */
         public static HStoreHandlingMode parse(String value){
-            if (value == null) return null ;
+            if (value == null){
+                return null ;
+            }
             value = value.trim();
             for (HStoreHandlingMode option: HStoreHandlingMode.values()) {
-                if(option.getValue().equalsIgnoreCase(value)) return option;
+                if(option.getValue().equalsIgnoreCase(value)){
+                    return option;
+                }
             }
             return null;
         }
@@ -96,7 +100,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static HStoreHandlingMode parse(String value,String defaultValue){
             HStoreHandlingMode mode = parse(value);
-            if(mode == null && defaultValue != null ) mode = parse(defaultValue);
+            if(mode == null && defaultValue != null ){
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }
@@ -162,10 +168,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SnapshotMode parse(String value) {
-            if (value == null) return null;
+            if (value == null){
+                return null;
+            }
             value = value.trim();
             for (SnapshotMode option : SnapshotMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)){
+                    return option;
+                }
             }
             return null;
         }
@@ -179,7 +189,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SnapshotMode parse(String value, String defaultValue) {
             SnapshotMode mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            if (mode == null && defaultValue != null){
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }
@@ -238,10 +250,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SecureConnectionMode parse(String value) {
-            if (value == null) return null;
+            if (value == null){
+                return null;
+            }
             value = value.trim();
             for (SecureConnectionMode option : SecureConnectionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)){
+                    return option;
+                }
             }
             return null;
         }
@@ -255,7 +271,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SecureConnectionMode parse(String value, String defaultValue) {
             SecureConnectionMode mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            if (mode == null && defaultValue != null){
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }
@@ -305,10 +323,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static TopicSelectionStrategy parse(String value) {
-            if (value == null) return null;
+            if (value == null){
+                return null;
+            }
             value = value.trim();
             for (TopicSelectionStrategy option : TopicSelectionStrategy.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)){
+                    return option;
+                }
             }
             return null;
         }
@@ -446,7 +468,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             if (value == null) return null;
             value = value.trim();
             for (SchemaRefreshMode option : SchemaRefreshMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)){
+                    return option;
+                }
             }
             return null;
         }

@@ -150,7 +150,9 @@ public class SnapshotReader extends AbstractReader {
      */
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);
-        if (b == null) return null; // Don't continue parsing time field if it is null
+        if (b == null){
+            return null; // Don't continue parsing time field if it is null
+        }
 
         try {
             return MySqlValueConverters.stringToDuration(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
@@ -194,7 +196,9 @@ public class SnapshotReader extends AbstractReader {
             // See: https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html
             // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-isolation-levels.html
             // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
-            if (!isRunning()) return;
+            if (!isRunning()){
+                return;
+            }
             logger.info("Step 0: disabling autocommit and enabling repeatable read transactions");
             mysql.setAutoCommit(false);
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
@@ -214,7 +218,9 @@ public class SnapshotReader extends AbstractReader {
                 // Obtain read lock on all tables. This statement closes all open tables and locks all tables
                 // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
                 // It also ensures that everything we do while we have this lock will be consistent.
-                if (!isRunning()) return;
+                if (!isRunning()){
+                    return;
+                }
                 if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
                     try {
                         logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
@@ -235,7 +241,9 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
                 // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
-                if (!isRunning()) return;
+                if (!isRunning()){
+                    return;
+                }
                 logger.info("Step 2: start transaction with consistent snapshot");
                 sql.set("START TRANSACTION WITH CONSISTENT SNAPSHOT");
                 mysql.executeWithoutCommitting(sql.get());
@@ -244,7 +252,9 @@ public class SnapshotReader extends AbstractReader {
                 // ------------------------------------
                 // READ BINLOG POSITION
                 // ------------------------------------
-                if (!isRunning()) return;
+                if (!isRunning()){
+                    return;
+                }
                 step = 3;
                 if (isLocked) {
                     // Obtain the binlog position and update the SourceInfo in the context. This means that all source records
@@ -256,7 +266,9 @@ public class SnapshotReader extends AbstractReader {
                 // READ DATABASE NAMES
                 // -------------------
                 // Get the list of databases ...
-                if (!isRunning()) return;
+                if (!isRunning()){
+                    return;
+                }
                 logger.info("Step {}: read list of available databases", step++);
                 final List<String> databaseNames = new ArrayList<>();
                 sql.set("SHOW DATABASES");
@@ -273,7 +285,9 @@ public class SnapshotReader extends AbstractReader {
                 // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
                 // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
                 // we are reading the database names from the database and not taking them from the user ...
-                if (!isRunning()) return;
+                if (!isRunning()){
+                    return;
+                }
                 logger.info("Step {}: read list of available tables in each database", step++);
                 List<TableId> tableIds = new ArrayList<>();
                 //List<TableId> allTableIds = new ArrayList<>();
@@ -387,14 +401,18 @@ public class SnapshotReader extends AbstractReader {
 
                     // Now process all of our tables for each database ...
                     for (Map.Entry<String, List<TableId>> entry : createTablesMap.entrySet()) {
-                        if (!isRunning()) break;
+                        if (!isRunning()){
+                            break;
+                        }
                         String dbName = entry.getKey();
                         // First drop, create, and then use the named database ...
                         schema.applyDdl(source, dbName, "DROP DATABASE IF EXISTS " + quote(dbName), this::enqueueSchemaChanges);
                         schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
                         schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
                         for (TableId tableId : entry.getValue()) {
-                            if (!isRunning()) break;
+                            if (!isRunning()){
+                                break;
+                            }
                             sql.set("SHOW CREATE TABLE " + quote(tableId));
                             mysql.query(sql.get(), rs -> {
                                 if (rs.next()) {
@@ -444,7 +462,9 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // Use a buffered blocking consumer to buffer all of the records, so that after we copy all of the tables
                 // and produce events we can update the very last event with the non-snapshot offset ...
-                if (!isRunning()) return;
+                if (!isRunning()){
+                    return;
+                }
                 if (includeData) {
                     BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
 
@@ -461,7 +481,9 @@ public class SnapshotReader extends AbstractReader {
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
                         AtomicLong rowNum = new AtomicLong();
-                        if (!isRunning()) break;
+                        if (!isRunning()){
+                            break;
+                        }
 
                         // Obtain a record maker for this table, which knows about the schema ...
                         RecordsForTable recordMaker = context.makeRecord().forTable(tableId, null, bufferedRecordQueue);
@@ -548,14 +570,18 @@ public class SnapshotReader extends AbstractReader {
                             }
                             finally {
                                 metrics.tableSnapshotCompleted(tableId, rowNum.get());
-                                if (interrupted.get()) break;
+                                if (interrupted.get()){
+                                    break;
+                                }
                             }
                         }
                         ++completedCounter;
                     }
 
                     // See if we've been stopped or interrupted ...
-                    if (!isRunning() || interrupted.get()) return;
+                    if (!isRunning() || interrupted.get()){
+                        return;
+                    }
 
                     // We've copied all of the tables and we've not yet been stopped, but our buffer holds onto the
                     // very last record. First mark the snapshot as complete and then apply the updated offset to
@@ -813,7 +839,9 @@ public class SnapshotReader extends AbstractReader {
      * @return the updated record
      */
     protected SourceRecord replaceOffset(SourceRecord record) {
-        if (record == null) return null;
+        if (record == null){
+            return null;
+        }
         Map<String, ?> newOffset = context.source().offset();
         return new SourceRecord(record.sourcePartition(),
                 newOffset,

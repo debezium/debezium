@@ -124,17 +124,22 @@ public class BinlogReader extends AbstractReader {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj){
                 return true;
-            if (obj == null)
+            }
+            if (obj == null){
                 return false;
-            if (getClass() != obj.getClass())
+            }
+            if (getClass() != obj.getClass()){
                 return false;
+            }
             BinlogPosition other = (BinlogPosition) obj;
-            if (!filename.equals(other.filename))
+            if (!filename.equals(other.filename)){
                 return false;
-            if (position != other.position)
+            }
+            if (position != other.position){
                 return false;
+            }
             return true;
         }
     }
@@ -185,7 +190,9 @@ public class BinlogReader extends AbstractReader {
                 : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
 
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
-        if (logger.isDebugEnabled()) client.registerEventListener(this::logEvent);
+        if (logger.isDebugEnabled()){
+            client.registerEventListener(this::logEvent);
+        }
 
         boolean filterDmlEventsByGtidSource = context.config().getBoolean(MySqlConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS);
         gtidDmlSourceFilter = filterDmlEventsByGtidSource ? context.gtidSourceFilter() : null;
@@ -432,7 +439,9 @@ public class BinlogReader extends AbstractReader {
     }
 
     protected void handleEvent(Event event) {
-        if (event == null) return;
+        if (event == null){
+            return;
+        }
 
         // Update the source offset info. Note that the client returns the value in *milliseconds*, even though the binlog
         // contains only *seconds* precision ...

@@ -390,7 +390,9 @@ public class SourceInfoTest {
         long position = (Long) offset.get(SourceInfo.BINLOG_POSITION_OFFSET_KEY);
         assertThat(position).isEqualTo(positionOfEvent + eventSize);
         Long rowsToSkip = (Long) offset.get(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
-        if (rowsToSkip == null) rowsToSkip = 0L;
+        if (rowsToSkip == null){
+            rowsToSkip = 0L;
+        }
         assertThat(rowsToSkip).isEqualTo(0);
         assertThat(offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
         if (source.gtidSet() != null) {
@@ -399,7 +401,9 @@ public class SourceInfoTest {
     }
 
     protected void handleNextEvent(long positionOfEvent, long eventSize, int rowCount) {
-        if (inTxn) ++eventNumberInTxn;
+        if (inTxn){
+            ++eventNumberInTxn;
+        }
         source.setEventPosition(positionOfEvent, eventSize);
         for (int row = 0; row != rowCount; ++row) {
             // Get the offset for this row (always first!) ...
@@ -414,7 +418,9 @@ public class SourceInfoTest {
                 assertThat(position).isEqualTo(positionOfBeginEvent);
                 // and the number of the last completed event (the previous one) ...
                 Long eventsToSkip = (Long) offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY);
-                if (eventsToSkip == null) eventsToSkip = 0L;
+                if (eventsToSkip == null){
+                    eventsToSkip = 0L;
+                }
                 assertThat(eventsToSkip).isEqualTo(eventNumberInTxn - 1);
             } else {
                 // Matches the next event ...
@@ -422,7 +428,9 @@ public class SourceInfoTest {
                 assertThat(offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
             }
             Long rowsToSkip = (Long) offset.get(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
-            if (rowsToSkip == null) rowsToSkip = 0L;
+            if (rowsToSkip == null){
+                rowsToSkip = 0L;
+            }
             if ((row + 1) == rowCount) {
                 // This is the last row, so the next binlog position should be the number of rows in the event ...
                 assertThat(rowsToSkip).isEqualTo(rowCount);
@@ -455,8 +463,12 @@ public class SourceInfoTest {
         offset.put(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, FILENAME);
         offset.put(SourceInfo.BINLOG_POSITION_OFFSET_KEY, Long.toString(position));
         offset.put(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, Integer.toString(row));
-        if (gtidSet != null) offset.put(SourceInfo.GTID_SET_KEY, gtidSet);
-        if (snapshot) offset.put(SourceInfo.SNAPSHOT_KEY, Boolean.TRUE.toString());
+        if (gtidSet != null){
+            offset.put(SourceInfo.GTID_SET_KEY, gtidSet);
+        }
+        if (snapshot){
+            offset.put(SourceInfo.SNAPSHOT_KEY, Boolean.TRUE.toString());
+        }
         return offset;
     }
 
@@ -682,7 +694,9 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAt(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) return this;
+            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
+                return this;
+            }
             failIfCustomMessageIsSet();
             throw failure(actual + " should be consider same position as " + otherPosition);
         }
@@ -700,7 +714,9 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAtOrBefore(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) return this;
+            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)){
+                return this;
+            }
             failIfCustomMessageIsSet();
             throw failure(actual + " should be consider same position as or before " + otherPosition);
         }
@@ -710,7 +726,9 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAfter(Document otherPosition, Predicate<String> gtidFilter) {
-            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) return this;
+            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)){
+                return this;
+            }
             failIfCustomMessageIsSet();
             throw failure(actual + " should be consider after " + otherPosition);
         }

@@ -88,11 +88,15 @@ public class ReadBinLogIT implements Testing {
     public void afterEach() throws IOException, SQLException {
         events.clear();
         try {
-            if (client != null) client.disconnect();
+            if (client != null) {
+                client.disconnect();
+            }
         } finally {
             client = null;
             try {
-                if (conn != null) conn.close();
+                if (conn != null){
+                    conn.close();
+                }
             } finally {
                 conn = null;
             }
@@ -116,7 +120,9 @@ public class ReadBinLogIT implements Testing {
         EventDeserializer eventDeserializer = new EventDeserializer();
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         client.setEventDeserializer(eventDeserializer);
-        if (preConnect != null) preConnect.accept(client);
+        if (preConnect != null) {
+            preConnect.accept(client);
+        }
         client.connect(DEFAULT_TIMEOUT); // does not block
 
         // Set up the table as one transaction and wait to see the events ...
@@ -273,7 +279,9 @@ public class ReadBinLogIT implements Testing {
         List<QueryEventData> allQueryEvents = recordedEventData(QueryEventData.class, -1);
         allQueryEvents.forEach(event -> {
             String sql = event.getSql();
-            if (sql.equalsIgnoreCase("BEGIN") || sql.equalsIgnoreCase("COMMIT")) return;
+            if (sql.equalsIgnoreCase("BEGIN") || sql.equalsIgnoreCase("COMMIT")){
+                return;
+            }
             System.out.println(event.getSql());
         });
     }
@@ -430,7 +438,9 @@ public class ReadBinLogIT implements Testing {
             // their counterpart in the copy of the actual values ...
             Serializable[] actualValuesCopy = Arrays.copyOf(actualValues, actualValues.length);
             for (int i = 0; i != actualValuesCopy.length; ++i) {
-                if (expectedValues[i] instanceof AnyValue) actualValuesCopy[i] = expectedValues[i];
+                if (expectedValues[i] instanceof AnyValue) {
+                    actualValuesCopy[i] = expectedValues[i];
+                }
             }
             // Now compare the arrays ...
             return Arrays.deepEquals(expectedValues, actualValuesCopy);
@@ -533,8 +543,12 @@ public class ReadBinLogIT implements Testing {
          */
         public void consume(int eventCount, long timeoutInMillis, Predicate<Event> condition)
                 throws TimeoutException {
-            if (eventCount < 0) throw new IllegalArgumentException("The eventCount may not be negative");
-            if (eventCount == 0) return;
+            if (eventCount < 0){
+                throw new IllegalArgumentException("The eventCount may not be negative");
+            }
+            if (eventCount == 0){
+                return;
+            }
             int eventsRemaining = eventCount;
             final long stopTime = System.currentTimeMillis() + timeoutInMillis;
             while (eventsRemaining > 0 && System.currentTimeMillis() < stopTime) {
