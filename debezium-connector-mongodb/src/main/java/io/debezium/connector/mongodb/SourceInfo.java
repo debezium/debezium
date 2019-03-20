@@ -267,7 +267,9 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
-        if (position == null) position = INITIAL_POSITION;
+        if (position == null){
+            position = INITIAL_POSITION;
+        }
         Struct result = super.struct();
         result.put(SERVER_NAME, serverName);
         result.put(REPLICA_SET_NAME, replicaSetName);
