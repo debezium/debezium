@@ -372,7 +372,9 @@ public class TokenStream {
 
         @Override
         public int compareTo(Marker that) {
-            if (this == that) return 0;
+            if (this == that) {
+                return 0;
+            }
             return this.tokenIndex - that.tokenIndex;
         }
 
@@ -571,7 +573,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public int consumeInteger() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value().toUpperCase();
         try {
@@ -605,7 +609,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public long consumeLong() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -627,7 +633,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean consumeBoolean() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -649,7 +657,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public String consume() throws ParsingException, IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String result = currentToken().value();
         moveToNextToken();
@@ -662,7 +672,9 @@ public class TokenStream {
     }
 
     public String peek() throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token but do NOT advance ...
         return currentToken().value();
     }
@@ -828,7 +840,9 @@ public class TokenStream {
                     "No more content but was expecting one token of type " + Strings.join("|", typeOptions));
         }
         for (int typeOption : typeOptions) {
-            if (typeOption == ANY_TYPE || matches(typeOption)) return consume();
+            if (typeOption == ANY_TYPE || matches(typeOption)){
+                return consume();
+            }
         }
         // Failed to find a match ...
         String found = currentToken().value();
@@ -853,7 +867,9 @@ public class TokenStream {
                     "No more content but was expecting one token of " + String.join("|", options));
         }
         for (String option : options) {
-            if (option == ANY_VALUE || matches(option)) return consume();
+            if (option == ANY_VALUE || matches(option)){
+                return consume();
+            }
         }
         // Failed to find a match ...
         String found = currentToken().value();
@@ -1010,7 +1026,9 @@ public class TokenStream {
         Marker start = mark();
         int remaining = 0;
         while (hasNext()) {
-            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)) ++remaining;
+            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)){
+                ++remaining;
+            }
             if (matches(expected)) {
                 if (remaining == 0) {
                     break;
@@ -1056,7 +1074,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeInteger(IntConsumer consumer) throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -1079,7 +1099,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeBoolean(BooleanConsumer consumer) throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -1102,7 +1124,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeLong(LongConsumer consumer) throws IllegalStateException {
-        if (completed) throwNoMoreContent();
+        if (completed) {
+            throwNoMoreContent();
+        }
         // Get the value from the current token ...
         String value = currentToken().value();
         try {
@@ -1145,7 +1169,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(int type, String expected) throws IllegalStateException {
-        if (!(matches(expected) && matches(type))) return false;
+        if (!(matches(expected) && matches(type))) {
+            return false;
+        }
         moveToNextToken();
         return true;
     }
@@ -1176,7 +1202,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(char expected) throws IllegalStateException {
-        if (!matches(expected)) return false;
+        if (!matches(expected)) {
+            return false;
+        }
         moveToNextToken();
         return true;
     }
@@ -1194,7 +1222,9 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(int expectedType) throws IllegalStateException {
-        if (!matches(expectedType)) return false;
+        if (!matches(expectedType)) {
+            return false;
+        }
         moveToNextToken();
         return true;
     }
@@ -1266,16 +1296,28 @@ public class TokenStream {
      */
     public boolean canConsume(int type, String currentExpected, String... expectedForNextTokens)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
-        if (!iter.hasNext()) return false;
+        if (!iter.hasNext()) {
+            return false;
+        }
         Token token = iter.next();
-        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)) return false;
+        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)){
+            return false;
+        }
         for (String nextExpected : expectedForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(type, nextExpected)) return false;
+            if (nextExpected == ANY_VALUE){
+                continue;
+            }
+            if (!token.matches(type, nextExpected)) {
+                return false;
+            }
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
@@ -1327,14 +1369,22 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(String[] nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
@@ -1371,14 +1421,22 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsume(Iterable<String> nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         this.tokenIterator = iter;
         this.currentToken = tokenIterator.hasNext() ? tokenIterator.next() : null;
@@ -1397,10 +1455,16 @@ public class TokenStream {
     public boolean canConsumeAnyOf(String firstOption,
                                    String... additionalOptions)
             throws IllegalStateException {
-        if (completed) return false;
-        if (canConsume(firstOption)) return true;
+        if (completed) {
+            return false;
+        }
+        if (canConsume(firstOption)) {
+            return true;
+        }
         for (String nextOption : additionalOptions) {
-            if (canConsume(nextOption)) return true;
+            if (canConsume(nextOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1413,9 +1477,13 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(String[] options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         for (String option : options) {
-            if (canConsume(option)) return true;
+            if (canConsume(option)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1428,9 +1496,13 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(Iterable<String> options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         for (String option : options) {
-            if (canConsume(option)) return true;
+            if (canConsume(option)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1446,10 +1518,16 @@ public class TokenStream {
     public boolean canConsumeAnyOf(int firstTypeOption,
                                    int... additionalTypeOptions)
             throws IllegalStateException {
-        if (completed) return false;
-        if (canConsume(firstTypeOption)) return true;
+        if (completed) {
+            return false;
+        }
+        if (canConsume(firstTypeOption)) {
+            return true;
+        }
         for (int nextTypeOption : additionalTypeOptions) {
-            if (canConsume(nextTypeOption)) return true;
+            if (canConsume(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1462,9 +1540,13 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean canConsumeAnyOf(int[] typeOptions) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         for (int nextTypeOption : typeOptions) {
-            if (canConsume(nextTypeOption)) return true;
+            if (canConsume(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1548,16 +1630,28 @@ public class TokenStream {
     public boolean matches(String currentExpected,
                            String... expectedForNextTokens)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
-        if (!iter.hasNext()) return false;
+        if (!iter.hasNext()) {
+            return false;
+        }
         Token token = iter.next();
-        if (currentExpected != ANY_VALUE && !token.matches(currentExpected)) return false;
+        if (currentExpected != ANY_VALUE && !token.matches(currentExpected)) {
+            return false;
+        }
         for (String nextExpected : expectedForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1573,14 +1667,22 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(String[] nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1596,14 +1698,22 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(Iterable<String> nextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (String nextExpected : nextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpected == ANY_VALUE) continue;
-            if (!token.matches(nextExpected)) return false;
+            if (nextExpected == ANY_VALUE) {
+                continue;
+            }
+            if (!token.matches(nextExpected)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1622,16 +1732,28 @@ public class TokenStream {
     public boolean matches(int currentExpectedType,
                            int... expectedTypeForNextTokens)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
-        if (!iter.hasNext()) return false;
+        if (!iter.hasNext()) {
+            return false;
+        }
         Token token = iter.next();
-        if (currentExpectedType != ANY_TYPE && (currentToken().type() & currentExpectedType) != currentExpectedType) return false;
+        if (currentExpectedType != ANY_TYPE && (currentToken().type() & currentExpectedType) != currentExpectedType) {
+            return false;
+        }
         for (int nextExpectedType : expectedTypeForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpectedType == ANY_TYPE) continue;
-            if ((token.type() & nextExpectedType) != nextExpectedType) return false;
+            if (nextExpectedType == ANY_TYPE) {
+                continue;
+            }
+            if ((token.type() & nextExpectedType) != nextExpectedType) {
+                return false;
+            }
         }
         return true;
     }
@@ -1647,14 +1769,22 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matches(int[] typesForNextTokens) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         ListIterator<Token> iter = tokens.listIterator(tokenIterator.previousIndex());
         Token token = null;
         for (int nextExpectedType : typesForNextTokens) {
-            if (!iter.hasNext()) return false;
+            if (!iter.hasNext()) {
+                return false;
+            }
             token = iter.next();
-            if (nextExpectedType == ANY_TYPE) continue;
-            if (!token.matches(nextExpectedType)) return false;
+            if (nextExpectedType == ANY_TYPE) {
+                continue;
+            }
+            if (!token.matches(nextExpectedType)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1684,11 +1814,17 @@ public class TokenStream {
      */
     public boolean matchesAnyOf(int type, String firstOption, String... additionalOptions)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed){
+            return false;
+        }
         Token current = currentToken();
-        if (current.matches(type, firstOption)) return true;
+        if (current.matches(type, firstOption)) {
+            return true;
+        }
         for (String nextOption : additionalOptions) {
-            if (current.matches(type, nextOption)) return true;
+            if (current.matches(type, nextOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1715,10 +1851,14 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(String[] options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
         for (String option : options) {
-            if (current.matches(option)) return true;
+            if (current.matches(option)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1731,10 +1871,14 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(Iterable<String> options) throws IllegalStateException {
-        if (completed) return false;
+        if (completed){
+            return false;
+        }
         Token current = currentToken();
         for (String option : options) {
-            if (current.matches(option)) return true;
+            if (current.matches(option)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1750,11 +1894,17 @@ public class TokenStream {
     public boolean matchesAnyOf(int firstTypeOption,
                                 int... additionalTypeOptions)
             throws IllegalStateException {
-        if (completed) return false;
+        if (completed){
+            return false;
+        }
         Token current = currentToken();
-        if (current.matches(firstTypeOption)) return true;
+        if (current.matches(firstTypeOption)) {
+            return true;
+        }
         for (int nextTypeOption : additionalTypeOptions) {
-            if (current.matches(nextTypeOption)) return true;
+            if (current.matches(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -1767,10 +1917,14 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(int[] typeOptions) throws IllegalStateException {
-        if (completed) return false;
+        if (completed) {
+            return false;
+        }
         Token current = currentToken();
         for (int nextTypeOption : typeOptions) {
-            if (current.matches(nextTypeOption)) return true;
+            if (current.matches(nextTypeOption)) {
+                return true;
+            }
         }
         return false;
     }
@@ -2439,7 +2593,9 @@ public class TokenStream {
                 ++lineNumber;
                 columnNumber = 0;
             } else if (result == '\n') {
-                if (!nextCharMayBeLineFeed) ++lineNumber;
+                if (!nextCharMayBeLineFeed){
+                    ++lineNumber;
+                }
                 columnNumber = 0;
             } else if (nextCharMayBeLineFeed) {
                 nextCharMayBeLineFeed = false;
@@ -2478,7 +2634,9 @@ public class TokenStream {
             if (nextIndex <= maxIndex) {
                 char nextChar = content[lastIndex + 1];
                 for (char c : characters) {
-                    if (c == nextChar) return true;
+                    if (c == nextChar){
+                        return true;
+                    }
                 }
             }
             return false;
@@ -2489,7 +2647,9 @@ public class TokenStream {
             int nextIndex = lastIndex + 1;
             if (nextIndex <= maxIndex) {
                 char nextChar = content[lastIndex + 1];
-                if (characters.indexOf(nextChar) != -1) return true;
+                if (characters.indexOf(nextChar) != -1){
+                    return true;
+                }
             }
             return false;
         }
@@ -2684,8 +2844,12 @@ public class TokenStream {
                                 }
                             }
                             endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
-                            if (!foundLineTerminator) ++endIndex; // must point beyond last char
-                            if (c == '\r' && input.isNext('\n')) input.next();
+                            if (!foundLineTerminator){
+                                ++endIndex; // must point beyond last char
+                            }
+                            if (c == '\r' && input.isNext('\n')) {
+                                input.next();
+                            }
                             if (useComments) {
                                 tokens.addToken(startingPosition, startIndex, endIndex, COMMENT);
                             }
@@ -2694,8 +2858,12 @@ public class TokenStream {
                             while (input.hasNext() && !input.isNext('*', '/')) {
                                 c = input.next();
                             }
-                            if (input.hasNext()) input.next(); // consume the '*'
-                            if (input.hasNext()) input.next(); // consume the '/'
+                            if (input.hasNext()) {
+                                input.next(); // consume the '*'
+                            }
+                            if (input.hasNext()) {
+                                input.next(); // consume the '/'
+                            }
                             if (useComments) {
                                 endIndex = input.index() + 1; // the token will include the '/' and '*' characters
                                 tokens.addToken(startingPosition, startIndex, endIndex, COMMENT);

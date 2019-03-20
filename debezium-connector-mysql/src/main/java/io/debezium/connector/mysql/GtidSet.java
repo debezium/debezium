@@ -44,7 +44,9 @@ public final class GtidSet {
         });
         StringBuilder sb = new StringBuilder();
         uuidSetsByServerId.values().forEach(uuidSet -> {
-            if (sb.length() != 0) sb.append(',');
+            if (sb.length() != 0) {
+                sb.append(',');
+            }
             sb.append(uuidSet.toString());
         });
     }
@@ -57,7 +59,9 @@ public final class GtidSet {
      * @return the new GtidSet, or this object if {@code sourceFilter} is null; never null
      */
     public GtidSet retainAll(Predicate<String> sourceFilter) {
-        if (sourceFilter == null) return this;
+        if (sourceFilter == null) {
+            return this;
+        }
         Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
                                                               .stream()
                                                               .filter(entry -> sourceFilter.test(entry.getKey()))
@@ -92,11 +96,17 @@ public final class GtidSet {
      *         {@code false} otherwise
      */
     public boolean isContainedWithin(GtidSet other) {
-        if (other == null) return false;
-        if (this.equals(other)) return true;
+        if (other == null) {
+            return false;
+        }
+        if (this.equals(other)) {
+            return true;
+        }
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
             UUIDSet thatSet = other.forServerWithId(uuidSet.getUUID());
-            if (!uuidSet.isContainedWithin(thatSet)) return false;
+            if (!uuidSet.isContainedWithin(thatSet)) {
+                return false;
+            }
         }
         return true;
     }
@@ -107,7 +117,9 @@ public final class GtidSet {
      * @return the new GtidSet, or this object if {@code other} is null or empty; never null
      */
     public GtidSet with(GtidSet other) {
-        if (other == null || other.uuidSetsByServerId.isEmpty()) return this;
+        if (other == null || other.uuidSetsByServerId.isEmpty()) {
+            return this;
+        }
         Map<String, UUIDSet> newSet = new HashMap<>();
         newSet.putAll(this.uuidSetsByServerId);
         newSet.putAll(other.uuidSetsByServerId);
@@ -135,7 +147,9 @@ public final class GtidSet {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof GtidSet) {
             GtidSet that = (GtidSet) obj;
             return this.uuidSetsByServerId.equals(that.uuidSetsByServerId);
@@ -216,13 +230,19 @@ public final class GtidSet {
          *         or false otherwise
          */
         public boolean isContainedWithin(UUIDSet other) {
-            if (other == null) return false;
+            if (other == null) {
+                return false;
+            }
             if (!this.getUUID().equalsIgnoreCase(other.getUUID())) {
                 // Not even the same server ...
                 return false;
             }
-            if (this.intervals.isEmpty()) return true;
-            if (other.intervals.isEmpty()) return false;
+            if (this.intervals.isEmpty()) {
+                return true;
+            }
+            if (other.intervals.isEmpty()) {
+                return false;
+            }
             assert this.intervals.size() > 0;
             assert other.intervals.size() > 0;
 
@@ -235,7 +255,9 @@ public final class GtidSet {
                         break;
                     }
                 }
-                if (!found) return false; // didn't find a match
+                if (!found) {
+                    return false; // didn't find a match
+                }
             }
             return true;
         }
@@ -247,7 +269,9 @@ public final class GtidSet {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == this) return true;
+            if (obj == this) {
+                return true;
+            }
             if (obj instanceof UUIDSet) {
                 UUIDSet that = (UUIDSet) obj;
                 return this.getUUID().equalsIgnoreCase(that.getUUID()) && this.getIntervals().equals(that.getIntervals());
@@ -258,10 +282,14 @@ public final class GtidSet {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            if (sb.length() != 0) sb.append(',');
+            if (sb.length() != 0) {
+                sb.append(',');
+            }
             sb.append(uuid).append(':');
             Iterator<Interval> iter = intervals.iterator();
-            if (iter.hasNext()) sb.append(iter.next());
+            if (iter.hasNext()) {
+                sb.append(iter.next());
+            }
             while (iter.hasNext()) {
                 sb.append(':');
                 sb.append(iter.next());
@@ -308,17 +336,27 @@ public final class GtidSet {
          *         {@link #getEnd() end}, or {@code false} otherwise
          */
         public boolean isContainedWithin(Interval other) {
-            if (other == this) return true;
-            if (other == null) return false;
+            if (other == this) {
+                return true;
+            }
+            if (other == null) {
+                return false;
+            }
             return this.getStart() >= other.getStart() && this.getEnd() <= other.getEnd();
         }
 
         @Override
         public int compareTo(Interval that) {
-            if (that == this) return 0;
+            if (that == this) {
+                return 0;
+            }
             long diff = this.start - that.start;
-            if (diff > Integer.MAX_VALUE) return Integer.MAX_VALUE;
-            if (diff < Integer.MIN_VALUE) return Integer.MIN_VALUE;
+            if (diff > Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
+            }
+            if (diff < Integer.MIN_VALUE) {
+                return Integer.MIN_VALUE;
+            }
             return (int) diff;
         }
 
@@ -329,7 +367,9 @@ public final class GtidSet {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) return true;
+            if (this == obj) {
+                return true;
+            }
             if (obj instanceof Interval) {
                 Interval that = (Interval) obj;
                 return this.getStart() == that.getStart() && this.getEnd() == that.getEnd();

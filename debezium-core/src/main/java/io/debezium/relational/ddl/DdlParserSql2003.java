@@ -345,7 +345,9 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         DataType dataType = dataTypeParser.parse(tokens, errors::addAll);
         if (dataType == null) {
             String dataTypeName = parseDomainName(start);
-            if (dataTypeName != null) dataType = DataType.userDefinedType(dataTypeName);
+            if (dataTypeName != null) {
+                dataType = DataType.userDefinedType(dataTypeName);
+            }
         }
         if (dataType == null) {
             // No data type was found
@@ -354,8 +356,12 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         }
         column.jdbcType(dataType.jdbcType());
         column.type(dataType.name(),dataType.expression());
-        if ( dataType.length() > -1 ) column.length((int)dataType.length());
-        if ( dataType.scale() > -1 ) column.scale(dataType.scale());
+        if ( dataType.length() > -1 ) {
+            column.length((int)dataType.length());
+        }
+        if ( dataType.scale() > -1 ) {
+            column.scale(dataType.scale());
+        }
 
         if (tokens.matches("REFERENCES", "ARE")) {
             parseReferencesScopeCheck(start, columnName, tokens, column);

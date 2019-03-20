@@ -214,7 +214,9 @@ public class Threads {
         final long timeoutInMillis = timeoutUnit.toMillis(timeout);
         final long sleepTimeInMillis = sleepUnit.toMillis(sleepInterval);
         Runnable r = () -> {
-            if (uponStart != null) uponStart.run();
+            if (uponStart != null) {
+                uponStart.run();
+            }
             while (elapsedTime.getAsLong() < timeoutInMillis) {
                 try {
                     Thread.sleep(sleepTimeInMillis);

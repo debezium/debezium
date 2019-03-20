@@ -63,8 +63,12 @@ final class ConvertingValue implements Value {
 
     @Override
     public Boolean asBoolean() {
-        if (value.isBoolean()) return value.asBoolean();
-        if (value.isNumber()) return value.asNumber().intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isNumber()) {
+            return value.asNumber().intValue() == 0?Boolean.FALSE:Boolean.TRUE;
+        }
         if (value.isString()) {
             return Boolean.valueOf(asString());
         }
@@ -73,8 +77,12 @@ final class ConvertingValue implements Value {
 
     @Override
     public Integer asInteger() {
-        if (value.isInteger()) return value.asInteger();
-        if (value.isNumber()) return Integer.valueOf(asNumber().intValue());
+        if (value.isInteger()) {
+            return value.asInteger();
+        }
+        if (value.isNumber()) {
+            return Integer.valueOf(asNumber().intValue());
+        }
         if (value.isString()) {
             try {
                 return Integer.valueOf(asString());
@@ -86,8 +94,12 @@ final class ConvertingValue implements Value {
 
     @Override
     public Long asLong() {
-        if (value.isLong()) return value.asLong();
-        if (value.isNumber()) return Long.valueOf(asNumber().longValue());
+        if (value.isLong()) {
+            return value.asLong();
+        }
+        if (value.isNumber()) {
+            return Long.valueOf(asNumber().longValue());
+        }
         if (value.isString()) {
             try {
                 return Long.valueOf(asString());
@@ -99,8 +111,12 @@ final class ConvertingValue implements Value {
 
     @Override
     public Float asFloat() {
-        if (value.isFloat()) return value.asFloat();
-        if (value.isNumber()) return Float.valueOf(asNumber().floatValue());
+        if (value.isFloat()) {
+            return value.asFloat();
+        }
+        if (value.isNumber()) {
+            return Float.valueOf(asNumber().floatValue());
+        }
         if (value.isString()) {
             try {
                 return Float.valueOf(asString());
@@ -112,8 +128,12 @@ final class ConvertingValue implements Value {
 
     @Override
     public Double asDouble() {
-        if (value.isDouble()) return value.asDouble();
-        if (value.isNumber()) return Double.valueOf(asNumber().doubleValue());
+        if (value.isDouble()) {
+            return value.asDouble();
+        }
+        if (value.isNumber()) {
+            return Double.valueOf(asNumber().doubleValue());
+        }
         if (value.isString()) {
             try {
                 return Double.valueOf(asString());
@@ -125,7 +145,9 @@ final class ConvertingValue implements Value {
 
     @Override
     public Number asNumber() {
-        if (value.isNumber()) return value.asNumber();
+        if (value.isNumber()) {
+            return value.asNumber();
+        }
         if (value.isString()) {
             String str = value.asString();
             Number number = Strings.asNumber(str);
@@ -140,9 +162,15 @@ final class ConvertingValue implements Value {
 
     @Override
     public BigInteger asBigInteger() {
-        if (value.isBigInteger()) return value.asBigInteger();
-        if (value.isBigDecimal()) return value.asBigDecimal().toBigInteger();
-        if (value instanceof Number) return BigInteger.valueOf(asLong().longValue());
+        if (value.isBigInteger()) {
+            return value.asBigInteger();
+        }
+        if (value.isBigDecimal()) {
+            return value.asBigDecimal().toBigInteger();
+        }
+        if (value instanceof Number) {
+            return BigInteger.valueOf(asLong().longValue());
+        }
         if (value.isString()) {
             try {
                 return new BigInteger(asString());
@@ -154,10 +182,18 @@ final class ConvertingValue implements Value {
 
     @Override
     public BigDecimal asBigDecimal() {
-        if (value.isBigDecimal()) return value.asBigDecimal();
-        if (value.isBigInteger()) return new BigDecimal(value.asBigInteger());
-        if (value.isInteger() || value.isLong()) return BigDecimal.valueOf(asLong().longValue());
-        if (value.isFloat() || value.isDouble()) return BigDecimal.valueOf(asDouble().doubleValue());
+        if (value.isBigDecimal()) {
+            return value.asBigDecimal();
+        }
+        if (value.isBigInteger()) {
+            return new BigDecimal(value.asBigInteger());
+        }
+        if (value.isInteger() || value.isLong()) {
+            return BigDecimal.valueOf(asLong().longValue());
+        }
+        if (value.isFloat() || value.isDouble()) {
+            return BigDecimal.valueOf(asDouble().doubleValue());
+        }
         if (value.isString()) {
             try {
                 return new BigDecimal(asString());
@@ -169,8 +205,12 @@ final class ConvertingValue implements Value {
 
     @Override
     public byte[] asBytes() {
-        if (value.isBinary()) return value.asBytes();
-        if (value.isString()) return value.asString().getBytes();
+        if (value.isBinary()) {
+            return value.asBytes();
+        }
+        if (value.isString()) {
+            return value.asString().getBytes();
+        }
         return null;
     }
 
@@ -257,7 +297,9 @@ final class ConvertingValue implements Value {
     @Override
     public Value clone() {
         Value clonedValue = value.clone();
-        if (clonedValue == value) return this;
+        if (clonedValue == value) {
+            return this;
+        }
         return new ConvertingValue(clonedValue);
     }
 }

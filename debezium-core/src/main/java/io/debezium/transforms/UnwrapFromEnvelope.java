@@ -66,10 +66,14 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
          * @return the matching option, or null if no match is found
          */
         public static DeleteHandling parse(String value) {
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
             value = value.trim();
             for (DeleteHandling option : DeleteHandling.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
             }
             return null;
         }
@@ -83,7 +87,9 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
          */
         public static DeleteHandling parse(String value, String defaultValue) {
             DeleteHandling mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
             return mode;
         }
     }

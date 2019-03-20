@@ -511,7 +511,7 @@ public class Replicator {
                 return true;
             }
             // Otherwise, it is an event on a document in a collection ...
-            if (!context.filters().databaseFilter().test(dbName)){
+            if (!context.filters().databaseFilter().test(dbName)) {
                 logger.debug("Skipping the event for database {} based on database.whitelist");
                 return true;
             }
@@ -566,7 +566,9 @@ public class Replicator {
         protected synchronized void stopBuffering(Map<String, ?> newOffset) throws InterruptedException {
             assert newOffset != null;
             this.buffered.close(record -> {
-                if (record == null) return null;
+                if (record == null) {
+                    return null;
+                }
                 return new SourceRecord(record.sourcePartition(),
                         newOffset,
                         record.topic(),

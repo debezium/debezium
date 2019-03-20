@@ -212,7 +212,9 @@ public class ReplicaSets {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this) {
+            return true;
+        }
         if (obj instanceof ReplicaSets) {
             ReplicaSets that = (ReplicaSets) obj;
             return this.replicaSetsByName.equals(that.replicaSetsByName) && this.nonReplicaSets.equals(that.nonReplicaSets);

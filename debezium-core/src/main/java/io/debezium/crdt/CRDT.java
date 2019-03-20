@@ -87,7 +87,9 @@ public final class CRDT {
      * @return the new counter; never null
      */
     public static DeltaCounter newDeltaCounter(DeltaCount count) {
-        if (count == null) return new StateBasedPNDeltaCounter();
+        if (count == null) {
+            return new StateBasedPNDeltaCounter();
+        }
         return new StateBasedPNDeltaCounter(count.getIncrement(), count.getDecrement(),
                 count.getChanges().getIncrement(), count.getChanges().getDecrement());
     }

@@ -87,12 +87,15 @@ public class TableChanges implements Iterable<TableChange> {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         TableChanges other = (TableChanges) obj;
 
         return changes.equals(other.changes);
@@ -160,22 +163,30 @@ public class TableChanges implements Iterable<TableChange> {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null)
+            }
+            if (obj == null) {
                 return false;
-            if (getClass() != obj.getClass())
+            }
+            if (getClass() != obj.getClass()) {
                 return false;
-            TableChange other = (TableChange) obj;
-            if (!id.equals(other.id))
+            }
+            TableChange other = (TableChange)obj;
+            if (! id.equals(other.id)) {
                 return false;
+            }
             if (table == null) {
-                if (other.table != null)
+                if (other.table != null) {
                     return false;
-            } else if (!table.equals(other.table))
+                }
+            }
+            else if (!table.equals(other.table)) {
                 return false;
-            if (type != other.type)
+            }
+            if (type != other.type) {
                 return false;
+            }
             return true;
         }
 

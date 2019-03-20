@@ -44,7 +44,9 @@ public final class ReplicaSetMonitorThread implements Runnable {
      */
     public ReplicaSetMonitorThread(Supplier<ReplicaSets> monitor, Duration period, Clock clock, Runnable onStartup,
             Consumer<ReplicaSets> onChange) {
-        if (clock == null) clock = Clock.system();
+        if (clock == null) {
+            clock = Clock.system();
+        }
         this.monitor = monitor;
         this.metronome = Metronome.sleeper(period, clock);
         this.onChange = onChange != null ? onChange : (rsSpecs) -> {};
