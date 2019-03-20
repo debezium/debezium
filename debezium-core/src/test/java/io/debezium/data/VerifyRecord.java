@@ -1040,14 +1040,14 @@ public class VerifyRecord {
         boolean eq;
         if(e1 instanceof Object[]&&e2 instanceof Object[]){
             eq=deepEquals((Object[])e1,(Object[])e2);
-        }else
-            if(e1 instanceof byte[]&&e2 instanceof byte[]){
+        }
+        else if(e1 instanceof byte[]&&e2 instanceof byte[]){
                 eq=Arrays.equals((byte[])e1,(byte[])e2);
-            }else
-                if(e1 instanceof short[]&&e2 instanceof short[]){
+            }
+        else if(e1 instanceof short[]&&e2 instanceof short[]){
                     eq=Arrays.equals((short[])e1,(short[])e2);
-                }else
-                    if(e1 instanceof int[]&&e2 instanceof int[]){
+                }
+        else if(e1 instanceof int[]&&e2 instanceof int[]){
                         eq=Arrays.equals((int[])e1,(int[])e2);
                     }
         else if (e1 instanceof long[] && e2 instanceof long[]){
