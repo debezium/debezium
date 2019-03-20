@@ -34,12 +34,20 @@ final class BinaryValue implements Value {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
+        if (obj == this){
+            return true;
+        }
         if (obj instanceof Value) {
             Value that = (Value) obj;
-            if (that.isNull()) return false;
-            if (that.isBinary()) return Arrays.equals(this.value, that.asBytes());
-            if (that.isString()) return Arrays.equals(this.value, that.asString().getBytes());
+            if (that.isNull()){
+                return false;
+            }
+            if (that.isBinary()){
+                return Arrays.equals(this.value, that.asBytes());
+            }
+            if (that.isString()){
+                return Arrays.equals(this.value, that.asString().getBytes());
+            }
             return false;
         }
         return false;
@@ -52,8 +60,12 @@ final class BinaryValue implements Value {
 
     @Override
     public int compareTo(Value that) {
-        if (that.isNull()) return 1;
-        if (that.isBinary()) return this.value.length - that.asBytes().length;
+        if (that.isNull()){
+            return 1;
+        }
+        if (that.isBinary()){
+            return this.value.length - that.asBytes().length;
+        }
         return 1;
     }
 

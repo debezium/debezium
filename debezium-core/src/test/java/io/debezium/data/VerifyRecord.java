@@ -519,9 +519,13 @@ public class VerifyRecord {
     }
 
     private static String schemaName(Schema schema) {
-        if (schema == null) return null;
+        if (schema == null){
+            return null;
+        }
         String name = schema.name();
-        if (name != null) name = name.trim();
+        if (name != null){
+            name = name.trim();
+        }
         return name == null || name.isEmpty() ? null : name;
     }
 
@@ -530,9 +534,13 @@ public class VerifyRecord {
                                        Predicate<String> ignoreFields,
                                        Map<String, RecordValueComparator> comparatorsByName,
                                        Map<String, RecordValueComparator> comparatorsBySchemaName) {
-        if (o1 == o2) return;
+        if (o1 == o2){
+            return;
+        }
         if (o1 == null) {
-            if (o2 == null) return;
+            if (o2 == null){
+                return;
+            }
             fail(nameOf(keyOrValue, field) + " was null but expected " + SchemaUtil.asString(o2));
         }
         else if (o2 == null) {
@@ -804,13 +812,17 @@ public class VerifyRecord {
             if (avroValueWithSchema != null) {
                 Testing.print("  value to/from Avro: " + SchemaUtil.asString(avroValueWithSchema.value()));
             }
-            if (t instanceof AssertionError) throw t;
+            if (t instanceof AssertionError){
+                throw t;
+            }
             fail("error " + msg + ": " + t.getMessage());
         }
     }
 
     protected static void validateSchemaNames(Schema schema) {
-        if (schema == null) return;
+        if (schema == null){
+            return;
+        }
         String schemaName = schema.name();
         if (schemaName != null && !SchemaNameAdjuster.isValidFullname(schemaName)) {
             fail("Kafka schema '" + schemaName + "' is not a valid Avro schema name");
@@ -823,7 +835,9 @@ public class VerifyRecord {
     }
 
     protected static void validateSubSchemaNames(Schema parentSchema, Field field) {
-        if (field == null) return;
+        if (field == null){
+            return;
+        }
         Schema subSchema = field.schema();
         String subSchemaName = subSchema.name();
         if (subSchemaName != null && !SchemaNameAdjuster.isValidFullname(subSchemaName)) {
@@ -901,8 +915,12 @@ public class VerifyRecord {
 
     @SuppressWarnings("unchecked")
     protected static boolean equals(Object o1, Object o2) {
-        if (o1 == o2) return true;
-        if (o1 == null) return o2 == null ? true : false;
+        if (o1 == o2){
+            return true;
+        }
+        if (o1 == null){
+            return o2 == null ? true : false;
+        }
         if (o2 == null) {
             return false;
         }
@@ -985,55 +1003,71 @@ public class VerifyRecord {
     }
 
     private static boolean deepEquals(Object[] a1, Object[] a2) {
-        if (a1 == a2)
+        if (a1 == a2){
             return true;
-        if (a1 == null || a2 == null)
+        }
+        if (a1 == null || a2 == null){
             return false;
+        }
         int length = a1.length;
-        if (a2.length != length)
+        if (a2.length != length){
             return false;
+        }
 
-        for (int i = 0; i < length; i++) {
-            Object e1 = a1[i];
-            Object e2 = a2[i];
+        for (int i = 0; i < length; i++){
+            Object e1=a1[i];
+            Object e2=a2[i];
 
-            if (e1 == e2)
+            if(e1==e2){
                 continue;
-            if (e1 == null)
+            }
+            if(e1==null){
                 return false;
+            }
 
             // Figure out whether the two elements are equal
-            boolean eq = deepEquals0(e1, e2);
+            boolean eq=deepEquals0(e1,e2);
 
-            if (!eq)
+            if(!eq){
                 return false;
+            }
         }
         return true;
     }
 
-    private static boolean deepEquals0(Object e1, Object e2) {
-        assert e1 != null;
+    private static boolean deepEquals0(Object e1, Object e2){
+        assert e1!=null;
         boolean eq;
-        if (e1 instanceof Object[] && e2 instanceof Object[])
-            eq = deepEquals((Object[]) e1, (Object[]) e2);
-        else if (e1 instanceof byte[] && e2 instanceof byte[])
-            eq = Arrays.equals((byte[]) e1, (byte[]) e2);
-        else if (e1 instanceof short[] && e2 instanceof short[])
-            eq = Arrays.equals((short[]) e1, (short[]) e2);
-        else if (e1 instanceof int[] && e2 instanceof int[])
-            eq = Arrays.equals((int[]) e1, (int[]) e2);
-        else if (e1 instanceof long[] && e2 instanceof long[])
-            eq = Arrays.equals((long[]) e1, (long[]) e2);
-        else if (e1 instanceof char[] && e2 instanceof char[])
-            eq = Arrays.equals((char[]) e1, (char[]) e2);
-        else if (e1 instanceof float[] && e2 instanceof float[])
-            eq = Arrays.equals((float[]) e1, (float[]) e2);
-        else if (e1 instanceof double[] && e2 instanceof double[])
-            eq = Arrays.equals((double[]) e1, (double[]) e2);
-        else if (e1 instanceof boolean[] && e2 instanceof boolean[])
-            eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
-        else
-            eq = equals(e1, e2);
+        if(e1 instanceof Object[]&&e2 instanceof Object[]){
+            eq=deepEquals((Object[])e1,(Object[])e2);
+        }else
+            if(e1 instanceof byte[]&&e2 instanceof byte[]){
+                eq=Arrays.equals((byte[])e1,(byte[])e2);
+            }else
+                if(e1 instanceof short[]&&e2 instanceof short[]){
+                    eq=Arrays.equals((short[])e1,(short[])e2);
+                }else
+                    if(e1 instanceof int[]&&e2 instanceof int[]){
+                        eq=Arrays.equals((int[])e1,(int[])e2);
+                    }
+        else if (e1 instanceof long[] && e2 instanceof long[]){
+                        eq=Arrays.equals((long[])e1,(long[])e2);
+                    }
+        else if (e1 instanceof char[] && e2 instanceof char[]){
+                            eq=Arrays.equals((char[])e1,(char[])e2);
+                        }
+        else if (e1 instanceof float[] && e2 instanceof float[]){
+                                eq=Arrays.equals((float[])e1,(float[])e2);
+                            }
+        else if (e1 instanceof double[] && e2 instanceof double[]){
+                                    eq=Arrays.equals((double[])e1,(double[])e2);
+                                }
+        else if (e1 instanceof boolean[] && e2 instanceof boolean[]){
+                                        eq=Arrays.equals((boolean[])e1,(boolean[])e2);
+                                    }
+        else{
+                                        eq=equals(e1,e2);
+                                    }
         return eq;
     }
 

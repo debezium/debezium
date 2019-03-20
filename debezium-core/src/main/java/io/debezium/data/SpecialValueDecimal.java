@@ -119,21 +119,27 @@ public class SpecialValueDecimal implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj){
             return true;
-        if (obj == null)
+        }
+        if (obj == null){
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()){
             return false;
+        }
         SpecialValueDecimal other = (SpecialValueDecimal) obj;
         if (decimalValue == null) {
-            if (other.decimalValue != null)
+            if (other.decimalValue != null){
                 return false;
+            }
         }
-        else if (!decimalValue.equals(other.decimalValue))
+        else if (!decimalValue.equals(other.decimalValue)){
             return false;
-        if (specialValue != other.specialValue)
+        }
+        if (specialValue != other.specialValue){
             return false;
+        }
         return true;
     }
 

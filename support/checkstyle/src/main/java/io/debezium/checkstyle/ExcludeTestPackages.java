@@ -16,7 +16,7 @@ import com.puppycrawl.tools.checkstyle.api.Filter;
  * "[not required for tests]".
  * <p>
  * A SuppressionFilter is too generic, and requires per-module configuration.
- *
+
  * @author Sanne Grinovero <sanne@hibernate.org>
  */
 public class ExcludeTestPackages implements Filter {

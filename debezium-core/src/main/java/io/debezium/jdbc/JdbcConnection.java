@@ -203,22 +203,28 @@ public class JdbcConnection implements AutoCloseable {
 
     private static String findAndReplace(String url, Properties props, Field... variables) {
         for (Field field : variables) {
-            if ( field != null ) url = findAndReplace(url, field.name(), props);
+            if ( field != null ){
+                url = findAndReplace(url, field.name(), props);
+            }
         }
         for (Object key : new HashSet<>(props.keySet())) {
-            if (key != null ) url = findAndReplace(url, key.toString(), props);
+            if (key != null ){
+                url = findAndReplace(url, key.toString(), props);
+            }
         }
         return url;
     }
 
     private static String findAndReplace(String url, String name, Properties props) {
-        if (name != null && url.contains("${" + name + "}")) {
-            // Otherwise, we have to remove it from the properties ...
-            String value = props.getProperty(name);
-            if (value != null) {
-                props.remove(name);
-                // And replace the variable ...
-                url = url.replaceAll("\\$\\{" + name + "\\}", value);
+        if (name != null && url.contains("${" + name + "}")){
+            {
+                // Otherwise, we have to remove it from the properties ...
+                String value = props.getProperty(name);
+                if (value != null) {
+                    props.remove(name);
+                    // And replace the variable ...
+                    url = url.replaceAll("\\$\\{" + name + "\\}", value);
+                }
             }
         }
         return url;
@@ -326,7 +332,9 @@ public class JdbcConnection implements AutoCloseable {
         Connection conn = connection();
         try (Statement statement = conn.createStatement();) {
             operations.apply(statement);
-            if (!conn.getAutoCommit()) conn.commit();
+            if (!conn.getAutoCommit()){
+                conn.commit();
+            }
         }
         return this;
     }
@@ -569,7 +577,9 @@ public class JdbcConnection implements AutoCloseable {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
         try (ResultSet resultSet = statement.executeQuery();) {
-            if (resultConsumer != null) resultConsumer.accept(resultSet);
+            if (resultConsumer != null){
+                resultConsumer.accept(resultSet);
+            }
         }
         return this;
     }
@@ -589,7 +599,9 @@ public class JdbcConnection implements AutoCloseable {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
         try (ResultSet resultSet = statement.executeQuery();) {
-            if (resultConsumer != null) resultConsumer.accept(resultSet);
+            if (resultConsumer != null){
+                resultConsumer.accept(resultSet);
+            }
         }
         return this;
     }
@@ -673,7 +685,9 @@ public class JdbcConnection implements AutoCloseable {
             lines.accept(delimiter(columnCount, columnSizes));
             StringBuilder sb = new StringBuilder();
             for (int i = 1; i <= columnCount; i++) {
-                if (i > 1) sb.append(" | ");
+                if (i > 1){
+                    sb.append(" | ");
+                }
                 sb.append(Strings.setLength(rsmd.getColumnLabel(i), columnSizes[i], ' '));
             }
             lines.accept(sb.toString());
@@ -682,7 +696,9 @@ public class JdbcConnection implements AutoCloseable {
             while (resultSet.next()) {
                 sb.setLength(0);
                 for (int i = 1; i <= columnCount; i++) {
-                    if (i > 1) sb.append(" | ");
+                    if (i > 1){
+                        sb.append(" | ");
+                    }
                     sb.append(Strings.setLength(resultSet.getString(i), columnSizes[i], ' '));
                 }
                 lines.accept(sb.toString());
@@ -697,7 +713,9 @@ public class JdbcConnection implements AutoCloseable {
     private String delimiter(int columnCount, int[] columnSizes) {
         StringBuilder sb = new StringBuilder();
         for (int i = 1; i <= columnCount; i++) {
-            if (i > 1) sb.append("---");
+            if (i > 1){
+                sb.append("---");
+            }
             sb.append(Strings.createString('-', columnSizes[i]));
         }
         return sb.toString();
@@ -713,7 +731,9 @@ public class JdbcConnection implements AutoCloseable {
         while (resultSet.next()) {
             for (int i = 1; i <= columnCount; i++) {
                 String value = resultSet.getString(i);
-                if (value != null) columnSizes[i] = Math.max(columnSizes[i], value.length());
+                if (value != null){
+                    columnSizes[i] = Math.max(columnSizes[i], value.length());
+                }
             }
         }
         resultSet.beforeFirst();
@@ -721,7 +741,9 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized boolean isConnected() throws SQLException {
-        if (conn == null) return false;
+        if (conn == null){
+            return false;
+        }
         return !conn.isClosed();
     }
 
@@ -732,9 +754,13 @@ public class JdbcConnection implements AutoCloseable {
     public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
         if (conn == null) {
             conn = factory.connect(JdbcConfiguration.adapt(config));
-            if (conn == null) throw new SQLException("Unable to obtain a JDBC connection");
+            if (conn == null){
+                throw new SQLException("Unable to obtain a JDBC connection");
+            }
             // Always run the initial operations on this new connection
-            if (initialOps != null) execute(initialOps);
+            if (initialOps != null){
+                execute(initialOps);
+            }
             final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
             if (statements != null && executeOnConnect) {
                 final List<String> splitStatements = parseSqlStatementString(statements);
@@ -840,7 +866,9 @@ public class JdbcConnection implements AutoCloseable {
         try (ResultSet rs = metadata.getTableTypes()) {
             while (rs.next()) {
                 String tableType = rs.getString(1);
-                if (tableType != null) types.add(tableType);
+                if (tableType != null){
+                    types.add(tableType);
+                }
             }
         }
         return types.toArray(new String[types.size()]);
@@ -874,7 +902,9 @@ public class JdbcConnection implements AutoCloseable {
     public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
                                        String[] tableTypes)
             throws SQLException {
-        if (tableNamePattern == null) tableNamePattern = "%";
+        if (tableNamePattern == null){
+            tableNamePattern = "%";
+        }
         Set<TableId> tableIds = new HashSet<>();
         DatabaseMetaData metadata = connection().getMetaData();
         try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {

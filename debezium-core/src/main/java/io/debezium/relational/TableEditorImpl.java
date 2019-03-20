@@ -104,7 +104,9 @@ final class TableEditorImpl implements TableEditor {
         Iterator<String> nameIter = this.pkColumnNames.iterator();
         while (nameIter.hasNext()) {
             String pkColumnName = nameIter.next();
-            if (!hasColumnWithName(pkColumnName)) nameIter.remove();
+            if (!hasColumnWithName(pkColumnName)){
+                nameIter.remove();
+            }
         }
     }
 
@@ -162,7 +164,9 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor removeColumn(String columnName) {
         Column existing = sortedColumns.remove(columnName.toLowerCase());
-        if (existing != null) updatePositions();
+        if (existing != null){
+            updatePositions();
+        }
         assert positionsAreValid();
         return this;
     }
@@ -170,7 +174,9 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor reorderColumn(String columnName, String afterColumnName) {
         Column columnToMove = columnWithName(columnName);
-        if (columnToMove == null) throw new IllegalArgumentException("No column with name '" + columnName + "'");
+        if (columnToMove == null){
+            throw new IllegalArgumentException("No column with name '" + columnName + "'");
+        }
         Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
         if (afterColumn != null && (afterColumn.position() + 1) == columnToMove.position()) {
             // nothing to do ...
@@ -204,7 +210,9 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor renameColumn(String existingName, String newName) {
         final Column existing = columnWithName(existingName);
-        if (existing == null) throw new IllegalArgumentException("No column with name '" + existingName + "'");
+        if (existing == null){
+            throw new IllegalArgumentException("No column with name '" + existingName + "'");
+        }
         Column newColumn = existing.edit().name(newName).create();
         // Determine the primary key names ...
         List<String> newPkNames = null;
@@ -246,7 +254,9 @@ final class TableEditorImpl implements TableEditor {
 
     @Override
     public Table create() {
-        if (id == null) throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        if (id == null){
+            throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
+        }
         List<Column> columns = new ArrayList<>();
         sortedColumns.values().forEach(column->{
             column = column.edit().charsetNameOfTable(defaultCharsetName).create();

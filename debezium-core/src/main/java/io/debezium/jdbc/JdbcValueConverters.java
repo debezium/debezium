@@ -214,15 +214,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
                     return MicroTime.builder();
                 }
                 if (adaptiveTimePrecisionMode) {
-                    if (getTimePrecision(column) <= 3) return Time.builder();
-                    if (getTimePrecision(column) <= 6) return MicroTime.builder();
+                    if (getTimePrecision(column) <= 3){
+                        return Time.builder();
+                    }
+                    if (getTimePrecision(column) <= 6){
+                        return MicroTime.builder();
+                    }
                     return NanoTime.builder();
                 }
                 return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (getTimePrecision(column) <= 3) return Timestamp.builder();
-                    if (getTimePrecision(column) <= 6) return MicroTimestamp.builder();
+                    if (getTimePrecision(column) <= 3){
+                        return Timestamp.builder();
+                    }
+                    if (getTimePrecision(column) <= 6){
+                        return MicroTimestamp.builder();
+                    }
                     return NanoTimestamp.builder();
                 }
                 return org.apache.kafka.connect.data.Timestamp.builder();
@@ -314,15 +322,23 @@ public class JdbcValueConverters implements ValueConverterProvider {
                     return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
                 }
                 if (adaptiveTimePrecisionMode) {
-                    if (getTimePrecision(column) <= 3) return data -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
-                    if (getTimePrecision(column) <= 6) return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                    if (getTimePrecision(column) <= 3){
+                        return data -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
+                    }
+                    if (getTimePrecision(column) <= 6){
+                        return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                    }
                     return (data) -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
                 }
                 return (data) -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (getTimePrecision(column) <= 3) return data -> convertTimestampToEpochMillis(column, fieldDefn, data);
-                    if (getTimePrecision(column) <= 6) return data -> convertTimestampToEpochMicros(column, fieldDefn, data);
+                    if (getTimePrecision(column) <= 3){
+                        return data -> convertTimestampToEpochMillis(column, fieldDefn, data);
+                    }
+                    if (getTimePrecision(column) <= 6){
+                        return data -> convertTimestampToEpochMicros(column, fieldDefn, data);
+                    }
                     return (data) -> convertTimestampToEpochNanos(column, fieldDefn, data);
                 }
                 return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);

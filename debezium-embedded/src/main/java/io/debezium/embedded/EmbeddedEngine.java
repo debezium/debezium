@@ -570,8 +570,12 @@ public final class EmbeddedEngine implements Runnable {
 
             @Override
             public EmbeddedEngine build() {
-                if (classLoader == null) classLoader = getClass().getClassLoader();
-                if (clock == null) clock = Clock.system();
+                if (classLoader == null){
+                    classLoader = getClass().getClassLoader();
+                }
+                if (clock == null){
+                    clock = Clock.system();
+                }
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
                 Objects.requireNonNull(handler, "A connector consumer or changeHandler must be specified.");
                 return new EmbeddedEngine(config, classLoader, clock,
@@ -606,7 +610,9 @@ public final class EmbeddedEngine implements Runnable {
         this.classLoader = classLoader;
         this.clock = clock;
         this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
-            if (!success) logger.error(msg, error);
+            if (!success){
+                logger.error(msg, error);
+            }
         };
         this.connectorCallback = connectorCallback;
         this.completionResult = new CompletionResult();
@@ -941,9 +947,13 @@ public final class EmbeddedEngine implements Runnable {
     protected void commitOffsets(OffsetStorageWriter offsetWriter, Duration commitTimeout, SourceTask task) {
         long started = clock.currentTimeInMillis();
         long timeout = started + commitTimeout.toMillis();
-        if (!offsetWriter.beginFlush()) return;
+        if (!offsetWriter.beginFlush()){
+            return;
+        }
         Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
-        if (flush == null) return; // no offsets to commit ...
+        if (flush == null){
+            return; // no offsets to commit ...
+        }
 
         // Wait until the offsets are flushed ...
         try {
