@@ -335,7 +335,17 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
             // Find default replication factor
             Config brokerConfig = getKafkaBrokerConfig(admin);
-            final short replicationFactor = Short.parseShort(brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value());
+            String defaultReplicationFactorValue = brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value();
+            final short replicationFactor;
+            // Ensure that the default replication factor property was returned by the Admin Client
+            if (defaultReplicationFactorValue != null) {
+                replicationFactor = Short.parseShort(defaultReplicationFactorValue);
+            }
+            else {
+                // Otherwise warn that no property was obtained and default it to 1 - users can increase this later if desired
+                logger.warn("Unable to obtain the default replication factor from the brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS) + " - Setting value to 1 instead");
+                replicationFactor = 1;
+            }
 
             // Create topic
             final NewTopic topic = new NewTopic(topicName, (short)1, replicationFactor);
