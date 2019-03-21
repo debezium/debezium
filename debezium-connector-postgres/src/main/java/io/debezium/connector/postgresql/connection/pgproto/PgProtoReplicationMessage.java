@@ -247,13 +247,13 @@ class PgProtoReplicationMessage implements ReplicationMessage {
 
             default:
                 PostgresType type = typeRegistry.get(columnType);
-                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
+                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() || type.getOid() == typeRegistry.inetOid()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
                 if(type.getOid() == typeRegistry.hstoreOid()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
-                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() ) {
+                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() || type.getOid() == typeRegistry.inetArrayOid()) {
                     return getArray(datumMessage, connection, columnType);
                 }
                 // unknown data type is sent by decoder as binary value

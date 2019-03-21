@@ -205,7 +205,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return Geography.builder();
                 }
-                else if (oidValue == typeRegistry.citextOid()) {
+                else if (oidValue == typeRegistry.citextOid() || oidValue == typeRegistry.inetOid()) {
                     return SchemaBuilder.string();
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
@@ -217,7 +217,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
                     return SchemaBuilder.array(Geography.builder().optional().build());
                 }
-                else if (oidValue == typeRegistry.citextArrayOid()) {
+                else if (oidValue == typeRegistry.citextArrayOid() || oidValue == typeRegistry.inetArrayOid()) {
                     return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
                 }
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
@@ -322,13 +322,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return data -> convertGeography(column, fieldDefn, data);
                 }
-                else if (oidValue == typeRegistry.citextOid()) {
-                    return data -> convertCitext(column, fieldDefn, data);
+                else if (oidValue == typeRegistry.citextOid() || oidValue == typeRegistry.inetOid()) {
+                    return data -> convertToString(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return data -> convertHStore(column, fieldDefn, data, hStoreMode);
                 }
-                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid()) {
+                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid() || oidValue == typeRegistry.inetArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
                 }
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
@@ -645,7 +645,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    protected Object convertCitext(Column column, Field fieldDefn, Object data) {
+    protected Object convertToString(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
             if (data instanceof byte[]) {
                 r.deliver(new String((byte[]) data));
