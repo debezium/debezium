@@ -175,6 +175,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.UUID:
             case PgOid.BIT:
             case PgOid.VARBIT:
+            case PgOid.INET_OID:
                 return datumMessage.hasDatumString() ? datumMessage.getDatumString() : null;
             case PgOid.DATE:
                 return datumMessage.hasDatumInt32() ? (long) datumMessage.getDatumInt32() : null;
@@ -240,6 +241,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
             case PgOid.REF_CURSOR_ARRAY:
+            case PgOid.INET_ARRAY:
                 return getArray(datumMessage, connection, columnType);
 
             case PgOid.UNSPECIFIED:
