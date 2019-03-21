@@ -82,9 +82,9 @@ public class MySqlConnector extends SourceConnector {
         ConfigValue hostnameValue = results.get(MySqlConnectorConfig.HOSTNAME.name());
         ConfigValue portValue = results.get(MySqlConnectorConfig.PORT.name());
         ConfigValue userValue = results.get(MySqlConnectorConfig.USER.name());
-        ConfigValue passwordValue = results.get(MySqlConnectorConfig.PASSWORD.name());
+        final String passwordValue = config.getString(MySqlConnectorConfig.PASSWORD);
 
-        if (passwordValue.value() == null || ((String)passwordValue.value()).isEmpty()) {
+        if (passwordValue == null || passwordValue.isEmpty()) {
             logger.warn("The connection password is empty");
         }
 
