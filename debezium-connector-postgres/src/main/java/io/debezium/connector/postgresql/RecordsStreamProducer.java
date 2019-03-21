@@ -230,8 +230,13 @@ public class RecordsStreamProducer extends RecordsProducer {
     }
 
     private void process(ReplicationMessage message, Long lsn, BlockingConsumer<ChangeEvent> consumer) throws SQLException, InterruptedException {
+        // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN.
+        // WAL2JSON can also send empty changes for DDL, materialized views, etc. and the heartbeat still needs to fire.
         if (message == null) {
-            // in some cases we can get null if PG gives us back a message earlier than the latest reported flushed LSN
+            logger.trace("Received empty message");
+            lastCompletelyProcessedLsn = lsn;
+            heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
+                    r -> consumer.accept(new ChangeEvent(r, lsn)));
             return;
         }
         if (message.isLastEventForLsn()) {

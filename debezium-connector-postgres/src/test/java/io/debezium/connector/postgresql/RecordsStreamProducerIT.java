@@ -20,8 +20,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
+import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.DECODERBUFS;
 
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
@@ -1261,6 +1263,28 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-1146")
     public void shouldReceiveChangesForReplicaIdentityFullTableWithToastedValueTableFromStreamingFullDiff() throws Exception {
         testReceiveChangesForReplicaIdentityFullTableWithToastedValue(SchemaRefreshMode.COLUMNS_DIFF, false);
+    }
+
+    @Test()
+    @FixFor("DBZ-1181")
+    @SkipWhenDecoderPluginNameIs(DECODERBUFS)
+    public void testEmptyChangesProducesHeartbeat() throws Exception {
+        // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
+        // received from Postgres
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
+                .build());
+        setupRecordsProducer(config);
+        String statement = "CREATE SCHEMA s1;" ;
+
+        // Expecting one empty DDL change
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+
+        // Expecting one heartbeat for the empty DDL change
+        assertHeartBeatRecordInserted();
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart) throws Exception{

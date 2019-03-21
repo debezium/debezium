@@ -58,10 +58,17 @@ public class NonStreamingWal2JsonMessageDecoder implements MessageDecoder {
             final Instant commitTime = Conversions.toInstant(dateTime.systemTimestamp(timestamp));
             final Array changes = message.getArray("change");
 
-            Iterator<Entry> it = changes.iterator();
-            while (it.hasNext()) {
-                Value value = it.next().getValue();
-                processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
+            // WAL2JSON may send empty changes that still have a txid. These events are from things like vacuum,
+            // materialized view, DDL, etc. They still need to be processed for the heartbeat to fire.
+            if (changes.isEmpty()) {
+                processor.process(null);
+            }
+            else {
+                Iterator<Entry> it = changes.iterator();
+                while (it.hasNext()) {
+                    Value value = it.next().getValue();
+                    processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
+                }
             }
         } catch (final IOException e) {
             throw new ConnectException(e);
