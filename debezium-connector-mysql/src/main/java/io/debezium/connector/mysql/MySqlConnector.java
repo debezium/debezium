@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.util.Strings;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MySQL binary log and generate the corresponding
@@ -84,7 +85,7 @@ public class MySqlConnector extends SourceConnector {
         ConfigValue userValue = results.get(MySqlConnectorConfig.USER.name());
         final String passwordValue = config.getString(MySqlConnectorConfig.PASSWORD);
 
-        if (passwordValue == null || passwordValue.isEmpty()) {
+        if (Strings.isNullOrEmpty(passwordValue)) {
             logger.warn("The connection password is empty");
         }
 
