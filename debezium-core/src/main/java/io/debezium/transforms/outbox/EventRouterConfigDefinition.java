@@ -5,10 +5,13 @@
  */
 package io.debezium.transforms.outbox;
 
+import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.transforms.util.RegexValidator;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Debezium Outbox Transform configuration definition
@@ -62,6 +65,74 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public enum AdditionalFieldPlacement implements EnumeratedValue {
+        HEADER("header"),
+        ENVELOPE("envelope");
+
+        private final String value;
+
+        AdditionalFieldPlacement(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static AdditionalFieldPlacement parse(String value) {
+            if (value == null) return null;
+            value = value.trim();
+            for (AdditionalFieldPlacement option : AdditionalFieldPlacement.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) return option;
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value        the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static AdditionalFieldPlacement parse(String value, String defaultValue) {
+            AdditionalFieldPlacement mode = parse(value);
+            if (mode == null && defaultValue != null) mode = parse(defaultValue);
+            return mode;
+        }
+    }
+
+    public static class AdditionalField {
+        private final AdditionalFieldPlacement placement;
+        private final String field;
+        private final String alias;
+
+        AdditionalField(AdditionalFieldPlacement placement, String field, String alias) {
+            this.placement = placement;
+            this.field = field;
+            this.alias = alias;
+        }
+
+        public AdditionalFieldPlacement getPlacement() {
+            return placement;
+        }
+
+        public String getField() {
+            return field;
+        }
+
+        public String getAlias() {
+            return alias;
+        }
+    }
+
     static final Field FIELD_EVENT_ID = Field.create("table.field.event.id")
             .withDisplayName("Event ID Field")
             .withType(ConfigDef.Type.STRING)
@@ -108,6 +179,16 @@ public class EventRouterConfigDefinition {
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("aggregateid")
             .withDescription("The column which contains the Payload ID within the outbox table");
+
+    static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
+            .withDisplayName("Settings for each additional column in the outbox table")
+            .withType(ConfigDef.Type.LIST)
+            .withValidation(EventRouterConfigDefinition::isListOfStringPairs)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.HIGH)
+            .withDescription("Extra fields can be added as part of the event envelope or a message header, format" +
+                    " is a list of colon-delimited pairs or trios when you desire to have aliases," +
+                    " e.g. <code>id:header,field_name:envelope:alias</code> ");
 
     static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Field to route events by")
@@ -160,7 +241,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Table",
-                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP
+                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT
         );
         Field.group(
                 config,
@@ -173,5 +254,39 @@ public class EventRouterConfigDefinition {
                 OPERATION_INVALID_BEHAVIOR
         );
         return config;
+    }
+
+    public static List<AdditionalField> parseAdditionalFieldsConfig(Configuration config) {
+        String extraFieldsMapping = config.getString(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT);
+
+        List<AdditionalField> additionalFields = new ArrayList<>();
+
+        if (extraFieldsMapping == null) {
+            return additionalFields;
+        }
+
+        for (String field: extraFieldsMapping.split(",")) {
+            final String[] parts = field.split(":");
+            AdditionalFieldPlacement placement = AdditionalFieldPlacement.parse(parts[1]);
+            additionalFields.add(
+                    new AdditionalField(placement, parts[0], parts.length == 3 ? parts[2] : parts[0])
+            );
+        }
+
+        return additionalFields;
+    }
+
+    private static int isListOfStringPairs(Configuration config, Field field, Field.ValidationOutput problems) {
+        List<String> value = config.getStrings(field, ",");
+        int errors = 0;
+        for (String mapping : value) {
+            final String[] parts = mapping.split(":");
+            if (parts.length != 2 && parts.length != 3) {
+                problems.accept(field, value, "A comma-separated list of valid String pairs or trios " +
+                        "is expected but got: " + value);
+                ++errors;
+            }
+        }
+        return errors;
     }
 }
