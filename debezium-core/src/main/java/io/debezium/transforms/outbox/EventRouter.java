@@ -7,6 +7,7 @@ package io.debezium.transforms.outbox;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
@@ -20,8 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static io.debezium.transforms.outbox.EventRouterConfigDefinition.parseAdditionalFieldsConfig;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 /**
@@ -47,6 +50,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private String routeByField;
 
     private Schema valueSchema;
+    private List<AdditionalField> additionalFields;
 
     @Override
     public R apply(R r) {
@@ -89,6 +93,17 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         Struct value = new Struct(valueSchema)
                 .put("eventType", eventType)
                 .put("payload", payload);
+
+        additionalFields.forEach((additionalField -> {
+            switch (additionalField.getPlacement()) {
+                case ENVELOPE:
+                    value.put(additionalField.getAlias(), eventStruct.getString(additionalField.getField()));
+                    break;
+                case HEADER:
+                    headers.addString(additionalField.getAlias(), eventStruct.getString(additionalField.getField()));
+                    break;
+            }
+        }));
 
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField).toLowerCase(),
@@ -163,9 +178,26 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         afterExtractor.configure(afterExtractorConfig);
 
-        valueSchema = SchemaBuilder.struct()
+        additionalFields = parseAdditionalFieldsConfig(config);
+
+        valueSchema = buildValueSchema();
+    }
+
+    private Schema buildValueSchema() {
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct();
+
+        // Add default fields
+        schemaBuilder
                 .field("eventType", Schema.STRING_SCHEMA)
-                .field("payload", Schema.STRING_SCHEMA)
-                .build();
+                .field("payload", Schema.STRING_SCHEMA);
+
+        // Add additional fields
+        additionalFields.forEach((additionalField -> {
+            if (additionalField.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE) {
+                schemaBuilder.field(additionalField.getAlias(), Schema.STRING_SCHEMA);
+            }
+        }));
+
+        return schemaBuilder.build();
     }
 }
