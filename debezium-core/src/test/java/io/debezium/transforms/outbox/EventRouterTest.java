@@ -10,6 +10,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
@@ -246,6 +248,57 @@ public class EventRouterTest {
 
         assertThat(eventRouted).isNotNull();
         assertThat(((Struct) eventRouted.value()).getString("payload")).isEqualTo("{}");
+
+        Headers headers = eventRouted.headers();
+        assertThat(headers.size()).isEqualTo(1);
+        Header header = headers.iterator().next();
+        assertThat(header.key()).isEqualTo("id");
+        assertThat(header.value()).isEqualTo("da8d6de6-3b77-45ff-8f44-57db55a7a06c");
+    }
+
+    @Test
+    public void canSetPayloadTypeIntoTheEnvelope() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord();
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(((Struct) eventRouted.value()).get("type")).isEqualTo("UserCreated");
+    }
+
+    @Test
+    public void canSetPayloadTypeIntoTheEnvelopeWithAlias() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope:aggregateType");
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord();
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(((Struct) eventRouted.value()).get("aggregateType")).isEqualTo("UserCreated");
+    }
+
+    @Test
+    public void canSetMultipleFieldsIntoTheEnvelope() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
+                "type:envelope:payloadType,aggregateid:envelope:payloadId,type:header:payloadType"
+        );
+        router.configure(config);
+
+        final SourceRecord eventRecord = createEventRecord();
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        Struct value = (Struct) eventRouted.value();
+        assertThat(value.get("payloadType")).isEqualTo("UserCreated");
+        assertThat(value.get("payloadId")).isEqualTo("10711fa5");
+        assertThat(eventRouted.headers().lastWithName("payloadType").value()).isEqualTo("UserCreated");
     }
 
     private SourceRecord createEventRecord() {
