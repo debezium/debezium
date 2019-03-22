@@ -85,6 +85,14 @@ public class EventRouterConfigDefinition {
             .withDefault("type")
             .withDescription("The column which contains the Event Type within the outbox table");
 
+    static final Field FIELD_EVENT_TIMESTAMP = Field.create("table.field.event.timestamp")
+            .withDisplayName("Event Timestamp Field")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Optionally you can override the Kafka message timestamp with a value from a chosen" +
+                    " field, otherwise it'll be the debezium event processed timestamp.");
+
     static final Field FIELD_PAYLOAD = Field.create("table.field.payload")
             .withDisplayName("Event Payload Field")
             .withType(ConfigDef.Type.STRING)
@@ -152,7 +160,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Table",
-                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID
+                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP
         );
         Field.group(
                 config,
