@@ -16,6 +16,7 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.fest.assertions.Assertions.assertThat;
 
 /**
@@ -120,6 +121,54 @@ public class EventRouterTest {
     }
 
     @Test
+    public void canSetTimestampFromDebeziumEnvelopeByDefault() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
+
+        final SourceRecord userEventRecord = createEventRecord();
+        final SourceRecord userEventRouted = router.apply(userEventRecord);
+
+        Struct userEvent = requireStruct(userEventRecord.value(), "Test timestamp");
+        Long expectedTimestamp = userEvent.getInt64("ts_ms");
+
+        assertThat(userEventRecord.timestamp()).isNull();
+        assertThat(userEventRouted.timestamp()).isEqualTo(expectedTimestamp);
+    }
+
+    @Test
+    public void canSetTimestampByUserDefinedConfiguration() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP.name(), "event_timestamp"
+        );
+        router.configure(config);
+
+        Long expectedTimestamp = 14222264625338L;
+
+        Map<String, Schema> extraFields = new HashMap<>();
+        extraFields.put("event_timestamp", Schema.INT64_SCHEMA);
+
+        Map<String, Object> extraValues = new HashMap<>();
+        extraValues.put("event_timestamp", expectedTimestamp);
+
+        final SourceRecord userEventRecord = createEventRecord(
+                "166080d9-3b0e-4a04-81fe-2058a7386f1f",
+                "UserCreated",
+                "420b186d",
+                "User",
+                "{}",
+                extraFields,
+                extraValues
+        );
+        final SourceRecord userEventRouted = router.apply(userEventRecord);
+
+        assertThat(userEventRecord.timestamp()).isNull();
+        assertThat(userEventRouted.timestamp()).isEqualTo(expectedTimestamp);
+    }
+
+    @Test
     public void canRouteBasedOnField() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
@@ -216,13 +265,36 @@ public class EventRouterTest {
             String payloadType,
             String payload
     ) {
-        final Schema recordSchema = SchemaBuilder.struct()
+        return createEventRecord(
+                eventId,
+                eventType,
+                payloadId,
+                payloadType,
+                payload,
+                new HashMap<>(),
+                new HashMap<>()
+        );
+    }
+
+    private SourceRecord createEventRecord(
+            String eventId,
+            String eventType,
+            String payloadId,
+            String payloadType,
+            String payload,
+            Map<String, Schema> extraFields,
+            Map<String, Object> extraValues
+    ) {
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct()
                 .field("id", SchemaBuilder.string())
                 .field("aggregatetype", SchemaBuilder.string())
                 .field("aggregateid", SchemaBuilder.string())
                 .field("type", SchemaBuilder.string())
-                .field("payload", SchemaBuilder.string())
-                .build();
+                .field("payload", SchemaBuilder.string());
+
+        extraFields.forEach(schemaBuilder::field);
+
+        final Schema recordSchema = schemaBuilder.build();
 
         Envelope envelope = Envelope.defineSchema()
                 .withName("event.Envelope")
@@ -236,6 +308,8 @@ public class EventRouterTest {
         before.put("aggregateid", payloadId);
         before.put("type", eventType);
         before.put("payload", payload);
+
+        extraValues.forEach(before::put);
 
         final Struct body = envelope.create(before, null, System.nanoTime());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), body);
