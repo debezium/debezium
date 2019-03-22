@@ -5,13 +5,18 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
-import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
-import io.debezium.relational.*;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+
+import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
+import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableEditor;
+import io.debezium.relational.TableId;
 
 public class CreateTableParserListener extends BaseParserListener {
 

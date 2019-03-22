@@ -46,7 +46,7 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
         if (!ddlContent.endsWith(";")) {
             ddlContent = ddlContent + ";";
         }
-        super.parse(ddlContent, databaseTables);
+        super.parse(toUpperCase(ddlContent), databaseTables);
     }
 
     @Override
