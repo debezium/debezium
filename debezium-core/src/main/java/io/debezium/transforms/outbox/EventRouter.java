@@ -40,6 +40,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private String fieldEventId;
     private String fieldEventKey;
     private String fieldEventType;
+    private String fieldEventTimestamp;
     private String fieldPayload;
     private String fieldPayloadId;
 
@@ -73,7 +74,9 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         final R afterRecord = afterExtractor.apply(r);
         Struct eventStruct = requireStruct(afterRecord.value(), "Read Outbox Event");
 
-        Long timestamp = debeziumEventValue.getInt64("ts_ms");
+        Long timestamp = fieldEventTimestamp == null
+                ? debeziumEventValue.getInt64("ts_ms")
+                : eventStruct.getInt64(fieldEventTimestamp);
 
         String eventId = eventStruct.getString(fieldEventId);
         String eventType = eventStruct.getString(fieldEventType);
@@ -143,6 +146,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
         fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
         fieldEventType = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TYPE);
+        fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
         fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
         fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
 
