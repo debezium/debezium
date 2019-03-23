@@ -53,14 +53,14 @@ public interface Value extends Comparable<Value> {
      *         are null), or a positive integer if the first value is greater than the second
      */
     static int compareTo(Value value1, Value value2) {
-        if (value1 == null){
+        if (value1 == null) {
             return isNull(value2) ? 0 : -1;
         }
         return value1.compareTo(value2);
     }
 
     static Value create(Object value) {
-        if (value instanceof Value){
+        if (value instanceof Value) {
             return (Value) value;
         }
         if (!isValid(value)) {
@@ -213,7 +213,7 @@ public interface Value extends Comparable<Value> {
      * @return the Value that will perform semantic comparisons; never null
      */
     default Value comparable() {
-        if (this instanceof ComparableValue){
+        if (this instanceof ComparableValue) {
             return this;
         }
         return new ComparableValue(this);

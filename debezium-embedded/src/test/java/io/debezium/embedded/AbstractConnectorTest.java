@@ -257,7 +257,7 @@ public abstract class AbstractConnectorTest implements Testing {
         latch = new CountDownLatch(1);
         CompletionCallback wrapperCallback = (success, msg, error) -> {
             try {
-                if (callback != null){
+                if (callback != null) {
                     callback.handle(success, msg, error);
                 }
             } finally {
@@ -323,7 +323,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param unit the time unit; may not be null
      */
     protected void setConsumeTimeout(long timeout, TimeUnit unit) {
-        if (timeout < 0){
+        if (timeout < 0) {
             throw new IllegalArgumentException("The timeout may not be negative");
         }
         pollTimeoutInMs = unit.toMillis(timeout);
@@ -414,7 +414,7 @@ public abstract class AbstractConnectorTest implements Testing {
             records.add(record);
             recordsByTopic.computeIfAbsent(record.topic(), (topicName) -> new ArrayList<SourceRecord>()).add(record);
             String dbName = getAffectedDatabase(record);
-            if (dbName != null){
+            if (dbName != null) {
                 ddlRecordsByDbName.computeIfAbsent(dbName, key -> new ArrayList<>()).add(record);
             }
         }
@@ -517,7 +517,7 @@ public abstract class AbstractConnectorTest implements Testing {
         long now = System.currentTimeMillis();
         long stop = now + unit.toMillis(timeout);
         while (System.currentTimeMillis() < stop) {
-            if (!consumedLines.isEmpty()){
+            if (!consumedLines.isEmpty())  {
                 break;
             }
         }

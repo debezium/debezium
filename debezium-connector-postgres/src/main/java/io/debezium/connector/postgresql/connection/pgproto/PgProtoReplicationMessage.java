@@ -277,7 +277,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
         //    representations over the wire.
         try {
             byte[] data = datumMessage.hasDatumBytes()? datumMessage.getDatumBytes().toByteArray() : null;
-            if (data == null){
+            if (data == null) {
                 return null;
             }
             String dataString = new String(data, Charset.forName("UTF-8"));

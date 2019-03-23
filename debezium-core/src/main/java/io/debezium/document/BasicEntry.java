@@ -47,7 +47,7 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
     
     @Override
     public boolean equals(Object obj) {
-        if ( obj == this ){
+        if ( obj == this ) {
             return true;
         }
         if ( obj instanceof Array.Entry ) {
@@ -59,10 +59,10 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
     
     @Override
     public int compareTo(Array.Entry that) {
-        if ( this == that ){
+        if ( this == that ) {
             return 0;
         }
-        if ( this.getIndex() != that.getIndex() ){
+        if ( this.getIndex() != that.getIndex() ) {
             return this.getIndex() - that.getIndex();
         }
         return Value.compareTo(this.getValue(),that.getValue());

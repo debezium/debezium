@@ -21,7 +21,7 @@ import io.debezium.util.Sequences;
  * @author Randall Hauch
  */
 @NotThreadSafe
-final class BasicArray implements Array {
+final class  BasicArray implements Array {
 
     private static final BiFunction<Integer, Value, Entry> CONVERT_PAIR_TO_ENTRY = new BiFunction<Integer, Value, Entry>() {
         @Override
@@ -72,11 +72,11 @@ final class BasicArray implements Array {
 
     @Override
     public int compareTo(Array that) {
-        if (that == null){
+        if (that == null) {
             return 1;
         }
         int size = this.size();
-        if (size != that.size()){
+        if (size != that.size()) {
             return size - that.size();
         }
         Array thatArray = that;
@@ -84,7 +84,7 @@ final class BasicArray implements Array {
             Value thatValue = thatArray.get(i);
             Value thisValue = get(i);
             int diff = thatValue.compareTo(thisValue);
-            if (diff != 0){
+            if (diff != 0) {
                 return diff;
             }
         }
@@ -123,7 +123,7 @@ final class BasicArray implements Array {
 
     @Override
     public Array setValue(int index, Value value) {
-        if (value == null){
+        if (value == null) {
             value = Value.nullValue();
         }
         if (isValidIndex(index)) {
@@ -141,11 +141,11 @@ final class BasicArray implements Array {
 
     @Override
     public Array expand(int desiredSize, Value value) {
-        if (desiredSize <= values.size()){
+        if (desiredSize <= values.size()) {
             return this;
         }
         // Otherwise, we have to expand the array ...
-        if (value == null){
+        if (value == null) {
             value = Value.nullValue();
         }
         for (int i = values.size(); i < desiredSize; ++i) {
@@ -156,7 +156,7 @@ final class BasicArray implements Array {
     
     @Override
     public Array increment(int index, Value increment) {
-        if ( !increment.isNumber() ){
+        if ( !increment.isNumber() ) {
             throw new IllegalArgumentException("The increment must be a number but is " + increment);
         }
         Value current = get(index);
@@ -169,7 +169,7 @@ final class BasicArray implements Array {
 
     @Override
     public Array add(Value value) {
-        if (value == null){
+        if (value == null) {
             value = Value.nullValue();
         }
         this.values.add(value);

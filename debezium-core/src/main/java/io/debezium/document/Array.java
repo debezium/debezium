@@ -42,11 +42,11 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
 
         @Override
         default int compareTo(Entry that) {
-            if (that == null){
+            if (that == null) {
                 return 1;
             }
             int diff = this.getIndex() - that.getIndex();
-            if (diff != 0){
+            if (diff != 0) {
                 return diff;
             }
             return this.getValue().compareTo(that.getValue());
@@ -92,7 +92,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
     }
 
     static Array create(Iterable<?> values) {
-        if (values == null){
+        if (values == null) {
             return create();
         }
         BasicArray array = new BasicArray();
@@ -477,7 +477,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
         for (int i = 0; i != size(); ++i) {
             Value existing = get(i);
             Value updated = transformer.apply(Integer.valueOf(i), existing);
-            if (updated == null){
+            if (updated == null) {
                 updated = Value.nullValue();
             }
             if (updated != existing) {
@@ -811,7 +811,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      */
     default Array setArray(int index,
                            Array array) {
-        if (array == null){
+        if (array == null) {
             array = Array.create();
         }
         setValue(index, Value.create(array));

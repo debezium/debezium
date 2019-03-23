@@ -109,7 +109,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                     statement.executeUpdate("UPDATE products SET weight=100.12 WHERE id=109");
                     jdbc.rollback();
                     connection.query("SELECT * FROM products", rs -> {
-                        if (Testing.Print.isEnabled()){
+                        if (Testing.Print.isEnabled()) {
                             connection.print(rs);
                         }
                     });
@@ -174,7 +174,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
                 statement.executeUpdate("INSERT INTO customers VALUES(default, 'second', 'second', 'second')");
                 jdbc.commit();
                 connection.query("SELECT * FROM customers", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });

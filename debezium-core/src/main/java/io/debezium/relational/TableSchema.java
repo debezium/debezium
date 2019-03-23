@@ -150,7 +150,7 @@ public class TableSchema implements DataCollectionSchema {
 
     @Override
     public boolean equals(Object obj) {
-        if ( obj == this ){
+        if ( obj == this ) {
             return true;
         }
         if ( obj instanceof TableSchema ) {

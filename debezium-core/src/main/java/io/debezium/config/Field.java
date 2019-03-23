@@ -132,12 +132,12 @@ public final class Field {
          * @return the new set; never null
          */
         public Set with(Field... fields) {
-            if (fields.length == 0){
+            if (fields.length == 0) {
                 return this;
             }
             LinkedHashSet<Field> all = new LinkedHashSet<>(this.fieldsByName.values());
             for (Field f : fields) {
-                if (f != null){
+                if (f != null) {
                     all.add(f);
                 }
             }
@@ -152,7 +152,7 @@ public final class Field {
         public Set with(Iterable<Field> fields) {
             LinkedHashSet<Field> all = new LinkedHashSet<>(this.fieldsByName.values());
             fields.forEach(field -> {
-                if (field != null){
+                if (field != null) {
                     all.add(field);
                 }
             });
@@ -197,7 +197,7 @@ public final class Field {
          * @return the new validator, or this validator if {@code other} is {@code null} or equal to {@code this}
          */
         default Validator and(Validator other) {
-            if (other == null || other == this){
+            if (other == null || other == this) {
                 return this;
             }
             return (config, field, problems) -> {
@@ -527,10 +527,10 @@ public final class Field {
     public boolean validate(Configuration config, ValidationOutput problems) {
         Validator typeValidator = validatorForType(type);
         int errors = 0;
-        if (typeValidator != null){
+        if (typeValidator != null) {
             errors += typeValidator.validate(config, this, problems);
         }
-        if (validator != null){
+        if (validator != null) {
             errors += validator.validate(config, this, problems);
         }
         return errors == 0;
@@ -788,7 +788,7 @@ public final class Field {
     public Field withValidation(Validator... validators) {
         Validator actualValidator = validator;
         for (Validator validator : validators) {
-            if (validator != null){
+            if (validator != null) {
                 actualValidator = validator.and(actualValidator);
             }
         }
@@ -803,7 +803,7 @@ public final class Field {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this){
+        if (obj == this) {
             return true;
         }
         if (obj instanceof Field) {
@@ -870,28 +870,28 @@ public final class Field {
         }
 
         public void ensureValid(String name, Object o) {
-            if (o == null){
+            if (o == null) {
                 throw new ConfigException(name,o,"Value must be non-null");
             }
             Number n = (Number) o;
-            if (min != null && n.doubleValue() < min.doubleValue()){
+            if (min != null && n.doubleValue() < min.doubleValue()) {
                 throw new ConfigException(name,o,"Value must be at least "+min);
             }
-            if (max != null && n.doubleValue() > max.doubleValue()){
+            if (max != null && n.doubleValue() > max.doubleValue()) {
                 throw new ConfigException(name,o,"Value must be no more than "+max);
             }
         }
 
         @Override
         public String toString() {
-            if (min == null){
-                return "[...,"+max+"]";
-            }
-            else if (max == null){
-                return "["+min+",...]";
-            }
-            else{
-                return "["+min+",...,"+max+"]";
+            if (min == null) {
+                return "[...," + max + "]";
+            } else {
+                if (max == null) {
+                    return "[" + min + ",...]";
+                } else {
+                    return "[" + min + ",...," + max + "]";
+                }
             }
         }
     }
@@ -1054,7 +1054,7 @@ public final class Field {
 
     public static int isClassName(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null || SourceVersion.isName(value)){
+        if (value == null || SourceVersion.isName(value)) {
             return 0;
         }
         problems.accept(field, value, "A Java class name is expected");
@@ -1063,7 +1063,7 @@ public final class Field {
 
     public static int isRequired(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value != null && value.trim().length() > 0){
+        if (value != null && value.trim().length() > 0) {
             return 0;
         }
         problems.accept(field, value, "A value is required");
@@ -1079,7 +1079,7 @@ public final class Field {
         String value = config.getString(field);
         if (value == null ||
                 value.trim().equalsIgnoreCase(Boolean.TRUE.toString()) ||
-                value.trim().equalsIgnoreCase(Boolean.FALSE.toString())){
+                value.trim().equalsIgnoreCase(Boolean.FALSE.toString())) {
             return 0;
         }
         problems.accept(field, value, "Either 'true' or 'false' is expected");
@@ -1088,7 +1088,7 @@ public final class Field {
 
     public static int isInteger(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
@@ -1102,7 +1102,7 @@ public final class Field {
 
     public static int isPositiveInteger(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
@@ -1116,11 +1116,11 @@ public final class Field {
 
     public static int isNonNegativeInteger(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
-            if (Integer.parseInt(value) >= 0){
+            if (Integer.parseInt(value) >= 0) {
                 return 0;
             }
         } catch (Throwable e) {}
@@ -1130,7 +1130,7 @@ public final class Field {
 
     public static int isLong(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
@@ -1144,11 +1144,11 @@ public final class Field {
 
     public static int isPositiveLong(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
-            if (Long.parseLong(value) > 0){
+            if (Long.parseLong(value) > 0) {
                 return 0;
             }
         } catch (Throwable e) {}
@@ -1158,11 +1158,11 @@ public final class Field {
 
     public static int isNonNegativeLong(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
-            if (Long.parseLong(value) >= 0){
+            if (Long.parseLong(value) >= 0) {
                 return 0;
             }
         } catch (Throwable e) {}
@@ -1172,7 +1172,7 @@ public final class Field {
 
     public static int isShort(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
@@ -1186,7 +1186,7 @@ public final class Field {
 
     public static int isDouble(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {
@@ -1200,7 +1200,7 @@ public final class Field {
 
     public static int isZoneOffset(Configuration config, Field field, ValidationOutput problems) {
         String value = config.getString(field);
-        if (value == null){
+        if (value == null) {
             return 0;
         }
         try {

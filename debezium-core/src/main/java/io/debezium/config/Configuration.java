@@ -704,7 +704,7 @@ public interface Configuration {
 
         protected Builder changeString(String key, String defaultValue, Function<String, String> function) {
             String existing = props.getProperty(key);
-            if (existing == null){
+            if (existing == null) {
                 existing = defaultValue;
             }
             String newValue = function.apply(existing);
@@ -779,7 +779,7 @@ public interface Configuration {
      */
     public static Configuration from(Properties properties) {
         Properties props = new Properties();
-        if (properties != null){
+        if (properties != null) {
             props.putAll(properties);
         }
         return new Configuration() {
@@ -809,7 +809,7 @@ public interface Configuration {
      */
     public static Configuration from(Map<String, ?> properties) {
         return from(properties, value -> {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             if (value instanceof Collection<?>) {
@@ -830,7 +830,7 @@ public interface Configuration {
      */
     public static <T> Configuration from(Map<String, T> properties, Function<T, String> conversion) {
         Map<String, Object> props = new HashMap<>();
-        if (properties != null){
+        if (properties != null) {
             props.putAll(properties);
         }
         return new Configuration() {
@@ -1069,7 +1069,7 @@ public interface Configuration {
      */
     default List<String> getStrings(String key, String regex) {
         String value = getString(key);
-        if (value == null){
+        if (value == null) {
             return null;
         }
         return Collect.arrayListOf(value.split(regex));
@@ -1216,10 +1216,10 @@ public interface Configuration {
         String value = getString(key);
         if (value != null) {
             value = value.trim().toLowerCase();
-            if (Boolean.valueOf(value)){
+            if (Boolean.valueOf(value)) {
                 return Boolean.TRUE;
             }
-            if (value.equals("false")){
+            if (value.equals("false")) {
                 return false;
             }
         }
@@ -1485,11 +1485,11 @@ public interface Configuration {
      * @return the subset of this Configuration; never null
      */
     default Configuration subset(String prefix, boolean removePrefix) {
-        if (prefix == null){
+        if (prefix == null) {
             return this;
         }
         prefix = prefix.trim();
-        if (prefix.isEmpty()){
+        if (prefix.isEmpty()) {
             return this;
         }
         String prefixWithSeparator = prefix.endsWith(".") ? prefix : prefix + ".";
@@ -1505,7 +1505,7 @@ public interface Configuration {
      * @return the subset Configuration; never null
      */
     default Configuration map(Function<String, String> mapper) {
-        if (mapper == null){
+        if (mapper == null) {
             return this;
         }
         Map<String, String> newToOld = new HashMap<>();
@@ -1541,7 +1541,7 @@ public interface Configuration {
      * @return the subset Configuration; never null
      */
     default Configuration filter(Predicate<? super String> matcher) {
-        if (matcher == null){
+        if (matcher == null) {
             return this;
         }
         return new Configuration() {
@@ -1572,7 +1572,7 @@ public interface Configuration {
      * @return the Configuration with mapped values; never null
      */
     default Configuration mapped(BiFunction<? super String, ? super String, String> mapper) {
-        if (mapper == null){
+        if (mapper == null) {
             return this;
         }
         return new Configuration() {
@@ -1652,7 +1652,7 @@ public interface Configuration {
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMasked(String keyRegex) {
-        if (keyRegex == null){
+        if (keyRegex == null) {
             return this;
         }
         return withMasked(Pattern.compile(keyRegex));
@@ -1666,7 +1666,7 @@ public interface Configuration {
      * @return the Configuration with masked values for matching keys; never null
      */
     default Configuration withMasked(Pattern keyRegex) {
-        if (keyRegex == null){
+        if (keyRegex == null) {
             return this;
         }
         return new Configuration() {
@@ -1717,8 +1717,8 @@ public interface Configuration {
         // Add all values as-is ...
         keys().forEach(key -> {
             String value = getString(key);
-            if (key != null && value != null){
-                props.setProperty(key, value);
+            if (key != null && value != null) {
+                props.setProperty(key,value);
             }
         });
         if (fields != null) {
@@ -1750,7 +1750,7 @@ public interface Configuration {
         // Add all values as-is ...
         keys().forEach(key -> {
             String value = getString(key);
-            if (key != null && value != null){
+            if (key != null && value != null) {
                 props.put(key, value);
             }
         });
@@ -1820,7 +1820,7 @@ public interface Configuration {
     default boolean validate(Iterable<Field> fields, ValidationOutput problems) {
         boolean valid = true;
         for (Field field : fields) {
-            if (!field.validate(this, problems)){
+            if (!field.validate(this, problems)) {
                 valid = false;
             }
         }
@@ -2071,7 +2071,7 @@ public interface Configuration {
             if (matcher.matches()) {
                 String groupValue = matcher.group(groupNumber);
                 T extractedValue = groupExtractor.apply(fieldName, groupValue);
-                if (extractedValue != null){
+                if (extractedValue != null) {
                     function.accept(fieldValue, extractedValue);
                 }
             }

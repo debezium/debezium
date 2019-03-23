@@ -161,12 +161,12 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
          * @return the matching option, or null if no match is found
          */
         public static SnapshotIsolationMode parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (SnapshotIsolationMode option : SnapshotIsolationMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -182,7 +182,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
          */
         public static SnapshotIsolationMode parse(String value, String defaultValue) {
             SnapshotIsolationMode mode = parse(value);
-            if (mode == null && defaultValue != null){
+            if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
             return mode;

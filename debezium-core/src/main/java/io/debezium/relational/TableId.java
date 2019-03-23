@@ -53,11 +53,11 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
      * @return the table ID, or null if it could not be parsed
      */
     protected static TableId parse(String[] parts, int numParts, boolean useCatalogBeforeSchema) {
-        if (numParts == 0){
+        if (numParts == 0) {
             return null;
         }
-        if (numParts == 1){
-            return new TableId(null, null, parts[0]); // table only
+        if (numParts == 1) {
+            return new TableId(null,null,parts[0]); // table only
         }
         if (numParts == 2) {
             if (useCatalogBeforeSchema){
@@ -119,14 +119,14 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
 
     @Override
     public int compareTo(TableId that) {
-        if (this == that){
+        if (this == that) {
             return 0;
         }
         return this.id.compareTo(that.id);
     }
 
     public int compareToIgnoreCase(TableId that) {
-        if (this == that){
+        if (this == that) {
             return 0;
         }
         return this.id.compareToIgnoreCase(that.id);

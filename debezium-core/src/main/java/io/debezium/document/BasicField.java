@@ -48,7 +48,7 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
     
     @Override
     public boolean equals(Object obj) {
-        if ( obj == this ){
+        if ( obj == this ) {
             return true;
         }
         if ( obj instanceof Document.Field ) {
@@ -60,7 +60,7 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
     
     @Override
     public int compareTo(Document.Field that) {
-        if ( this == that ){
+        if ( this == that ) {
             return 0;
         }
         int diff = Strings.compareTo(this.getName(),that.getName());

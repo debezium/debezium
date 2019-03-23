@@ -30,7 +30,7 @@ final class Paths {
     static Path parse(String path, boolean resolveJsonPointerEscapes) {
         // Remove leading and trailing whitespace and '/' characters ...
         path = Strings.trim(path, (c) -> c < ' ' || c == '/');
-        if (path.length() == 0){
+        if (path.length() == 0) {
             return RootPath.INSTANCE;
         }
         String[] segments = PATH_SEPARATOR_PATTERN.split(path);
@@ -110,7 +110,7 @@ final class Paths {
 
         @Override
         public Path subpath(int length) {
-            if (length != 0){
+            if (length != 0) {
                 throw new IllegalArgumentException("Invalid subpath length: " + length);
             }
             return this;
@@ -162,12 +162,12 @@ final class Paths {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == this){
+            if (obj == this) {
                 return true;
             }
             if (obj instanceof Path) {
                 Path that = (Path) obj;
-                if (this.size() != that.size()){
+                if (this.size() != that.size()) {
                     return false;
                 }
                 return this.lastSegment().get().equals(that.lastSegment().get());
@@ -197,7 +197,7 @@ final class Paths {
 
         @Override
         public Path subpath(int length) {
-            if (length > size() || length < 0){
+            if (length > size() || length < 0) {
                 throw new IllegalArgumentException("Invalid subpath length: " + length);
             }
             return length == 1 ? this : Path.root();
@@ -205,7 +205,7 @@ final class Paths {
 
         @Override
         public String segment(int index) {
-            if (index >= size() || index < 0){
+            if (index >= size() || index < 0) {
                 throw new IllegalArgumentException("Invalid segment index: " + index);
             }
             return segment.get();
@@ -213,10 +213,10 @@ final class Paths {
 
         @Override
         public Path append(Path relPath) {
-            if (relPath.isRoot()){
+            if (relPath.isRoot()) {
                 return this;
             }
-            if (relPath.isSingle()){
+            if (relPath.isSingle()) {
                 return new ChildPath(this, relPath.lastSegment().get());
             }
             String[] segments = new String[size() + relPath.size()];
@@ -244,7 +244,7 @@ final class Paths {
 
         @Override
         public Optional<Path> parent() {
-            if (size() == 2){
+            if (size() == 2) {
                 return Optional.of(new SingleSegmentPath(segments[0]));
             }
             return Optional.of(new MultiSegmentPath(Arrays.copyOf(segments, segments.length - 1)));
@@ -267,18 +267,18 @@ final class Paths {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == this){
+            if (obj == this) {
                 return true;
             }
             if (obj instanceof Path) {
                 Path that = (Path) obj;
-                if (this.size() != that.size()){
+                if (this.size() != that.size()) {
                     return false;
                 }
                 Iterator<String> thisIter = this.iterator();
                 Iterator<String> thatIter = that.iterator();
                 while (thisIter.hasNext()) {
-                    if (!thisIter.next().equals(thatIter.next())){
+                    if (!thisIter.next().equals(thatIter.next())) {
                         return false;
                     }
                 }
@@ -311,16 +311,16 @@ final class Paths {
 
         @Override
         public Path subpath(int length) {
-            if (length > size() || length < 0){
+            if (length > size() || length < 0) {
                 throw new IllegalArgumentException("Invalid subpath length: " + length);
             }
-            if (length == 0){
+            if (length == 0) {
                 return RootPath.INSTANCE;
             }
-            if (length == 1){
+            if (length == 1) {
                 return new SingleSegmentPath(segments[0]);
             }
-            if (length == size()){
+            if (length == size()) {
                 return this;
             }
             return new MultiSegmentPath(Arrays.copyOf(segments, length));
@@ -328,7 +328,7 @@ final class Paths {
 
         @Override
         public String segment(int index) {
-            if (index >= size() || index < 0){
+            if (index >= size() || index < 0) {
                 throw new IllegalArgumentException("Invalid segment index: " + index);
             }
             return segments[index];
@@ -336,10 +336,10 @@ final class Paths {
 
         @Override
         public Path append(Path relPath) {
-            if (relPath.isRoot()){
+            if (relPath.isRoot()) {
                 return this;
             }
-            if (relPath.isSingle()){
+            if (relPath.isSingle()) {
                 return new ChildPath(this, relPath.lastSegment().get());
             }
             String[] segments = new String[size() + relPath.size()];
@@ -392,15 +392,15 @@ final class Paths {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == this){
+            if (obj == this) {
                 return true;
             }
             if (obj instanceof Path) {
                 Path that = (Path) obj;
-                if (this.size() != that.size()){
+                if (this.size() != that.size()) {
                     return false;
                 }
-                if (!this.parent.equals(that.parent())){
+                if (!this.parent.equals(that.parent())) {
                     return false;
                 }
                 return this.segment.equals(that.lastSegment().get());
@@ -420,7 +420,7 @@ final class Paths {
 
         @Override
         public String segment(int index) {
-            if (index >= size() || index < 0){
+            if (index >= size() || index < 0) {
                 throw new IllegalArgumentException("Invalid segment index: " + index);
             }
             return index < parent.size() ? parent.segment(index) : segment;
@@ -428,7 +428,7 @@ final class Paths {
 
         @Override
         public Path subpath(int length) {
-            if (length > size() || length < 0){
+            if (length > size() || length < 0) {
                 throw new IllegalArgumentException("Invalid subpath length: " + length);
             }
             return length <= parent.size() ? parent.subpath(length) : this;
@@ -436,11 +436,11 @@ final class Paths {
 
         @Override
         public Path append(Path relPath) {
-            if (relPath.isRoot()){
+            if (relPath.isRoot()) {
                 return this;
             }
-            if (relPath.isSingle()){
-                return new ChildPath(this, relPath.lastSegment().get());
+            if (relPath.isSingle()) {
+                return new ChildPath(this,relPath.lastSegment().get());
             }
             String[] segments = new String[size() + relPath.size() + 1];
             int offset = copyInto(segments, 0);

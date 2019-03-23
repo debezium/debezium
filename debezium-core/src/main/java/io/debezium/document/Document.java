@@ -55,11 +55,11 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
 
         @Override
         default int compareTo(Field that) {
-            if (that == null){
+            if (that == null) {
                 return 1;
             }
             int diff = this.getName().toString().compareTo(that.getName().toString());
-            if (diff != 0){
+            if (diff != 0) {
                 return diff;
             }
             return this.getValue().compareTo(that.getValue());
@@ -157,7 +157,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         the path was invalid and could not be resolved (and {@code invalid} is invoked)
      */
     default Optional<Value> set(Path path, boolean addIntermediaries, Value value, Consumer<Path> invalid) {
-        if (path == null){
+        if (path == null) {
             return Optional.empty();
         }
         if (path.isRoot()) {
@@ -191,7 +191,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
                 }
             }, invalid);
         }
-        if (!parent.isPresent()){
+        if (!parent.isPresent()) {
             return Optional.empty();
         }
         String lastSegment = path.lastSegment().get();
@@ -240,7 +240,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         valid
      */
     default Optional<Value> find(Path path, BiFunction<Path, Integer, Optional<Value>> missingSegment, Consumer<Path> invalid) {
-        if (path == null){
+        if (path == null) {
             return Optional.empty();
         }
         if (path.isRoot()) {
@@ -345,7 +345,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Stream<Field> children(String fieldName) {
         Document doc = getDocument(fieldName);
-        if (doc == null){
+        if (doc == null) {
             return Stream.empty();
         }
         return doc.stream();
@@ -845,7 +845,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
         for (Field field : this) {
             Value existing = get(field.getName());
             Value updated = transformer.apply(field.getName(), existing);
-            if (updated == null){
+            if (updated == null) {
                 updated = Value.nullValue();
             }
             if (updated != existing) {

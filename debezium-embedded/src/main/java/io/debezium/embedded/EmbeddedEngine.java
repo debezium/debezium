@@ -570,10 +570,10 @@ public final class EmbeddedEngine implements Runnable {
 
             @Override
             public EmbeddedEngine build() {
-                if (classLoader == null){
+                if (classLoader == null) {
                     classLoader = getClass().getClassLoader();
                 }
-                if (clock == null){
+                if (clock == null) {
                     clock = Clock.system();
                 }
                 Objects.requireNonNull(config, "A connector configuration must be specified.");
@@ -610,7 +610,7 @@ public final class EmbeddedEngine implements Runnable {
         this.classLoader = classLoader;
         this.clock = clock;
         this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
-            if (!success){
+            if (!success) {
                 logger.error(msg, error);
             }
         };
@@ -947,11 +947,11 @@ public final class EmbeddedEngine implements Runnable {
     protected void commitOffsets(OffsetStorageWriter offsetWriter, Duration commitTimeout, SourceTask task) {
         long started = clock.currentTimeInMillis();
         long timeout = started + commitTimeout.toMillis();
-        if (!offsetWriter.beginFlush()){
+        if (!offsetWriter.beginFlush()) {
             return;
         }
         Future<Void> flush = offsetWriter.doFlush(this::completedFlush);
-        if (flush == null){
+        if (flush == null) {
             return; // no offsets to commit ...
         }
 

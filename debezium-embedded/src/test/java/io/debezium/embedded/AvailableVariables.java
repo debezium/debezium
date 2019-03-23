@@ -78,12 +78,12 @@ public interface AvailableVariables {
      *         {@code next} is null or {@this}
      */
     default AvailableVariables and(AvailableVariables next) {
-        if (next == null || next == this){
+        if (next == null || next == this) {
             return this;
         }
         return (varName) -> {
             String result = this.variableForName(varName);
-            if (result == null){
+            if (result == null) {
                 result = next.variableForName(varName);
             }
             return result;

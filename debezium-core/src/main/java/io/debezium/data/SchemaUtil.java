@@ -145,12 +145,12 @@ public class SchemaUtil {
                 } else {
                     appendFirst("type", schema.type());
                 }
-                appendAdditional("optional", schema.isOptional());
-                if (schema.doc() != null){
-                    appendAdditional("doc", schema.doc());
+                appendAdditional("optional",schema.isOptional());
+                if (schema.doc() != null) {
+                    appendAdditional("doc",schema.doc());
                 }
-                if (schema.version() != null){
-                    appendAdditional("version", schema.version());
+                if (schema.version() != null) {
+                    appendAdditional("version",schema.version());
                 }
                 switch (schema.type()) {
                     case STRUCT:
@@ -171,10 +171,10 @@ public class SchemaUtil {
                 sb.append('{');
                 boolean first = true;
                 for (Field field : s.schema().fields()) {
-                    if (first){
+                    if (first) {
                         first=false;
                     }
-                    else{
+                    else {
                         sb.append(", ");
                     }
                     appendFirst(field.name(), s.get(field));
@@ -238,20 +238,20 @@ public class SchemaUtil {
                 }
                 appendAdditional("value", record.value());
                 sb.append('}');
-            } else if ( obj instanceof java.sql.Time ){
+            } else if ( obj instanceof java.sql.Time ) {
                 java.sql.Time time = (java.sql.Time)obj;
                 append(DateTimeFormatter.ISO_LOCAL_TIME.format(time.toLocalTime()));
-            } else if ( obj instanceof java.sql.Date ){
+            } else if ( obj instanceof java.sql.Date ) {
                 java.sql.Date date = (java.sql.Date)obj;
                 append(DateTimeFormatter.ISO_DATE.format(date.toLocalDate()));
-            } else if ( obj instanceof java.sql.Timestamp ){
+            } else if ( obj instanceof java.sql.Timestamp ) {
                 java.sql.Timestamp ts = (java.sql.Timestamp)obj;
                 Instant instant = ts.toInstant();
                 append(DateTimeFormatter.ISO_INSTANT.format(instant));
-            } else if ( obj instanceof java.util.Date ){
+            } else if ( obj instanceof java.util.Date ) {
                 java.util.Date date = (java.util.Date)obj;
                 append(DateTimeFormatter.ISO_INSTANT.format(date.toInstant()));
-            } else if ( obj instanceof TemporalAccessor ){
+            } else if ( obj instanceof TemporalAccessor ) {
                 TemporalAccessor temporal = (TemporalAccessor)obj;
                 append(DateTimeFormatter.ISO_INSTANT.format(temporal));
             } else {

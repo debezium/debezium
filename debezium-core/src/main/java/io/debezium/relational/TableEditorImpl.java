@@ -164,7 +164,7 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor removeColumn(String columnName) {
         Column existing = sortedColumns.remove(columnName.toLowerCase());
-        if (existing != null){
+        if (existing != null) {
             updatePositions();
         }
         assert positionsAreValid();
@@ -174,7 +174,7 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor reorderColumn(String columnName, String afterColumnName) {
         Column columnToMove = columnWithName(columnName);
-        if (columnToMove == null){
+        if (columnToMove == null) {
             throw new IllegalArgumentException("No column with name '" + columnName + "'");
         }
         Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
@@ -210,7 +210,7 @@ final class TableEditorImpl implements TableEditor {
     @Override
     public TableEditor renameColumn(String existingName, String newName) {
         final Column existing = columnWithName(existingName);
-        if (existing == null){
+        if (existing == null) {
             throw new IllegalArgumentException("No column with name '" + existingName + "'");
         }
         Column newColumn = existing.edit().name(newName).create();
@@ -254,7 +254,7 @@ final class TableEditorImpl implements TableEditor {
 
     @Override
     public Table create() {
-        if (id == null){
+        if (id == null) {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();

@@ -76,7 +76,7 @@ final class TableImpl implements Table {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this){
+        if (obj == this) {
             return true;
         }
         if (obj instanceof Table) {
@@ -97,7 +97,7 @@ final class TableImpl implements Table {
     }
 
     protected void toString(StringBuilder sb, String prefix) {
-        if (prefix == null){
+        if (prefix == null) {
             prefix = "";
         }
         sb.append(prefix).append("columns: {").append(System.lineSeparator());
