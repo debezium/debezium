@@ -122,7 +122,7 @@ final class NoOpTableEditorImpl implements TableEditor {
 
     @Override
     public Table create() {
-        if (id == null){
+        if (id == null) {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();

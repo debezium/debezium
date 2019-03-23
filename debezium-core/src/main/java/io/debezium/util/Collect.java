@@ -49,7 +49,7 @@ public class Collect {
     public static <T, V> Set<T> unmodifiableSet(Function<V, T> extractor, V... values) {
         Set<T> newSet = new HashSet<>();
         for (V value : values) {
-            if (value != null){
+            if (value != null) {
                 newSet.add(extractor.apply(value));
             }
         }
@@ -59,7 +59,7 @@ public class Collect {
     public static <T, V> Set<T> unmodifiableSet(Function<V, T> extractor, Collection<V> values) {
         Set<T> newSet = new HashSet<>();
         for (V value : values) {
-            if (value != null){
+            if (value != null) {
                 newSet.add(extractor.apply(value));
             }
         }
@@ -70,7 +70,7 @@ public class Collect {
     public static <T> Set<T> unmodifiableSet(Set<T> values, T... additionalValues) {
         Set<T> newSet = new HashSet<>(values);
         for (T value : values) {
-            if (value != null){
+            if (value != null) {
                 newSet.add(value);
             }
         }
@@ -102,7 +102,7 @@ public class Collect {
     public static <T> List<T> arrayListOf(T[] values) {
         List<T> result = new ArrayList<>();
         for (T value : values) {
-            if (value != null){
+            if (value != null) {
                 result.add(value);
             }
         }

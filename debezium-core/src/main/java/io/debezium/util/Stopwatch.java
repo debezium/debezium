@@ -170,10 +170,10 @@ public abstract class Stopwatch {
             private String fixedLengthSeconds(Duration duration) {
                 double seconds = duration.toNanos() * 1e-9;
                 String result = new DecimalFormat("##0.00000").format(seconds) + "s";
-                if (result.length() == 8){
+                if (result.length() == 8) {
                     return "  " + result;
                 }
-                if (result.length() == 9){
+                if (result.length() == 9) {
                     return " " + result;
                 }
                 return result;
@@ -181,13 +181,13 @@ public abstract class Stopwatch {
 
             private String fixedLength(long count) {
                 String result = new DecimalFormat("###0").format(count);
-                if (result.length() == 1){
+                if (result.length() == 1) {
                     return "   " + result;
                 }
-                if (result.length() == 2){
+                if (result.length() == 2) {
                     return "  " + result;
                 }
-                if (result.length() == 3){
+                if (result.length() == 3) {
                     return " " + result;
                 }
                 return result;
@@ -424,7 +424,7 @@ public abstract class Stopwatch {
                     if (existing == 0L) {
                         // Has not yet been started ...
                         existing = System.nanoTime();
-                        if (uponStart != null){
+                        if (uponStart != null) {
                             uponStart.run();
                         }
                     }
@@ -439,7 +439,7 @@ public abstract class Stopwatch {
                     if (existing != 0L) {
                         // Is running but has not yet been stopped ...
                         duration.add(Duration.ofNanos(System.nanoTime() - existing));
-                        if (uponStop != null){
+                        if (uponStop != null) {
                             uponStop.run();
                         }
                         return 0L;
@@ -499,7 +499,7 @@ public abstract class Stopwatch {
         @Override
         public void add(Duration duration) {
             LongSummaryStatistics stats = new LongSummaryStatistics();
-            if (duration != null){
+            if (duration != null) {
                 stats.accept(duration.toNanos());
             }
             this.stats.set(createStatistics(stats));

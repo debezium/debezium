@@ -66,14 +66,14 @@ public class VariableLatch {
             // Increment or decrement count; signal when transition to zero
             for (;;) {
                 int c = getState();
-                if (c == 0 && releases >= 0){
+                if (c == 0 && releases >= 0) {
                     return false;
                 }
                 int nextc = c - releases;
-                if (nextc < 0){
+                if (nextc < 0)  {
                     nextc = 0;
                 }
-                if (compareAndSetState(c, nextc)){
+                if (compareAndSetState(c, nextc)) {
                     return nextc==0;
                 }
             }
@@ -90,7 +90,7 @@ public class VariableLatch {
      * @throws IllegalArgumentException if {@code count} is negative
      */
     public VariableLatch(int count) {
-        if (count < 0){
+        if (count < 0) {
             throw new IllegalArgumentException("count < 0");
         }
         this.sync = new Sync(count);

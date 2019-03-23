@@ -306,10 +306,10 @@ public class DdlTokenizer implements Tokenizer {
                         while (input.hasNext() && !input.isNext('*', '/')) {
                             c = input.next();
                         }
-                        if (input.hasNext()){
+                        if (input.hasNext()) {
                             input.next(); // consume the '*'
                         }
-                        if (input.hasNext()){
+                        if (input.hasNext()) {
                             input.next(); // consume the '/'
                         }
 

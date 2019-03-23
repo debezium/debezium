@@ -9,7 +9,7 @@ import java.util.function.BooleanSupplier;
 
 /**
  * Encapsulates the logic of determining a delay when some criteria is met.
- * 
+ *
  * @author Randall Hauch
  */
 @FunctionalInterface
@@ -17,7 +17,7 @@ public interface DelayStrategy {
 
     /**
      * Attempt to sleep when the specified criteria is met.
-     * 
+     *
      * @param criteria {@code true} if this method should sleep, or {@code false} if there is no need to sleep
      * @return {@code true} if this invocation caused the thread to sleep, or {@code false} if this method did not sleep
      */
@@ -27,7 +27,7 @@ public interface DelayStrategy {
 
     /**
      * Attempt to sleep when the specified criteria is met.
-     * 
+     *
      * @param criteria {@code true} if this method should sleep, or {@code false} if there is no need to sleep
      * @return {@code true} if this invocation caused the thread to sleep, or {@code false} if this method did not sleep
      */
@@ -35,7 +35,7 @@ public interface DelayStrategy {
 
     /**
      * Create a delay strategy that never delays.
-     * 
+     *
      * @return the strategy; never null
      */
     public static DelayStrategy none() {
@@ -45,13 +45,13 @@ public interface DelayStrategy {
     /**
      * Create a delay strategy that applies a constant delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
-     * 
+     *
      * @param delayInMilliseconds the initial delay; must be positive
      * @return the strategy; never null
      */
     public static DelayStrategy constant(long delayInMilliseconds) {
         return (criteria) -> {
-            if (!criteria){
+            if (!criteria) {
                 return false;
             }
             try {
@@ -66,12 +66,12 @@ public interface DelayStrategy {
     /**
      * Create a delay strategy that applies an linearly-increasing delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
-     * 
+     *
      * @param delayInMilliseconds the initial delay; must be positive
      * @return the strategy; never null
      */
     public static DelayStrategy linear(long delayInMilliseconds) {
-        if (delayInMilliseconds <= 0){
+        if (delayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
         return new DelayStrategy() {
@@ -99,7 +99,7 @@ public interface DelayStrategy {
     /**
      * Create a delay strategy that applies an exponentially-increasing delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
-     * 
+     *
      * @param initialDelayInMilliseconds the initial delay; must be positive
      * @param maxDelayInMilliseconds the maximum delay; must be greater than the initial delay
      * @return the strategy; never null
@@ -111,20 +111,20 @@ public interface DelayStrategy {
     /**
      * Create a delay strategy that applies an exponentially-increasing delay as long as the criteria is met. As soon as
      * the criteria is not met, the delay resets to zero.
-     * 
+     *
      * @param initialDelayInMilliseconds the initial delay; must be positive
      * @param maxDelayInMilliseconds the maximum delay; must be greater than the initial delay
      * @param backOffMultiplier the factor by which the delay increases each pass
      * @return the strategy
      */
     public static DelayStrategy exponential(long initialDelayInMilliseconds, long maxDelayInMilliseconds, double backOffMultiplier) {
-        if (backOffMultiplier <= 1.0){
+        if (backOffMultiplier <= 1.0) {
             throw new IllegalArgumentException("Backup multiplier must be greater than 1");
         }
-        if (initialDelayInMilliseconds <= 0){
+        if (initialDelayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
-        if (initialDelayInMilliseconds >= maxDelayInMilliseconds){
+        if (initialDelayInMilliseconds >= maxDelayInMilliseconds) {
             throw new IllegalArgumentException("Maximum delay must be greater than initial delay");
         }
         return new DelayStrategy() {

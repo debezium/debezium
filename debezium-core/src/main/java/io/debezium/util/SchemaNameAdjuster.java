@@ -230,16 +230,16 @@ public interface SchemaNameAdjuster {
      * @return {@code true} if the fullname satisfies Avro rules, or {@code false} otherwise
      */
     public static boolean isValidFullname(String fullname) {
-        if (fullname.length() == 0){
+        if (fullname.length() == 0) {
             return true;
         }
         char c = fullname.charAt(0);
-        if (!isValidFullnameFirstCharacter(c)){
+        if (! isValidFullnameFirstCharacter(c)) {
             return false;
         }
         for (int i = 1; i != fullname.length(); ++i) {
             c = fullname.charAt(i);
-            if (!isValidFullnameNonFirstCharacter(c)){
+            if (!isValidFullnameNonFirstCharacter(c)) {
                 return false;
             }
         }
@@ -309,7 +309,7 @@ public interface SchemaNameAdjuster {
      * @return the valid fullname for Avro; never null
      */
     public static String validFullname(String proposedName, ReplacementFunction replacement, ReplacementOccurred uponReplacement) {
-        if (proposedName.length() == 0){
+        if (proposedName.length() == 0) {
             return proposedName;
         }
         StringBuilder sb = new StringBuilder();
@@ -330,7 +330,7 @@ public interface SchemaNameAdjuster {
                 changed = true;
             }
         }
-        if (!changed){
+        if (!changed) {
             return proposedName;
         }
         // Otherwise, it is different ...

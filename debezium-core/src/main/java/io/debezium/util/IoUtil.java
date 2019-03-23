@@ -58,8 +58,8 @@ public class IoUtil {
      * @throws IOException if there is an error reading the content
      */
     public static byte[] readBytes(InputStream stream) throws IOException {
-        if (stream == null){
-            return new byte[] {};
+        if (stream == null) {
+            return new byte[]{};
         }
         byte[] buffer = new byte[1024];
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -80,8 +80,8 @@ public class IoUtil {
      * @throws IOException if there is an error reading the content
      */
     public static byte[] readBytes(File file) throws IOException {
-        if (file == null){
-            return new byte[] {};
+        if (file == null) {
+            return new byte[]{};
         }
         try (InputStream stream = new BufferedInputStream(new FileInputStream(file))) {
             return readBytes(stream);
@@ -157,7 +157,7 @@ public class IoUtil {
      * @throws IOException if there is an error reading the content
      */
     public static String read(Reader reader) throws IOException {
-        if (reader == null){
+        if (reader == null) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
@@ -205,7 +205,7 @@ public class IoUtil {
      * @throws IOException if there is an error reading the content
      */
     public static String read(File file) throws IOException {
-        if (file == null){
+        if (file == null) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
@@ -242,25 +242,25 @@ public class IoUtil {
     public static InputStream getResourceAsStream(String resourcePath,
                                                   ClassLoader classLoader,
                                                   Class<?> clazz, String resourceDesc, Consumer<String> logger) {
-        if (resourcePath == null){
+        if (resourcePath == null) {
             throw new IllegalArgumentException("resourcePath may not be null");
         }
-        if (resourceDesc == null && logger != null){
+        if (resourceDesc == null && logger != null) {
             resourceDesc = resourcePath;
         }
         InputStream result = null;
         if (result == null) {
-            try {
+            try{
                 // Try absolute path ...
                 Path filePath = FileSystems.getDefault().getPath(resourcePath).toAbsolutePath();
-                File f = filePath.toFile();
+                File f        = filePath.toFile();
                 if (f.exists() && f.isFile() && f.canRead()) {
                     result = new BufferedInputStream(new FileInputStream(f));
                 }
-                logMessage(result, logger, resourceDesc, "on filesystem at " + filePath);
-            } catch (InvalidPathException e) {
+                logMessage(result,logger,resourceDesc,"on filesystem at " + filePath);
+            } catch(InvalidPathException e) {
                 // just continue ...
-            } catch (FileNotFoundException e) {
+            } catch(FileNotFoundException e) {
                 // just continue ...
             }
         }
@@ -337,7 +337,7 @@ public class IoUtil {
     public static File createFile(Path path) {
         File file = path.toAbsolutePath().toFile();
         if (file.exists() && file.canRead() && file.canWrite()) {
-            if (file.isFile()){
+            if (file.isFile()) {
                 return file;
             }
             throw new IllegalStateException("Expecting '" + path + "' to be a file but found a directory");
@@ -392,7 +392,7 @@ public class IoUtil {
      * @throws IOException if there is a problem deleting the file at the given path
      */
     public static void delete(File fileOrFolder) throws IOException {
-        if (fileOrFolder != null){
+        if (fileOrFolder != null) {
             delete(fileOrFolder.toPath());
         }
     }

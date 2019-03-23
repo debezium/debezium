@@ -171,13 +171,13 @@ final class ColumnImpl implements Column, Comparable<Column> {
         if (charsetName != null && !charsetName.isEmpty()) {
             sb.append(" CHARSET ").append(charsetName);
         }
-        if (!optional){
+        if (!optional) {
             sb.append(" NOT NULL");
         }
-        if (autoIncremented){
+        if (autoIncremented) {
             sb.append(" AUTO_INCREMENTED");
         }
-        if (generated){
+        if (generated) {
             sb.append(" GENERATED");
         }
         if (hasDefaultValue() && defaultValue() == null) {

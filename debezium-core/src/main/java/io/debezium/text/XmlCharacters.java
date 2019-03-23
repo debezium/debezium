@@ -86,44 +86,44 @@ public class XmlCharacters {
         int nameStartMask = NAME_START_CHARACTER | NCNAME_START_CHARACTER | NAME_CHARACTER | NCNAME_CHARACTER;
         MASKS[':'] |= nameStartMask;
         MASKS['_'] |= nameStartMask;
-        for(int i='A';i<='Z';++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 'A';i <= 'Z';++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i='a';i<='z';++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 'a';i <= 'z';++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0xC0;i<=0xD6;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0xC0;i <= 0xD6;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0xD8;i<=0xF6;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0xD8;i <= 0xF6;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0xF8;i<=0x2FF;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0xF8;i <= 0x2FF;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x370;i<=0x37D;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x370;i <= 0x37D;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x37F;i<=0x1FFF;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x37F;i <= 0x1FFF;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x200C;i<=0x200D;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x200C;i <= 0x200D;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x2070;i<=0x218F;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x2070;i <= 0x218F;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x2C00;i<=0x2FEF;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x2C00;i <= 0x2FEF;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x3001;i<=0xD7FF;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x3001;i <= 0xD7FF;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0xF900;i<=0xFDCF;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0xF900;i <= 0xFDCF;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0xFDF0;i<=0xFFFD;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0xFDF0;i <= 0xFFFD;++ i) {
+            MASKS[i] |= nameStartMask;
         }
         // Last range is bigger than our character array ...
         // for (int i = 0x10000; i <= 0xEFFFF; ++i) MASKS[i] |= nameStartMask;
@@ -139,14 +139,14 @@ public class XmlCharacters {
         MASKS['-'] |= nameMask;
         MASKS['.'] |= nameMask;
         MASKS[0xB7] |= nameMask;
-        for(int i='0';i<='9';++i){
-            MASKS[i]|=nameMask;
+        for(int i = '0';i <= '9';++ i) {
+            MASKS[i] |= nameMask;
         }
-        for(int i=0x0300;i<=0x036F;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x0300;i <= 0x036F;++ i) {
+            MASKS[i] |= nameStartMask;
         }
-        for(int i=0x203F;i<=0x2040;++i){
-            MASKS[i]|=nameStartMask;
+        for(int i = 0x203F;i <= 0x2040;++ i) {
+            MASKS[i] |= nameStartMask;
         }
 
         // --------
@@ -290,16 +290,16 @@ public class XmlCharacters {
      * @return true if the supplied name is indeed a valid XML Name, or false otherwise
      */
     public static boolean isValidName( String name ) {
-        if (name == null || name.length() == 0){
+        if (name == null || name.length() == 0) {
             return false;
         }
         CharacterIterator iter = new StringCharacterIterator(name);
         char c = iter.first();
-        if (!isValidNameStart(c)){
+        if (!isValidNameStart(c)) {
             return false;
         }
         while (c != CharacterIterator.DONE) {
-            if (!isValidName(c)){
+            if (!isValidName(c)) {
                 return false;
             }
             c = iter.next();
@@ -319,11 +319,11 @@ public class XmlCharacters {
         }
         CharacterIterator iter = new StringCharacterIterator(name);
         char c = iter.first();
-        if (!isValidNcNameStart(c)){
+        if (!isValidNcNameStart(c)) {
             return false;
         }
         while (c != CharacterIterator.DONE) {
-            if (!isValidNcName(c)){
+            if (!isValidNcName(c)) {
                 return false;
             }
             c = iter.next();

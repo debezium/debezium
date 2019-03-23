@@ -95,7 +95,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
     @Override
     protected void storeRecord(HistoryRecord record) throws DatabaseHistoryException {
-        if (record == null){
+        if (record == null) {
             return;
         }
         lock.write(() -> {

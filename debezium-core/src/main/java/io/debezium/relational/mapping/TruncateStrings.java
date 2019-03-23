@@ -63,7 +63,7 @@ public class TruncateStrings implements ColumnMapper {
         public Object convert(Object value) {
             if (value instanceof String) {
                 String str = (String) value;
-                if (str.length() > maxLength){
+                if (str.length() > maxLength) {
                     return str.substring(0, maxLength);
                 }
             }

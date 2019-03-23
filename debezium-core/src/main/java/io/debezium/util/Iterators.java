@@ -119,16 +119,16 @@ public class Iterators {
             @Override
             public T next() {
                 try {
-                    if (index == 0){
+                    if (index == 0) {
                         return value1;
                     }
-                    if (index == 1){
+                    if (index == 1) {
                         return value2;
                     }
-                    if (index == 2){
+                    if (index == 2) {
                         return value3;
                     }
-                    if (index < additional.length + 3){
+                    if (index < additional.length + 3) {
                         return additional[index - 3];
                     }
                     --index;
@@ -152,7 +152,7 @@ public class Iterators {
             @Override
             public T next() {
                 try {
-                    if (index < values.length){
+                    if (index < values.length) {
                         return values[index];
                     }
                     --index;
@@ -298,8 +298,8 @@ public class Iterators {
 
             @Override
             public boolean hasNext() {
-                if (!completedFirst) {
-                    if (first.hasNext()){
+                if (! completedFirst) {
+                    if (first.hasNext()) {
                         return true;
                     }
                     completedFirst = true;
@@ -309,8 +309,8 @@ public class Iterators {
 
             @Override
             public T next() {
-                if (!completedFirst) {
-                    if (first.hasNext()){
+                if (! completedFirst) {
+                    if (first.hasNext()) {
                         return first.next();
                     }
                     completedFirst = true;

@@ -32,7 +32,7 @@ public class HistoryRecord {
         this.doc = Document.create();
 
         Document src = doc.setDocument(Fields.SOURCE);
-        if (source != null){
+        if (source != null) {
             source.forEach(src::set);
         }
 

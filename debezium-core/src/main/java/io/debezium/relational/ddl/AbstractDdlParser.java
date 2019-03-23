@@ -295,10 +295,10 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
      */
     public static Collection<ParsingException> accumulateParsingFailure(ParsingException e, Collection<ParsingException> list) {
-        if (e == null){
+        if (e == null) {
             return list;
         }
-        if (list == null){
+        if (list == null) {
             list = new ArrayList<ParsingException>();
         }
         list.add(e);
@@ -313,10 +313,10 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @return the list of previous and current parsing exceptions; if {@code e} is null then always {@code list}, but otherwise non-null list
      */
     protected Collection<ParsingException> accumulateParsingFailure(MultipleParsingExceptions e, Collection<ParsingException> list) {
-        if (e == null){
+        if (e == null) {
             return list;
         }
-        if (list == null){
+        if (list == null) {
             list = new ArrayList<ParsingException>();
         }
         list.addAll(e.getErrors());
@@ -383,7 +383,7 @@ public abstract class AbstractDdlParser implements DdlParser {
                     foundDecimalPoint = true;
                 }
                 else if (Character.isDigit(c)) {
-                    if (foundDecimalPoint){
+                    if (foundDecimalPoint) {
                         ++scale;
                     }
                     else{
