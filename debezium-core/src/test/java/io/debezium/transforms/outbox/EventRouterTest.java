@@ -257,6 +257,65 @@ public class EventRouterTest {
     }
 
     @Test
+    public void canInfluenceTableColumnTypes() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELD_EVENT_ID.name(), "event_id");
+        config.put(EventRouterConfigDefinition.FIELD_PAYLOAD_ID.name(), "payload_id");
+        config.put(EventRouterConfigDefinition.FIELD_EVENT_TYPE.name(), "event_type");
+        config.put(EventRouterConfigDefinition.FIELD_PAYLOAD.name(), "payload_body");
+        config.put(EventRouterConfigDefinition.ROUTE_BY_FIELD.name(), "my_route_field");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "some_boolean:envelope:bool");
+        router.configure(config);
+
+        final Schema recordSchema = SchemaBuilder.struct()
+                .field("event_id", SchemaBuilder.int32())
+                .field("payload_id", SchemaBuilder.int32())
+                .field("my_route_field", SchemaBuilder.string())
+                .field("event_type", SchemaBuilder.bytes())
+                .field("payload_body", SchemaBuilder.bytes())
+                .field("some_boolean", SchemaBuilder.bool())
+                .build();
+
+        Envelope envelope = Envelope.defineSchema()
+                .withName("event.Envelope")
+                .withRecord(recordSchema)
+                .withSource(SchemaBuilder.struct().build())
+                .build();
+
+        final Struct before = new Struct(recordSchema);
+        before.put("event_id", 2);
+        before.put("payload_id", 1232);
+        before.put("event_type", "CoolSchemaCreated".getBytes());
+        before.put("my_route_field", "routename");
+        before.put("payload_body", "{}".getBytes());
+        before.put("some_boolean", true);
+
+        final Struct payload = envelope.create(before, null, System.nanoTime());
+        final SourceRecord eventRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), payload);
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+        assertThat(eventRouted.topic()).isEqualTo("outbox.event.routename");
+
+        // validate the valueSchema
+        Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.field("eventType").schema().type()).isEqualTo(SchemaBuilder.bytes().type());
+        assertThat(valueSchema.field("payload").schema().type()).isEqualTo(SchemaBuilder.bytes().type());
+        assertThat(valueSchema.field("bool").schema().type()).isEqualTo(SchemaBuilder.bool().type());
+
+        assertThat(((Struct) eventRouted.value()).get("payload")).isEqualTo("{}".getBytes());
+        assertThat(eventRouted.key()).isEqualTo(1232);
+
+        Headers headers = eventRouted.headers();
+        assertThat(headers.size()).isEqualTo(1);
+        Header header = headers.iterator().next();
+        assertThat(header.key()).isEqualTo("id");
+        assertThat(header.value()).isEqualTo(2);
+    }
+
+    @Test
     public void canSetPayloadTypeIntoTheEnvelope() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
