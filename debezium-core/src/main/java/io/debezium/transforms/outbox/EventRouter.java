@@ -6,6 +6,7 @@
 package io.debezium.transforms.outbox;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 import org.apache.kafka.common.config.ConfigDef;
@@ -13,6 +14,7 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.RegexRouter;
@@ -171,6 +173,10 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     @Override
     public void configure(Map<String, ?> configMap) {
         final Configuration config = Configuration.from(configMap);
+        Field.Set allFields = Field.setOf(EventRouterConfigDefinition.CONFIG_FIELDS);
+        if (!config.validateAndRecord(allFields, LOGGER::error)) {
+            throw new ConnectException("Unable to validate config.");
+        }
 
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
                 config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR)
