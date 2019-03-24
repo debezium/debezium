@@ -52,7 +52,7 @@ public final class Envelope {
 
         public static Operation forCode(String code) {
             for (Operation op : Operation.values()) {
-                if (op.code().equalsIgnoreCase(code)){
+                if (op.code().equalsIgnoreCase(code)) {
                     return op;
                 }
             }

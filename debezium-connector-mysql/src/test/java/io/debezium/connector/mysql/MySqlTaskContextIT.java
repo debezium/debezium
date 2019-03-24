@@ -71,7 +71,7 @@ public class MySqlTaskContextIT extends MySqlTaskContextTest {
     protected void assertCanConnectToJdbc() throws SQLException {
         AtomicInteger count = new AtomicInteger();
         context.getConnectionContext().jdbc().query("SHOW DATABASES", rs -> {
-            while (rs.next()){
+            while (rs.next()) {
                 count.incrementAndGet();
             }
         });

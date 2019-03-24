@@ -478,7 +478,7 @@ public class SnapshotReaderIT {
         while ((records = reader.poll()) != null) {
             records.forEach(record -> {
                 VerifyRecord.isValid(record);
-                if (record.value() != null){
+                if (record.value() != null) {
                     tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
                 }
             });
@@ -506,7 +506,7 @@ public class SnapshotReaderIT {
             records.forEach(record -> {
                 VerifyRecord.isValid(record);
                 VerifyRecord.hasNoSourceQuery(record);
-                if (record.value() != null){
+                if (record.value() != null) {
                     tablesInOrder.add(getTableNameFromSourceRecord.apply(record));
                 }
             });
@@ -517,7 +517,7 @@ public class SnapshotReaderIT {
     private Function<SourceRecord, String> getTableNameFromSourceRecord = sourceRecord -> ((Struct) sourceRecord.value()).getStruct("source").getString("table");
     private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String ... tables){
         LinkedHashSet<String> tablesInOrderExpected = new LinkedHashSet<>();
-        for (String table : tables){
+        for (String table : tables) {
             tablesInOrderExpected.add(table);
         }
         return tablesInOrderExpected;

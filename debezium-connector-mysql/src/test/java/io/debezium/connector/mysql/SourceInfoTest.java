@@ -401,7 +401,7 @@ public class SourceInfoTest {
     }
 
     protected void handleNextEvent(long positionOfEvent, long eventSize, int rowCount) {
-        if (inTxn){
+        if (inTxn) {
             ++eventNumberInTxn;
         }
         source.setEventPosition(positionOfEvent, eventSize);

@@ -202,10 +202,10 @@ public class SchemaUtil {
                 sb.append('[');
                 boolean first = true;
                 for (Object value : list) {
-                    if (first){
+                    if (first) {
                         first=false;
                     }
-                    else{
+                    else {
                         sb.append(", ");
                     }
                     append(value);

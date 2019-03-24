@@ -194,7 +194,7 @@ public class ConnectionContext implements AutoCloseable {
                 try {
                     // Try to get the primary
                     primary = factory.get();
-                    if (primary != null){
+                    if (primary != null) {
                         break;
                     }
                 } catch (Throwable t) {

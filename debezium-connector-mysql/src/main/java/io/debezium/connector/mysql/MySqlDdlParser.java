@@ -1082,7 +1082,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
             Map<String, Column> selectedColumnsByAlias = parseColumnsInSelectClause(start);
             if (table.columns().isEmpty()) {
                 selectedColumnsByAlias.forEach((columnName, fromTableColumn) -> {
-                    if (fromTableColumn != null && columnName != null){
+                    if (fromTableColumn != null && columnName != null) {
                         table.addColumn(fromTableColumn.edit().name(columnName).create());
                     }
                 });
@@ -1603,7 +1603,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
                     // Read block label if set
                     tokens.consume();
                     String label = labels.remove();
-                    if (label != null){
+                    if (label != null) {
                         tokens.canConsume(label);
                     }
                 } else if (tokens.matchesAnyWordOf("IF", "CASE")) {
@@ -1622,7 +1622,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
         // We've consumed the corresponding END of the BEGIN, but consume the label if one was used ...
         assert labels.size() == 1;
         String label = labels.remove();
-        if (label != null){
+        if (label != null) {
             tokens.canConsume(label);
         }
     }
@@ -1650,7 +1650,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
      */
     @SuppressWarnings("unchecked")
     protected void sequentially(Consumer<Marker>... functions) {
-        if (functions == null || functions.length == 0){
+        if (functions == null || functions.length == 0) {
             return;
         }
         Collection<ParsingException> errors = new ArrayList<>();

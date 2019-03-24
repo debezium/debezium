@@ -1703,7 +1703,7 @@ public class MySqlDdlParserTest {
             StringBuilder sb = new StringBuilder();
             AtomicInteger counter = new AtomicInteger();
             IoUtil.readLines(stream, line -> {
-                if (counter.incrementAndGet() >= startingLineNumber){
+                if (counter.incrementAndGet() >= startingLineNumber) {
                     sb.append(line);
                 }
                 sb.append(System.lineSeparator());

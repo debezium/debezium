@@ -192,10 +192,10 @@ public class ChainedReaderTest {
 
         @Override
         public State state() {
-            if (running.get()){
+            if (running.get()) {
                 return State.RUNNING;
             }
-            if (completed.get()){
+            if (completed.get()) {
                 return State.STOPPED;
             }
             return State.STOPPING;

@@ -1066,7 +1066,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      * @return the field; never null
      */
     public static final Field TRUNCATE_COLUMN(int length) {
-        if (length <= 0){
+        if (length <= 0) {
             throw new IllegalArgumentException("The truncation length must be positive");
         }
         return Field.create("column.truncate.to." + length + ".chars")

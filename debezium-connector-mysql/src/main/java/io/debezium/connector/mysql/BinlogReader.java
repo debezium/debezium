@@ -439,7 +439,7 @@ public class BinlogReader extends AbstractReader {
     }
 
     protected void handleEvent(Event event) {
-        if (event == null){
+        if (event == null) {
             return;
         }
 

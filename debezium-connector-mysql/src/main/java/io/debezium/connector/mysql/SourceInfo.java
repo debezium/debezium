@@ -771,7 +771,7 @@ final class SourceInfo extends AbstractSourceInfo {
                     int recordedEventCount = recorded.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
                     int desiredEventCount = desired.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
                     int diff = recordedEventCount - desiredEventCount;
-                    if (diff > 0){
+                    if (diff > 0) {
                         return false;
                     }
 

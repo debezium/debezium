@@ -180,13 +180,13 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     }
 
     protected static int compareServerAddresses(ServerAddress one, ServerAddress two) {
-        if (one == two){
+        if (one == two) {
             return 0;
         }
-        if (one == null){
+        if (one == null) {
             return two == null ? 0 : -1;
         }
-        if (two == null){
+        if (two == null) {
             return 1;
         }
         return compare(one, two);

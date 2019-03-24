@@ -149,8 +149,8 @@ public class DdlTokenizer implements Tokenizer {
                             break;
                         }
                     }
-                    endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
-                    if (!foundLineTerminator){
+                    endIndex = input.index();  // the token won't include the '\n' or '\r' character(s)
+                    if (!foundLineTerminator) {
                         ++endIndex; // must point beyond last char
                     }
                     if (c == '\r' && input.isNext('\n')){
@@ -181,7 +181,7 @@ public class DdlTokenizer implements Tokenizer {
                         if (!foundLineTerminator){
                             ++endIndex; // must point beyond last char
                         }
-                        if (c == '\r' && input.isNext('\n')){
+                        if (c == '\r' && input.isNext('\n')) {
                             input.next();
                         }
 
@@ -291,10 +291,10 @@ public class DdlTokenizer implements Tokenizer {
                             }
                         }
                         endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
-                        if (!foundLineTerminator){
+                        if (!foundLineTerminator) {
                             ++endIndex; // must point beyond last char
                         }
-                        if (c == '\r' && input.isNext('\n')){
+                        if (c == '\r' && input.isNext('\n')) {
                             input.next();
                         }
                         if (useComments) {

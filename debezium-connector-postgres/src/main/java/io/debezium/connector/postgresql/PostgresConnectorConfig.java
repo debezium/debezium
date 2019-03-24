@@ -255,7 +255,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             }
             value = value.trim();
             for (SecureConnectionMode option : SecureConnectionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
