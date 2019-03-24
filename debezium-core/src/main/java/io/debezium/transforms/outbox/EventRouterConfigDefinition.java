@@ -235,6 +235,21 @@ public class EventRouterConfigDefinition {
                     " in case something else is processed this transform can log it as warning, error or stop the" +
                     " process");
 
+    static final Field[] CONFIG_FIELDS = {
+            FIELD_EVENT_ID,
+            FIELD_EVENT_KEY,
+            FIELD_EVENT_TYPE,
+            FIELD_PAYLOAD,
+            FIELD_PAYLOAD_ID,
+            FIELD_EVENT_TIMESTAMP,
+            FIELDS_ADDITIONAL_PLACEMENT,
+            FIELD_SCHEMA_VERSION,
+            ROUTE_BY_FIELD,
+            ROUTE_TOPIC_REGEX,
+            ROUTE_TOPIC_REPLACEMENT,
+            OPERATION_INVALID_BEHAVIOR
+    };
+
     /**
      * There are 3 configuration groups available:
      * - Table: Allows you to customize each of The column names in the outbox table for your convenience
@@ -253,7 +268,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Router",
-                ROUTE_BY_FIELD, ROUTE_TOPIC_REPLACEMENT
+                ROUTE_BY_FIELD, ROUTE_TOPIC_REGEX, ROUTE_TOPIC_REPLACEMENT
         );
         Field.group(
                 config,
@@ -263,7 +278,7 @@ public class EventRouterConfigDefinition {
         return config;
     }
 
-    public static List<AdditionalField> parseAdditionalFieldsConfig(Configuration config) {
+    static List<AdditionalField> parseAdditionalFieldsConfig(Configuration config) {
         String extraFieldsMapping = config.getString(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT);
 
         List<AdditionalField> additionalFields = new ArrayList<>();
@@ -272,7 +287,7 @@ public class EventRouterConfigDefinition {
             return additionalFields;
         }
 
-        for (String field: extraFieldsMapping.split(",")) {
+        for (String field : extraFieldsMapping.split(",")) {
             final String[] parts = field.split(":");
             AdditionalFieldPlacement placement = AdditionalFieldPlacement.parse(parts[1]);
             additionalFields.add(
@@ -286,6 +301,11 @@ public class EventRouterConfigDefinition {
     private static int isListOfStringPairs(Configuration config, Field field, Field.ValidationOutput problems) {
         List<String> value = config.getStrings(field, ",");
         int errors = 0;
+
+        if (value == null) {
+            return errors;
+        }
+
         for (String mapping : value) {
             final String[] parts = mapping.split(":");
             if (parts.length != 2 && parts.length != 3) {

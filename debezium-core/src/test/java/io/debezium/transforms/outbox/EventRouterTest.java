@@ -9,6 +9,7 @@ import io.debezium.data.Envelope;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
@@ -419,6 +420,38 @@ public class EventRouterTest {
         assertThat(value.get("payloadType")).isEqualTo("UserCreated");
         assertThat(value.get("payloadId")).isEqualTo("10711fa5");
         assertThat(eventRouted.headers().lastWithName("payloadType").value()).isEqualTo("UserCreated");
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldFailOnInvalidConfigurationForTopicRegex() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
+        router.configure(config);
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldFailOnInvalidConfigurationForAdditionalFields() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type");
+        router.configure(config);
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldFailOnInvalidConfigurationForAdditionalFieldsEmpty() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "");
+        router.configure(config);
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldFailOnInvalidConfigurationForOperationBehavior() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(), "invalidOption");
+        router.configure(config);
     }
 
     private SourceRecord createEventRecord() {
