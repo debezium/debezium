@@ -50,7 +50,7 @@ public class MongoClients {
          * @return this builder object so methods can be chained; never null
          */
         public Builder withCredential(MongoCredential credential) {
-            if (credential != null){
+            if (credential != null) {
                 credentials.add(credential);
             }
             return this;
@@ -174,7 +174,7 @@ public class MongoClients {
     public MongoClient clientForMembers(ServerAddress... seeds) {
         List<ServerAddress> addresses = new ArrayList<>();
         for (ServerAddress seedAddress : seeds) {
-            if (seedAddress != null){
+            if (seedAddress != null) {
                 addresses.add(seedAddress);
             }
         }

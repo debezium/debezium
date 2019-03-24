@@ -176,7 +176,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @return the source partition information; never null
      */
     public Map<String, String> partition(String replicaSetName) {
-        if (replicaSetName == null){
+        if (replicaSetName == null) {
             throw new IllegalArgumentException("Replica set name may not be null");
         }
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
@@ -205,7 +205,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     public Map<String, ?> lastOffset(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
-        if (existing == null){
+        if (existing == null) {
             existing = INITIAL_POSITION;
         }
         if (isInitialSyncOngoing(replicaSetName)) {
@@ -267,7 +267,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
-        if (position == null){
+        if (position == null) {
             position = INITIAL_POSITION;
         }
         Struct result = super.struct();
@@ -307,7 +307,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         if (replicaSetName == null) {
             throw new IllegalArgumentException("The replica set name may not be null");
         }
-        if (sourceOffset == null){
+        if (sourceOffset == null) {
             return false;
         }
         // We have previously recorded at least one offset for this database ...
@@ -367,7 +367,7 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     private static int intOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
-        if (obj == null){
+        if (obj == null) {
             return 0;
         }
         if (obj instanceof Number) {
@@ -382,10 +382,10 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     private static long longOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
-        if (obj == null){
+        if (obj == null) {
             return 0;
         }
-        if (obj instanceof Number){
+        if (obj instanceof Number) {
             return ((Number) obj).longValue();
         }
         try {

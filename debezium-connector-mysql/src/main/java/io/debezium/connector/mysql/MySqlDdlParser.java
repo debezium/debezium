@@ -400,7 +400,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
         TableEditor table = databaseTables.editOrCreateTable(tableId);
 
         // create_definition ...
-        if (tokens.matches('(')){
+        if (tokens.matches('(')) {
             parseCreateDefinitionList(start, table);
         }
         // table_options ...

@@ -158,7 +158,7 @@ public class GtidSetTest {
     protected boolean hasInterval(String uuid, int start, int end) {
         UUIDSet set = gtids.forServerWithId(uuid);
         for (Interval interval : set.getIntervals()) {
-            if (interval.getStart() == start && interval.getEnd() == end){
+            if (interval.getStart() == start && interval.getEnd() == end) {
                 return true;
             }
         }

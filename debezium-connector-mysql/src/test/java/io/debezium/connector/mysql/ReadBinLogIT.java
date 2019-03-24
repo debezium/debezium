@@ -94,7 +94,7 @@ public class ReadBinLogIT implements Testing {
         } finally {
             client = null;
             try {
-                if (conn != null){
+                if (conn != null) {
                     conn.close();
                 }
             } finally {
@@ -279,7 +279,7 @@ public class ReadBinLogIT implements Testing {
         List<QueryEventData> allQueryEvents = recordedEventData(QueryEventData.class, -1);
         allQueryEvents.forEach(event -> {
             String sql = event.getSql();
-            if (sql.equalsIgnoreCase("BEGIN") || sql.equalsIgnoreCase("COMMIT")){
+            if (sql.equalsIgnoreCase("BEGIN") || sql.equalsIgnoreCase("COMMIT")) {
                 return;
             }
             System.out.println(event.getSql());
@@ -543,10 +543,10 @@ public class ReadBinLogIT implements Testing {
          */
         public void consume(int eventCount, long timeoutInMillis, Predicate<Event> condition)
                 throws TimeoutException {
-            if (eventCount < 0){
+            if (eventCount < 0) {
                 throw new IllegalArgumentException("The eventCount may not be negative");
             }
-            if (eventCount == 0){
+            if (eventCount == 0) {
                 return;
             }
             int eventsRemaining = eventCount;

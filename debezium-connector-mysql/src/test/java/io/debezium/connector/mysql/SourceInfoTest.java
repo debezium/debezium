@@ -390,7 +390,7 @@ public class SourceInfoTest {
         long position = (Long) offset.get(SourceInfo.BINLOG_POSITION_OFFSET_KEY);
         assertThat(position).isEqualTo(positionOfEvent + eventSize);
         Long rowsToSkip = (Long) offset.get(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
-        if (rowsToSkip == null){
+        if (rowsToSkip == null) {
             rowsToSkip = 0L;
         }
         assertThat(rowsToSkip).isEqualTo(0);
@@ -418,7 +418,7 @@ public class SourceInfoTest {
                 assertThat(position).isEqualTo(positionOfBeginEvent);
                 // and the number of the last completed event (the previous one) ...
                 Long eventsToSkip = (Long) offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY);
-                if (eventsToSkip == null){
+                if (eventsToSkip == null) {
                     eventsToSkip = 0L;
                 }
                 assertThat(eventsToSkip).isEqualTo(eventNumberInTxn - 1);
@@ -428,7 +428,7 @@ public class SourceInfoTest {
                 assertThat(offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
             }
             Long rowsToSkip = (Long) offset.get(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
-            if (rowsToSkip == null){
+            if (rowsToSkip == null) {
                 rowsToSkip = 0L;
             }
             if ((row + 1) == rowCount) {
@@ -463,10 +463,10 @@ public class SourceInfoTest {
         offset.put(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, FILENAME);
         offset.put(SourceInfo.BINLOG_POSITION_OFFSET_KEY, Long.toString(position));
         offset.put(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, Integer.toString(row));
-        if (gtidSet != null){
+        if (gtidSet != null) {
             offset.put(SourceInfo.GTID_SET_KEY, gtidSet);
         }
-        if (snapshot){
+        if (snapshot) {
             offset.put(SourceInfo.SNAPSHOT_KEY, Boolean.TRUE.toString());
         }
         return offset;
@@ -714,7 +714,7 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAtOrBefore(Document otherPosition, Predicate<String> gtidFilter) {
-            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)){
+            if (SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
                 return this;
             }
             failIfCustomMessageIsSet();
@@ -726,7 +726,7 @@ public class SourceInfoTest {
         }
 
         public PositionAssert isAfter(Document otherPosition, Predicate<String> gtidFilter) {
-            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)){
+            if (!SourceInfo.isPositionAtOrBefore(actual, otherPosition, gtidFilter)) {
                 return this;
             }
             failIfCustomMessageIsSet();

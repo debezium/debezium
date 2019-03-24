@@ -221,7 +221,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 || isGeometryCollection(typeName)) {
             return (data -> convertGeometry(column, fieldDefn, data));
         }
-        if (matches(typeName, "POINT")){
+        if (matches(typeName, "POINT")) {
             // backwards compatibility
             return (data -> convertPoint(column, fieldDefn, data));
         }
@@ -284,7 +284,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
-                if (adaptiveTimeMicrosecondsPrecisionMode){
+                if (adaptiveTimeMicrosecondsPrecisionMode) {
                     return data->convertDurationToMicroseconds(column,fieldDefn,data);
                 }
             case Types.TIMESTAMP:
@@ -482,7 +482,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return {@code true} if the type matches the specified type, or {@code false} otherwise
      */
     protected boolean matches(String upperCaseTypeName, String upperCaseMatch) {
-        if (upperCaseTypeName == null){
+        if (upperCaseTypeName == null) {
             return false;
         }
         return upperCaseMatch.equals(upperCaseTypeName) || upperCaseTypeName.startsWith(upperCaseMatch + "(");

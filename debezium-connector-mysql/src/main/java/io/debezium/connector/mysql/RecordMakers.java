@@ -104,7 +104,7 @@ public class RecordMakers {
      */
     public boolean hasTable(TableId tableId) {
         Long tableNumber = tableNumbersByTableId.get(tableId);
-        if ( tableNumber == null ){
+        if ( tableNumber == null ) {
             return false;
         }
         Converter converter = convertersByTableNumber.get(tableNumber);
@@ -121,7 +121,7 @@ public class RecordMakers {
      */
     public RecordsForTable forTable(long tableNumber, BitSet includedColumns, BlockingConsumer<SourceRecord> consumer) {
         Converter converter = convertersByTableNumber.get(tableNumber);
-        if (converter == null){
+        if (converter == null) {
             return null;
         }
         return new RecordsForTable(converter, includedColumns, consumer);
@@ -204,7 +204,7 @@ public class RecordMakers {
             return true;
         }
         TableSchema tableSchema = schema.schemaFor(id);
-        if (tableSchema == null){
+        if (tableSchema == null) {
             return false;
         }
 

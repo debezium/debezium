@@ -481,13 +481,13 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
                 connection.execute("INSERT INTO products VALUES (default,'robot','Toy robot',1.304);");
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -518,7 +518,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("INSERT INTO products VALUES (1001,'roy','old robot',1234.56);");
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -541,7 +541,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET id=2001, description='really old robot' WHERE id=1001");
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -564,7 +564,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products SET weight=1345.67 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -594,7 +594,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                         DATABASE.getDatabaseName()));
                 connection.execute("UPDATE products SET volume=13.5 WHERE id=2001");
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -643,7 +643,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute("UPDATE products_on_hand SET quantity=20 WHERE product_id=109");
                 connection.query("SELECT * FROM products_on_hand", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -691,7 +691,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                         + "(3002,'arthur','motorcycle',87.65,0.00,'arcycle'), "
                         + "(3003,'oak','tree',987.65,0.00,'oak');");
                 connection.query("SELECT * FROM products", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });
@@ -699,7 +699,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 // Change something else that is unrelated ...
                 connection.execute("UPDATE products_on_hand SET quantity=40 WHERE product_id=109");
                 connection.query("SELECT * FROM products_on_hand", rs -> {
-                    if (Testing.Print.isEnabled()){
+                    if (Testing.Print.isEnabled()) {
                         connection.print(rs);
                     }
                 });

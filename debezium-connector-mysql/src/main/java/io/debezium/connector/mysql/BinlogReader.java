@@ -124,20 +124,20 @@ public class BinlogReader extends AbstractReader {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj){
+            if (this == obj) {
                 return true;
             }
-            if (obj == null){
+            if (obj == null) {
                 return false;
             }
-            if (getClass() != obj.getClass()){
+            if (getClass() != obj.getClass()) {
                 return false;
             }
             BinlogPosition other = (BinlogPosition) obj;
-            if (!filename.equals(other.filename)){
+            if (!filename.equals(other.filename)) {
                 return false;
             }
-            if (position != other.position){
+            if (position != other.position) {
                 return false;
             }
             return true;
@@ -190,7 +190,7 @@ public class BinlogReader extends AbstractReader {
                 : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
 
         client.registerLifecycleListener(new ReaderThreadLifecycleListener());
-        if (logger.isDebugEnabled()){
+        if (logger.isDebugEnabled()) {
             client.registerEventListener(this::logEvent);
         }
 

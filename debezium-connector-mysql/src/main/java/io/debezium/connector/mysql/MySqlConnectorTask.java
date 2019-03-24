@@ -455,7 +455,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         PreviousContext prevLoggingContext = this.taskContext.configureLoggingContext("task");
         try {
             // Flush and stop database history, close all JDBC connections ...
-            if (this.taskContext != null){
+            if (this.taskContext != null) {
                 taskContext.shutdown();
             }
         } catch (Throwable e) {
@@ -476,7 +476,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     protected boolean isBinlogAvailable() {
         String gtidStr = taskContext.source().gtidSet();
         if (gtidStr != null) {
-            if (gtidStr.trim().isEmpty()){
+            if (gtidStr.trim().isEmpty()) {
                 return true; // start at beginning ...
             }
             String availableGtidStr = connectionContext.knownGtidSet();
@@ -498,10 +498,10 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         }
 
         String binlogFilename = taskContext.source().binlogFilename();
-        if (binlogFilename == null){
+        if (binlogFilename == null) {
             return true; // start at current position
         }
-        if (binlogFilename.equals("")){
+        if (binlogFilename.equals("")) {
             return true; // start at beginning
         }
 

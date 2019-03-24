@@ -119,7 +119,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this){
+        if (obj == this) {
             return true;
         }
         if (obj instanceof ReplicaSet) {
@@ -132,29 +132,29 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     @Override
     public int compareTo(ReplicaSet that) {
-        if (that == this){
+        if (that == this) {
             return 0;
         }
         int diff = compareNullable(this.shardName, that.shardName);
-        if (diff != 0){
+        if (diff != 0) {
             return diff;
         }
         diff = compareNullable(this.replicaSetName, that.replicaSetName);
-        if (diff != 0){
+        if (diff != 0) {
             return diff;
         }
         Iterator<ServerAddress> thisIter = this.addresses.iterator();
         Iterator<ServerAddress> thatIter = that.addresses.iterator();
         while (thisIter.hasNext() && thatIter.hasNext()) {
             diff = compare(thisIter.next(), thatIter.next());
-            if (diff != 0){
+            if (diff != 0) {
                 return diff;
             }
         }
-        if (thisIter.hasNext()){
+        if (thisIter.hasNext()) {
             return 1;
         }
-        if (thatIter.hasNext()){
+        if (thatIter.hasNext()) {
             return -1;
         }
         return 0;
@@ -193,13 +193,13 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     }
 
     protected static int compareNullable(String str1, String str2) {
-        if (str1 == str2){
+        if (str1 == str2) {
             return 0;
         }
-        if (str1 == null){
-            return str2 == null ? 0 : -1;
+        if (str1 == null) {
+            return str2 == null?0:- 1;
         }
-        if (str2 == null){
+        if (str2 == null) {
             return 1;
         }
         return str1.compareTo(str2);
@@ -207,7 +207,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     protected static int compare(ServerAddress address1, ServerAddress address2) {
         int diff = address1.getHost().compareTo(address2.getHost());
-        if (diff != 0){
+        if (diff != 0) {
             return diff;
         }
         return address1.getPort() - address2.getPort();

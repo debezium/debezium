@@ -65,12 +65,12 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
          * @return the matching option, or null if no match is found
          */
         public static ArrayEncoding parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (ArrayEncoding option : ArrayEncoding.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -86,7 +86,7 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> implements Tr
          */
         public static ArrayEncoding parse(String value, String defaultValue) {
             ArrayEncoding mode = parse(value);
-            if (mode == null && defaultValue != null){
+            if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
             return mode;

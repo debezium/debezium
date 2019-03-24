@@ -150,7 +150,7 @@ public class SnapshotReader extends AbstractReader {
      */
     private Object readTimeField(ResultSet rs, int fieldNo) throws SQLException {
         Blob b = rs.getBlob(fieldNo);
-        if (b == null){
+        if (b == null) {
             return null; // Don't continue parsing time field if it is null
         }
 
@@ -196,7 +196,7 @@ public class SnapshotReader extends AbstractReader {
             // See: https://dev.mysql.com/doc/refman/5.7/en/set-transaction.html
             // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-isolation-levels.html
             // See: https://dev.mysql.com/doc/refman/5.7/en/innodb-consistent-read.html
-            if (!isRunning()){
+            if (!isRunning()) {
                 return;
             }
             logger.info("Step 0: disabling autocommit and enabling repeatable read transactions");
@@ -218,7 +218,7 @@ public class SnapshotReader extends AbstractReader {
                 // Obtain read lock on all tables. This statement closes all open tables and locks all tables
                 // for all databases with a global read lock, and it prevents ALL updates while we have this lock.
                 // It also ensures that everything we do while we have this lock will be consistent.
-                if (!isRunning()){
+                if (!isRunning()) {
                     return;
                 }
                 if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
@@ -241,7 +241,7 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // First, start a transaction and request that a consistent MVCC snapshot is obtained immediately.
                 // See http://dev.mysql.com/doc/refman/5.7/en/commit.html
-                if (!isRunning()){
+                if (!isRunning()) {
                     return;
                 }
                 logger.info("Step 2: start transaction with consistent snapshot");
@@ -252,7 +252,7 @@ public class SnapshotReader extends AbstractReader {
                 // ------------------------------------
                 // READ BINLOG POSITION
                 // ------------------------------------
-                if (!isRunning()){
+                if (!isRunning()) {
                     return;
                 }
                 step = 3;
@@ -266,7 +266,7 @@ public class SnapshotReader extends AbstractReader {
                 // READ DATABASE NAMES
                 // -------------------
                 // Get the list of databases ...
-                if (!isRunning()){
+                if (!isRunning()) {
                     return;
                 }
                 logger.info("Step {}: read list of available databases", step++);
@@ -285,7 +285,7 @@ public class SnapshotReader extends AbstractReader {
                 // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
                 // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
                 // we are reading the database names from the database and not taking them from the user ...
-                if (!isRunning()){
+                if (!isRunning()) {
                     return;
                 }
                 logger.info("Step {}: read list of available tables in each database", step++);
@@ -302,7 +302,7 @@ public class SnapshotReader extends AbstractReader {
                         mysql.query(sql.get(), rs -> {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
-                                if (createTableFilters.tableFilter().test(id)){
+                                if (createTableFilters.tableFilter().test(id)) {
                                     createTablesMap.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                                 }
                                 if (filters.tableFilter().test(id)) {
@@ -402,7 +402,7 @@ public class SnapshotReader extends AbstractReader {
 
                     // Now process all of our tables for each database ...
                     for (Map.Entry<String, List<TableId>> entry : createTablesMap.entrySet()) {
-                        if (!isRunning()){
+                        if (!isRunning()) {
                             break;
                         }
                         String dbName = entry.getKey();
@@ -411,7 +411,7 @@ public class SnapshotReader extends AbstractReader {
                         schema.applyDdl(source, dbName, "CREATE DATABASE " + quote(dbName), this::enqueueSchemaChanges);
                         schema.applyDdl(source, dbName, "USE " + quote(dbName), this::enqueueSchemaChanges);
                         for (TableId tableId : entry.getValue()) {
-                            if (!isRunning()){
+                            if (!isRunning()) {
                                 break;
                             }
                             sql.set("SHOW CREATE TABLE " + quote(tableId));
@@ -463,7 +463,7 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // Use a buffered blocking consumer to buffer all of the records, so that after we copy all of the tables
                 // and produce events we can update the very last event with the non-snapshot offset ...
-                if (!isRunning()){
+                if (!isRunning()) {
                     return;
                 }
                 if (includeData) {
@@ -482,7 +482,7 @@ public class SnapshotReader extends AbstractReader {
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
                         AtomicLong rowNum = new AtomicLong();
-                        if (!isRunning()){
+                        if (!isRunning()) {
                             break;
                         }
 
@@ -504,7 +504,7 @@ public class SnapshotReader extends AbstractReader {
                                     // but far more efficient for large InnoDB tables.
                                     sql.set("SHOW TABLE STATUS LIKE '" + tableId.table() + "';");
                                     mysql.query(sql.get(), rs -> {
-                                        if (rs.next()){
+                                        if (rs.next()) {
                                             numRows.set(rs.getLong(5));
                                         }
                                     });
@@ -573,7 +573,7 @@ public class SnapshotReader extends AbstractReader {
                             }
                             finally {
                                 metrics.tableSnapshotCompleted(tableId, rowNum.get());
-                                if (interrupted.get()){
+                                if (interrupted.get()) {
                                     break;
                                 }
                             }
@@ -582,7 +582,7 @@ public class SnapshotReader extends AbstractReader {
                     }
 
                     // See if we've been stopped or interrupted ...
-                    if (!isRunning() || interrupted.get()){
+                    if (!isRunning() || interrupted.get()) {
                         return;
                     }
 
@@ -842,7 +842,7 @@ public class SnapshotReader extends AbstractReader {
      * @return the updated record
      */
     protected SourceRecord replaceOffset(SourceRecord record) {
-        if (record == null){
+        if (record == null) {
             return null;
         }
         Map<String, ?> newOffset = context.source().offset();

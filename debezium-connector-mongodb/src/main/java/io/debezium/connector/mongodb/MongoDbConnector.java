@@ -176,18 +176,18 @@ public class MongoDbConnector extends SourceConnector {
         try {
             logger.info("Stopping MongoDB connector");
             this.config = null;
-            if (replicaSetMonitorExecutor != null){
+            if (replicaSetMonitorExecutor != null) {
                 replicaSetMonitorExecutor.shutdownNow();
             }
             try {
-                if ( this.connectionContext != null ){
+                if ( this.connectionContext != null ) {
                     this.connectionContext.shutdown();
                 }
             } finally {
                 logger.info("Stopped MongoDB connector");
             }
         } finally {
-            if ( previousLogContext != null ){
+            if ( previousLogContext != null ) {
                 previousLogContext.restore();
             }
         }

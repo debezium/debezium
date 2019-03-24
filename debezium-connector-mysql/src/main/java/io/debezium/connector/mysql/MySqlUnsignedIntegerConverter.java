@@ -44,7 +44,7 @@ public class MySqlUnsignedIntegerConverter {
      * @return {@link Short} the correct representation of the original insertion value
      */
     public static short convertUnsignedTinyint(short originalNumber){
-        if (originalNumber < 0){
+        if (originalNumber < 0) {
             return (short) (originalNumber + TINYINT_CORRECTION);
         } else {
             return originalNumber;
@@ -59,7 +59,7 @@ public class MySqlUnsignedIntegerConverter {
      * @return {@link Integer} the correct representation of the original insertion value
      */
     public static int convertUnsignedSmallint(int originalNumber){
-        if (originalNumber < 0){
+        if (originalNumber < 0) {
             return originalNumber + SMALLINT_CORRECTION;
         } else {
             return originalNumber;
@@ -74,7 +74,7 @@ public class MySqlUnsignedIntegerConverter {
      * @return {@link Integer} the correct representation of the original insertion value
      */
     public static int convertUnsignedMediumint(int originalNumber){
-        if (originalNumber < 0){
+        if (originalNumber < 0) {
             return originalNumber + MEDIUMINT_CORRECTION;
         } else {
             return originalNumber;

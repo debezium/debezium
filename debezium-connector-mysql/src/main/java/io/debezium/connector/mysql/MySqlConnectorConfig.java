@@ -78,12 +78,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static BigIntUnsignedHandlingMode parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (BigIntUnsignedHandlingMode option : BigIntUnsignedHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -99,7 +99,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static BigIntUnsignedHandlingMode parse(String value, String defaultValue) {
             BigIntUnsignedHandlingMode mode = parse(value);
-            if (mode == null && defaultValue != null){
+            if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
             return mode;
@@ -175,12 +175,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SnapshotMode parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (SnapshotMode option : SnapshotMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -196,7 +196,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SnapshotMode parse(String value, String defaultValue) {
             SnapshotMode mode = parse(value);
-            if (mode == null && defaultValue != null){
+            if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
             return mode;
@@ -232,12 +232,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SnapshotNewTables parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (SnapshotNewTables option : SnapshotNewTables.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -306,7 +306,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SnapshotLockingMode parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
@@ -327,7 +327,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SnapshotLockingMode parse(String value, String defaultValue) {
             SnapshotLockingMode mode = parse(value);
-            if (mode == null && defaultValue != null){
+            if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
             return mode;
@@ -382,12 +382,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static SecureConnectionMode parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (SecureConnectionMode option : SecureConnectionMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -403,7 +403,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static SecureConnectionMode parse(String value, String defaultValue) {
             SecureConnectionMode mode = parse(value);
-            if (mode == null && defaultValue != null){
+            if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
             return mode;
@@ -444,7 +444,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static GtidNewChannelPosition parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
@@ -517,7 +517,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             value = value.trim();
 
             for (EventProcessingFailureHandlingMode option : EventProcessingFailureHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
@@ -561,12 +561,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @return the matching option, or null if no match is found
          */
         public static DdlParsingMode parse(String value) {
-            if (value == null){
+            if (value == null) {
                 return null;
             }
             value = value.trim();
             for (DdlParsingMode option : DdlParsingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }

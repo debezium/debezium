@@ -279,7 +279,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     private Map<String, Object> offsetUsingPosition(long rowsToSkip) {
         Map<String, Object> map = new HashMap<>();
-        if (serverId != 0){
+        if (serverId != 0) {
             map.put(SERVER_ID_KEY, serverId);
         }
         if (restartGtidSet != null) {
@@ -294,7 +294,7 @@ final class SourceInfo extends AbstractSourceInfo {
         if (rowsToSkip != 0) {
             map.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, rowsToSkip);
         }
-        if (binlogTimestampSeconds != 0){
+        if (binlogTimestampSeconds != 0) {
             map.put(TIMESTAMP_KEY, binlogTimestampSeconds);
         }
         if (isSnapshotInEffect()) {
@@ -602,10 +602,10 @@ final class SourceInfo extends AbstractSourceInfo {
 
     private long longOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
-        if (obj == null){
+        if (obj == null) {
             return 0L;
         }
-        if (obj instanceof Number){
+        if (obj instanceof Number) {
             return ((Number) obj).longValue();
         }
         try {
@@ -617,10 +617,10 @@ final class SourceInfo extends AbstractSourceInfo {
 
     private boolean booleanOffsetValue(Map<String, ?> values, String key) {
         Object obj = values.get(key);
-        if (obj == null){
+        if (obj == null) {
             return false;
         }
-        if (obj instanceof Boolean){
+        if (obj instanceof Boolean) {
             return ((Boolean) obj).booleanValue();
         }
         return Boolean.parseBoolean(obj.toString());
@@ -812,7 +812,7 @@ final class SourceInfo extends AbstractSourceInfo {
         String desiredFilename = desired.getString(BINLOG_FILENAME_OFFSET_KEY);
         assert recordedFilename != null;
         int diff = recordedFilename.compareToIgnoreCase(desiredFilename);
-        if (diff > 0){
+        if (diff > 0) {
             return false;
         }
         if (diff < 0) {
@@ -823,10 +823,10 @@ final class SourceInfo extends AbstractSourceInfo {
         int recordedPosition = recorded.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
         int desiredPosition = desired.getInteger(BINLOG_POSITION_OFFSET_KEY, -1);
         diff = recordedPosition - desiredPosition;
-        if (diff > 0){
+        if (diff > 0) {
             return false;
         }
-        if (diff < 0){
+        if (diff < 0) {
             return true;
         }
 
@@ -834,10 +834,10 @@ final class SourceInfo extends AbstractSourceInfo {
         int recordedEventCount = recorded.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
         int desiredEventCount = desired.getInteger(EVENTS_TO_SKIP_OFFSET_KEY, 0);
         diff = recordedEventCount - desiredEventCount;
-        if (diff > 0){
+        if (diff > 0) {
             return false;
         }
-        if (diff < 0){
+        if (diff < 0) {
             return true;
         }
 
@@ -845,7 +845,7 @@ final class SourceInfo extends AbstractSourceInfo {
         int recordedRow = recorded.getInteger(BINLOG_ROW_IN_EVENT_OFFSET_KEY, -1);
         int desiredRow = desired.getInteger(BINLOG_ROW_IN_EVENT_OFFSET_KEY, -1);
         diff = recordedRow - desiredRow;
-        if (diff > 0){
+        if (diff > 0) {
             return false;
         }
 

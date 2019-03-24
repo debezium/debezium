@@ -199,10 +199,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
 
         @Override
         public void accept(List<SourceRecord> records) {
-            if (records.isEmpty()){
+            if (records.isEmpty()) {
                 return;
             }
-            if (!logger.isInfoEnabled()){
+            if (!logger.isInfoEnabled()) {
                 return;
             }
             summaryByReplicaSet.clear();
