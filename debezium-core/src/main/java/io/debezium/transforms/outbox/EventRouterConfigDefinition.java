@@ -190,6 +190,13 @@ public class EventRouterConfigDefinition {
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias</code> ");
 
+    static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.schema.version")
+            .withDisplayName("Event Schema Version Field")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The column which contains the Schema version within the outbox table");
+
     static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Field to route events by")
             .withType(ConfigDef.Type.STRING)
@@ -241,7 +248,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Table",
-                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT
+                FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_PAYLOAD_ID, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT, FIELD_SCHEMA_VERSION
         );
         Field.group(
                 config,

@@ -79,6 +79,8 @@ public class EventRouterTest {
 
         assertThat(eventRouted).isNotNull();
         assertThat(((Struct) eventRouted.value()).getString("payload")).isEqualTo("{}");
+
+        assertThat(eventRouted.valueSchema().version()).isNull();
     }
 
     @Test
@@ -313,6 +315,65 @@ public class EventRouterTest {
         Header header = headers.iterator().next();
         assertThat(header.key()).isEqualTo("id");
         assertThat(header.value()).isEqualTo(2);
+    }
+
+    @Test
+    public void canSetSchemaVersion() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.FIELD_SCHEMA_VERSION.name(), "version");
+        router.configure(config);
+
+        Map<String, Schema> extraFields = new HashMap<>();
+        extraFields.put("version", Schema.INT32_SCHEMA);
+
+        Map<String, Object> extraValuesV1 = new HashMap<>();
+        extraValuesV1.put("version", 1);
+
+        final SourceRecord eventRecordV1 = createEventRecord(
+                "166080d9-3b0e-4a04-81fe-2058a7386f1f",
+                "UserCreated",
+                "420b186d",
+                "User",
+                "{}",
+                extraFields,
+                extraValuesV1
+        );
+        final SourceRecord eventRoutedV1 = router.apply(eventRecordV1);
+
+        assertThat(eventRoutedV1.valueSchema().version()).isEqualTo(1);
+
+        Map<String, Object> extraValuesV3 = new HashMap<>();
+        extraValuesV3.put("version", 3);
+
+        final SourceRecord eventRecordV3 = createEventRecord(
+                "166080d9-3b0e-4a04-81fe-2058a7386f1f",
+                "UserCreated",
+                "420b186d",
+                "User",
+                "{}",
+                extraFields,
+                extraValuesV3
+        );
+        final SourceRecord eventRoutedV3 = router.apply(eventRecordV3);
+
+        assertThat(eventRoutedV3.valueSchema().version()).isEqualTo(3);
+
+        // This one will now use the cached version
+        final SourceRecord eventRecordV1E2 = createEventRecord(
+                "18f94a39-b931-41b7-837c-6fc23b013597",
+                "UserCreated",
+                "1b10b70b",
+                "User",
+                "{}",
+                extraFields,
+                extraValuesV1
+        );
+        final SourceRecord eventRoutedV1E2 = router.apply(eventRecordV1E2);
+
+        assertThat(eventRoutedV1E2.valueSchema().version()).isEqualTo(1);
+
+        assertThat(eventRoutedV1.valueSchema()).isSameAs(eventRoutedV1E2.valueSchema());
     }
 
     @Test
