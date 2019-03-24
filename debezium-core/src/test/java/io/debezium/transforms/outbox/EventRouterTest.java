@@ -39,6 +39,8 @@ public class EventRouterTest {
                 new HashMap<>(),
                 new HashMap<>(),
                 "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "123123",
                 null,
                 null
         );
@@ -62,11 +64,81 @@ public class EventRouterTest {
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
         final Struct payload = envelope.delete(before, null, System.nanoTime());
-        final SourceRecord eventRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), payload);
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                envelope.schema(),
+                payload
+        );
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
         assertThat(eventRouted).isNull();
+    }
+
+    @Test
+    public void canSkipUpdates() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
+
+        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
+        Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(SchemaBuilder.struct().build())
+                .build();
+        final Struct before = new Struct(recordSchema);
+        before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
+        final Struct payload = envelope.update(before, before, null, System.nanoTime());
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                envelope.schema(),
+                payload
+        );
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNull();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void canFailOnUpdates() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
+                EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue()
+        );
+        router.configure(config);
+
+        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
+        Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(SchemaBuilder.struct().build())
+                .build();
+        final Struct before = new Struct(recordSchema);
+        before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
+        final Struct payload = envelope.update(before, before, null, System.nanoTime());
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                envelope.schema(),
+                payload
+        );
+
+        router.apply(eventRecord);
     }
 
     @Test
