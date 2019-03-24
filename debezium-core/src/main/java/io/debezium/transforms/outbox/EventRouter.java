@@ -49,11 +49,14 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private String fieldEventTimestamp;
     private String fieldPayload;
     private String fieldPayloadId;
+    private String fieldSchemaVersion;
 
     private String routeByField;
 
-    private Schema valueSchema;
     private List<AdditionalField> additionalFields;
+
+    private Schema defaultValueSchema;
+    private final Map<Integer, Schema> versionedValueSchema = new HashMap<>();
 
     @Override
     public R apply(R r) {
@@ -94,9 +97,9 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         Headers headers = r.headers();
         headers.add("id", eventId, eventValueSchema.field(fieldEventId).schema());
 
-        if (valueSchema == null) {
-            valueSchema = buildValueSchema(eventValueSchema);
-        }
+        Schema valueSchema = (fieldSchemaVersion == null)
+                ? getValueSchema(eventValueSchema)
+                : getValueSchema(eventValueSchema, eventStruct.getInt32(fieldSchemaVersion));
 
         Struct value = new Struct(valueSchema)
                 .put(ENVELOPE_EVENT_TYPE, eventType)
@@ -179,6 +182,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
         fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
         fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
+        fieldSchemaVersion = config.getString(EventRouterConfigDefinition.FIELD_SCHEMA_VERSION);
 
         routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
 
@@ -196,7 +200,26 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         additionalFields = parseAdditionalFieldsConfig(config);
     }
 
-    private Schema buildValueSchema(Schema debeziumEventSchema) {
+    private Schema getValueSchema(Schema debeziumEventSchema) {
+        if (defaultValueSchema == null) {
+            defaultValueSchema = getSchemaBuilder(debeziumEventSchema).build();
+        }
+
+        return defaultValueSchema;
+    }
+
+    private Schema getValueSchema(Schema debeziumEventSchema, Integer version) {
+        if (!versionedValueSchema.containsKey(version)) {
+            final Schema schema = getSchemaBuilder(debeziumEventSchema)
+                    .version(version)
+                    .build();
+            versionedValueSchema.put(version, schema);
+        }
+
+        return versionedValueSchema.get(version);
+    }
+
+    private SchemaBuilder getSchemaBuilder(Schema debeziumEventSchema) {
         SchemaBuilder schemaBuilder = SchemaBuilder.struct();
 
         // Add default fields
@@ -214,6 +237,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             }
         }));
 
-        return schemaBuilder.build();
+        return schemaBuilder;
     }
 }
