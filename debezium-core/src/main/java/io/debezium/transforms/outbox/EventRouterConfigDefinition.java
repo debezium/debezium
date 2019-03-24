@@ -43,25 +43,16 @@ public class EventRouterConfigDefinition {
          * @return the matching option, or null if no match is found
          */
         public static InvalidOperationBehavior parse(String value) {
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
             value = value.trim();
             for (InvalidOperationBehavior option : InvalidOperationBehavior.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
             }
             return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value        the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static InvalidOperationBehavior parse(String value, String defaultValue) {
-            InvalidOperationBehavior mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
-            return mode;
         }
     }
 
@@ -87,25 +78,16 @@ public class EventRouterConfigDefinition {
          * @return the matching option, or null if no match is found
          */
         public static AdditionalFieldPlacement parse(String value) {
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
             value = value.trim();
             for (AdditionalFieldPlacement option : AdditionalFieldPlacement.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
             }
             return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value        the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static AdditionalFieldPlacement parse(String value, String defaultValue) {
-            AdditionalFieldPlacement mode = parse(value);
-            if (mode == null && defaultValue != null) mode = parse(defaultValue);
-            return mode;
         }
     }
 
