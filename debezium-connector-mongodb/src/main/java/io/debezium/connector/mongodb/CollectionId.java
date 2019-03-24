@@ -28,7 +28,7 @@ public final class CollectionId implements DataCollectionId {
      */
     public static CollectionId parse(String str) {
         String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
-        if (parts.length < 3){
+        if (parts.length < 3) {
             return null;
         }
         return new CollectionId(parts[0], parts[1], parts[2]);
