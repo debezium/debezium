@@ -170,7 +170,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
             sb.append(replicaSetName).append('/');
         }
         Iterator<ServerAddress> iter = addresses.iterator();
-        if (iter.hasNext()){
+        if (iter.hasNext()) {
             sb.append(MongoUtil.toString(iter.next()));
         }
         while (iter.hasNext()) {
