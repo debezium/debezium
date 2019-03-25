@@ -784,7 +784,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      */
     default Document setDocument(int index,
                                  Document document) {
-        if (document == null){
+        if (document == null) {
             document = Document.create();
         }
         setValue(index, Value.create(document));

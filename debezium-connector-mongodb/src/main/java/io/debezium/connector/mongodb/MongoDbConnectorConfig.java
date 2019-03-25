@@ -64,7 +64,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             value = value.trim();
 
             for (SnapshotMode option : SnapshotMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)){
+                if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
             }
