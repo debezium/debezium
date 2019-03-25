@@ -328,7 +328,7 @@ public class SnapshotReader extends AbstractReader {
                     List<TableId> tablesMatchedByPattern = tableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
                             .collect(Collectors.toList());
                                         tablesMatchedByPattern.forEach(t -> {
-                                                if (!tableIdsSorted.contains(t)){
+                                                if (!tableIdsSorted.contains(t)) {
                                                     tableIdsSorted.add(t);
                                                 }
                                         });
