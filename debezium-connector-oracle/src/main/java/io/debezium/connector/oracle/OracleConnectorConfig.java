@@ -221,7 +221,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             value = value.trim();
 
             for (OracleVersion option : OracleVersion.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
             }
 
             return null;
@@ -287,7 +289,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             value = value.trim();
 
             for (SnapshotMode option : SnapshotMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) return option;
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
             }
 
             return null;
