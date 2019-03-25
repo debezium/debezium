@@ -38,6 +38,7 @@ Ivan Kovbas
 Ivan Vucina
 Jiri Pechanec
 Jon Casstevens
+Josh Stanfield
 Joy Gao
 Jure Kajzer
 Keith Barber
@@ -71,6 +72,7 @@ Satyajit Vegesna
 Saulius Valatka
 Scofield Xu
 Sherafudheen PM
+Shubham Raj
 Stanley Shyiko
 Stephen Powis
 Steven Siahetiong
