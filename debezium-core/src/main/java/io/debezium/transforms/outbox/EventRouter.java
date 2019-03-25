@@ -5,6 +5,7 @@
  */
 package io.debezium.transforms.outbox;
 
+import io.debezium.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -34,6 +35,7 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
  *
  * @author Renato mefi (gh@mefi.in)
  */
+@Incubating
 public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouter.class);
