@@ -142,7 +142,8 @@ public class TypeRegistry {
     private final int citextArrayOid;
 
     private TypeRegistry(Map<String, PostgresType> nameToType, Map<Integer, PostgresType> oidToType,
-            int geometryOid, int geographyOid, int citextOid, int geometryArrayOid, int geographyArrayOid, int citextArrayOid, int hstoreOid) {
+            int geometryOid, int geographyOid, int citextOid, int geometryArrayOid, int geographyArrayOid, int citextArrayOid,
+                         int hstoreOid) {
 
         this.nameToType = Collections.unmodifiableMap(nameToType);
         this.oidToType = Collections.unmodifiableMap(oidToType);
@@ -257,6 +258,7 @@ public class TypeRegistry {
     public int citextArrayOid() {
         return citextArrayOid;
     }
+
 
     /**
      * Converts a type name in long (readable) format like <code>boolean</code> to s standard
