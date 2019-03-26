@@ -142,6 +142,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON:
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
+            case PgOid.INET_OID:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -164,6 +165,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.VARCHAR_ARRAY:
             case PgOid.TEXT_ARRAY:
             case PgOid.BPCHAR_ARRAY:
+            case PgOid.INET_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
                 return SchemaBuilder.array(numericSchema(column).optional().build());
@@ -205,7 +207,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return Geography.builder();
                 }
-                else if (oidValue == typeRegistry.citextOid() || oidValue == typeRegistry.inetOid()) {
+                else if (oidValue == typeRegistry.citextOid()) {
                     return SchemaBuilder.string();
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
@@ -217,7 +219,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
                     return SchemaBuilder.array(Geography.builder().optional().build());
                 }
-                else if (oidValue == typeRegistry.citextArrayOid() || oidValue == typeRegistry.inetArrayOid()) {
+                else if (oidValue == typeRegistry.citextArrayOid()) {
                     return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
                 }
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
@@ -272,6 +274,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.UUID:
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
+            case PgOid.INET_OID:
                 return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
@@ -293,6 +296,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.FLOAT8_ARRAY:
             case PgOid.BOOL_ARRAY:
             case PgOid.DATE_ARRAY:
+            case PgOid.INET_ARRAY:
                 return createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
@@ -322,13 +326,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geographyOid()) {
                     return data -> convertGeography(column, fieldDefn, data);
                 }
-                else if (oidValue == typeRegistry.citextOid() || oidValue == typeRegistry.inetOid()) {
-                    return data -> convertToString(column, fieldDefn, data);
+                else if (oidValue == typeRegistry.citextOid()) {
+                    return data -> convertCitext(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return data -> convertHStore(column, fieldDefn, data, hStoreMode);
                 }
-                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid() || oidValue == typeRegistry.inetArrayOid()) {
+                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
                 }
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
@@ -645,7 +649,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    protected Object convertToString(Column column, Field fieldDefn, Object data) {
+    protected Object convertCitext(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
             if (data instanceof byte[]) {
                 r.deliver(new String((byte[]) data));

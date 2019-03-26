@@ -92,6 +92,8 @@ public abstract class AbstractRecordsProducerTest {
                                                            "'<foo>bar</foo><foo>bar</foo>'::xml, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::UUID)";
     protected static final String INSERT_STRING_TYPES_STMT = "INSERT INTO string_table (vc, vcv, ch, c, t, b, bnn, ct) " +
                                                              "VALUES ('\u017E\u0161', 'bb', 'cdef', 'abc', 'some text', E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea, 'Hello World')";
+    protected static final String INSERT_NETWORK_ADDRESS_TYPES_STMT = "INSERT INTO network_address_table (i) " +
+                                                                      "VALUES ('192.168.2.0/12')";
     protected static final String INSERT_NUMERIC_TYPES_STMT =
             "INSERT INTO numeric_table (si, i, bi, r, db, r_int, db_int, r_nan, db_nan, r_pinf, db_pinf, r_ninf, db_ninf, ss, bs, b) " +
              "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 3, 4, 'NaN', 'NaN', 'Infinity', 'Infinity', '-Infinity', '-Infinity', 1, 123, true)";
@@ -151,8 +153,8 @@ public abstract class AbstractRecordsProducerTest {
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN,
                                                                  INSERT_DATE_TIME_TYPES_STMT,
                                                                  INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
-                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_ARRAY_TYPES_STMT,
-                                                                 INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
+                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_NETWORK_ADDRESS_TYPES_STMT,
+                                                                 INSERT_ARRAY_TYPES_STMT, INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
                                                                  INSERT_POSTGIS_TYPES_STMT, INSERT_POSTGIS_ARRAY_TYPES_STMT));
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericType() {
@@ -350,6 +352,10 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("bnn", Schema.BYTES_SCHEMA, ByteBuffer.wrap(new byte[] {3, 4, 5}))
                 );
      }
+
+    protected List<SchemaAndValueField> schemasAndValuesForNetworkAddressTypes() {
+        return Arrays.asList(new SchemaAndValueField("i", Schema.OPTIONAL_STRING_SCHEMA, "192.168.2.0/12"));
+    }
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericTypesWithSourceColumnTypeInfo() {
         return Arrays.asList(new SchemaAndValueField("d",
@@ -610,6 +616,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemaAndValuesForGeomTypes();
             case INSERT_STRING_TYPES_STMT:
                 return schemasAndValuesForStringTypes();
+            case INSERT_NETWORK_ADDRESS_TYPES_STMT:
+                return schemasAndValuesForNetworkAddressTypes();
             case INSERT_TEXT_TYPES_STMT:
                 return schemasAndValuesForTextTypes();
             case INSERT_ARRAY_TYPES_STMT:
