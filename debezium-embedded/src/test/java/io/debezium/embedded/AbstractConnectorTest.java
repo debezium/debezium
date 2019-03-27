@@ -577,15 +577,15 @@ public abstract class AbstractConnectorTest implements Testing {
         VerifyRecord.isValidTombstone(record);
     }
 
-    protected void assertOffset(SourceRecord record, Map<String,?> expectedOffset) {
-        Map<String,?> offset = record.sourceOffset();
+    protected void assertOffset(SourceRecord record, Map<String, ?> expectedOffset) {
+        Map<String, ?> offset = record.sourceOffset();
         assertThat(offset).isEqualTo(expectedOffset);
     }
 
     protected void assertOffset(SourceRecord record, String offsetField, Object expectedValue) {
-        Map<String,?> offset = record.sourceOffset();
+        Map<String, ?> offset = record.sourceOffset();
         Object value = offset.get(offsetField);
-        assertSameValue(value,expectedValue);
+        assertSameValue(value, expectedValue);
     }
 
     protected void assertValueField(SourceRecord record, String fieldPath, Object expectedValue) {

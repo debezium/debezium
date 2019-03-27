@@ -21,7 +21,7 @@ public class MultipleParsingExceptions extends RuntimeException {
     private final Collection<ParsingException> errors;
     
     public MultipleParsingExceptions( Collection<ParsingException> errors) {
-        this("Multiple parsing errors",errors);
+        this("Multiple parsing errors", errors);
     }
 
     public MultipleParsingExceptions(String message, Collection<ParsingException> errors) {

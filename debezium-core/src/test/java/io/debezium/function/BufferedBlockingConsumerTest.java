@@ -40,13 +40,13 @@ public class BufferedBlockingConsumerTest {
         buffered.accept(5);
 
         // And verify the history contains all but the last value ...
-        assertThat(history).containsExactly(1,2,3,4);
+        assertThat(history).containsExactly(1, 2, 3, 4);
 
         // Flush the last value...
         buffered.close(i -> i);
 
         // And verify the history contains the same values ...
-        assertThat(history).containsExactly(1,2,3,4,5);
+        assertThat(history).containsExactly(1, 2, 3, 4, 5);
     }
 
 }

@@ -42,7 +42,7 @@ public class DdlParserSql2003 extends LegacyDdlParser {
      * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
      */
     public DdlParserSql2003( boolean includeViews ) {
-        super(";",includeViews);
+        super(";", includeViews);
     }
 
     @Override
@@ -139,8 +139,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
     }
 
     protected void parseCreateDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE","SCHEMA");
-        tokens.canConsume("IF","NOT","EXISTS");
+        tokens.consumeAnyOf("DATABASE",  "SCHEMA");
+        tokens.canConsume("IF", "NOT", "EXISTS");
         String dbName = tokens.consume();
         consumeRemainingStatement(start);
         signalCreateDatabase(dbName, start);
@@ -148,7 +148,7 @@ public class DdlParserSql2003 extends LegacyDdlParser {
     }
 
     protected void parseAlterDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE","SCHEMA");
+        tokens.consumeAnyOf("DATABASE", "SCHEMA");
         String dbName = tokens.consume();
         consumeRemainingStatement(start);
         signalAlterDatabase(dbName, null, start);
@@ -156,8 +156,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
     }
 
     protected void parseDropDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE","SCHEMA");
-        tokens.canConsume("IF","EXISTS");
+        tokens.consumeAnyOf("DATABASE", "SCHEMA");
+        tokens.canConsume("IF", "EXISTS");
         String dbName = tokens.consume();
         signalDropDatabase(dbName, start);
         debugParsed(start);
@@ -355,9 +355,9 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             return;
         }
         column.jdbcType(dataType.jdbcType());
-        column.type(dataType.name(),dataType.expression());
+        column.type(dataType.name(), dataType.expression());
         if ( dataType.length() > -1 ) {
-            column.length((int)dataType.length());
+            column.length((int) dataType.length());
         }
         if ( dataType.scale() > -1 ) {
             column.scale(dataType.scale());

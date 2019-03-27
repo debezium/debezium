@@ -172,7 +172,7 @@ public class TableChanges implements Iterable<TableChange> {
             if (getClass() != obj.getClass()) {
                 return false;
             }
-            TableChange other = (TableChange)obj;
+            TableChange other = (TableChange) obj;
             if (! id.equals(other.id)) {
                 return false;
             }

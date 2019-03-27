@@ -35,11 +35,11 @@ public class EnvelopeTest {
     }
 
     protected void assertRequiredField(Envelope env, String fieldName, Schema expectedSchema) {
-        assertField(env.schema().field(fieldName),fieldName,expectedSchema, false);
+        assertField(env.schema().field(fieldName), fieldName, expectedSchema, false);
     }
 
     protected void assertOptionalField(Envelope env, String fieldName, Schema expectedSchema) {
-        assertField(env.schema().field(fieldName),fieldName,expectedSchema, true);
+        assertField(env.schema().field(fieldName), fieldName, expectedSchema, true);
     }
 
     protected void assertField(Field field, String fieldName, Schema expectedSchema, boolean optional) {
@@ -53,7 +53,7 @@ public class EnvelopeTest {
         switch (expectedSchema.type()) {
             case STRUCT:
                 for (Field f : expectedSchema.fields()) {
-                    assertField(schema.field(f.name()),f.name(),f.schema(),f.schema().isOptional());
+                    assertField(schema.field(f.name()), f.name(), f.schema(), f.schema().isOptional());
                 }
                 break;
             default:

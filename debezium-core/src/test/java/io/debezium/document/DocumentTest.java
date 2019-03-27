@@ -23,7 +23,7 @@ import io.debezium.doc.FixFor;
 public class DocumentTest {
 
     private Document doc;
-    private Map<Path,Value> found = new LinkedHashMap<>();
+    private Map<Path, Value> found = new LinkedHashMap<>();
     private Iterator<Map.Entry<Path, Value>> iterator;
 
     @Before
@@ -35,11 +35,11 @@ public class DocumentTest {
 
     @Test
     public void shouldPerformForEachOnFlatDocument() {
-        doc = Document.create("a","A","b","B");
-        doc.forEach((path,value)->found.put(path,value));
+        doc = Document.create("a", "A", "b", "B");
+        doc.forEach((path, value) -> found.put(path, value));
         iterator = found.entrySet().iterator();
-        assertPair(iterator,"/a","A");
-        assertPair(iterator,"/b","B");
+        assertPair(iterator, "/a", "A");
+        assertPair(iterator, "/b", "B");
         assertNoMore(iterator);
     }
 
@@ -57,8 +57,8 @@ public class DocumentTest {
     }
 
     protected void assertPair( Iterator<Map.Entry<Path, Value>> iterator, String path, Object value ) {
-        Map.Entry<Path,Value> entry = iterator.next();
-        assertThat((Object)entry.getKey()).isEqualTo(Path.parse(path));
+        Map.Entry<Path, Value> entry = iterator.next();
+        assertThat((Object) entry.getKey()).isEqualTo(Path.parse(path));
         assertThat(entry.getValue()).isEqualTo(Value.create(value));
     }
 

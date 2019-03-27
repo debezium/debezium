@@ -84,7 +84,7 @@ public class HexConverter {
 
         for (int i = 0; i < response.length; i++) {
             int posOne = i * 2;
-            response[i] =   (byte)(toByte(toConvert, posOne) << 4 | toByte(toConvert, posOne+1));
+            response[i] =   (byte) (toByte(toConvert, posOne) << 4 | toByte(toConvert, posOne+1));
         }
 
         return response;

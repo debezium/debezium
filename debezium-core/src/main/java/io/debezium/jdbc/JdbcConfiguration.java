@@ -177,13 +177,13 @@ public interface JdbcConfiguration extends Configuration {
             
             @Override
             public Builder changeString(Field field, Function<String, String> function) {
-                changeString(field,function);
+                changeString(field, function);
                 return this;
             }
             
             @Override
             public Builder changeString(String key, Function<String, String> function) {
-                changeString(key,function);
+                changeString(key, function);
                 return this;
             }
 
@@ -228,13 +228,13 @@ public interface JdbcConfiguration extends Configuration {
             
             @Override
             public Builder changeString(Field field, Function<String, String> function) {
-                changeString(field,function);
+                changeString(field, function);
                 return this;
             }
             
             @Override
             public Builder changeString(String key, Function<String, String> function) {
-                changeString(key,function);
+                changeString(key, function);
                 return this;
             }
 

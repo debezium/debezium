@@ -74,7 +74,7 @@ public class UnwrapFromEnvelopeTest {
                 .withSource(SchemaBuilder.struct().build())
                 .build();
         final Struct before = new Struct(recordSchema);
-        before.put("id", (byte)1);
+        before.put("id", (byte) 1);
         final Struct payload = envelope.delete(before, null, System.nanoTime());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
@@ -87,7 +87,7 @@ public class UnwrapFromEnvelopeTest {
                 .withSource(SchemaBuilder.struct().build())
                 .build();
         final Struct before = new Struct(recordSchema);
-        before.put("id", (byte)1);
+        before.put("id", (byte) 1);
         final Struct payload = envelope.create(before, null, System.nanoTime());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
@@ -97,7 +97,7 @@ public class UnwrapFromEnvelopeTest {
                 .field("id", SchemaBuilder.int8())
                 .build();
         final Struct before = new Struct(recordSchema);
-        before.put("id", (byte)1);
+        before.put("id", (byte) 1);
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
     }
 
@@ -106,7 +106,7 @@ public class UnwrapFromEnvelopeTest {
                 .field("id", SchemaBuilder.int8())
                 .build();
         final Struct before = new Struct(recordSchema);
-        before.put("id", (byte)1);
+        before.put("id", (byte) 1);
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", recordSchema, before);
     }
 
@@ -194,7 +194,7 @@ public class UnwrapFromEnvelopeTest {
 
             final SourceRecord deleteRecord = createDeleteRecord();
             final SourceRecord unwrapped = transform.apply(deleteRecord);
-            assertThat(((Struct)unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
         }
     }
 
@@ -208,7 +208,7 @@ public class UnwrapFromEnvelopeTest {
 
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct)unwrapped.value()).getString("__deleted")).isEqualTo("false");
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("false");
             assertThat(unwrapped.headers()).hasSize(1);
             String headerValue = getSourceRecordHeaderByKey(unwrapped, transform.DEBEZIUM_OPERATION_HEADER_KEY);
             assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
@@ -223,7 +223,7 @@ public class UnwrapFromEnvelopeTest {
 
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct)unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
         }
     }
 
@@ -252,7 +252,7 @@ public class UnwrapFromEnvelopeTest {
             createRecord.headers().addString("application/debezium-test-header", "shouldPropagatePreviousRecordHeaders");
 
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct)unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
 
             assertThat(unwrapped.headers()).hasSize(1);
             Iterator<Header> headers = unwrapped.headers().allWithName("application/debezium-test-header");

@@ -59,6 +59,9 @@
 
         <module name="NeedBraces"/>
 
+        <!-- Checks for whitespace after tokens -->
+        <module name="WhitespaceAfter"/>
+
         <!-- Checks for blocks. You know, those {}'s -->
         <module name="LeftCurly">
             <property name="option" value="eol" />

@@ -68,7 +68,7 @@ public class Date {
         if (adjuster != null) {
             date = date.with(adjuster);
         }
-        return (int)date.toEpochDay();
+        return (int) date.toEpochDay();
     }
 
     private Date() {

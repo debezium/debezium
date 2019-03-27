@@ -51,8 +51,8 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
             return true;
         }
         if ( obj instanceof Array.Entry ) {
-            Array.Entry that = (Array.Entry)obj;
-            return this.getIndex() == that.getIndex() && Objects.equals(this.getValue(),that.getValue());
+            Array.Entry that = (Array.Entry) obj;
+            return this.getIndex() == that.getIndex() && Objects.equals(this.getValue(), that.getValue());
         }
         return false;
     }
@@ -65,6 +65,6 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
         if ( this.getIndex() != that.getIndex() ) {
             return this.getIndex() - that.getIndex();
         }
-        return Value.compareTo(this.getValue(),that.getValue());
+        return Value.compareTo(this.getValue(), that.getValue());
     }
 }

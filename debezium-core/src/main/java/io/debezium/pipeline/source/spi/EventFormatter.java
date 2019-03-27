@@ -63,7 +63,7 @@ class EventFormatter {
             if (key instanceof Struct) {
                 string
                     .append("key: ");
-                printStruct((Struct)key);
+                printStruct((Struct) key);
             }
             else {
                 printSimpleValue("key", key);

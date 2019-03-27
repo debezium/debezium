@@ -39,7 +39,7 @@ final class Paths {
         }
         if (resolveJsonPointerEscapes) {
             for (int i = 0; i != segments.length; ++i){
-                segments[i]=parseSegment(segments[i],true);
+                segments[i]=parseSegment(segments[i], true);
             }
         }
         return new MultiSegmentPath(segments);
@@ -239,7 +239,7 @@ final class Paths {
         protected MultiSegmentPath(String[] segments) {
             this.segments = segments;
             assert size() > 1;
-            this.hc = HashCode.compute(segments[0].hashCode(),segments[1].hashCode());
+            this.hc = HashCode.compute(segments[0].hashCode(), segments[1].hashCode());
         }
 
         @Override
@@ -410,7 +410,7 @@ final class Paths {
 
         @Override
         public String toString() {
-            return Joiner.on("/","/").join(parent.toString(), segment);
+            return Joiner.on("/", "/").join(parent.toString(), segment);
         }
 
         @Override
@@ -440,7 +440,7 @@ final class Paths {
                 return this;
             }
             if (relPath.isSingle()) {
-                return new ChildPath(this,relPath.lastSegment().get());
+                return new ChildPath(this, relPath.lastSegment().get());
             }
             String[] segments = new String[size() + relPath.size() + 1];
             int offset = copyInto(segments, 0);

@@ -257,7 +257,7 @@ public class IoUtil {
                 if (f.exists() && f.isFile() && f.canRead()) {
                     result = new BufferedInputStream(new FileInputStream(f));
                 }
-                logMessage(result,logger,resourceDesc,"on filesystem at " + filePath);
+                logMessage(result, logger, resourceDesc, "on filesystem at " + filePath);
             } catch(InvalidPathException e) {
                 // just continue ...
             } catch(FileNotFoundException e) {

@@ -161,8 +161,8 @@ final class  BasicArray implements Array {
         }
         Value current = get(index);
         if ( current.isNumber() ) {
-            Value updated = Value.create(MathOps.add(current.asNumber(),increment.asNumber()));
-            setValue(index,Value.create(updated));
+            Value updated = Value.create(MathOps.add(current.asNumber(), increment.asNumber()));
+            setValue(index, Value.create(updated));
         }
         return this;
     }

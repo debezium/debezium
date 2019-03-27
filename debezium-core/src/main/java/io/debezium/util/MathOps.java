@@ -403,32 +403,32 @@ public final class MathOps {
     }
 
     public static Number add(Float first, Number second) {
-        if(second instanceof Short) {
-            return add(first,(Short)second);
+        if (second instanceof Short) {
+            return add(first, (Short) second);
         }
-        if(second instanceof Integer) {
-            return add(first,(Integer)second);
+        if (second instanceof Integer) {
+            return add(first, (Integer) second);
         }
-        if(second instanceof Long) {
-            return add(first,(Long)second);
+        if (second instanceof Long) {
+            return add(first, (Long) second);
         }
-        if(second instanceof Float) {
-            return add(first,(Float)second);
+        if (second instanceof Float) {
+            return add(first, (Float) second);
         }
-        if(second instanceof Double) {
-            return add(first,(Double)second);
+        if (second instanceof Double) {
+            return add(first, (Double) second);
         }
-        if(second instanceof BigInteger) {
-            return add(first,(BigInteger)second);
+        if (second instanceof BigInteger) {
+            return add(first, (BigInteger) second);
         }
-        if(second instanceof BigDecimal) {
-            return add(first,(BigDecimal)second);
+        if (second instanceof BigDecimal) {
+            return add(first, (BigDecimal) second);
         }
-        if(second instanceof AtomicInteger) {
-            return add(first,(AtomicInteger)second);
+        if (second instanceof AtomicInteger) {
+            return add(first, (AtomicInteger) second);
         }
-        if(second instanceof AtomicLong) {
-            return add(first,(AtomicLong)second);
+        if (second instanceof AtomicLong) {
+            return add(first, (AtomicLong) second);
         }
         throw new IllegalArgumentException();
     }
@@ -618,7 +618,7 @@ public final class MathOps {
 
     public static Number add(BigInteger first, Number second) {
         if (second instanceof Short) {
-            return add(first,(Short)second);
+            return add(first, (Short) second);
         }
         if (second instanceof Integer) {
             return add(first, (Integer) second);

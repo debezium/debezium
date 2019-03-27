@@ -45,12 +45,12 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
         
         protected TableEvent tableEvent() {
             assertThat(actual).isInstanceOf(TableEvent.class);
-            return (TableEvent)actual;
+            return (TableEvent) actual;
         }
 
         protected TableAlteredEvent alterTableEvent() {
             assertThat(actual).isInstanceOf(TableAlteredEvent.class);
-            return (TableAlteredEvent)actual;
+            return (TableAlteredEvent) actual;
         }
 
         public EventAssert tableNameIs( String expected) {

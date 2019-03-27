@@ -107,7 +107,7 @@ final class ComparableValue implements Value {
             return true;
         }
         if (obj instanceof Value) {
-            Value that = (Value)obj;
+            Value that = (Value) obj;
             if (this.isNumber() && that.isNumber()) {
                 if (this.isLong()) {
                     return this.asLong().equals(that.asLong());
@@ -172,8 +172,8 @@ final class ComparableValue implements Value {
         if ( this.isArray() && that.isArray() ) {
             return this.asArray().compareTo(that.asArray());
         }
-        Comparable<Object> thisValue = (Comparable<Object>)this.asObject();
-        Comparable<Object> thatValue = (Comparable<Object>)((ComparableValue)that.comparable()).asObject();
+        Comparable<Object> thisValue = (Comparable<Object>) this.asObject();
+        Comparable<Object> thatValue = (Comparable<Object>) ((ComparableValue) that.comparable()).asObject();
         if ( thisValue.getClass().isAssignableFrom(thatValue.getClass())) {
             return thisValue.compareTo(thatValue);
         } else if (thatValue.getClass().isAssignableFrom(thisValue.getClass())) {
@@ -214,7 +214,7 @@ final class ComparableValue implements Value {
     @Override
     public Integer asInteger() {
         if (value instanceof Integer) {
-            return (Integer)value;
+            return (Integer) value;
         }
         if (value instanceof Long) {
             long raw = ((Long) value).longValue();
@@ -236,10 +236,10 @@ final class ComparableValue implements Value {
     @Override
     public Long asLong() {
         if (value instanceof Long) {
-            return (Long)value;
+            return (Long) value;
         }
         if (value instanceof Integer) {
-            return Long.valueOf(((Integer)value).longValue());
+            return Long.valueOf(((Integer) value).longValue());
         }
         return null;
     }
@@ -267,16 +267,16 @@ final class ComparableValue implements Value {
     @Override
     public Float asFloat() {
         if (value instanceof Float) {
-            return (Float)value;
+            return (Float) value;
         }
         if (value instanceof Double) {
-            double raw = ((Double)value).doubleValue();
+            double raw = ((Double) value).doubleValue();
             if (isValidFloat(raw)) {
-                return Float.valueOf((float)raw);
+                return Float.valueOf((float) raw);
             }
         }
         if (value instanceof Number) {
-            return ((Number)value).floatValue();
+            return ((Number) value).floatValue();
         }
         return null;
     }
@@ -284,13 +284,13 @@ final class ComparableValue implements Value {
     @Override
     public Double asDouble() {
         if (value instanceof Double) {
-            return (Double)value;
+            return (Double) value;
         }
         if (value instanceof Float) {
-            return Double.valueOf(((Float)value).doubleValue());
+            return Double.valueOf(((Float) value).doubleValue());
         }
         if (value instanceof Number) {
-            return ((Number)value).doubleValue();
+            return ((Number) value).doubleValue();
         }
         return null;
     }
