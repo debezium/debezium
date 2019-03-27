@@ -230,7 +230,7 @@ public class TestHelper {
                 Assert.fail("Snapshot was not completed on time");
             }
             try {
-                final boolean completed = (boolean)mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"), "SnapshotCompleted");
+                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"), "SnapshotCompleted");
                 if (completed) {
                     break;
                 }

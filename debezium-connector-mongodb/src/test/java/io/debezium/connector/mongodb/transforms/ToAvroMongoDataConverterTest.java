@@ -63,7 +63,7 @@ public class ToAvroMongoDataConverterTest {
             converter.convertRecord(entry, finalSchema, struct);
         }
 
-        final GenericData.Record avro = (GenericData.Record)avroData.fromConnectData(finalSchema, struct);
+        final GenericData.Record avro = (GenericData.Record) avroData.fromConnectData(finalSchema, struct);
         assertThat(avro.toString()).isEqualTo(
                 "{\"_id\": 1, " +
                  "\"s1\": {\"s1f1\": \"field1s1\", \"s1f2\": \"field2s1\"}, " +

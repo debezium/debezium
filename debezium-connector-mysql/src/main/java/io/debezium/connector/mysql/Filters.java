@@ -27,7 +27,7 @@ import io.debezium.util.Collect;
 @Immutable
 public class Filters {
 
-    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema","sys", "information_schema");
+    protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
     protected static boolean isBuiltInDatabase(String databaseName) {
         return BUILT_IN_DB_NAMES.contains(databaseName.toLowerCase());
@@ -123,10 +123,7 @@ public class Filters {
          * @return this
          */
         public Builder setFiltersFromOffsets(Map<String, ?> offsets) {
-            setFiltersFromStrings((String)offsets.get(SourceInfo.DATABASE_WHITELIST_KEY),
-                                  (String)offsets.get(SourceInfo.DATABASE_BLACKLIST_KEY),
-                                  (String)offsets.get(SourceInfo.TABLE_WHITELIST_KEY),
-                                  (String)offsets.get(SourceInfo.TABLE_BLACKLIST_KEY));
+            setFiltersFromStrings((String) offsets.get(SourceInfo.DATABASE_WHITELIST_KEY), (String) offsets.get(SourceInfo.DATABASE_BLACKLIST_KEY), (String) offsets.get(SourceInfo.TABLE_WHITELIST_KEY), (String) offsets.get(SourceInfo.TABLE_BLACKLIST_KEY));
             return this;
         }
 

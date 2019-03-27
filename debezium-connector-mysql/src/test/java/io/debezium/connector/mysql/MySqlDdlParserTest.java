@@ -356,7 +356,7 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", null); // changes when we USE a different database
 
-        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        parser.parse("USE db1;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "utf8mb4");
 
@@ -364,11 +364,11 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "utf8mb4");
 
-        parser.parse("USE db2;", tables);// changes the "character_set_database" system variable ...
+        parser.parse("USE db2;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "latin1");
 
-        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        parser.parse("USE db1;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "utf8mb4");
 
@@ -376,7 +376,7 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "utf8mb4");
 
-        parser.parse("USE db3;", tables);// changes the "character_set_database" system variable ...
+        parser.parse("USE db3;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "latin2");
     }
@@ -421,7 +421,7 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", null); // changes when we USE a different database
 
-        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        parser.parse("USE db1;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_connection", null);
         assertVariable("character_set_database", "LATIN1");
@@ -467,7 +467,7 @@ public class MySqlDdlParserTest {
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", null); // changes when we USE a different database
 
-        parser.parse("USE db1;", tables);// changes the "character_set_database" system variable ...
+        parser.parse("USE db1;", tables); // changes the "character_set_database" system variable ...
         assertVariable("character_set_server", "utf8");
         assertVariable("character_set_database", "LATIN1");
 

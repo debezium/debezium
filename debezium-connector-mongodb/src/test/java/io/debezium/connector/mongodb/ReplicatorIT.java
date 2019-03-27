@@ -211,7 +211,7 @@ public class ReplicatorIT extends AbstractMongoIT {
         records.forEach(record -> {
             VerifyRecord.isValid(record);
             Struct key = (Struct) record.key();
-            ObjectId id = (ObjectId)(JSON.parse(key.getString("id")));
+            ObjectId id = (ObjectId) (JSON.parse(key.getString("id")));
             foundIds.add(id);
             if (record.value() != null) {
                 Struct value = (Struct) record.value();

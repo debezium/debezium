@@ -598,7 +598,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
     private synchronized PgConnection typeResolverConnection() throws SQLException {
         if (typeResolverConnection == null) {
-            typeResolverConnection = (PgConnection)taskContext.createConnection().connection();
+            typeResolverConnection = (PgConnection) taskContext.createConnection().connection();
         }
         return typeResolverConnection;
     }

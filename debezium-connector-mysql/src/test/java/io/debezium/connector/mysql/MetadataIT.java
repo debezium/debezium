@@ -53,7 +53,7 @@ public class MetadataIT implements Testing {
             assertThat(person).isNotNull();
             assertThat(person.filterColumns(col->col.isAutoIncremented())).isEmpty();
             assertThat(person.primaryKeyColumnNames()).containsOnly("name");
-            assertThat(person.retrieveColumnNames()).containsExactly("name","birthdate","age","salary","bitStr");
+            assertThat(person.retrieveColumnNames()).containsExactly("name", "birthdate", "age", "salary", "bitStr");
             assertThat(person.columnWithName("name").name()).isEqualTo("name");
             assertThat(person.columnWithName("name").typeName()).isEqualTo("VARCHAR");
             assertThat(person.columnWithName("name").jdbcType()).isEqualTo(Types.VARCHAR);
@@ -117,7 +117,7 @@ public class MetadataIT implements Testing {
             assertThat(product).isNotNull();
             assertThat(product.filterColumnNames(Column::isAutoIncremented)).containsOnly("id");
             assertThat(product.primaryKeyColumnNames()).containsOnly("id");
-            assertThat(product.retrieveColumnNames()).containsExactly("id","createdByDate","modifiedDate");
+            assertThat(product.retrieveColumnNames()).containsExactly("id", "createdByDate", "modifiedDate");
             assertThat(product.columnWithName("id").name()).isEqualTo("id");
             assertThat(product.columnWithName("id").typeName()).isEqualTo("INT");
             assertThat(product.columnWithName("id").jdbcType()).isEqualTo(Types.INTEGER);
@@ -161,8 +161,8 @@ public class MetadataIT implements Testing {
             Table purchased = tables.forTable(DATABASE.getDatabaseName(), null, "purchased");
             assertThat(purchased).isNotNull();
             assertThat(person.filterColumns(col->col.isAutoIncremented())).isEmpty();
-            assertThat(purchased.primaryKeyColumnNames()).containsOnly("productId","purchaser");
-            assertThat(purchased.retrieveColumnNames()).containsExactly("purchaser","productId","purchaseDate");
+            assertThat(purchased.primaryKeyColumnNames()).containsOnly("productId", "purchaser");
+            assertThat(purchased.retrieveColumnNames()).containsExactly("purchaser", "productId", "purchaseDate");
             assertThat(purchased.columnWithName("purchaser").name()).isEqualTo("purchaser");
             assertThat(purchased.columnWithName("purchaser").typeName()).isEqualTo("VARCHAR");
             assertThat(purchased.columnWithName("purchaser").jdbcType()).isEqualTo(Types.VARCHAR);

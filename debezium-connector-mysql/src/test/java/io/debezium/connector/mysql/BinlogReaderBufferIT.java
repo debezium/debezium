@@ -252,7 +252,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             records = consumeRecordsByTopic(numRecords);
             int recordIndex = 0;
             for (SourceRecord r: records.allRecordsInOrder()) {
-                Struct envelope = (Struct)r.value();
+                Struct envelope = (Struct) r.value();
                 assertThat(envelope.getString("op")).isEqualTo(("c"));
                 assertThat(envelope.getStruct("after").getString("email")).isEqualTo(Integer.toString(recordIndex++));
             }

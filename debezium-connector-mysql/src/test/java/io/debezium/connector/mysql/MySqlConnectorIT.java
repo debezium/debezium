@@ -772,18 +772,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertInsert(prod3003, "id", 3003);
 
         // Check that the offset has the correct/expected values ...
-        assertOffset(prod3003,"file",lastCommittedOffset.get("file"));
-        assertOffset(prod3003,"pos",lastCommittedOffset.get("pos"));
-        assertOffset(prod3003,"row",3);
-        assertOffset(prod3003,"event",lastCommittedOffset.get("event"));
+        assertOffset(prod3003, "file", lastCommittedOffset.get("file"));
+        assertOffset(prod3003, "pos", lastCommittedOffset.get("pos"));
+        assertOffset(prod3003, "row", 3);
+        assertOffset(prod3003, "event", lastCommittedOffset.get("event"));
 
         // Check that the record has all of the column values ...
-        assertValueField(prod3003,"after/id",3003);
-        assertValueField(prod3003,"after/name","oak");
-        assertValueField(prod3003,"after/description","tree");
-        assertValueField(prod3003,"after/weight",987.65d);
-        assertValueField(prod3003,"after/volume",0.0d);
-        assertValueField(prod3003,"after/alias","oak");
+        assertValueField(prod3003, "after/id", 3003);
+        assertValueField(prod3003, "after/name", "oak");
+        assertValueField(prod3003, "after/description", "tree");
+        assertValueField(prod3003, "after/weight", 987.65d);
+        assertValueField(prod3003, "after/volume", 0.0d);
+        assertValueField(prod3003, "after/alias", "oak");
 
 
         // And make sure we consume that one extra update ...
@@ -984,7 +984,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 binlogPosition = rs.getLong(2);
                 if (rs.getMetaData().getColumnCount() > 4) {
                     // This column exists only in MySQL 5.6.5 or later ...
-                    gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                    gtidSet = rs.getString(5);     // GTID set, may be null, blank, or contain a GTID set
                 }
             }
         }
@@ -1012,7 +1012,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     private Struct getAfter(SourceRecord record) {
-        return (Struct)((Struct)record.value()).get("after");
+        return (Struct) ((Struct) record.value()).get("after");
     }
 
     @Test

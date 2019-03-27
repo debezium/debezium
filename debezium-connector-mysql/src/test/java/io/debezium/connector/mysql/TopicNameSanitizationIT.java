@@ -93,7 +93,7 @@ public class TopicNameSanitizationIT extends AbstractConnectorTest {
         assertThat(insert.valueSchema().name()).endsWith("dbz_878_some_test_data.Envelope");
         VerifyRecord.isValidInsert(insert, "id", 1);
 
-        String sourceTable = ((Struct)insert.value()).getStruct("source").getString("table");
+        String sourceTable = ((Struct) insert.value()).getStruct("source").getString("table");
         assertThat(sourceTable).isEqualTo("dbz_878_some|test@data");
     }
 }

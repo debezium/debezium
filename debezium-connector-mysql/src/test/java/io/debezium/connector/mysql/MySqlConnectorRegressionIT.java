@@ -926,7 +926,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // { "c2" : "17:51:04.777" }
                 Integer c2 = after.getInt32("c2");
                 long expectedMillis = Duration.ofHours(17).plusMinutes(51).plusSeconds(4).plusMillis(780).toMillis();
-                assertThat(c2).isEqualTo((int)expectedMillis);
+                assertThat(c2).isEqualTo((int) expectedMillis);
             }
         });
     }

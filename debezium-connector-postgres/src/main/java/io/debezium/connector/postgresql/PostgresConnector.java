@@ -85,7 +85,7 @@ public class PostgresConnector extends SourceConnector {
         ConfigValue userValue = results.get(PostgresConnectorConfig.USER.name());
         ConfigValue passwordValue = results.get(PostgresConnectorConfig.PASSWORD.name());
 
-        if (passwordValue.value() == null || ((String)passwordValue.value()).isEmpty()) {
+        if ( passwordValue.value() == null || ((String) passwordValue.value()).isEmpty() ) {
             logger.warn("The connection password is empty");
         }
 

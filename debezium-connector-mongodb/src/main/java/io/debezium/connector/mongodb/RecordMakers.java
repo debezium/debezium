@@ -229,7 +229,7 @@ public class RecordMakers {
                 return jsonSerializer.serialize(idObj);
             }
             return jsonSerializer.serialize(
-                    ((Document)idObj).get(DBCollection.ID_FIELD_NAME)
+                    ((Document) idObj).get(DBCollection.ID_FIELD_NAME)
             );
         }
 

@@ -120,7 +120,7 @@ public class BinlogReaderIT {
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
-        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
         context.initializeHistory();
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
@@ -182,7 +182,7 @@ public class BinlogReaderIT {
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
-        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
         context.initializeHistory();
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
@@ -254,7 +254,7 @@ public class BinlogReaderIT {
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
-        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
         context.initializeHistory();
         reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
 
@@ -298,7 +298,7 @@ public class BinlogReaderIT {
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
-        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
         context.initializeHistory();
         reader = new BinlogReader("binlog", context, null);
 
@@ -399,7 +399,7 @@ public class BinlogReaderIT {
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
-        context.source().setBinlogStartPoint("",0L); // start from beginning
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
         context.initializeHistory();
         reader = new BinlogReader("binlog", context, null);
 

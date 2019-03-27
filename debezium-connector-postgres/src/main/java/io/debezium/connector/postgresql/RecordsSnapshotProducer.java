@@ -288,8 +288,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     private void changeSourceToLastSnapshotRecord(SourceRecord currentRecord) {
-        final Struct envelope = (Struct)currentRecord.value();
-        final Struct source = (Struct)envelope.get("source");
+        final Struct envelope = (Struct) currentRecord.value();
+        final Struct source = (Struct) envelope.get("source");
         if (source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null) {
             source.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, true);
         }
@@ -347,7 +347,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     return null;
                 }
 
-                return Arrays.asList((Object[])array.getArray());
+                return Arrays.asList((Object[]) array.getArray());
             }
 
             switch (type.getOid()) {
