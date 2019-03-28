@@ -46,6 +46,7 @@ import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
+
 /**
  * Producer of {@link org.apache.kafka.connect.source.SourceRecord source records} from a database snapshot. Once completed,
  * this producer can optionally continue streaming records, using another {@link RecordsStreamProducer} instance.
@@ -395,8 +396,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         Object key = tableSchema.keyFromColumnData(rowData);
         Struct value = tableSchema.valueFromColumnData(rowData);
 
-        //note this is different than implementation in Streams producer. See DBZ-1163
-        if (key == null || value == null) {
+        if (value == null) {
             logger.trace("key: {}; value: {}; One is null", key, value);
             return;
         }
