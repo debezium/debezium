@@ -13,6 +13,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -474,6 +476,40 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.hstore_table", schemaAndValueFieldForJsonEncodedHStoreType());
 
         consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-1163")
+    public void shouldGenerateSnapshotForATableWithoutPrimaryKey() throws Exception {
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(
+                TestHelper.defaultConfig()
+                        .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
+                        .build()
+        );
+        context = new PostgresTaskContext(
+                config,
+                TestHelper.getSchema(config),
+                PostgresTopicSelector.create(config)
+        );
+        snapshotProducer = buildNoStreamProducer(context, config);
+
+        final TestConsumer consumer = testConsumer(1, "public");
+
+        TestHelper.execute("insert into table_without_pk values(1, 1000)");
+
+        //then start the producer and validate all records are there
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        List<SchemaAndValueField> schemaAndValueFields = Arrays.asList(
+                new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField("val", Schema.OPTIONAL_INT32_SCHEMA, 1000));
+
+        consumer.process(record -> {
+            String actualTopicName = record.topic().replace(TestHelper.TEST_SERVER + ".", "");
+            assertEquals("public.table_without_pk", actualTopicName);
+            assertRecordSchemaAndValues(schemaAndValueFields, record, Envelope.FieldName.AFTER);
+        });
     }
 
 }
