@@ -171,7 +171,11 @@ public class TableSchemaBuilder {
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
-                        value = value == null ? value : converter.convert(value);
+                        // A component of primary key must be not-null.
+                        // It is possible for some databases and values (MySQL and all-zero datetime)
+                        // to be reported as null by JDBC or streaming reader.
+                        // It thus makes sense to convert them to a sensible default replacement value.
+                        value = converter.convert(value);
                         try {
                             result.put(fields[i], value);
                         } catch (DataException e) {
