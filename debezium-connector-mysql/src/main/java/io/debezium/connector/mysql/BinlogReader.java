@@ -223,7 +223,7 @@ public class BinlogReader extends AbstractReader {
                     if(edde.getEventHeader() instanceof EventHeaderV4) {
                         header.setEventLength(((EventHeaderV4) edde.getEventHeader()).getEventLength());
                         header.setNextPosition(((EventHeaderV4) edde.getEventHeader()).getNextPosition());
-                        header.setFlags(((EventHeaderV4)edde.getEventHeader()).getFlags());
+                        header.setFlags(((EventHeaderV4) edde.getEventHeader()).getFlags());
                     }
 
                     EventData data = new EventDataDeserializationExceptionData(edde);

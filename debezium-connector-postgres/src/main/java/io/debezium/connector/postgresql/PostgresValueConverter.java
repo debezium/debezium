@@ -441,7 +441,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 r.deliver(changePlainStringRepresentationToJsonStringRepresentation(asHstoreString((byte[]) data)));
             }
             else if (data instanceof java.util.HashMap) {
-                    r.deliver(convertMapToJsonStringRepresentation((Map<String,String>) data));
+                    r.deliver(convertMapToJsonStringRepresentation((Map<String, String>) data));
             }
         });
     }
