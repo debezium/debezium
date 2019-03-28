@@ -136,8 +136,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_NUMBER_4", Schema.OPTIONAL_INT16_SCHEMA, (short) 9999),
             new SchemaAndValueField("VAL_NUMBER_9", Schema.OPTIONAL_INT32_SCHEMA, 9999_99999),
             new SchemaAndValueField("VAL_NUMBER_18", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99999L),
-            new SchemaAndValueField("VAL_NUMBER_2_NEGATIVE_SCALE", Schema.OPTIONAL_INT8_SCHEMA, (byte)90),
-            new SchemaAndValueField("VAL_NUMBER_4_NEGATIVE_SCALE", Schema.OPTIONAL_INT16_SCHEMA, (short)9900),
+            new SchemaAndValueField("VAL_NUMBER_2_NEGATIVE_SCALE", Schema.OPTIONAL_INT8_SCHEMA, (byte) 90),
+            new SchemaAndValueField("VAL_NUMBER_4_NEGATIVE_SCALE", Schema.OPTIONAL_INT16_SCHEMA, (short) 9900),
             new SchemaAndValueField("VAL_NUMBER_9_NEGATIVE_SCALE", Schema.OPTIONAL_INT32_SCHEMA, 9999_99990),
             new SchemaAndValueField("VAL_NUMBER_18_NEGATIVE_SCALE", Schema.OPTIONAL_INT64_SCHEMA, 999_99999_99999_99900L),
             new SchemaAndValueField("VAL_DECIMAL", Schema.OPTIONAL_INT64_SCHEMA, 99999_99999L),
@@ -231,7 +231,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             VerifyRecord.isValidRead(record, "ID", 1);
         }
 
-        Struct after = (Struct) ((Struct)record.value()).get("after");
+        Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_STRING);
     }
 
@@ -262,7 +262,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             VerifyRecord.isValidRead(record, "ID", 1);
         }
 
-        Struct after = (Struct) ((Struct)record.value()).get("after");
+        Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_FP);
     }
 
@@ -293,7 +293,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             VerifyRecord.isValidRead(record, "ID", 1);
         }
 
-        Struct after = (Struct) ((Struct)record.value()).get("after");
+        Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_INT);
     }
 
@@ -324,7 +324,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             VerifyRecord.isValidRead(record, "ID", 1);
         }
 
-        Struct after = (Struct) ((Struct)record.value()).get("after");
+        Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_TIME);
     }
 

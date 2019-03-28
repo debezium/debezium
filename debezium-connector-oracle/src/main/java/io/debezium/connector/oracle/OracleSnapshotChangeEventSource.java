@@ -86,7 +86,7 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
 
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
-        ((OracleSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+        ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
         try (Statement statement = jdbcConnection.connection().createStatement()) {
             for (TableId tableId : snapshotContext.capturedTables) {
@@ -103,7 +103,7 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
 
     @Override
     protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
-        jdbcConnection.connection().rollback(((OracleSnapshotContext)snapshotContext).preSchemaSnapshotSavepoint);
+        jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
     }
 
     @Override
@@ -217,7 +217,7 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
             }
 
             Object res = rs.getObject(1);
-            String ddl = ((Clob)res).getSubString(1, (int) ((Clob)res).length());
+            String ddl = ((Clob) res).getSubString(1, (int) ((Clob) res).length());
 
             return new SchemaChangeEvent(snapshotContext.offset.getPartition(), snapshotContext.offset.getOffset(), snapshotContext.catalogName,
                     table.id().schema(), ddl, table, SchemaChangeEventType.CREATE, true);

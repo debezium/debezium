@@ -134,7 +134,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Text-1");
 
@@ -145,7 +145,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
-        after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(3);
         assertThat(after.get("NAME")).isEqualTo("Text-3");
     }
@@ -186,7 +186,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Text-1");
 
@@ -197,7 +197,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 3);
-        after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(3);
         assertThat(after.get("NAME")).isEqualTo("Text-3");
     }

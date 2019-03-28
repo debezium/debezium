@@ -101,7 +101,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // read
         SourceRecord record1 = testTableRecords.get(0);
         VerifyRecord.isValidRead(record1, "ID", 1);
-        Struct after = (Struct) ((Struct)record1.value()).get("after");
+        Struct after = (Struct) ((Struct) record1.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
@@ -110,12 +110,12 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
-        Struct source = (Struct) ((Struct)record1.value()).get("source");
+        Struct source = (Struct) ((Struct) record1.value()).get("source");
         assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
 
         SourceRecord record2 = testTableRecords.get(1);
         VerifyRecord.isValidRead(record2, "ID", 2);
-        after = (Struct) ((Struct)record2.value()).get("after");
+        after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
         assertThat(after.get("NAME")).isEqualTo("Bruce");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
@@ -124,7 +124,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
-        source = (Struct) ((Struct)record2.value()).get("source");
+        source = (Struct) ((Struct) record2.value()).get("source");
         assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
     }
 
@@ -150,10 +150,10 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         // read
         SourceRecord record1 = testTableRecords.get(0);
         VerifyRecord.isValidRead(record1, "ID", 1);
-        Struct after = (Struct) ((Struct)record1.value()).get("after");
+        Struct after = (Struct) ((Struct) record1.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
 
-        Struct source = (Struct) ((Struct)record1.value()).get("source");
+        Struct source = (Struct) ((Struct) record1.value()).get("source");
         assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
@@ -166,7 +166,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         SourceRecord record2 = testTableRecords.get(1);
         VerifyRecord.isValidRead(record2, "ID", 2);
-        after = (Struct) ((Struct)record2.value()).get("after");
+        after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
 
         assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
@@ -183,13 +183,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         SourceRecord record3 = testTableRecords.get(0);
         VerifyRecord.isValidInsert(record3, "ID", 3);
-        after = (Struct) ((Struct)record3.value()).get("after");
+        after = (Struct) ((Struct) record3.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(3);
 
         assertThat(record3.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse();
         assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
 
-        source = (Struct) ((Struct)record3.value()).get("source");
+        source = (Struct) ((Struct) record3.value()).get("source");
         assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(false);
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
@@ -235,7 +235,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // insert
         VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 1);
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
@@ -247,13 +247,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // update
         VerifyRecord.isValidUpdate(testTableRecords.get(1), "ID", 1);
-        Struct before = (Struct) ((Struct)testTableRecords.get(1).value()).get("before");
+        Struct before = (Struct) ((Struct) testTableRecords.get(1).value()).get("before");
         assertThat(before.get("ID")).isEqualTo(1);
         assertThat(before.get("NAME")).isEqualTo("Billie-Bob");
         assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
-        after = (Struct) ((Struct)testTableRecords.get(1).value()).get("after");
+        after = (Struct) ((Struct) testTableRecords.get(1).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(1);
         assertThat(after.get("NAME")).isEqualTo("Bruce");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
@@ -261,7 +261,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // update of PK
         VerifyRecord.isValidDelete(testTableRecords.get(2), "ID", 1);
-        before = (Struct) ((Struct)testTableRecords.get(2).value()).get("before");
+        before = (Struct) ((Struct) testTableRecords.get(2).value()).get("before");
         assertThat(before.get("ID")).isEqualTo(1);
         assertThat(before.get("NAME")).isEqualTo("Bruce");
         assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
@@ -270,7 +270,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         VerifyRecord.isValidTombstone(testTableRecords.get(3));
 
         VerifyRecord.isValidInsert(testTableRecords.get(4), "ID", 2);
-        after = (Struct) ((Struct)testTableRecords.get(4).value()).get("after");
+        after = (Struct) ((Struct) testTableRecords.get(4).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
         assertThat(after.get("NAME")).isEqualTo("Bruce");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
@@ -278,7 +278,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
         // delete
         VerifyRecord.isValidDelete(testTableRecords.get(5), "ID", 2);
-        before = (Struct) ((Struct)testTableRecords.get(5).value()).get("before");
+        before = (Struct) ((Struct) testTableRecords.get(5).value()).get("before");
         assertThat(before.get("ID")).isEqualTo(2);
         assertThat(before.get("NAME")).isEqualTo("Bruce");
         assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
@@ -321,7 +321,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(testTableRecords).hasSize(1);
 
         VerifyRecord.isValidInsert(testTableRecords.get(0), "ID", 2);
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
         assertThat(after.get("NAME")).isEqualTo("Billie-Bob");
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));

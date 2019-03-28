@@ -39,7 +39,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
 
-    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext,boolean tablenameCaseInsensitive) {
+    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive) {
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;

@@ -170,7 +170,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertString(Column column, Field fieldDefn, Object data) {
         if (data instanceof CHAR) {
-            return ((CHAR)data).stringValue();
+            return ((CHAR) data).stringValue();
         }
 
         return super.convertString(column, fieldDefn, data);
@@ -180,7 +180,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         if (data instanceof NUMBER) {
             try {
-                data = ((NUMBER)data).intValue();
+                data = ((NUMBER) data).intValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -196,11 +196,11 @@ public class OracleValueConverters extends JdbcValueConverters {
             return data;
         }
         else if (data instanceof NUMBER) {
-            return ((NUMBER)data).floatValue();
+            return ((NUMBER) data).floatValue();
         }
         else if (data instanceof BINARY_FLOAT) {
             try {
-                return ((BINARY_FLOAT)data).floatValue();
+                return ((BINARY_FLOAT) data).floatValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -214,7 +214,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
         if (data instanceof BINARY_DOUBLE) {
             try {
-                return ((BINARY_DOUBLE)data).doubleValue();
+                return ((BINARY_DOUBLE) data).doubleValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -228,7 +228,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
         if (data instanceof NUMBER) {
             try {
-                data = ((NUMBER)data).bigDecimalValue();
+                data = ((NUMBER) data).bigDecimalValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -260,7 +260,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertNumericAsTinyInt(Column column, Field fieldDefn, Object data) {
         if (data instanceof NUMBER) {
             try {
-                data = ((NUMBER)data).byteValue();
+                data = ((NUMBER) data).byteValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -273,7 +273,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertNumericAsSmallInt(Column column, Field fieldDefn, Object data) {
         if (data instanceof NUMBER) {
             try {
-                data = ((NUMBER)data).shortValue();
+                data = ((NUMBER) data).shortValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -286,7 +286,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertNumericAsInteger(Column column, Field fieldDefn, Object data) {
         if (data instanceof NUMBER) {
             try {
-                data = ((NUMBER)data).intValue();
+                data = ((NUMBER) data).intValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -299,7 +299,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     protected Object convertNumericAsBigInteger(Column column, Field fieldDefn, Object data) {
         if (data instanceof NUMBER) {
             try {
-                data = ((NUMBER)data).longValue();
+                data = ((NUMBER) data).longValue();
             }
             catch (SQLException e) {
                 throw new RuntimeException("Couldn't convert value for column " + column.name(), e);
@@ -336,10 +336,10 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
         // TODO Need to handle special values, it is not supported in variable scale decimal
         else if (data instanceof SpecialValueDecimal) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (SpecialValueDecimal)data);
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (SpecialValueDecimal) data);
         }
         else if (data instanceof BigDecimal) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal((BigDecimal)data));
+            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal((BigDecimal) data));
         }
         return handleUnknownData(column, fieldDefn, data);
     }
@@ -353,7 +353,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = ((DATE) data).timestampValue();
             }
             else if (data instanceof TIMESTAMPTZ) {
-                final TIMESTAMPTZ ts = (TIMESTAMPTZ)data;
+                final TIMESTAMPTZ ts = (TIMESTAMPTZ) data;
                 data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ts.getTimeZone().toZoneId());
             }
             else if (data instanceof TIMESTAMPLTZ) {
