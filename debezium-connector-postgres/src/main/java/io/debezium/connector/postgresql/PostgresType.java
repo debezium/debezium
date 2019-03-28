@@ -162,7 +162,7 @@ public class PostgresType {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        PostgresType other = (PostgresType)obj;
+        PostgresType other = (PostgresType) obj;
         if (oid != other.oid) {
             return false;
         }

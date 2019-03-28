@@ -449,7 +449,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
                 + "ALTER TABLE ignored ADD COLUMN(x tinyint)" + System.lineSeparator()
                 + "ALTER TABLE ok ADD COLUMN(y tinyint)";
         parser.parse(ddl, tables);
-        assertThat(((MysqlDdlParserWithSimpleTestListener)parser).getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(((MysqlDdlParserWithSimpleTestListener) parser).getParsingExceptionsFromWalker()).isEmpty();
         assertThat(tables.size()).isEqualTo(1);
 
         final Table t1 = tables.forTable(null, null, "ok");
@@ -524,7 +524,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         final String ddl = "CREATE TABLE foo (id int primary key, old INT);" + System.lineSeparator()
                 + "ALTER TABLE foo RENAME COLUMN old to new ";
         parser.parse(ddl, tables);
-        assertThat(((MysqlDdlParserWithSimpleTestListener)parser).getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(((MysqlDdlParserWithSimpleTestListener) parser).getParsingExceptionsFromWalker()).isEmpty();
         assertThat(tables.size()).isEqualTo(1);
 
         final Table t1 = tables.forTable(null, null, "foo");

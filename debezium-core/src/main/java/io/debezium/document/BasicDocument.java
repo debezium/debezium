@@ -92,7 +92,7 @@ final class BasicDocument implements Document {
                 if (diff != 0) {
                     return diff;
                 }
-                diff = compare(this.get(thisKey),that.get(thatKey));
+                diff = compare(this.get(thisKey), that.get(thatKey));
                 if (diff != 0) {
                     return diff;
                 }

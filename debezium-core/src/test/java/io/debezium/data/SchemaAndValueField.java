@@ -50,12 +50,12 @@ public class SchemaAndValueField {
         // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
         if(actualValue instanceof List) {
             Assertions.assertThat(value).as("Incorrect value type for " + fieldName).isInstanceOf(List.class);
-            final List<?> actualValueList = (List<?>)actualValue;
-            final List<?> valueList = (List<?>)value;
+            final List<?> actualValueList = (List<?>) actualValue;
+            final List<?> valueList = (List<?>) value;
             Assertions.assertThat(actualValueList).as("List size don't match for " + fieldName).hasSize(valueList.size());
             if (!valueList.isEmpty() && valueList.iterator().next() instanceof Struct) {
                 for (int i = 0; i < valueList.size(); i++) {
-                    assertStruct((Struct)valueList.get(i), (Struct)actualValueList.get(i));
+                    assertStruct((Struct) valueList.get(i), (Struct) actualValueList.get(i));
                 }
                 return;
             }
@@ -68,7 +68,7 @@ public class SchemaAndValueField {
             Assertions.assertThat((byte[]) actualValue).as("Values don't match for " + fieldName).isEqualTo((byte[]) value);
         }
         else if (actualValue instanceof Struct) {
-            assertStruct((Struct)value, (Struct)actualValue);
+            assertStruct((Struct) value, (Struct) actualValue);
         }
         else {
             Assertions.assertThat(actualValue).as("Values don't match for " + fieldName).isEqualTo(value);
@@ -90,7 +90,7 @@ public class SchemaAndValueField {
                 Assertions.assertThat((byte[]) actualValue).as("Values don't match for " + fieldName).isEqualTo((byte[]) expectedValue);
             }
             else if (actualValue instanceof Struct) {
-                assertStruct((Struct)expectedValue, (Struct)actualValue);
+                assertStruct((Struct) expectedValue, (Struct) actualValue);
             }
             else {
                 Assertions.assertThat(actualValue).as("Values don't match for " + fieldName).isEqualTo(expectedValue);

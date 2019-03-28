@@ -118,8 +118,8 @@ public class Lsn implements Comparable<Lsn>, Nullable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        Lsn other = (Lsn)obj;
-        if (! Arrays.equals(binary,other.binary)) {
+        Lsn other = (Lsn) obj;
+        if ( ! Arrays.equals(binary, other.binary) ) {
             return false;
         }
         return true;

@@ -169,7 +169,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertThat(error).isInstanceOf(ConnectException.class);
                 Throwable cause = error.getCause();
                 assertThat(cause).isInstanceOf(SQLException.class);
-                assertThat(PSQLState.CONNECTION_REJECTED.getState().equals(((SQLException)cause).getSQLState()));
+                assertThat(PSQLState.CONNECTION_REJECTED.getState().equals(((SQLException) cause).getSQLState()));
             }
         });
         if (TestHelper.shouldSSLConnectionFail()) {
@@ -610,7 +610,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecord record = records.get(0);
         VerifyRecord.isValidRead(record, PK_FIELD, 1);
 
-        String sourceTable = ((Struct)record.value()).getStruct("source").getString("table");
+        String sourceTable = ((Struct) record.value()).getStruct("source").getString("table");
         assertThat(sourceTable).isEqualTo("dbz_878_some|test@data");
     }
 

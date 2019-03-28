@@ -761,10 +761,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Short.valueOf(value.shortValue()));
             }
             else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getShort((Boolean)data));
+                    r.deliver(NumberConversions.getShort((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Short.valueOf((String)data));
+                        r.deliver(Short.valueOf((String) data));
             }
         });
     }
@@ -788,10 +788,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Integer.valueOf(value.intValue()));
             }
             else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getInteger((Boolean)data));
+                r.deliver(NumberConversions.getInteger((Boolean) data));
             }
             else if (data instanceof String) {
-                r.deliver(Integer.valueOf((String)data));
+                        r.deliver(Integer.valueOf((String) data));
             }
         });
     }
@@ -856,7 +856,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Double.valueOf(value.doubleValue()));
             }
             else if (data instanceof SpecialValueDecimal) {
-                r.deliver(((SpecialValueDecimal)data).toDouble());
+                    r.deliver(((SpecialValueDecimal) data).toDouble());
             }
             else if (data instanceof Boolean) {
                 r.deliver(NumberConversions.getDouble((Boolean) data));
@@ -913,11 +913,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
         if (data instanceof SpecialValueDecimal) {
-            return SpecialValueDecimal.fromLogical((SpecialValueDecimal)data, decimalMode, column.name());
+            return SpecialValueDecimal.fromLogical((SpecialValueDecimal) data, decimalMode, column.name());
         }
         Object decimal = toBigDecimal(column, fieldDefn, data);
         if (decimal instanceof BigDecimal) {
-            return SpecialValueDecimal.fromLogical(new SpecialValueDecimal((BigDecimal)decimal), decimalMode, column.name());
+            return SpecialValueDecimal.fromLogical(new SpecialValueDecimal((BigDecimal) decimal), decimalMode, column.name());
         }
         return decimal;
     }
@@ -928,25 +928,25 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(data);
             }
             else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getBigDecimal((Boolean)data));
+                r.deliver(NumberConversions.getBigDecimal((Boolean) data));
             }
             else if (data instanceof Short) {
-                r.deliver(new BigDecimal(((Short)data).intValue()));
-            }
-            else if (data instanceof Integer) {
-                r.deliver(new BigDecimal(((Integer)data).intValue()));
-            }
-            else if (data instanceof Long) {
-                r.deliver(BigDecimal.valueOf(((Long)data).longValue()));
-            }
-            else if (data instanceof Float) {
-                r.deliver(BigDecimal.valueOf(((Float)data).doubleValue()));
-            }
-            else if (data instanceof Double) {
-                r.deliver(BigDecimal.valueOf(((Double)data).doubleValue()));
-            }
-            else if (data instanceof String) {
-                r.deliver(new BigDecimal((String)data));
+                r.deliver(new BigDecimal(((Short) data).intValue()));
+                }
+            else if ( data instanceof Integer ) {
+                r.deliver(new BigDecimal(((Integer) data).intValue()));
+                    }
+            else if ( data instanceof Long ) {
+                r.deliver(BigDecimal.valueOf(((Long) data).longValue()));
+                        }
+            else if ( data instanceof Float ) {
+                r.deliver(BigDecimal.valueOf(((Float) data).doubleValue()));
+                            }
+            else if ( data instanceof Double ) {
+                r.deliver(BigDecimal.valueOf(((Double) data).doubleValue()));
+                                }
+            else if ( data instanceof String ) {
+                r.deliver(new BigDecimal((String) data));
             }
         });
     }
@@ -966,7 +966,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, "", (r) -> {
             if (data instanceof SQLXML) {
                 try {
-                    r.deliver(((SQLXML)data).getString());
+                    r.deliver(((SQLXML) data).getString());
                 } catch (SQLException e) {
                     throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
                             ": class=" + data.getClass(), e);

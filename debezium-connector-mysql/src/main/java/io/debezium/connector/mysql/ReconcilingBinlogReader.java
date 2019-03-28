@@ -144,7 +144,7 @@ public class ReconcilingBinlogReader implements Reader {
             reconcilingReader.getLastOffset() == null ?
                 getLeadingReader().getLastOffset() :
                 reconcilingReader.getLastOffset();
-        unifiedReader.context.source().setCompletedGtidSet((String)keyedOffset.get(GTID_SET_KEY));
+        unifiedReader.context.source().setCompletedGtidSet((String) keyedOffset.get(GTID_SET_KEY));
         unifiedReader.context.source()
             .setBinlogStartPoint((String) keyedOffset.get(BINLOG_FILENAME_OFFSET_KEY),
                                  (Long) keyedOffset.get(BINLOG_POSITION_OFFSET_KEY));

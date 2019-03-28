@@ -136,7 +136,7 @@ public class DataTypeGrammarParser {
             }
             if ( stream.canConsume('|')) {
                 Pattern orPattern = parseMultiple(stream);
-                inner = new OrPattern(inner,orPattern);
+                inner = new OrPattern(inner, orPattern);
             }
             pattern = pattern == null ? inner : new AndPattern(pattern, inner);
         }
@@ -303,14 +303,14 @@ public class DataTypeGrammarParser {
         public boolean match(TokenStream stream, DataTypeBuilder builder, Consumer<ParsingException> error) {
             Marker marker = stream.mark();
             try {
-                if (pattern1.match(stream,builder,error)) {
+                if ( pattern1.match(stream, builder, error) ) {
                     return true;
                 }
             } catch(ParsingException e){
             }
             stream.rewind(marker);
             try{
-                if (pattern2.match(stream,builder,error)) {
+                if ( pattern2.match(stream, builder, error) ) {
                     return true;
                 }
             } catch (ParsingException e) {}

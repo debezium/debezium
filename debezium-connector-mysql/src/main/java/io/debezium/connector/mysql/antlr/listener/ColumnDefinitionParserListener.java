@@ -294,7 +294,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             final Field field = new Field(column.name(), -1, schema);
             final ValueConverter valueConverter = converters.converter(column, field);
             if (defaultValue instanceof String) {
-                defaultValue = defaultValuePreConverter.convert(column, (String)defaultValue);
+                defaultValue = defaultValuePreConverter.convert(column, (String) defaultValue);
             }
             defaultValue = valueConverter.convert(defaultValue);
             columnEditor.defaultValue(defaultValue);

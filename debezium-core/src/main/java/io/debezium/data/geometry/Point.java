@@ -57,7 +57,7 @@ public class Point extends Geometry {
      */
     private static byte[] buildWKBPoint(double x, double y) {
         ByteBuffer wkb = ByteBuffer.allocate(WKB_POINT_SIZE);
-        wkb.put((byte)1); // BOM
+        wkb.put((byte) 1); // BOM
         wkb.order(ByteOrder.LITTLE_ENDIAN);
 
         wkb.putInt(WKB_POINT);

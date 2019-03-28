@@ -53,7 +53,7 @@ import io.debezium.util.Strings;
 public class PostgresSchemaIT {
 
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
-                                                               "public.cash_table","public.bitbin_table",
+                                                               "public.cash_table", "public.bitbin_table",
                                                                "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
                                                                "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"",
                                                                "public.custom_table"

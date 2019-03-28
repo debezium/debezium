@@ -57,7 +57,7 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
             return null;
         }
         if (numParts == 1) {
-            return new TableId(null,null,parts[0]); // table only
+            return new TableId(null, null, parts[0]); // table only
         }
         if (numParts == 2) {
             if (useCatalogBeforeSchema){

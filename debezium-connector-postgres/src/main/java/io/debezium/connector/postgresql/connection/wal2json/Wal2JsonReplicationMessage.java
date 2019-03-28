@@ -192,7 +192,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                 final String dataString = rawValue.asString();
                 PgArray arrayData = new PgArray(connection.get(), type.getOid(), dataString);
                 Object deserializedArray = arrayData.getArray();
-                return Arrays.asList((Object[])deserializedArray);
+                return Arrays.asList((Object[]) deserializedArray);
             }
             catch (SQLException e) {
                 LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", fullType, columnName, e);

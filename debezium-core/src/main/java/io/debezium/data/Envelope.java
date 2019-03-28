@@ -290,11 +290,11 @@ public final class Envelope {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.UPDATE.code());
         if (before != null) {
-            struct.put(FieldName.BEFORE,before);
+            struct.put(FieldName.BEFORE, before);
         }
-        struct.put(FieldName.AFTER,after);
+        struct.put(FieldName.AFTER, after);
         if (source != null) {
-            struct.put(FieldName.SOURCE,source);
+            struct.put(FieldName.SOURCE, source);
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp);
@@ -314,10 +314,10 @@ public final class Envelope {
         Struct struct = new Struct(schema);
         struct.put(FieldName.OPERATION, Operation.DELETE.code());
         if (before != null) {
-            struct.put(FieldName.BEFORE,before);
+            struct.put(FieldName.BEFORE, before);
         }
         if (source != null) {
-            struct.put(FieldName.SOURCE,source);
+            struct.put(FieldName.SOURCE, source);
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp);

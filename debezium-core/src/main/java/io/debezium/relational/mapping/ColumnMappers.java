@@ -88,7 +88,7 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder map(String fullyQualifiedColumnNames, Class<ColumnMapper> mapperClass) {
-            return map(fullyQualifiedColumnNames,mapperClass,null);
+            return map(fullyQualifiedColumnNames, mapperClass, null);
         }
 
         /**
@@ -169,7 +169,7 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder map(String fullyQualifiedColumnNames, String mapperClassName) {
-            return map(fullyQualifiedColumnNames,mapperClassName,null);
+            return map(fullyQualifiedColumnNames, mapperClassName, null);
         }
 
         /**
@@ -236,7 +236,7 @@ public class ColumnMappers {
      * @return the mapping function, or null if there is no mapping function
      */
     public ValueConverter mappingConverterFor(TableId tableId, Column column) {
-        ColumnMapper mapper = mapperFor(tableId,column);
+        ColumnMapper mapper = mapperFor(tableId, column);
         return mapper != null ? mapper.create(column) : null;
     }
 

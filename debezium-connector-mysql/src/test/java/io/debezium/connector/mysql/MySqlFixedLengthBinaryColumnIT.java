@@ -79,21 +79,21 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
 
         // source value has a trailing "00" which is not distinguishable from
         SourceRecord insert = dmls.get(0);
-        Struct after = (Struct) ((Struct)insert.value()).get("after");
+        Struct after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(encodeToBase64String((ByteBuffer) after.get("file_uuid"))).isEqualTo("ZRrtCDkPSJOy8TaSPnt0AA==");
 
         insert = dmls.get(1);
-        after = (Struct) ((Struct)insert.value()).get("after");
+        after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(encodeToBase64String((ByteBuffer) after.get("file_uuid"))).isEqualTo("ZRrtCDkPSJOy8TaSPnt0qw==");
 
         // the value which isn't using the full length of the BINARY column is right-padded with 0x00 (zero bytes) - converted to AA in Base64
         insert = dmls.get(2);
-        after = (Struct) ((Struct)insert.value()).get("after");
+        after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(encodeToBase64String((ByteBuffer) after.get("file_uuid"))).isEqualTo("ZRrtCDkPSJOy8TaSPnt0AA==");
 
         // the value which isn't using the full length of the BINARY column is right-padded with 0x00 (zero bytes)
         insert = dmls.get(3);
-        after = (Struct) ((Struct)insert.value()).get("after");
+        after = (Struct) ((Struct) insert.value()).get("after");
         assertThat(encodeToBase64String((ByteBuffer) after.get("file_uuid"))).isEqualTo("AAAAAAAAAAAAAAAAAAAAAA==");
 
         // Check that all records are valid, can be serialized and deserialized ...

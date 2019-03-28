@@ -278,7 +278,7 @@ public class KafkaServer {
      * @param topics the names of the topics to create
      */
     public void createTopics(String... topics) {
-        createTopics(1,1,topics);
+        createTopics(1, 1, topics);
     }
 
     /**

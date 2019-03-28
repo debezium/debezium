@@ -120,7 +120,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
      * {@link DdlTokenizer#DOUBLE_QUOTED_STRING double-quoted string}, or {@code false} otherwise
      */
     protected boolean isNextTokenQuotedIdentifier() {
-        return tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING,DdlTokenizer.DOUBLE_QUOTED_STRING);
+        return tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING, DdlTokenizer.DOUBLE_QUOTED_STRING);
     }
 
     protected int determineTokenType(int type, String token) {

@@ -298,8 +298,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         SourceRecord updateRecord = insertAndUpdate.allRecordsInOrder().get(1);
         Testing.debug("Insert event: " + insertRecord);
         Testing.debug("Update event: " + updateRecord);
-        Struct insertKey = (Struct)insertRecord.key();
-        Struct updateKey = (Struct)updateRecord.key();
+        Struct insertKey = (Struct) insertRecord.key();
+        Struct updateKey = (Struct) updateRecord.key();
         String insertId = JSON.parse(insertKey.getString("id")).toString();
         String updateId = JSON.parse(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());

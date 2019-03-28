@@ -27,7 +27,7 @@ public class SchemaChangeHistory {
 
     private final String topicName;
     private final List<SourceRecord> sourceRecords = new ArrayList<>();
-    private final Map<String,List<SourceRecord>> sourceRecordsByDbName = new HashMap<>();
+    private final Map<String, List<SourceRecord>> sourceRecordsByDbName = new HashMap<>();
 
     public SchemaChangeHistory( String topic ) {
         this.topicName = topic;

@@ -72,7 +72,7 @@ import io.debezium.relational.history.FileDatabaseHistory;
 
     /*package local*/ Configurator storeDatabaseHistoryInFile(Path path) {
         with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class.getName());
-        with(FileDatabaseHistory.FILE_PATH,path.toAbsolutePath().toString());
+        with(FileDatabaseHistory.FILE_PATH, path.toAbsolutePath().toString());
         return this;
     }
 

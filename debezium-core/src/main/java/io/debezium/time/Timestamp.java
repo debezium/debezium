@@ -66,7 +66,7 @@ public class Timestamp {
      */
     public static long toEpochMillis(Object value, TemporalAdjuster adjuster) {
         if (value instanceof Long) {
-            return (Long)value;
+            return (Long) value;
         }
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
         if (adjuster != null) {

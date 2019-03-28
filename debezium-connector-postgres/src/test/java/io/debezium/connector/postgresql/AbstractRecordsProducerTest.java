@@ -258,13 +258,13 @@ public abstract class AbstractRecordsProducerTest {
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreType(){
-         final Map<String,String> expected = new HashMap<>();
+         final Map<String, String> expected = new HashMap<>();
          expected.put("key", "val");
         return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues(){
-        final Map<String,String> expected = new HashMap<>();
+        final Map<String, String> expected = new HashMap<>();
         expected.put("key1", "val1");
         expected.put("key2", "val2");
         expected.put("key3", "val3");
@@ -272,14 +272,14 @@ public abstract class AbstractRecordsProducerTest {
         }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues(){
-        final Map<String,String> expected = new HashMap<>();
+        final Map<String, String> expected = new HashMap<>();
         expected.put("key1", "val1");
         expected.put("key2", null);
         return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters(){
-        final Map<String,String> expected = new HashMap<>();
+        final Map<String, String> expected = new HashMap<>();
         expected.put("key_#1", "val 1");
         expected.put("key 2", " ##123 78");
         return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
@@ -432,7 +432,7 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("tz", ZonedTimestamp.builder().optional().build(), expectedTz),
                              new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
                              new SchemaAndValueField("ti", MicroTime.builder().optional().build(), expectedTi),
-                             new SchemaAndValueField("tip", Time.builder().optional().build(), (int)expectedTiPrecision),
+                             new SchemaAndValueField("tip", Time.builder().optional().build(), (int) expectedTiPrecision),
                              new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
                              new SchemaAndValueField("tptz", ZonedTime.builder().optional().build(), expectedTtzPrecision),
                              new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));
@@ -489,9 +489,9 @@ public abstract class AbstractRecordsProducerTest {
                                 Arrays.asList("vcone", "vctwo", "vcthree")),
                             new SchemaAndValueField("date_array", SchemaBuilder.array(Date.builder().optional().schema()).optional().build(),
                                 Arrays.asList(
-                                        (int)LocalDate.of(2016, Month.NOVEMBER, 4).toEpochDay(),
-                                        (int)LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
-                                        (int)LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
+                                        (int) LocalDate.of(2016, Month.NOVEMBER, 4).toEpochDay(),
+                                        (int) LocalDate.of(2016, Month.NOVEMBER, 5).toEpochDay(),
+                                        (int) LocalDate.of(2016, Month.NOVEMBER, 6).toEpochDay()
                                 )),
                             new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "10").optional().build()).optional().build(),
                                     Arrays.asList(
@@ -659,9 +659,9 @@ public abstract class AbstractRecordsProducerTest {
             assertNull("Snapshot marker not expected, but found", snapshot);
             assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
         }
-        final Struct envelope = (Struct)record.value();
+        final Struct envelope = (Struct) record.value();
         if (envelope != null) {
-            final Struct source = (Struct)envelope.get("source");
+            final Struct source = (Struct) envelope.get("source");
             final Boolean sourceSnapshot = source.getBoolean(SourceInfo.SNAPSHOT_KEY);
             final Boolean sourceLastSnapshotRecord = source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
             if (shouldBeSnapshot) {
@@ -745,12 +745,12 @@ public abstract class AbstractRecordsProducerTest {
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
             if(actualValue instanceof List) {
                 assertTrue("Incorrect value type for " + fieldName, value instanceof List);
-                final List<?> actualValueList = (List<?>)actualValue;
-                final List<?> valueList = (List<?>)value;
+                final List<?> actualValueList = (List<?>) actualValue;
+                final List<?> valueList = (List<?>) value;
                 assertEquals("List size don't match for " + fieldName, valueList.size(), actualValueList.size());
                 if (!valueList.isEmpty() && valueList.iterator().next() instanceof Struct) {
                     for (int i = 0; i < valueList.size(); i++) {
-                        assertStruct((Struct)valueList.get(i), (Struct)actualValueList.get(i));
+                        assertStruct((Struct) valueList.get(i), (Struct) actualValueList.get(i));
                     }
                     return;
                 }
@@ -762,7 +762,7 @@ public abstract class AbstractRecordsProducerTest {
             if (actualValue instanceof byte[]) {
                 assertArrayEquals("Values don't match for " + fieldName, (byte[]) value, (byte[]) actualValue);
             } else if (actualValue instanceof Struct) {
-                assertStruct((Struct)value, (Struct)actualValue);
+                assertStruct((Struct) value, (Struct) actualValue);
             } else {
                 assertEquals("Values don't match for " + fieldName, value, actualValue);
             }
@@ -781,7 +781,7 @@ public abstract class AbstractRecordsProducerTest {
                 if (actualValue instanceof byte[]) {
                     assertArrayEquals("Values don't match for " + fieldName, (byte[]) expectedValue, (byte[]) actualValue);
                 } else if (actualValue instanceof Struct) {
-                    assertStruct((Struct)expectedValue, (Struct)actualValue);
+                    assertStruct((Struct) expectedValue, (Struct) actualValue);
                 } else {
                     assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
                 }

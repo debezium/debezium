@@ -322,7 +322,7 @@ public class SnapshotReader extends AbstractReader {
                 /* To achieve an ordered snapshot, we would first get a list of Regex tables.whitelist regex patterns
 +                   and then sort the tableIds list based on the above list
 +                 */
-                List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST),Pattern.CASE_INSENSITIVE);
+                List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST), Pattern.CASE_INSENSITIVE);
                 List<TableId> tableIdsSorted = new ArrayList<>();
                 tableWhitelistPattern.forEach(pattern -> {
                     List<TableId> tablesMatchedByPattern = tableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
@@ -727,7 +727,7 @@ public class SnapshotReader extends AbstractReader {
                     source.setBinlogStartPoint(binlogFilename, binlogPosition);
                     if (rs.getMetaData().getColumnCount() > 4) {
                         // This column exists only in MySQL 5.6.5 or later ...
-                        String gtidSet = rs.getString(5);// GTID set, may be null, blank, or contain a GTID set
+                        String gtidSet = rs.getString(5); // GTID set, may be null, blank, or contain a GTID set
                         source.setCompletedGtidSet(gtidSet);
                         logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
                                     gtidSet);

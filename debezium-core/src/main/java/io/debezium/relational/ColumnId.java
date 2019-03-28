@@ -34,20 +34,20 @@ public final class ColumnId implements Comparable<ColumnId> {
      *            may be null
      * @return the predicate function; never null
      */
-    public static Map<TableId,Predicate<Column>> filter(String columnBlacklist) {
+    public static Map<TableId, Predicate<Column>> filter(String columnBlacklist) {
         Set<ColumnId> columnExclusions = columnBlacklist == null ? null : Strings.setOf(columnBlacklist, ColumnId::parse);
-        Map<TableId,Set<String>> excludedColumnNamesByTable = new HashMap<>();
-        columnExclusions.forEach(columnId->{
-            excludedColumnNamesByTable.compute(columnId.tableId(), (tableId,columns)->{
-                if ( columns == null ){
+        Map<TableId, Set<String>> excludedColumnNamesByTable = new HashMap<>();
+        columnExclusions.forEach(columnId -> {
+            excludedColumnNamesByTable.compute(columnId.tableId(), (tableId, columns) -> {
+                if ( columns == null ) {
                     columns = new HashSet<String>();
                 }
                 columns.add(columnId.columnName().toLowerCase());
                 return columns;
             });
         });
-        Map<TableId,Predicate<Column>> exclusionFilterByTable= new HashMap<>();
-        excludedColumnNamesByTable.forEach((tableId,excludedColumnNames)->{
+        Map<TableId, Predicate<Column>> exclusionFilterByTable = new HashMap<>();
+        excludedColumnNamesByTable.forEach((tableId, excludedColumnNames) -> {
             exclusionFilterByTable.put(tableId, (col)->!excludedColumnNames.contains(col.name().toLowerCase()));
         });
         return exclusionFilterByTable;
@@ -84,7 +84,7 @@ public final class ColumnId implements Comparable<ColumnId> {
         if ( tableId == null ){
             return null;
         }
-        return new ColumnId(tableId,parts[parts.length-1]);
+        return new ColumnId(tableId, parts[parts.length-1]);
     }
 
     private final TableId tableId;
@@ -102,7 +102,7 @@ public final class ColumnId implements Comparable<ColumnId> {
         this.columnName = columnName;
         assert this.tableId != null;
         assert this.columnName != null;
-        this.id = columnId(this.tableId,this.columnName);
+        this.id = columnId(this.tableId, this.columnName);
     }
 
     /**
@@ -116,7 +116,7 @@ public final class ColumnId implements Comparable<ColumnId> {
      * @param columnName the name of the column; may not be null
      */
     public ColumnId(String catalogName, String schemaName, String tableName, String columnName) {
-        this(new TableId(catalogName,schemaName,tableName),columnName);
+        this(new TableId(catalogName, schemaName, tableName), columnName);
     }
 
     /**

@@ -88,7 +88,7 @@ public class MySqlSchemaTest {
         // Testing.Print.enable();
 
         // Set up the server ...
-        source.setBinlogStartPoint("binlog-001",400);
+        source.setBinlogStartPoint("binlog-001", 400);
         mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "db1", "xxxCREATE TABLE mytable\n" + readFile("ddl/mysql-products.ddl"), this::printStatements);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
@@ -112,7 +112,7 @@ public class MySqlSchemaTest {
         // Testing.Print.enable();
 
         // Set up the server ...
-        source.setBinlogStartPoint("binlog-001",400);
+        source.setBinlogStartPoint("binlog-001", 400);
         mysql.applyDdl(source, "db1", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "db1", "xxxCREATE TABLE mytable\n" + readFile("ddl/mysql-products.ddl"), this::printStatements);
     }
@@ -126,11 +126,11 @@ public class MySqlSchemaTest {
                      .createSchemas();
         mysql.start();
 
-        source.setBinlogStartPoint("binlog-001",400);
+        source.setBinlogStartPoint("binlog-001", 400);
         mysql.applyDdl(source, "mysql", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "mysql", readFile("ddl/mysql-test-init-5.7.ddl"), this::printStatements);
 
-        source.setBinlogStartPoint("binlog-001",1000);
+        source.setBinlogStartPoint("binlog-001", 1000);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
         // Check that we have tables ...
@@ -152,11 +152,11 @@ public class MySqlSchemaTest {
                      .createSchemas();
         mysql.start();
 
-        source.setBinlogStartPoint("binlog-001",400);
+        source.setBinlogStartPoint("binlog-001", 400);
         mysql.applyDdl(source, "mysql", "SET " + MySqlSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", this::printStatements);
         mysql.applyDdl(source, "mysql", readFile("ddl/mysql-test-init-5.7.ddl"), this::printStatements);
 
-        source.setBinlogStartPoint("binlog-001",1000);
+        source.setBinlogStartPoint("binlog-001", 1000);
         mysql.applyDdl(source, "db1", readFile("ddl/mysql-products.ddl"), this::printStatements);
 
         // Check that we have tables ...

@@ -225,7 +225,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         final SourceRecord record = consumer.remove();
         VerifyRecord.isValidUpdate(record, "pk", 1);
         VerifyRecord.isValid(record);
-        return ((Struct)record.value()).getStruct("before");
+        return ((Struct) record.value()).getStruct("before");
     }
 
     @Test(timeout = 30000)
@@ -488,9 +488,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         updatedRecord = consumer.remove();
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 2);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short)1)), updatedRecord, Envelope.FieldName.BEFORE);
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 1)), updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short)2)), updatedRecord, Envelope.FieldName.AFTER);
+                Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
     @Test
@@ -558,7 +558,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
         List<SchemaAndValueField> expectedSchemaAndValues = Arrays.asList(
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"),
-                new SchemaAndValueField("default_column", SchemaBuilder.OPTIONAL_STRING_SCHEMA ,"default"));
+                new SchemaAndValueField("default_column", SchemaBuilder.OPTIONAL_STRING_SCHEMA , "default"));
         assertRecordSchemaAndValues(expectedSchemaAndValues, insertRecord, Envelope.FieldName.AFTER);
     }
 
@@ -804,7 +804,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithSingleValueAsMap() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -818,7 +818,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithMultipleValuesAsMap() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -832,12 +832,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithNullValuesAsMap() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
         consumer = testConsumer(1);
-        recordsProducer.start(consumer,blackHole);
+        recordsProducer.start(consumer, blackHole);
 
         assertInsert(INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT, 1, schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues());
     }
@@ -846,7 +846,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithSpecialCharactersInValuesAsMap() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.MAP)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.MAP)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -860,7 +860,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeAsJsonString() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -874,7 +874,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithMultipleValuesAsJsonString() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -888,7 +888,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithSpecialValuesInJsonString() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -902,7 +902,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @FixFor("DBZ-898")
     public void shouldReceiveHStoreTypeWithNullValuesAsJsonString() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON)
                 .build());
         setupRecordsProducer(config);
         TestHelper.executeDDL("postgres_create_tables.ddl");

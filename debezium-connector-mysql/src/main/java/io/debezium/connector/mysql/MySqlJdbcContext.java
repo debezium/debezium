@@ -186,7 +186,7 @@ public class MySqlJdbcContext implements AutoCloseable {
         try {
             jdbc.query("SHOW MASTER STATUS", rs -> {
                 if (rs.next() && rs.getMetaData().getColumnCount() > 4) {
-                    gtidSetStr.set(rs.getString(5));// GTID set, may be null, blank, or contain a GTID set
+                    gtidSetStr.set(rs.getString(5)); // GTID set, may be null, blank, or contain a GTID set
                 }
             });
         } catch (SQLException e) {
@@ -207,7 +207,7 @@ public class MySqlJdbcContext implements AutoCloseable {
         try {
             jdbc.query("SELECT @@global.gtid_purged", rs -> {
                 if (rs.next() && rs.getMetaData().getColumnCount() > 0) {
-                    gtidSetStr.set(rs.getString(1));// GTID set, may be null, blank, or contain a GTID set
+                    gtidSetStr.set(rs.getString(1)); // GTID set, may be null, blank, or contain a GTID set
                 }
             });
         }

@@ -626,7 +626,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize) {
-        return expand(desiredSize,Value.nullValue());
+        return expand(desiredSize, Value.nullValue());
     }
     
     /**
@@ -648,7 +648,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, boolean value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -660,7 +660,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, int value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -672,7 +672,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, long value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -684,7 +684,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, float value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -696,7 +696,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, double value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -708,7 +708,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      */
     default Array expand(int desiredSize, String value) {
-        return expand(desiredSize,Value.create(value));
+        return expand(desiredSize, Value.create(value));
     }
 
     /**
@@ -719,7 +719,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @throws IllegalArgumentException if the current value is not a number
      */
     default Array increment( int index, int increment ) {
-        return increment(index,Value.create(increment));
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -730,7 +730,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @throws IllegalArgumentException if the current value is not a number
      */
     default Array increment( int index, long increment ) {
-        return increment(index,Value.create(increment));
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -741,7 +741,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @throws IllegalArgumentException if the current value is not a number
      */
     default Array increment( int index, double increment ) {
-        return increment(index,Value.create(increment));
+        return increment(index, Value.create(increment));
     }
 
     /**
@@ -752,7 +752,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @throws IllegalArgumentException if the current value is not a number
      */
     default Array increment( int index, float increment ) {
-        return increment(index,Value.create(increment));
+        return increment(index, Value.create(increment));
     }
 
     /**

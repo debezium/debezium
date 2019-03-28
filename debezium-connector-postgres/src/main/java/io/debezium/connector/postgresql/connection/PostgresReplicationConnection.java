@@ -70,7 +70,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          Integer statusUpdateIntervalMillis,
                                          TypeRegistry typeRegistry,
                                          Properties streamParams) {
-        super(config, PostgresConnection.FACTORY, null ,PostgresReplicationConnection::defaultSettings);
+        super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection :: defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;

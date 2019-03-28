@@ -134,7 +134,7 @@ public class ByLogicalTableRouterTest {
 
         Schema keySchema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mysql.ServerNameKey")
-                .field(keyFieldName,Schema.STRING_SCHEMA)
+                .field(keyFieldName, Schema.STRING_SCHEMA)
                 .build();
 
         Struct key1 = new Struct(keySchema).put(keyFieldName, "test_server_name_db");

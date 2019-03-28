@@ -168,13 +168,13 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(key.schema()).isSameAs(transformed.keySchema());
         assertThat(key.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
         assertThat(key.schema().field("id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(((Struct)key.get("id")).get("company")).isEqualTo(32);
-        assertThat(((Struct)key.get("id")).get("dept")).isEqualTo("home improvement");
+        assertThat(((Struct) key.get("id")).get("company")).isEqualTo(32);
+        assertThat(((Struct) key.get("id")).get("dept")).isEqualTo("home improvement");
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(((Struct)value.get("id")).get("company")).isEqualTo(32);
-        assertThat(((Struct)value.get("id")).get("dept")).isEqualTo("home improvement");
+        assertThat(((Struct) value.get("id")).get("company")).isEqualTo(32);
+        assertThat(((Struct) value.get("id")).get("dept")).isEqualTo("home improvement");
         assertThat(value.get("name")).isEqualTo("Sally");
 
         assertThat(value.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);

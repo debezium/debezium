@@ -26,8 +26,8 @@ public class HistoryRecordTest {
 
     @Test
     public void canSerializeAndDeserializeHistoryRecord() throws Exception {
-        Map<String,Object> source = Collect.linkMapOf("server", "abc");
-        Map<String,Object> position = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 1);
+        Map<String, Object> source = Collect.linkMapOf("server", "abc");
+        Map<String, Object> position = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 1);
         String databaseName = "db";
         String schemaName = "myschema";
         String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );";
@@ -66,7 +66,7 @@ public class HistoryRecordTest {
         assertThat(deserialized.ddl()).isEqualTo(ddl);
 
         System.out.println(record);
-        assertThat((Object)TableChanges.fromArray(deserialized.tableChanges())).isEqualTo(tableChanges);
+        assertThat((Object) TableChanges.fromArray(deserialized.tableChanges())).isEqualTo(tableChanges);
 
     }
 }

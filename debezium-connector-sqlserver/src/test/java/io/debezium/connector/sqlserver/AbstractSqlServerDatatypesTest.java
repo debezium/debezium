@@ -94,14 +94,14 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
         new SchemaAndValueField("val_bit", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
-        new SchemaAndValueField("val_tinyint", Schema.OPTIONAL_INT16_SCHEMA, (short)22),
-        new SchemaAndValueField("val_smallint", Schema.OPTIONAL_INT16_SCHEMA, (short)333),
+        new SchemaAndValueField("val_tinyint", Schema.OPTIONAL_INT16_SCHEMA, (short) 22),
+        new SchemaAndValueField("val_smallint", Schema.OPTIONAL_INT16_SCHEMA, (short) 333),
         new SchemaAndValueField("val_int", Schema.OPTIONAL_INT32_SCHEMA, 4444),
         new SchemaAndValueField("val_bigint", Schema.OPTIONAL_INT64_SCHEMA, 55555l)
     );
 
     private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
-        new SchemaAndValueField("val_decimal",Decimal.builder(3).parameter(PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("1.123")),
+        new SchemaAndValueField("val_decimal", Decimal.builder(3).parameter(PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("1.123")),
         new SchemaAndValueField("val_numeric", Decimal.builder(0).parameter(PRECISION_PARAMETER_KEY, "18").optional().build(), new BigDecimal("2")),
         new SchemaAndValueField("val_float", Schema.OPTIONAL_FLOAT64_SCHEMA, 3.323),
         new SchemaAndValueField("val_real", Schema.OPTIONAL_FLOAT32_SCHEMA, 4.323f),
@@ -183,7 +183,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         // insert
         VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_INT);
     }
 
@@ -198,7 +198,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         // insert
         VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_FP);
     }
 
@@ -213,7 +213,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         // insert
         VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_STRING);
     }
 
@@ -228,7 +228,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         // insert
         VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_DATE_TIME);
     }
 
@@ -243,7 +243,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
         // insert
         VerifyRecord.isValidRead(testTableRecords.get(0));
-        Struct after = (Struct) ((Struct)testTableRecords.get(0).value()).get("after");
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
         assertRecord(after, EXPECTED_XML);
     }
 

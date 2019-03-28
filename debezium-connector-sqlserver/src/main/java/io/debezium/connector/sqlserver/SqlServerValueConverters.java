@@ -100,7 +100,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
         if (!(data instanceof DateTimeOffset)) {
             return super.convertTimestampWithZone(column, fieldDefn, data);
         }
-        final DateTimeOffset dto = (DateTimeOffset)data;
+        final DateTimeOffset dto = (DateTimeOffset) data;
 
         // Timestamp is provided in UTC time
         final Timestamp utc = dto.getTimestamp();

@@ -242,19 +242,19 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         //Validate candidates values
         switch (i) {
         case 1:
-            assertThat(after.getInt16("c1")).isEqualTo((short)255);
-            assertThat(after.getInt16("c2")).isEqualTo((short)(255));
-            assertThat(after.getInt16("c3")).isEqualTo((short)127);
+            assertThat(after.getInt16("c1")).isEqualTo((short) 255);
+            assertThat(after.getInt16("c2")).isEqualTo((short) (255));
+            assertThat(after.getInt16("c3")).isEqualTo((short) 127);
             break;
         case 2:
-            assertThat(after.getInt16("c1")).isEqualTo((short)155);
-            assertThat(after.getInt16("c2")).isEqualTo((short)155);
-            assertThat(after.getInt16("c3")).isEqualTo((short)-100);
+            assertThat(after.getInt16("c1")).isEqualTo((short) 155);
+            assertThat(after.getInt16("c2")).isEqualTo((short) 155);
+            assertThat(after.getInt16("c3")).isEqualTo((short) - 100);
             break;
         case 3:
-            assertThat(after.getInt16("c1")).isEqualTo((short)0);
-            assertThat(after.getInt16("c2")).isEqualTo((short)0);
-            assertThat(after.getInt16("c3")).isEqualTo((short)-128);
+            assertThat(after.getInt16("c1")).isEqualTo((short) 0);
+            assertThat(after.getInt16("c2")).isEqualTo((short) 0);
+            assertThat(after.getInt16("c3")).isEqualTo((short) - 128);
         }
     }
 
@@ -276,17 +276,17 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         case 1:
             assertThat(after.getInt32("c1")).isEqualTo(65535);
             assertThat(after.getInt32("c2")).isEqualTo(65535);
-            assertThat(after.getInt16("c3")).isEqualTo((short)32767);
+            assertThat(after.getInt16("c3")).isEqualTo((short) 32767);
             break;
         case 2:
             assertThat(after.getInt32("c1")).isEqualTo(45535);
             assertThat(after.getInt32("c2")).isEqualTo(45535);
-            assertThat(after.getInt16("c3")).isEqualTo((short)-12767);
+            assertThat(after.getInt16("c3")).isEqualTo((short) - 12767);
             break;
         case 3:
             assertThat(after.getInt32("c1")).isEqualTo(0);
             assertThat(after.getInt32("c2")).isEqualTo(0);
-            assertThat(after.getInt16("c3")).isEqualTo((short)-32768);
+            assertThat(after.getInt16("c3")).isEqualTo((short) - 32768);
         }
     }
 
@@ -436,7 +436,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         final long[] expected = new long[] {10, 11, -1};
         assertThat(records).hasSize(3);
         for (int i = 0; i < 3; i++) {
-            final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            final Struct after = ((Struct) records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.schema().field("id").schema()).isEqualTo(Schema.INT64_SCHEMA);
             final Long id = after.getInt64("id");
             assertThat(id).isNotNull();
@@ -448,9 +448,9 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         final BigDecimal[] expected = new BigDecimal[] {new BigDecimal(10), new BigDecimal(11), new BigDecimal("18446744073709551615")};
         assertThat(records).hasSize(3);
         for (int i = 0; i < 3; i++) {
-            final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            final Struct after = ((Struct) records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.schema().field("id").schema()).isEqualTo(Decimal.builder(0).schema());
-            final BigDecimal id = (BigDecimal)after.get("id");
+            final BigDecimal id = (BigDecimal) after.get("id");
             assertThat(id).isNotNull();
             assertThat(id).isEqualTo(expected[i]);
         }
@@ -460,7 +460,7 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
         final int[] expected = new int[] {10, 11, 1000};
         assertThat(records).hasSize(3);
         for (int i = 0; i < 3; i++) {
-            final Struct after = ((Struct)records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            final Struct after = ((Struct) records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.schema().field("id").schema()).isEqualTo(Schema.INT32_SCHEMA);
             final Integer id = after.getInt32("id");
             assertThat(id).isNotNull();

@@ -542,7 +542,7 @@ public final class Field {
      * @param fieldSupplier the supplier for dependent fields by name; may not be null
      * @param results the set of configuration results keyed by field name; may not be null
      */
-    protected void validate(Configuration config, Function<String,Field> fieldSupplier, Map<String, ConfigValue> results) {
+    protected void validate(Configuration config, Function<String, Field> fieldSupplier, Map<String, ConfigValue> results) {
         // First, merge any new recommended values ...
         ConfigValue value = results.computeIfAbsent(this.name(), n -> new ConfigValue(n));
 
@@ -628,7 +628,7 @@ public final class Field {
      * @return the new field; never null
      */
     public <T extends Enum<T>> Field withEnum(Class<T> enumType) {
-        return withEnum(enumType,null);
+        return withEnum(enumType, null);
     }
 
     /**
@@ -646,7 +646,7 @@ public final class Field {
         // Not all enums support EnumeratedValue yet
         if ( defaultOption != null ) {
             if (defaultOption instanceof EnumeratedValue) {
-                result = result.withDefault(((EnumeratedValue)defaultOption).getValue());
+                result = result.withDefault(((EnumeratedValue) defaultOption).getValue());
             }
             else {
                 result = result.withDefault(defaultOption.name().toLowerCase());
@@ -871,14 +871,14 @@ public final class Field {
 
         public void ensureValid(String name, Object o) {
             if (o == null) {
-                throw new ConfigException(name,o,"Value must be non-null");
+                throw new ConfigException(name, o, "Value must be non-null");
             }
             Number n = (Number) o;
             if (min != null && n.doubleValue() < min.doubleValue()) {
-                throw new ConfigException(name,o,"Value must be at least "+min);
+                throw new ConfigException(name, o, "Value must be at least "+min);
             }
             if (max != null && n.doubleValue() > max.doubleValue()) {
-                throw new ConfigException(name,o,"Value must be no more than "+max);
+                throw new ConfigException(name, o, "Value must be no more than "+max);
             }
         }
 
@@ -941,7 +941,7 @@ public final class Field {
             // Not all enums support EnumeratedValue yet
             if (Arrays.asList(enumType.getInterfaces()).contains(EnumeratedValue.class)) {
                 this.literals = Arrays.stream(enumType.getEnumConstants())
-                                       .map(x -> ((EnumeratedValue)x).getValue())
+                                       .map(x -> ((EnumeratedValue) x).getValue())
                                        .map(String::toLowerCase)
                                        .collect(Collectors.toSet());
             }

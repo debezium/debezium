@@ -79,7 +79,7 @@ public class ZonedTimestamp {
      */
     public static String toIsoString(Object value, ZoneId defaultZone, TemporalAdjuster adjuster) {
         if (value instanceof String) {
-            return (String)value;
+            return (String) value;
         }
         if (value instanceof OffsetDateTime) {
             return toIsoString((OffsetDateTime) value, adjuster);
