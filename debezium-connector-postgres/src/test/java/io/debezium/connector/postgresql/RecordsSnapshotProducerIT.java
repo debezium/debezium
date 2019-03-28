@@ -449,7 +449,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         PostgresConnectorConfig config = new PostgresConnectorConfig(
                 TestHelper.defaultConfig()
-                        .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE,PostgresConnectorConfig.HStoreHandlingMode.JSON)
+                        .with(PostgresConnectorConfig.HSTORE_HANDLING_MODE, PostgresConnectorConfig.HStoreHandlingMode.JSON)
                         .build());
 
         TopicSelector<TableId> selector = PostgresTopicSelector.create(config);

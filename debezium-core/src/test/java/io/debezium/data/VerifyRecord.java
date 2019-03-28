@@ -338,7 +338,7 @@ public class VerifyRecord {
         for (int i=0; i!=fieldNames.length; ++i) {
             String fieldName = fieldNames[i];
             if (value instanceof Struct) {
-                value = ((Struct)value).get(fieldName);
+                value = ((Struct) value).get(fieldName);
             }
             else {
                 // We expected the value to be a struct ...
@@ -348,7 +348,7 @@ public class VerifyRecord {
             }
             pathSoFar = pathSoFar == null ? fieldName : pathSoFar + "/" + fieldName;
         }
-        assertSameValue(value,expectedValue);
+        assertSameValue(value, expectedValue);
     }
 
     /**
@@ -359,13 +359,13 @@ public class VerifyRecord {
     public static void assertSameValue(Object actual, Object expected) {
         if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
             // Value should be within 1%
-            double expectedNumericValue = ((Number)expected).doubleValue();
-            double actualNumericValue = ((Number)actual).doubleValue();
+            double expectedNumericValue = ((Number) expected).doubleValue();
+            double actualNumericValue = ((Number) actual).doubleValue();
             assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
         }
         else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
-            long expectedNumericValue = ((Number)expected).longValue();
-            long actualNumericValue = ((Number)actual).longValue();
+            long expectedNumericValue = ((Number) expected).longValue();
+            long actualNumericValue = ((Number) actual).longValue();
             assertThat(actualNumericValue).isEqualTo(expectedNumericValue);
         }
         else if (expected instanceof Boolean) {
@@ -986,7 +986,7 @@ public class VerifyRecord {
         }
 
         if (o1 instanceof ConnectSchema && o1 instanceof ConnectSchema) {
-            return areConnectSchemasEqual((ConnectSchema)o1, (ConnectSchema)o2);
+            return areConnectSchemasEqual((ConnectSchema) o1, (ConnectSchema) o2);
         }
 
         return Objects.equals(o1, o2);
@@ -1026,7 +1026,7 @@ public class VerifyRecord {
             }
 
             // Figure out whether the two elements are equal
-            boolean eq=deepEquals0(e1,e2);
+            boolean eq = deepEquals0(e1, e2);
 
             if(!eq){
                 return false;
@@ -1039,34 +1039,34 @@ public class VerifyRecord {
         assert e1!=null;
         boolean eq;
         if(e1 instanceof Object[]&&e2 instanceof Object[]){
-            eq=deepEquals((Object[])e1,(Object[])e2);
+            eq = deepEquals((Object[]) e1, (Object[]) e2);
         }
         else if(e1 instanceof byte[]&&e2 instanceof byte[]){
-                eq=Arrays.equals((byte[])e1,(byte[])e2);
+            eq = Arrays.equals((byte[]) e1, (byte[]) e2);
             }
         else if(e1 instanceof short[]&&e2 instanceof short[]){
-                    eq=Arrays.equals((short[])e1,(short[])e2);
+                eq = Arrays.equals((short[]) e1, (short[]) e2);
                 }
         else if(e1 instanceof int[]&&e2 instanceof int[]){
-                        eq=Arrays.equals((int[])e1,(int[])e2);
+                    eq = Arrays.equals((int[]) e1, (int[]) e2);
                     }
         else if (e1 instanceof long[] && e2 instanceof long[]){
-                        eq=Arrays.equals((long[])e1,(long[])e2);
+                        eq = Arrays.equals((long[]) e1, (long[]) e2);
                     }
         else if (e1 instanceof char[] && e2 instanceof char[]){
-                            eq=Arrays.equals((char[])e1,(char[])e2);
+                            eq = Arrays.equals((char[]) e1, (char[]) e2);
                         }
         else if (e1 instanceof float[] && e2 instanceof float[]){
-                                eq=Arrays.equals((float[])e1,(float[])e2);
+                                eq = Arrays.equals((float[]) e1, (float[]) e2);
                             }
         else if (e1 instanceof double[] && e2 instanceof double[]){
-                                    eq=Arrays.equals((double[])e1,(double[])e2);
+                                    eq = Arrays.equals((double[]) e1, (double[]) e2);
                                 }
         else if (e1 instanceof boolean[] && e2 instanceof boolean[]){
-                                        eq=Arrays.equals((boolean[])e1,(boolean[])e2);
+                                        eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
                                     }
         else{
-                                        eq=equals(e1,e2);
+                                        eq = equals(e1, e2);
                                     }
         return eq;
     }

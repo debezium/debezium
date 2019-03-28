@@ -19,7 +19,7 @@ public class CollectionIdTest {
     
     @Test
     public void shouldParseStringWithThreeSegments() {
-        assertParseable("a","b","c");
+        assertParseable("a", "b", "c");
     }
     
     @Test

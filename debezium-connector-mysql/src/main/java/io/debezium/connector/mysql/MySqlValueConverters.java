@@ -285,10 +285,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
                 if (adaptiveTimeMicrosecondsPrecisionMode) {
-                    return data->convertDurationToMicroseconds(column,fieldDefn,data);
+                    return data -> convertDurationToMicroseconds(column, fieldDefn, data);
                 }
             case Types.TIMESTAMP:
-                return ((ValueConverter)(data-> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
+                return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             default:
                 break;
         }
@@ -609,12 +609,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertUnsignedTinyint(Column column, Field fieldDefn, Object data){
-        return convertValue(column, fieldDefn, data, (short)0, (r) -> {
+        return convertValue(column, fieldDefn, data, (short) 0, (r) -> {
             if (data instanceof Short) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short)data));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) data));
             }
             else if (data instanceof Number) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint(((Number)data).shortValue()));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint(((Number) data).shortValue()));
             }
             else {
                 //We continue with the original converting method (smallint) since we have an unsigned Tinyint
@@ -637,10 +637,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected Object convertUnsignedSmallint(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             if (data instanceof Integer) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int)data));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int) data));
             }
             else if (data instanceof Number) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint(((Number)data).intValue()));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint(((Number) data).intValue()));
             }
             else {
                 //We continue with the original converting method (integer) since we have an unsigned Smallint
@@ -663,10 +663,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected Object convertUnsignedMediumint(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             if (data instanceof Integer) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int)data));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int) data));
             }
             else if (data instanceof Number) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint(((Number)data).intValue()));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint(((Number) data).intValue()));
             }
             else {
                 //We continue with the original converting method (integer) since we have an unsigned Medium
@@ -689,10 +689,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected Object convertUnsignedInt(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             if (data instanceof Long) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger((long)data));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger((long) data));
             }
             else if (data instanceof Number) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger(((Number)data).longValue()));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger(((Number) data).longValue()));
             }
             else {
                 //We continue with the original converting method (bigint) since we have an unsigned Integer
@@ -715,13 +715,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
     protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             if (data instanceof BigDecimal) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal)data));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data));
             }
             else if (data instanceof Number) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number)data).toString())));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString())));
             }
             else if (data instanceof String) {
-                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String)data)));
+                    r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data)));
             }
             else {
                 r.deliver(convertNumeric(column, fieldDefn, data));
@@ -748,7 +748,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
                 if (data instanceof Duration) {
-                    r.deliver(((Duration)data).toNanos() / 1_000);
+                    r.deliver(((Duration) data).toNanos() / 1_000);
                 }
             } catch (IllegalArgumentException e) {
             }
@@ -763,7 +763,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
             return data;
         }
 
-        return ((Timestamp)data).toLocalDateTime();
+        return ((Timestamp) data).toLocalDateTime();
     }
 
     public static Duration stringToDuration(String timeString) {

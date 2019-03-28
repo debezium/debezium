@@ -115,7 +115,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         // Check that records have GTID that does not contain purged interval
         records.recordsForTopic(ro_database.topicForTable("customers")).forEach(record -> {
-            final String gtids = (String)record.sourceOffset().get("gtids");
+            final String gtids = (String) record.sourceOffset().get("gtids");
             final Pattern p = Pattern.compile(".*(.*):(.*)-(.*).*");
             final Matcher m = p.matcher(gtids);
             m.matches();

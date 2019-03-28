@@ -50,7 +50,7 @@ public class JacksonArrayReadingAndWritingTest implements Testing {
     public void shouldWriteDocumentWithNestedDocument() throws Exception {
         array.add("value1");
         array.add("value2");
-        array.add(Document.create("a","A","b","B"));
+        array.add(Document.create("a", "A", "b", "B"));
         after = reader.readArray(writer.write(array));
         assertThat(after.get(0)).isEqualTo("value1");
         assertThat(after.get(1)).isEqualTo("value2");
@@ -65,7 +65,7 @@ public class JacksonArrayReadingAndWritingTest implements Testing {
     public void shouldWriteDocumentWithDeeplyNestedDocument() throws Exception {
         array.add("value1");
         array.add("value2");
-        array.add(Document.create("a","A","b","B","c",Document.create("x","X")));
+        array.add(Document.create("a", "A", "b", "B", "c", Document.create("x", "X")));
         after = reader.readArray(writer.write(array));
         assertThat(after.get(0)).isEqualTo("value1");
         assertThat(after.get(1)).isEqualTo("value2");

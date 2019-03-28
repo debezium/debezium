@@ -424,7 +424,7 @@ public class PostgresConnection extends JdbcConnection {
                     while (rs.next()) {
                         // Coerce long to int so large unsigned values are represented as signed
                         // Same technique is used in TypeInfoCache
-                        final int oid = (int)rs.getLong("oid");
+                        final int oid = (int) rs.getLong("oid");
                         String typeName = rs.getString("name");
                         typeRegistryBuilder.addType(new PostgresType(
                                 typeName,
@@ -439,14 +439,13 @@ public class PostgresConnection extends JdbcConnection {
                 try (final ResultSet rs = statement.executeQuery(SQL_ARRAY_TYPES)) {
                     while (rs.next()) {
                         // int2vector and oidvector will not be treated as arrays
-                        final int oid = (int)rs.getLong("oid");
+                        final int oid = (int) rs.getLong("oid");
                         String typeName = rs.getString("name");
                         typeRegistryBuilder.addType(new PostgresType(
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
-                                typeInfo,
-                                typeRegistryBuilder.get((int)rs.getLong("element"))
+                                typeInfo, typeRegistryBuilder.get((int) rs.getLong("element"))
                         ));
                     }
                 }

@@ -58,7 +58,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        TxLogPosition other = (TxLogPosition)obj;
+        TxLogPosition other = (TxLogPosition) obj;
         if (commitLsn == null) {
             if (other.commitLsn != null) {
                 return false;

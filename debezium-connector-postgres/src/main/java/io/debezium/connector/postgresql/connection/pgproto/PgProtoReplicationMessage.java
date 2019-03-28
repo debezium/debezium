@@ -105,7 +105,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     final PgProto.DatumMessage datum = messageList.get(index);
                     final Optional<PgProto.TypeInfo> typeInfo = Optional.ofNullable(hasTypeMetadata() && typeInfoList != null ? typeInfoList.get(index) : null);
                     final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
-                    final PostgresType type = typeRegistry.get((int)datum.getColumnType());
+                    final PostgresType type = typeRegistry.get((int) datum.getColumnType());
                     return new AbstractReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata()) {
 
                         @Override
@@ -283,7 +283,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             String dataString = new String(data, Charset.forName("UTF-8"));
             PgArray arrayData = new PgArray(connection.get(), columnType, dataString);
             Object deserializedArray = arrayData.getArray();
-            return Arrays.asList((Object[])deserializedArray);
+            return Arrays.asList((Object[]) deserializedArray);
         }
         catch (SQLException e) {
             LOGGER.warn("Unexpected exception trying to process PgArray column '{}'", datumMessage.getColumnName(), e);

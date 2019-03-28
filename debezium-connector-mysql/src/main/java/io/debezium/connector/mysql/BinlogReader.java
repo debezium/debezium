@@ -221,9 +221,9 @@ public class BinlogReader extends AbstractReader {
                     header.setServerId(edde.getEventHeader().getServerId());
 
                     if(edde.getEventHeader() instanceof EventHeaderV4) {
-                        header.setEventLength(((EventHeaderV4)edde.getEventHeader()).getEventLength());
-                        header.setNextPosition(((EventHeaderV4)edde.getEventHeader()).getNextPosition());
-                        header.setFlags(((EventHeaderV4)edde.getEventHeader()).getFlags());
+                        header.setEventLength(((EventHeaderV4) edde.getEventHeader()).getEventLength());
+                        header.setNextPosition(((EventHeaderV4) edde.getEventHeader()).getNextPosition());
+                        header.setFlags(((EventHeaderV4) edde.getEventHeader()).getFlags());
                     }
 
                     EventData data = new EventDataDeserializationExceptionData(edde);
@@ -470,7 +470,7 @@ public class BinlogReader extends AbstractReader {
             eventHandlers.getOrDefault(eventType, this::ignoreEvent).accept(event);
 
             // Generate heartbeat message if the time is right
-            heartbeat.heartbeat(source.partition(), source.offset(), (BlockingConsumer<SourceRecord>)this::enqueueRecord);
+            heartbeat.heartbeat(source.partition(), source.offset(), (BlockingConsumer<SourceRecord>) this :: enqueueRecord);
 
             // Capture that we've completed another event ...
             source.completeEvent();

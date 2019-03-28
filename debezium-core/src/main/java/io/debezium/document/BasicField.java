@@ -52,8 +52,8 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
             return true;
         }
         if ( obj instanceof Document.Field ) {
-            Document.Field that = (Document.Field)obj;
-            return this.getName().equals(that.getName()) && Objects.equals(this.getValue(),that.getValue());
+            Document.Field that = (Document.Field) obj;
+            return this.getName().equals(that.getName()) && Objects.equals(this.getValue(), that.getValue());
         }
         return false;
     }
@@ -63,10 +63,10 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
         if ( this == that ) {
             return 0;
         }
-        int diff = Strings.compareTo(this.getName(),that.getName());
+        int diff = Strings.compareTo(this.getName(), that.getName());
         if ( diff != 0 ){
             return diff;
         }
-        return Value.compareTo(this.getValue(),that.getValue());
+        return Value.compareTo(this.getValue(), that.getValue());
     }
 }

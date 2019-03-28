@@ -38,12 +38,12 @@ final class BinaryValue implements Value {
             return true;
         }
         if (obj instanceof Value) {
-            Value that = (Value)obj;
+            Value that = (Value) obj;
             if (that.isNull()) {
                 return false;
             }
             if (that.isBinary()) {
-                return Arrays.equals(this.value,that.asBytes());
+                return Arrays.equals(this.value, that.asBytes());
             }
             if (that.isString()) {
                 return Arrays.equals(this.value, that.asString().getBytes());

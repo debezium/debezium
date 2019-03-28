@@ -23,13 +23,13 @@ public class MismatchRecordException extends ConnectException {
     }
 
     public MismatchRecordException(AssertionError error, String msg, Queue<SourceRecord> actualRecords, Queue<SourceRecord> expectedRecords) {
-        super(msg,error);
+        super(msg, error);
         this.actualRecords = new LinkedList<>(actualRecords);
         this.expectedRecords = new LinkedList<>(expectedRecords);
     }
     
     public AssertionError getError() {
-        return (AssertionError)super.getCause();
+        return (AssertionError) super.getCause();
     }
 
     public LinkedList<SourceRecord> getActualRecords() {

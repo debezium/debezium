@@ -34,9 +34,9 @@ public class ArraySerdesTest implements Testing {
     protected void readAsStringAndBytes( String resourceFile ) throws IOException {
         String content = Testing.Files.readResourceAsString(resourceFile);
         Array doc = ArrayReader.defaultReader().readArray(content);
-        byte[] bytes = SERDES.serialize("topicA",doc);
-        Array reconstituted = SERDES.deserialize("topicA",bytes);
-        assertThat((Object)reconstituted).isEqualTo(doc);
+        byte[] bytes = SERDES.serialize("topicA", doc);
+        Array reconstituted = SERDES.deserialize("topicA", bytes);
+        assertThat((Object) reconstituted).isEqualTo(doc);
     }
 
 }

@@ -67,15 +67,15 @@ public class ZookeeperServer {
         this.factory = ServerCnxnFactory.createFactory(new InetSocketAddress("localhost", port), 1024);
         if ( this.dataDir == null ) {
             try {
-                File temp = File.createTempFile("kafka","suffix");
+                File temp = File.createTempFile("kafka", "suffix");
                 this.dataDir = temp.getParentFile();
                 temp.delete();
             } catch ( IOException e ) {
-                throw new RuntimeException("Unable to create temporary directory",e);
+                throw new RuntimeException("Unable to create temporary directory", e);
             }
         }
-        this.snapshotDir = new File(this.dataDir,"snapshot");
-        this.logDir = new File(this.dataDir,"log");
+        this.snapshotDir = new File(this.dataDir, "snapshot");
+        this.logDir = new File(this.dataDir, "log");
         this.snapshotDir.mkdirs();
         this.logDir.mkdirs();
 
@@ -117,9 +117,9 @@ public class ZookeeperServer {
                 if (deleteData) {
                     // Delete all data ...
                     try {
-                        IoUtil.delete(this.snapshotDir,this.logDir);
+                        IoUtil.delete(this.snapshotDir, this.logDir);
                     } catch ( IOException e ) {
-                        LOGGER.error("Unable to delete data upon shutdown",e);
+                        LOGGER.error("Unable to delete data upon shutdown", e);
                     }
                 }
             }

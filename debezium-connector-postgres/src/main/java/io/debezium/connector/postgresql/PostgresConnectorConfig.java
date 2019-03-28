@@ -98,7 +98,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @param defaultValue the default value ; may be null
          * @return the matching option or null if the match is not found and non-null default is invalid
          */
-        public static HStoreHandlingMode parse(String value,String defaultValue){
+        public static HStoreHandlingMode parse(String value, String defaultValue){
             HStoreHandlingMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
@@ -842,8 +842,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                                                      SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE,
-                                                     TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,HSTORE_HANDLING_MODE,
+                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
@@ -1002,7 +1001,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,SCHEMA_REFRESH_MODE,ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE, ROWS_FETCH_SIZE);
 
         return config;
     }

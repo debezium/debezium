@@ -142,7 +142,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
                     logger.info("Found no existing offset and snapshots disallowed, so starting at beginning of binlog");
-                    source.setBinlogStartPoint("", 0L);// start from the beginning of the binlog
+                    source.setBinlogStartPoint("", 0L);     // start from the beginning of the binlog
                     taskContext.initializeHistory();
 
                     // Look to see what the first available binlog file is called, and whether it looks like binlog files have

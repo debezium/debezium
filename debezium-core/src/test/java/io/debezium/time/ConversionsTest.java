@@ -44,7 +44,7 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalDateInstanceWhenConvertingUtilDateToLocalDate() {
         LocalDate now = LocalDate.now();
-        java.util.Date date = new java.util.Date(now.getYear()-1900,now.getMonthValue()-1,now.getDayOfMonth());
+        java.util.Date date = new java.util.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth());
         assertThat(Conversions.toLocalDate(date)).isEqualTo(now);
     }
 
@@ -52,7 +52,7 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalDateInstanceWhenConvertingSqlDateToLocalDate() {
         LocalDate now = LocalDate.now();
-        java.sql.Date date = new java.sql.Date(now.getYear()-1900,now.getMonthValue()-1,now.getDayOfMonth());
+        java.sql.Date date = new java.sql.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth());
         assertThat(Conversions.toLocalDate(date)).isEqualTo(now);
     }
     
@@ -98,8 +98,8 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingUtilTimeToLocalDateTime() {
         LocalDateTime now = LocalDateTime.now();
-        java.util.Date date = new java.util.Date(now.getYear()-1900,now.getMonthValue()-1,now.getDayOfMonth(),
-                                                 now.getHour(),now.getMinute(),now.getSecond()); // 0 nanos!
+        java.util.Date date = new java.util.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth(),
+                                                 now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalDateTime(date)).isEqualTo(now.withNano(0));
     }
 
@@ -107,7 +107,7 @@ public class ConversionsTest {
    @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingSqlDateToLocalDateTime() {
         LocalDate now = LocalDate.now();
-        java.sql.Date date = new java.sql.Date(now.getYear()-1900,now.getMonthValue()-1,now.getDayOfMonth());
+        java.sql.Date date = new java.sql.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth());
         assertThat(Conversions.toLocalDateTime(date)).isEqualTo(LocalDateTime.of(now, LocalTime.MIDNIGHT));
     }
     
@@ -115,7 +115,7 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingSqlTimeToLocalDateTime() {
         LocalTime now = LocalTime.now();
-        java.sql.Time time = new java.sql.Time(now.getHour(),now.getMinute(),now.getSecond()); // 0 nanos!
+        java.sql.Time time = new java.sql.Time(now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalDateTime(time)).isEqualTo(LocalDateTime.of(Conversions.EPOCH, now.withNano(0)));
     }
     
@@ -146,7 +146,7 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalTimeInstanceWhenConvertingUtilTimeToLocalTime() {
         LocalTime now = LocalTime.now();
-        java.util.Date date = new java.util.Date(0,0,1,now.getHour(),now.getMinute(),now.getSecond()); // 0 nanos!
+        java.util.Date date = new java.util.Date(0, 0, 1, now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalTime(date)).isEqualTo(now.withNano(0));
     }
 
@@ -165,7 +165,7 @@ public class ConversionsTest {
     @Test
     public void shouldReturnLocalTimeInstanceWhenConvertingSqlTimeToLocalTime() {
         LocalTime now = LocalTime.now();
-        java.sql.Time time = new java.sql.Time(now.getHour(),now.getMinute(),now.getSecond()); // 0 nanos!
+        java.sql.Time time = new java.sql.Time(now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalTime(time)).isEqualTo(now.withNano(0));
     }
     

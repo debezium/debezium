@@ -152,7 +152,7 @@ public final class Tables {
             if ( existing == null || !existing.equals(updated) ) {
                 // Our understanding of the table has changed ...
                 changes.add(tableId);
-                tablesByTableId.put(tableId,updated);
+                tablesByTableId.put(tableId, updated);
             }
             return tablesByTableId.get(tableId);
         });

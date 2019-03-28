@@ -83,7 +83,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.MyTableOne")).hasSize(1);
         SourceRecord record = records.recordsForTopic("server1.dbo.MyTableOne").get(0);
         assertSchemaMatchesStruct(
-            (Struct)((Struct)record.value()).get("after"),
+            (Struct) ((Struct) record.value()).get("after"),
             SchemaBuilder.struct()
                 .optional()
                 .name("server1.dbo.MyTableOne.Value")
@@ -92,20 +92,20 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                 .build()
         );
         assertSchemaMatchesStruct(
-            (Struct)record.key(),
+            (Struct) record.key(),
             SchemaBuilder.struct()
                 .name("server1.dbo.MyTableOne.Key")
                 .field("Id", Schema.INT32_SCHEMA)
                 .build()
         );
-        Assertions.assertThat(((Struct)((Struct)record.value()).get("after")).getInt32("Id")).isEqualTo(1);
+        Assertions.assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(1);
 
         connection.execute("INSERT INTO MyTableOne VALUES(2, 'b')");
         records = consumeRecordsByTopic(1);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.MyTableOne")).hasSize(1);
         record = records.recordsForTopic("server1.dbo.MyTableOne").get(0);
         assertSchemaMatchesStruct(
-            (Struct)((Struct)record.value()).get("after"),
+            (Struct) ((Struct) record.value()).get("after"),
             SchemaBuilder.struct()
                 .optional()
                 .name("server1.dbo.MyTableOne.Value")
@@ -114,13 +114,13 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                 .build()
         );
         assertSchemaMatchesStruct(
-            (Struct)record.key(),
+            (Struct) record.key(),
             SchemaBuilder.struct()
                 .name("server1.dbo.MyTableOne.Key")
                 .field("Id", Schema.INT32_SCHEMA)
                 .build()
         );
-        Assertions.assertThat(((Struct)((Struct)record.value()).get("after")).getInt32("Id")).isEqualTo(2);
+        Assertions.assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(2);
 
         connection.execute(
                 "CREATE TABLE MyTableTwo (Id int primary key, ColB varchar(30))"
@@ -131,7 +131,7 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.MyTableTwo")).hasSize(1);
         record = records.recordsForTopic("server1.dbo.MyTableTwo").get(0);
         assertSchemaMatchesStruct(
-            (Struct)((Struct)record.value()).get("after"),
+            (Struct) ((Struct) record.value()).get("after"),
             SchemaBuilder.struct()
                 .optional()
                 .name("server1.dbo.MyTableTwo.Value")
@@ -140,12 +140,12 @@ public class CaseSensitivenessIT extends AbstractConnectorTest {
                 .build()
         );
         assertSchemaMatchesStruct(
-            (Struct)record.key(),
+            (Struct) record.key(),
             SchemaBuilder.struct()
                 .name("server1.dbo.MyTableTwo.Key")
                 .field("Id", Schema.INT32_SCHEMA)
                 .build()
         );
-        Assertions.assertThat(((Struct)((Struct)record.value()).get("after")).getInt32("Id")).isEqualTo(3);
+        Assertions.assertThat(((Struct) ((Struct) record.value()).get("after")).getInt32("Id")).isEqualTo(3);
     }
 }

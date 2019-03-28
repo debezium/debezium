@@ -50,7 +50,7 @@ public class JacksonWriterTest implements Testing {
     public void shouldWriteDocumentWithNestedDocument() throws Exception {
         doc.set("field1", "value");
         doc.set("field2", 22);
-        doc.set("field3", Document.create("a","A","b","B"));
+        doc.set("field3", Document.create("a", "A", "b", "B"));
         after = reader.read(writer.write(doc));
         Testing.print(after);
         assertThat(after.getString("field1")).isEqualTo("value");
@@ -65,7 +65,7 @@ public class JacksonWriterTest implements Testing {
     public void shouldWriteDocumentWithDeeplyNestedDocument() throws Exception {
         doc.set("field1", "value");
         doc.set("field2", 22);
-        doc.set("field3", Document.create("a","A","b","B","c",Document.create("x","X")));
+        doc.set("field3", Document.create("a", "A", "b", "B", "c", Document.create("x", "X")));
         after = reader.read(writer.write(doc));
         Testing.print(after);
         assertThat(after.getString("field1")).isEqualTo("value");

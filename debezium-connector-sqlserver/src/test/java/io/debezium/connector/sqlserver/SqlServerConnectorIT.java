@@ -105,14 +105,14 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct keyA = (Struct)recordA.key();
-            final Struct valueA = (Struct)recordA.value();
-            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            final Struct keyA = (Struct) recordA.key();
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
             assertNull(valueA.get("before"));
 
-            final Struct keyB = (Struct)recordB.key();
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            final Struct keyB = (Struct) recordB.key();
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
 
@@ -130,13 +130,13 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct deleteKey = (Struct)deleteRecord.key();
-            final Struct deleteValue = (Struct)deleteRecord.value();
-            assertRecord((Struct)deleteValue.get("before"), expectedDeleteRow);
+            final Struct deleteKey = (Struct) deleteRecord.key();
+            final Struct deleteValue = (Struct) deleteRecord.value();
+            assertRecord((Struct) deleteValue.get("before"), expectedDeleteRow);
             assertNull(deleteValue.get("after"));
 
-            final Struct tombstoneKey = (Struct)tombstoneRecord.key();
-            final Struct tombstoneValue = (Struct)tombstoneRecord.value();
+            final Struct tombstoneKey = (Struct) tombstoneRecord.key();
+            final Struct tombstoneValue = (Struct) tombstoneRecord.value();
             assertNull(tombstoneValue);
         }
 
@@ -177,9 +177,9 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct keyB = (Struct)recordB.key();
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            final Struct keyB = (Struct) recordB.key();
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
 
@@ -192,10 +192,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "z"));
 
-            final Struct keyB = (Struct)recordB.key();
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("before"), expectedBefore);
-            assertRecord((Struct)valueB.get("after"), expectedAfter);
+            final Struct keyB = (Struct) recordB.key();
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("before"), expectedBefore);
+            assertRecord((Struct) valueB.get("after"), expectedAfter);
         }
 
         stopConnector();
@@ -260,12 +260,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct valueA = (Struct)recordA.value();
-            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
             assertNull(valueA.get("before"));
 
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
     }
@@ -346,12 +346,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct valueA = (Struct)recordA.value();
-            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
             assertNull(valueA.get("before"));
 
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
 
             assertThat(recordA.sourceOffset().get("snapshot")).as("Streaming phase").isNull();
@@ -552,7 +552,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             if (!"server1.dbo.tablea.Envelope".equals(record.valueSchema().name())) {
                 return false;
             }
-            final Struct envelope = (Struct)record.value();
+            final Struct envelope = (Struct) record.value();
             final Struct after = envelope.getStruct("after");
             final Integer id = after.getInt32("id");
             final String value = after.getString("cola");
@@ -569,7 +569,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
             final List<SchemaAndValueField> expectedRow = Arrays.asList(
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, -2),
                     new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "-a"));
-            assertRecord(((Struct)records.allRecordsInOrder().get(0).value()).getStruct(Envelope.FieldName.AFTER), expectedRow);
+            assertRecord(((Struct) records.allRecordsInOrder().get(0).value()).getStruct(Envelope.FieldName.AFTER), expectedRow);
         }
 
         connection.setAutoCommit(false);
@@ -587,11 +587,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         assertThat(records).hasSize(RECORDS_PER_TABLE);
         SourceRecord lastRecordForOffset = records.get(RECORDS_PER_TABLE - 1);
-        Struct value = (Struct)lastRecordForOffset.value();
+        Struct value = (Struct) lastRecordForOffset.value();
         final List<SchemaAndValueField> expectedLastRow = Arrays.asList(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, HALF_ID - 1),
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
-        assertRecord((Struct)value.get("after"), expectedLastRow);
+        assertRecord((Struct) value.get("after"), expectedLastRow);
 
         stopConnector();
         start(SqlServerConnector.class, config);
@@ -614,12 +614,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct valueA = (Struct)recordA.value();
-            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
             assertNull(valueA.get("before"));
 
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
 
@@ -652,12 +652,12 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, id),
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct valueA = (Struct)recordA.value();
-            assertRecord((Struct)valueA.get("after"), expectedRowA);
+            final Struct valueA = (Struct) recordA.value();
+            assertRecord((Struct) valueA.get("after"), expectedRowA);
             assertNull(valueA.get("before"));
 
-            final Struct valueB = (Struct)recordB.value();
-            assertRecord((Struct)valueB.get("after"), expectedRowB);
+            final Struct valueB = (Struct) recordB.value();
+            assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
     }

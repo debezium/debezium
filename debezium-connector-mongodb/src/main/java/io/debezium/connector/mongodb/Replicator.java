@@ -423,7 +423,7 @@ public class Replicator {
      * is elected (as identified by an oplog event), of if the current thread doing the reading is interrupted.
      */
     protected void readOplog() {
-        primaryClient.execute("read from oplog on '" + replicaSet + "'", (Consumer<MongoClient>)this::readOplog);
+        primaryClient.execute("read from oplog on '" + replicaSet + "'", (Consumer<MongoClient>) this :: readOplog);
     }
 
     /**

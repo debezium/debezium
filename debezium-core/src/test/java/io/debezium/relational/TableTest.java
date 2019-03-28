@@ -166,9 +166,9 @@ public class TableTest {
 
     @Test
     public void shouldFilterColumnsUsingPredicate() {
-        assertThat(table.filterColumns(c->c.isAutoIncremented())).containsExactly(c4);
-        assertThat(table.filterColumns(c->c.isGenerated())).containsExactly(c1);
-        assertThat(table.filterColumns(c->c.isOptional())).containsExactly(c3,c4);
+        assertThat(table.filterColumns(c -> c.isAutoIncremented())).containsExactly(c4);
+        assertThat(table.filterColumns(c -> c.isGenerated())).containsExactly(c1);
+        assertThat(table.filterColumns(c -> c.isOptional())).containsExactly(c3, c4);
     }
 
     @Test

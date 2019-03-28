@@ -1718,7 +1718,7 @@ public interface Configuration {
         keys().forEach(key -> {
             String value = getString(key);
             if (key != null && value != null) {
-                props.setProperty(key,value);
+                props.setProperty(key, value);
             }
         });
         if (fields != null) {

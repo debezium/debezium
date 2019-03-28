@@ -124,10 +124,10 @@ public class SnapshotIT extends AbstractConnectorTest {
                     new SchemaAndValueField("ts", Timestamp.builder().optional().schema(), 1_531_920_536_000l)
             );
 
-            final Struct key1 = (Struct)record1.key();
-            final Struct value1 = (Struct)record1.value();
+            final Struct key1 = (Struct) record1.key();
+            final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
-            assertRecord((Struct)value1.get("after"), expectedRow1);
+            assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset()).includes(
                     MapAssert.entry("snapshot", true),
                     MapAssert.entry("snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1));
@@ -174,10 +174,10 @@ public class SnapshotIT extends AbstractConnectorTest {
                     new SchemaAndValueField("ts", Timestamp.builder().optional().schema(), 1_531_920_536_000l)
             );
 
-            final Struct key1 = (Struct)record1.key();
-            final Struct value1 = (Struct)record1.value();
+            final Struct key1 = (Struct) record1.key();
+            final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
-            assertRecord((Struct)value1.get("after"), expectedRow1);
+            assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset()).hasSize(2);
 
             Assert.assertTrue(record1.sourceOffset().containsKey("change_lsn"));
@@ -237,10 +237,10 @@ public class SnapshotIT extends AbstractConnectorTest {
                     new SchemaAndValueField("name", Schema.OPTIONAL_STRING_SCHEMA, "name" + i)
             );
 
-            final Struct key1 = (Struct)record1.key();
-            final Struct value1 = (Struct)record1.value();
+            final Struct key1 = (Struct) record1.key();
+            final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
-            assertRecord((Struct)value1.get("after"), expectedRow1);
+            assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset()).includes(
                     MapAssert.entry("snapshot", true),
                     MapAssert.entry("snapshot_completed", i == INITIAL_RECORDS_PER_TABLE - 1));

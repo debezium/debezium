@@ -139,8 +139,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     private void assertEmptyFieldValue(SourceRecord record, String fieldName) {
-        final Struct envelope = (Struct)record.value();
-        final Struct after = (Struct)envelope.get("after");
+        final Struct envelope = (Struct) record.value();
+        final Struct after = (Struct) envelope.get("after");
         assertThat(after.getWithoutDefault(fieldName)).isNull();
     }
 
@@ -750,9 +750,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         validate(record);
 
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
-        Integer recordB = ((Struct)record.value()).getStruct("after").getInt32("B");
+        Integer recordB = ((Struct) record.value()).getStruct("after").getInt32("B");
         Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
-        Integer recordC = ((Struct)record.value()).getStruct("after").getInt32("C");
+        Integer recordC = ((Struct) record.value()).getStruct("after").getInt32("C");
 
         // Calculated default value is reported as null in schema
         assertThat(schemaB.isOptional()).isEqualTo(true);

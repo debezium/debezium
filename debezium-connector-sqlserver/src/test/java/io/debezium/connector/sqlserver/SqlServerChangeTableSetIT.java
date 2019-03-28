@@ -110,7 +110,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tabled")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tablec").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tablec.Value")
@@ -121,7 +121,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         });
         records.recordsForTopic("server1.dbo.tabled").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tabled.Value")
@@ -217,7 +217,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -245,7 +245,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -275,7 +275,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -300,7 +300,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -342,7 +342,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -371,7 +371,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -394,7 +394,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -468,7 +468,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -534,7 +534,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -565,7 +565,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -589,7 +589,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -630,7 +630,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -638,7 +638,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                         .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
             );
-            final Struct value = ((Struct)record.value()).getStruct("after");
+            final Struct value = ((Struct) record.value()).getStruct("after");
             final int id = value.getInt32("id");
             final String colb = value.getString("colb");
             Assertions.assertThat(Integer.toString(id)).isEqualTo(colb);
@@ -663,7 +663,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
 
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -671,7 +671,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                         .field("colb", Schema.OPTIONAL_INT32_SCHEMA)
                         .build()
             );
-            final Struct value = ((Struct)record.value()).getStruct("after");
+            final Struct value = ((Struct) record.value()).getStruct("after");
             final int id = value.getInt32("id");
             final int colb = value.getInt32("colb");
             Assertions.assertThat(id).isEqualTo(colb);
@@ -691,7 +691,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tableb")).hasSize(RECORDS_PER_TABLE);
         records.recordsForTopic("server1.dbo.tableb").forEach(record -> {
             assertSchemaMatchesStruct(
-                    (Struct)((Struct)record.value()).get("after"),
+                    (Struct) ((Struct) record.value()).get("after"),
                     SchemaBuilder.struct()
                         .optional()
                         .name("server1.dbo.tableb.Value")
@@ -699,7 +699,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                         .field("colb", Schema.OPTIONAL_INT32_SCHEMA)
                         .build()
             );
-            final Struct value = ((Struct)record.value()).getStruct("after");
+            final Struct value = ((Struct) record.value()).getStruct("after");
             final int id = value.getInt32("id");
             final int colb = value.getInt32("colb");
             Assertions.assertThat(id).isEqualTo(colb);

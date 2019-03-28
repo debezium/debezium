@@ -94,7 +94,7 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                 assertThat(i).isNotNull();
                 String json = after.getString("json");
                 String expectedBinlog = after.getString("expectedBinlogStr");
-                check(json,expectedBinlog,errors::add);
+                check(json, expectedBinlog, errors :: add);
             }
         });
         if (!errors.isEmpty()) {
@@ -144,7 +144,7 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                 assertThat(i).isNotNull();
                 String json = after.getString("json");
                 String expectedJdbc = after.getString("expectedJdbcStr");
-                check(json,expectedJdbc,errors::add);
+                check(json, expectedJdbc, errors :: add);
             }
         });
         if (!errors.isEmpty()) {

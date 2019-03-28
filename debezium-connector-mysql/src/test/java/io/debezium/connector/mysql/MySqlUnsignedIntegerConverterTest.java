@@ -19,7 +19,7 @@ public class MySqlUnsignedIntegerConverterTest {
     @Test
     public void shouldConvertSignedBinlogTinyintToUnsigned(){
         assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) -1));
-        assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short)255));
+        assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) 255));
     }
 
     @Test
