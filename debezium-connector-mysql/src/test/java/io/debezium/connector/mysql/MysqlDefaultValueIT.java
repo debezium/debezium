@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.sql.Time;
 import java.time.Duration;
 import java.time.Instant;
@@ -389,12 +390,42 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
         Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
         Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
+        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
         assertThat(schemaA.defaultValue()).isEqualTo((short) 10);
         assertThat(schemaB.defaultValue()).isEqualTo((short) 5);
         assertThat(schemaC.defaultValue()).isEqualTo(0);
         assertThat(schemaD.defaultValue()).isEqualTo(20L);
         assertThat(schemaE.defaultValue()).isEqualTo(null);
         assertEmptyFieldValue(record, "F");
+        assertThat(schemaG.defaultValue()).isEqualTo((short) 1);
+    }
+
+    @Test
+    public void tinyIntBooleanTest() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        consumeRecordsByTopic(EVENT_COUNT);
+        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("CREATE TABLE ti_boolean_table (" +
+                                            "  A TINYINT(1) NOT NULL DEFAULT TRUE," +
+                                            "  B TINYINT(2) NOT NULL DEFAULT FALSE" +
+                                            ")");
+            conn.createStatement().execute("INSERT INTO ti_boolean_table VALUES (default, default)");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("ti_boolean_table")).get(0);
+        validate(record);
+
+        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(schemaA.defaultValue()).isEqualTo((short) 1);
+        assertThat(schemaB.defaultValue()).isEqualTo((short) 0);
     }
 
     @Test

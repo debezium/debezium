@@ -54,6 +54,13 @@ public class MySqlDefaultValuePreConverter  {
         if (value == null) {
             return value;
         }
+
+        // boolean is also TINYINT(1)
+        if ("TINYINT".equals(column.typeName())) {
+            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                return convertToBoolean(value);
+            }
+        }
         switch (column.jdbcType()) {
         case Types.DATE:
             return convertToLocalDate(column, value);
