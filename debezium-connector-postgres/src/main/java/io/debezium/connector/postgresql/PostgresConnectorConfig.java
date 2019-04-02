@@ -519,17 +519,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                    + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
                                                                    + "and not as a delimiter.");
 
-    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
-                                                 .withDisplayName("Namespace")
-                                                 .withType(Type.STRING)
-                                                 .withWidth(Width.MEDIUM)
-                                                 .withImportance(Importance.HIGH)
-                                                 .withValidation(Field::isRequired)
-                                                 .withDescription("Unique name that identifies the database server and all recorded offsets, and"
-                                                         + "that is used as a prefix for all schemas and topics. "
-                                                         + "Each distinct Postgres installation should have a separate namespace and monitored by "
-                                                         + "at most one Debezium connector. Defaults to 'host:port/database'");
-
     public static final Field TOPIC_SELECTION_STRATEGY = Field.create("topic.selection.strategy")
                                                               .withDisplayName("Topic selection strategy")
                                                               .withEnum(TopicSelectionStrategy.class, TopicSelectionStrategy.TOPIC_PER_TABLE)
@@ -755,7 +744,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, STREAM_PARAMS,
-                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_NAME,
+                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
@@ -780,7 +769,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected PostgresConnectorConfig(Configuration config) {
         super(
                 config,
-                config.getString(SERVER_NAME),
+                config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
                 null, // TODO whitelist handling implemented locally here for the time being
                 null
         );
@@ -907,7 +896,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
+        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,

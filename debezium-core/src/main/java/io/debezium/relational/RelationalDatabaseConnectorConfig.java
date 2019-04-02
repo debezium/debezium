@@ -101,6 +101,17 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
+    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
+            .withDisplayName("Namespace")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
+            .withDescription("Unique name that identifies the database server and all "
+                    + "recorded offsets, and that is used as a prefix for all schemas and topics. "
+                    + "Each distinct installation should have a separate namespace and be monitored by "
+                    + "at most one Debezium connector.");
+
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
      * Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or

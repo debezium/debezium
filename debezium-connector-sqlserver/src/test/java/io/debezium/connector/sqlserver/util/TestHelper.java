@@ -16,6 +16,7 @@ import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +95,7 @@ public class TestHelper {
                 (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
         );
 
-        return builder.with(SqlServerConnectorConfig.LOGICAL_NAME, "server1")
+        return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
                 .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
     }
