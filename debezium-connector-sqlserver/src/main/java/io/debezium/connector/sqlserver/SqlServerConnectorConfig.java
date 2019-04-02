@@ -189,18 +189,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
-    public static final Field LOGICAL_NAME = Field.create("database.server.name")
-            .withDisplayName("Namespace")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
-            .withDescription("Unique name that identifies the database server and all recorded offsets, and"
-                    + "that is used as a prefix for all schemas and topics. "
-                    + "Each distinct SQL Server installation should have a separate namespace and monitored by "
-                    + "at most one Debezium connector.");
-
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database name")
             .withType(Type.STRING)
@@ -255,7 +243,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "SQL Server", LOGICAL_NAME, DATABASE_NAME, SNAPSHOT_MODE);
+        Field.group(config, "SQL Server", RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);

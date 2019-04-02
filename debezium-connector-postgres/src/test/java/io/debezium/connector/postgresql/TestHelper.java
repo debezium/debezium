@@ -22,6 +22,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnection
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * A utility for integration test cases to connect the PostgreSQL server running in the Docker container created by this module's
@@ -195,7 +196,7 @@ public final class TestHelper {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
         jdbcConfiguration.forEach((field, value) -> builder.with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
-        builder.with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
+        builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, TEST_SERVER)
                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
                .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPlugin())

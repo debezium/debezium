@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -83,7 +84,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
-                              .with(MySqlConnectorConfig.SERVER_NAME, "myserver")
+                              .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myserver")
                               .with(KafkaDatabaseHistory.TOPIC, "myserver")
                               .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                               .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -110,7 +111,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertConfigurationErrors(result, MySqlConnectorConfig.HOSTNAME, 1);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
         assertConfigurationErrors(result, MySqlConnectorConfig.USER, 1);
-        assertConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME, 2);
+        assertConfigurationErrors(result, RelationalDatabaseConnectorConfig.SERVER_NAME, 2);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
@@ -151,7 +152,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                                             .with(MySqlConnectorConfig.SSL_TRUSTSTORE, "/some/path/to/truststore")
                                             .with(MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD, "truststore1234")
                                             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                                            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                                            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
                                             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
                                             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -165,7 +166,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PORT);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
+        assertNoConfigurationErrors(result, RelationalDatabaseConnectorConfig.SERVER_NAME);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
@@ -202,7 +203,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
                                             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                                             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                                            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                                            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
                                             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
                                             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
                                             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -216,7 +217,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.USER);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.ON_CONNECT_STATEMENTS);
-        assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_NAME);
+        assertNoConfigurationErrors(result, RelationalDatabaseConnectorConfig.SERVER_NAME);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SERVER_ID);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLES_IGNORE_BUILTIN);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DATABASE_WHITELIST);
@@ -258,7 +259,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -283,7 +284,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -308,7 +309,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -333,7 +334,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -358,7 +359,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Configuration config = DATABASE.defaultJdbcConfigBuilder()
             .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
             .with(MySqlConnectorConfig.SERVER_ID, 18765)
-            .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+            .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
             .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
             .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
             .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -388,7 +389,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Configuration config = DATABASE.defaultJdbcConfigBuilder()
                     .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                     .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                    .with(MySqlConnectorConfig.SERVER_NAME, "myServer")
+                    .with(RelationalDatabaseConnectorConfig.SERVER_NAME, "myServer")
                     .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, "some.host.com")
                     .with(KafkaDatabaseHistory.TOPIC, "my.db.history.topic")
                     .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
@@ -424,7 +425,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.USER, "snapper")
                               .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                               .with(MySqlConnectorConfig.SERVER_ID, 18765)
-                              .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
+                              .with(RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                               .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                               .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
@@ -732,7 +733,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Read the last committed offsets, and verify the binlog coordinates ...
         SourceInfo persistedOffsetSource = new SourceInfo();
-        persistedOffsetSource.setServerName(config.getString(MySqlConnectorConfig.SERVER_NAME));
+        persistedOffsetSource.setServerName(config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME));
         Map<String, ?> lastCommittedOffset = readLastCommittedOffset(config, persistedOffsetSource.partition());
         persistedOffsetSource.setOffset(lastCommittedOffset);
         Testing.print("Position before inserts: " + positionBeforeInserts);
@@ -815,7 +816,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
-                .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
+                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
@@ -864,7 +865,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.USER, "snapper")
                 .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
                 .with(MySqlConnectorConfig.SERVER_ID, 28765)
-                .with(MySqlConnectorConfig.SERVER_NAME, DATABASE.getServerName())
+                .with(RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE.getServerName())
                 .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
