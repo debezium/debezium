@@ -2010,13 +2010,17 @@ dataType
         | VARBINARY | YEAR
       ) 
       lengthOneDimension?                                           #dimensionDataType
-    | typeName=(ENUM | SET) 
-      '(' collectionOption (',' collectionOption)* ')' BINARY?
+    | typeName=(ENUM | SET)
+      collectionOptions BINARY?
       ((CHARACTER SET | CHARSET) charsetName)?                      #collectionDataType
     | typeName=(
         GEOMETRYCOLLECTION | GEOMCOLLECTION | LINESTRING | MULTILINESTRING
         | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON | JSON | GEOMETRY
       )                                                             #spatialDataType
+    ;
+
+collectionOptions
+    : '(' collectionOption (',' collectionOption)* ')'
     ;
 
 collectionOption
