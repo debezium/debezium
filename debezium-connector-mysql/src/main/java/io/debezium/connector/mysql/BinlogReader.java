@@ -767,7 +767,8 @@ public class BinlogReader extends AbstractReader {
             }
         }
         else {
-            logger.debug("Skipping {} event: {} for non-monitored table {}", typeToLog, event, tableId);
+            logger.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
+            metrics.onFilteredEvent("source = " + tableId);
         }
     }
 
