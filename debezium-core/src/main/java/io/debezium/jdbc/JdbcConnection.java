@@ -752,9 +752,9 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
-        if (conn == null) {
+        if (!isConnected()) {
             conn = factory.connect(JdbcConfiguration.adapt(config));
-            if (conn == null) {
+            if (!isConnected()) {
                 throw new SQLException("Unable to obtain a JDBC connection");
             }
             // Always run the initial operations on this new connection
