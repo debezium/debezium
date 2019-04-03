@@ -122,18 +122,18 @@ public class MongoDbConnector extends SourceConnector {
             monitorThread = new ReplicaSetMonitorThread(monitor::getReplicaSets, Duration.ofSeconds(connectionContext.pollPeriodInSeconds()),
                     Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
             replicaSetMonitorExecutor.execute(monitorThread);
-            logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica sets", connectionContext.hosts());
+            logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.hosts());
         } finally {
             previousLogContext.restore();
         }
     }
 
     protected void replicaSetsChanged(ReplicaSets replicaSets) {
-        logger.info("Requesting task reconfiguration due to new/removed replica set(s) for MongoDB with seeds {}", connectionContext.hosts());
-        logger.info("New replica sets include:");
-        replicaSets.onEachReplicaSet(replicaSet -> {
-            logger.info("  {}", replicaSet);
-        });
+        if (logger.isInfoEnabled()) {
+            logger.info("Requesting task reconfiguration due to new/removed replica set(s) for MongoDB with seeds {}", connectionContext.hosts());
+            logger.info("New replica sets include:");
+            replicaSets.onEachReplicaSet(replicaSet -> logger.info("  {}", replicaSet));
+        }
         context.requestTaskReconfiguration();
     }
 

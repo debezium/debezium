@@ -340,7 +340,7 @@ public abstract class AbstractDdlParser implements DdlParser {
             }
         }
         catch (Throwable t) {
-            logger.debug("Unable to create an artificial column for the constant: " + constantValue);
+            logger.debug("Unable to create an artificial column for the constant: {}", constantValue);
         }
         return column.create();
     }
