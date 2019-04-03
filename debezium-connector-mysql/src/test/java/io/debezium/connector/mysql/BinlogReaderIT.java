@@ -9,6 +9,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -50,6 +51,8 @@ public class BinlogReaderIT {
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binlog.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(DB_HISTORY_PATH);
+
+    private static final String SET_TLS_PROTOCOLS = "database.enabledTLSProtocols";
 
     private Configuration config;
     private MySqlTaskContext context;
@@ -437,6 +440,52 @@ public class BinlogReaderIT {
         inconsistentSchema(EventProcessingFailureHandlingMode.IGNORE);
         int consumed = consumeAtLeast(2, 2, TimeUnit.SECONDS);
         assertThat(consumed).isZero();
+    }
+
+    @Test(expected = ConnectException.class)
+    @FixFor( "DBZ-1208" )
+    public void shouldFailOnUnknownTlsProtocol() {
+        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
+        REGRESSION_DATABASE.createAndInitialize();
+
+        config = simpleConfig()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
+            .with(SET_TLS_PROTOCOLS, "TLSv1.7")
+            .build();
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
+        context.start();
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context, null);
+
+        // Start reading the binlog ...
+        reader.start();
+    }
+
+    @Test
+    @FixFor( "DBZ-1208" )
+    public void shouldAcceptTls12() {
+        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
+            .withDbHistoryPath(DB_HISTORY_PATH);
+        REGRESSION_DATABASE.createAndInitialize();
+
+        config = simpleConfig()
+            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
+            .with(SET_TLS_PROTOCOLS, "TLSv1.2")
+            .build();
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
+        context.start();
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context, null);
+
+        // Start reading the binlog ...
+        reader.start();
+        String acceptedTlsVersion = context.getConnectionContext().getSessionVariableForSslVersion();
+        assertEquals("TLSv1.2", acceptedTlsVersion);
     }
 
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
