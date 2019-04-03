@@ -549,18 +549,22 @@ public class SnapshotReader extends AbstractReader {
                                                 break;
                                             }
                                             if (rowNum.get() % 10_000 == 0) {
-                                                long stop = clock.currentTimeInMillis();
-                                                logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
-                                                            stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                if (logger.isInfoEnabled()) {
+                                                    long stop = clock.currentTimeInMillis();
+                                                    logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
+                                                                stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                }
                                                 metrics.rowsScanned(tableId, rowNum.get());
                                             }
                                         }
 
                                         totalRowCount.addAndGet(rowNum.get());
                                         if (isRunning()) {
-                                            long stop = clock.currentTimeInMillis();
-                                            logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
-                                                        stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                            if (logger.isInfoEnabled()) {
+                                                long stop = clock.currentTimeInMillis();
+                                                logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
+                                                            stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                            }
                                             metrics.rowsScanned(tableId, rowNum.get());
                                         }
                                     } catch (InterruptedException e) {
@@ -593,13 +597,17 @@ public class SnapshotReader extends AbstractReader {
                     long stop = clock.currentTimeInMillis();
                     try {
                         bufferedRecordQueue.close(this::replaceOffset);
-                        logger.info("Step {}: scanned {} rows in {} tables in {}",
-                                    step, totalRowCount, tableIds.size(), Strings.duration(stop - startScan));
+                        if (logger.isInfoEnabled()) {
+                            logger.info("Step {}: scanned {} rows in {} tables in {}",
+                                        step, totalRowCount, tableIds.size(), Strings.duration(stop - startScan));
+                        }
                     } catch (InterruptedException e) {
                         Thread.interrupted();
                         // We were not able to finish all rows in all tables ...
-                        logger.info("Step {}: aborting the snapshot after {} rows in {} of {} tables {}",
-                                    step, totalRowCount, completedCounter, tableIds.size(), Strings.duration(stop - startScan));
+                        if (logger.isInfoEnabled()) {
+                            logger.info("Step {}: aborting the snapshot after {} rows in {} of {} tables {}",
+                                        step, totalRowCount, completedCounter, tableIds.size(), Strings.duration(stop - startScan));
+                        }
                         interrupted.set(true);
                     }
                 } else {
@@ -649,10 +657,12 @@ public class SnapshotReader extends AbstractReader {
                     isLocked = false;
                     long lockReleased = clock.currentTimeInMillis();
                     metrics.globalLockReleased();
-                    if (tableLocks) {
-                        logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
-                    } else {
-                        logger.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                    if (logger.isInfoEnabled()) {
+                        if (tableLocks) {
+                            logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                        } else {
+                            logger.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
+                        }
                     }
                 }
             }
@@ -662,8 +672,10 @@ public class SnapshotReader extends AbstractReader {
                 try {
                     // Mark this reader as having completing its work ...
                     completeSuccessfully();
-                    long stop = clock.currentTimeInMillis();
-                    logger.info("Stopped snapshot after {} but before completing", Strings.duration(stop - ts));
+                    if (logger.isInfoEnabled()) {
+                        long stop = clock.currentTimeInMillis();
+                        logger.info("Stopped snapshot after {} but before completing", Strings.duration(stop - ts));
+                    }
                 } finally {
                     // and since there's no more work to do clean up all resources ...
                     cleanupResources();
@@ -684,8 +696,10 @@ public class SnapshotReader extends AbstractReader {
                 } finally {
                     // Set the completion flag ...
                     completeSuccessfully();
-                    long stop = clock.currentTimeInMillis();
-                    logger.info("Completed snapshot in {}", Strings.duration(stop - ts));
+                    if (logger.isInfoEnabled()) {
+                        long stop = clock.currentTimeInMillis();
+                        logger.info("Completed snapshot in {}", Strings.duration(stop - ts));
+                    }
                 }
             }
         } catch (Throwable e) {

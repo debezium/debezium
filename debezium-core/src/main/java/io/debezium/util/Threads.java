@@ -246,7 +246,9 @@ public class Threads {
      * @return the thread factory setting the correct name
      */
     public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed) {
-        LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
+        }
 
         return new ThreadFactory() {
             private final AtomicInteger index = new AtomicInteger(0);

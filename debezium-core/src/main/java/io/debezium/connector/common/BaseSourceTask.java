@@ -39,10 +39,12 @@ public abstract class BaseSourceTask extends SourceTask {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
-        LOGGER.info("Starting " + getClass().getSimpleName() + " with configuration:");
-        config.withMaskedPasswords().forEach((propName, propValue) -> {
-            LOGGER.info("   {} = {}", propName, propValue);
-        });
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Starting {} with configuration:", getClass().getSimpleName());
+            config.withMaskedPasswords().forEach((propName, propValue) -> {
+                LOGGER.info("   {} = {}", propName, propValue);
+            });
+        }
 
         start(config);
     }
