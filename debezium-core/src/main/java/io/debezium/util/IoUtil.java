@@ -418,7 +418,7 @@ public class IoUtil {
     public static void delete(Path path) throws IOException {
         if (path != null) {
             if (path.toAbsolutePath().toFile().exists()) {
-                LOGGER.debug("Deleting '" + path + "'...");
+                LOGGER.debug("Deleting '{}'...", path);
                 Set<FileVisitOption> options = EnumSet.noneOf(FileVisitOption.class);
                 int maxDepth = 10;
                 FileVisitor<Path> removingVisitor = new SimpleFileVisitor<Path>() {

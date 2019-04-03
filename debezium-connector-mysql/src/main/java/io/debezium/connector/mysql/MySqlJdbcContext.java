@@ -67,7 +67,7 @@ public class MySqlJdbcContext implements AutoCloseable {
             jdbcConfigBuilder.with(JDBC_PROPERTY_LEGACY_DATETIME, "false");
         }
         else if ("true".equals(legacyDateTime)) {
-            logger.warn("'" + JDBC_PROPERTY_LEGACY_DATETIME + "'" + " is set to 'true'. This setting is not recommended and can result in timezone issues.");
+            logger.warn("'{}' is set to 'true'. This setting is not recommended and can result in timezone issues.", JDBC_PROPERTY_LEGACY_DATETIME);
         }
 
         jdbcConfig = jdbcConfigBuilder.build();

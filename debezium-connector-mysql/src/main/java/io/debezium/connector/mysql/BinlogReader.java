@@ -418,10 +418,12 @@ public class BinlogReader extends AbstractReader {
                 // We want to record the status ...
                 long millisSinceLastOutput = clock.currentTimeInMillis() - previousOutputMillis;
                 try {
-                    context.temporaryLoggingContext("binlog", () -> {
-                        logger.info("{} records sent during previous {}, last recorded offset: {}",
-                                    recordCounter, Strings.duration(millisSinceLastOutput), lastOffset);
-                    });
+                    if (logger.isInfoEnabled()) {
+                        context.temporaryLoggingContext("binlog", () -> {
+                            logger.info("{} records sent during previous {}, last recorded offset: {}",
+                                        recordCounter, Strings.duration(millisSinceLastOutput), lastOffset);
+                        });
+                    }
                 } finally {
                     recordCounter = 0;
                     previousOutputMillis += millisSinceLastOutput;
@@ -960,14 +962,16 @@ public class BinlogReader extends AbstractReader {
     protected final class ReaderThreadLifecycleListener implements LifecycleListener {
         @Override
         public void onDisconnect(BinaryLogClient client) {
-            context.temporaryLoggingContext("binlog", () -> {
-                Map<String, ?> offset = lastOffset;
-                if (offset != null) {
-                    logger.info("Stopped reading binlog after {} events, last recorded offset: {}", totalRecordCounter, offset);
-                } else {
-                    logger.info("Stopped reading binlog after {} events, no new offset was recorded", totalRecordCounter);
-                }
-            });
+            if (logger.isInfoEnabled()) {
+                context.temporaryLoggingContext("binlog", () -> {
+                    Map<String, ?> offset = lastOffset;
+                    if (offset != null) {
+                        logger.info("Stopped reading binlog after {} events, last recorded offset: {}", totalRecordCounter, offset);
+                    } else {
+                        logger.info("Stopped reading binlog after {} events, no new offset was recorded", totalRecordCounter);
+                    }
+                });
+            }
         }
 
         @Override

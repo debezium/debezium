@@ -1153,9 +1153,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
             Class<?> dataClass = data.getClass();
-            logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
-                                                                                                // sensitive
+            if (logger.isWarnEnabled()) {
+                logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
+                            dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
+                                                                                                    // sensitive
+            }
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
@@ -1196,12 +1198,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
             final Object schemaDefault = fieldDefn.schema().defaultValue();
             return schemaDefault != null ? schemaDefault : fallback;
         }
-        logger.trace("Value from data object: *** {} ***", data.toString());
+        logger.trace("Value from data object: *** {} ***", data);
 
         final ResultReceiver r = ResultReceiver.create();
         callback.convert(r);
-        logger.trace("Callback toString: {}", callback.toString());
-        logger.trace("Value from ResultReceiver: {}", r.toString());
+        logger.trace("Callback is: {}", callback);
+        logger.trace("Value from ResultReceiver: {}", r);
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
     }
 }

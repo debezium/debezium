@@ -102,7 +102,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private void printReplicaIdentityInfo(PostgresConnection connection, TableId tableId) {
         try {
             ServerInfo.ReplicaIdentity replicaIdentity = connection.readReplicaIdentityInfo(tableId);
-            LOGGER.info("REPLICA IDENTITY for '{}' is '{}'; {}", tableId, replicaIdentity.toString(), replicaIdentity.description());
+            LOGGER.info("REPLICA IDENTITY for '{}' is '{}'; {}", tableId, replicaIdentity, replicaIdentity.description());
         } catch (SQLException e) {
             LOGGER.warn("Cannot determine REPLICA IDENTITY info for '{}'", tableId);
         }
