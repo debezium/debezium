@@ -225,8 +225,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             }
 
             if (dataType.name().toUpperCase().equals("SET")) {
-                // After DBZ-132, it will always be comma seperated
-                int optionsSize = collectionDataTypeContext.collectionOptions().collectionOption().size();
+                // After DBZ-132, it will always be comma separated
+                int optionsSize = collectionDataTypeContext.collectionOptions().STRING_LITERAL().size();
                 columnEditor.length(Math.max(0, optionsSize * 2 - 1)); // number of options + number of commas
             }
             else {
