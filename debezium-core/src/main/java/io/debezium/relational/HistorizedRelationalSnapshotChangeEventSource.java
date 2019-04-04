@@ -11,7 +11,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -115,22 +117,26 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
+
+            LOGGER.info("Snapshot step 3 - Determining predicate if any for the captured tables");
+            determineTablePredicate(ctx);
+
             snapshotProgressListener.monitoredTablesDetermined(ctx.capturedTables);
 
-            LOGGER.info("Snapshot step 3 - Locking captured tables");
+            LOGGER.info("Snapshot step 4 - Locking captured tables");
 
             if (snapshottingTask.snapshotSchema()) {
                 lockTablesForSchemaSnapshot(context, ctx);
             }
 
-            LOGGER.info("Snapshot step 4 - Determining snapshot offset");
+            LOGGER.info("Snapshot step 5 - Determining snapshot offset");
             determineSnapshotOffset(ctx);
 
-            LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
+            LOGGER.info("Snapshot step 6 - Reading structure of captured tables");
             readTableStructure(context, ctx);
 
             if (snapshottingTask.snapshotSchema()) {
-                LOGGER.info("Snapshot step 6 - Persisting schema history");
+                LOGGER.info("Snapshot step 7 - Persisting schema history");
 
                 createSchemaChangeEventsForTables(context, ctx);
 
@@ -138,15 +144,15 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                 releaseSchemaSnapshotLocks(ctx);
             }
             else {
-                LOGGER.info("Snapshot step 6 - Skipping persisting of schema history");
+                LOGGER.info("Snapshot step 7 - Skipping persisting of schema history");
             }
 
             if (snapshottingTask.snapshotData()) {
-                LOGGER.info("Snapshot step 7 - Snapshotting data");
+                LOGGER.info("Snapshot step 8 - Snapshotting data");
                 createDataEvents(context, ctx);
             }
             else {
-                LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
+                LOGGER.info("Snapshot step 8 - Skipping snapshotting of data");
                 ctx.offset.preSnapshotCompletion();
                 ctx.offset.postSnapshotCompletion();
             }
@@ -232,6 +238,17 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         }
 
         ctx.capturedTables = capturedTables;
+    }
+
+    private void determineTablePredicate(SnapshotContext ctx) {
+        Map<TableId, String> predicateMap = new HashMap<>();
+        for (TableId tableId : ctx.capturedTables) {
+            String predicate = connectorConfig.getConfig().getString(tableId.toString());
+            if (!Strings.isNullOrEmpty(predicate)) {
+                predicateMap.put(tableId, predicate);
+            }
+        }
+        ctx.tablePredicate = predicateMap;
     }
 
     /**
@@ -417,6 +434,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         public final String catalogName;
         public final Tables tables;
+        public Map<TableId, String> tablePredicate;
 
         public Set<TableId> capturedTables;
         public OffsetContext offset;
@@ -428,6 +446,14 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         @Override
         public void close() throws Exception {
+        }
+
+        public boolean hasPredicate(TableId tableId) {
+            return tablePredicate != null && tablePredicate.containsKey(tableId);
+        }
+
+        public String predicate(TableId tableId) {
+            return tablePredicate == null ? null : tablePredicate.get(tableId);
         }
     }
 
