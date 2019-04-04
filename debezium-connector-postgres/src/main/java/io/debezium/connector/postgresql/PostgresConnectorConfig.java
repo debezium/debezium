@@ -894,8 +894,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(STREAM_PARAMS);
     }
 
-    protected Integer statusUpdateIntervalMillis() {
-        return getConfig().getInteger(STATUS_UPDATE_INTERVAL_MS, null);
+    protected Duration statusUpdateInterval() {
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
     }
 
     protected TemporalPrecisionMode temporalPrecisionMode() {

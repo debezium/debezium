@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
+import java.time.Duration;
 
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
@@ -122,10 +123,10 @@ public interface ReplicationConnection extends AutoCloseable {
         /**
          * The number of milli-seconds the replication connection should periodically send updates to the server.
          *
-         * @param statusUpdateIntervalMillis a number of milli-seconds; null or non-positive value causes Postgres' default to be applied
+         * @param statusUpdateInterval a duration; null or non-positive value causes Postgres' default to be applied
          * @return this instance
          */
-        Builder statusUpdateIntervalMillis(final Integer statusUpdateIntervalMillis);
+        Builder statusUpdateInterval(final Duration statusUpdateInterval);
 
         Builder withTypeRegistry(TypeRegistry typeRegistry);
 

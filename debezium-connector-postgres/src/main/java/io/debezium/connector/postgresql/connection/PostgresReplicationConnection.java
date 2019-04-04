@@ -11,10 +11,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import static java.lang.Math.toIntExact;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.jdbc.PgConnection;
@@ -44,7 +47,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
     private final Configuration originalConfig;
-    private final Integer statusUpdateIntervalMillis;
+    private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
     private final Properties streamParams;
@@ -58,7 +61,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param slotName the name of the DB slot for logical replication; may not be null
      * @param plugin decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
-     * @param statusUpdateIntervalMillis the number of milli-seconds at which the replication connection should periodically send status
+     * @param statusUpdateInterval the number of milli-seconds at which the replication connection should periodically send status
      * @param typeRegistry registry with PostgreSQL types
      *
      * updates to the server
@@ -67,7 +70,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          String slotName,
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
-                                         Integer statusUpdateIntervalMillis,
+                                         Duration statusUpdateInterval,
                                          TypeRegistry typeRegistry,
                                          Properties streamParams) {
         super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection :: defaultSettings);
@@ -76,7 +79,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.slotName = slotName;
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
-        this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
+        this.statusUpdateInterval = statusUpdateInterval;
         this.messageDecoder = plugin.messageDecoder();
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
@@ -242,6 +245,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return new ReplicationStream() {
             private static final int CHECK_WARNINGS_AFTER_COUNT = 100;
             private int warningCheckCounter = CHECK_WARNINGS_AFTER_COUNT;
+            private ExecutorService keepAliveExecutor = null;
 
             // make sure this is volatile since multiple threads may be interested in this value
             private volatile LogSequenceNumber lastReceivedLsn;
@@ -304,6 +308,34 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 return lastReceivedLsn != null ? lastReceivedLsn.asLong() : null;
             }
 
+            @Override
+            public void startKeepAlive(ExecutorService service) {
+                if (keepAliveExecutor == null) {
+                    keepAliveExecutor = service;
+                    keepAliveExecutor.submit(() -> {
+                        while (!Thread.currentThread().isInterrupted()) {
+                            try {
+                                stream.forceUpdateStatus();
+                                Thread.sleep(statusUpdateInterval.toMillis());
+                            }
+                            catch (Exception exp) {
+                                throw new RuntimeException("received unexpected exception will perform keep alive", exp);
+                            }
+                        }
+                    });
+                }
+
+
+            }
+
+            @Override
+            public void stopKeepAlive() {
+                if (keepAliveExecutor != null) {
+                    keepAliveExecutor.shutdownNow();
+                    keepAliveExecutor = null;
+                }
+            }
+
             private void processWarnings(final boolean forced) throws SQLException {
                 if (--warningCheckCounter == 0 || forced) {
                     warningCheckCounter = CHECK_WARNINGS_AFTER_COUNT;
@@ -327,8 +359,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder);
 
-        if (statusUpdateIntervalMillis != null && statusUpdateIntervalMillis > 0) {
-            streamBuilder.withStatusInterval(statusUpdateIntervalMillis, TimeUnit.MILLISECONDS);
+        if (statusUpdateInterval != null && statusUpdateInterval.toMillis() > 0) {
+            streamBuilder.withStatusInterval(toIntExact(statusUpdateInterval.toMillis()), TimeUnit.MILLISECONDS);
         }
 
         PGReplicationStream stream = streamBuilder.start();
@@ -376,7 +408,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private String slotName = DEFAULT_SLOT_NAME;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
-        private Integer statusUpdateIntervalMillis;
+        private Duration statusUpdateIntervalVal;
         private TypeRegistry typeRegistry;
         private Properties slotStreamParams = new Properties();
 
@@ -424,15 +456,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
-        public ReplicationConnectionBuilder statusUpdateIntervalMillis(final Integer statusUpdateIntervalMillis) {
-            this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
+        public ReplicationConnectionBuilder statusUpdateInterval(final Duration statusUpdateInterval) {
+            this.statusUpdateIntervalVal = statusUpdateInterval;
             return this;
         }
 
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalMillis, typeRegistry, slotStreamParams);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalVal, typeRegistry, slotStreamParams);
         }
 
         @Override
