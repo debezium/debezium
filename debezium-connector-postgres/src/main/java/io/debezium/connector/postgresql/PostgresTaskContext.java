@@ -106,7 +106,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                                     .withPlugin(config.plugin())
                                     .dropSlotOnClose(config.dropSlotOnStop())
                                     .streamParams(config.streamParams())
-                                    .statusUpdateIntervalMillis(config.statusUpdateIntervalMillis())
+                                    .statusUpdateInterval(config.statusUpdateInterval())
                                     .withTypeRegistry(schema.getTypeRegistry())
                                     .build();
     }

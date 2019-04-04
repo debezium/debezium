@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
 
 import org.postgresql.replication.PGReplicationStream;
 
@@ -75,6 +76,17 @@ public interface ReplicationStream extends AutoCloseable {
      * @return a {@link Long} value, possibly null if this is called before anything has been read
      */
     Long lastReceivedLsn();
+
+    /**
+     * Starts a background thread to ensure the slot is kept alive, useful for when temporarily
+     * stopping reads from the stream such as querying metadata, etc
+     */
+    void startKeepAlive(ExecutorService service);
+
+    /**
+     * Stops the background thread that is used to ensure the slot is kept alive.
+     */
+    void stopKeepAlive();
 
     /**
      * //TODO author=Horia Chiorean date=13/10/2016 description=Don't use this for now, because of the bug from the PG server

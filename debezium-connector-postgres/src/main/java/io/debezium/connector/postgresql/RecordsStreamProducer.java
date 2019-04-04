@@ -111,6 +111,9 @@ public class RecordsStreamProducer extends RecordsProducer {
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming());
             }
 
+            // for large databases with many tables, we can timeout the slot while refreshing schema
+            // so we need to start a background thread that just responds to keep alive
+            replicationStream.get().startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME));
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
 
@@ -127,6 +130,9 @@ public class RecordsStreamProducer extends RecordsProducer {
 
     private void streamChanges(BlockingConsumer<ChangeEvent> consumer, Consumer<Throwable> failureConsumer) {
         ReplicationStream stream = this.replicationStream.get();
+        // once we are streaming changes, we stop the keep alive, as the read loop
+        // will ensure that happens
+        stream.stopKeepAlive();
         // run while we haven't been requested to stop
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -183,6 +189,12 @@ public class RecordsStreamProducer extends RecordsProducer {
             if (!cleanupExecuted.compareAndSet(false, true)) {
                 logger.debug("already stopped....");
                 return;
+            }
+
+            ReplicationStream stream = this.replicationStream.get();
+            // if we have a stream, ensure that it hs been stopped
+            if (stream != null) {
+                stream.stopKeepAlive();
             }
 
             closeConnections();
