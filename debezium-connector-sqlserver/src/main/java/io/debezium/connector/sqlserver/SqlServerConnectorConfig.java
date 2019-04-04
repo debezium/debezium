@@ -188,7 +188,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             return mode;
         }
     }
-
+    private static final int DEFAULT_ROWS_FETCH_SIZE = 2000;
     public static final Field LOGICAL_NAME = Field.create("database.server.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)
@@ -231,6 +231,18 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue() + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue() + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field ROWS_FETCH_SIZE = RelationalDatabaseConnectorConfig.ROWS_FETCH_SIZE.withDefault(DEFAULT_ROWS_FETCH_SIZE);
+
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -238,6 +250,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             LOGICAL_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
+            ROWS_FETCH_SIZE,
+            SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
@@ -268,7 +282,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         return config;
     }
-
+    private final Configuration config;
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
@@ -277,6 +291,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
 
+        this.config = config;
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
@@ -320,4 +335,20 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             }
         };
     }
+
+    /**
+     * @return comma separated list of tables for which select is overridden
+     */
+    public String snapshotSelectOverrides() {
+        return config.getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+    }
+
+    /**
+     * @param table table name
+     * @return snapshot select overridden
+     */
+    public String snapshotSelectOverrideForTable(String table) {
+        return config.getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+    }
+
 }

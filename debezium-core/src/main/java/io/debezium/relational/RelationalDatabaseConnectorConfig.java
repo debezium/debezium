@@ -27,6 +27,8 @@ import io.debezium.relational.Tables.TableFilter;
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
+    private static final int DEFAULT_ROWS_FETCH_SIZE = 2000;
+
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
      */
@@ -166,6 +168,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "'string' uses string to represent values; "
                     + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
+            .withDisplayName("Result set fetch size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DEFAULT_ROWS_FETCH_SIZE)
+            .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
+            .withValidation(Field::isPositiveLong);
+
     private final RelationalTableFilters tableFilters;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
@@ -204,5 +215,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return 0;
+    }
+
+    /**
+     * @return row fetch size that will be used to retrieve snapshot records
+     */
+    public int rowsFetchSize() {
+        return getConfig().getInteger(ROWS_FETCH_SIZE);
     }
 }

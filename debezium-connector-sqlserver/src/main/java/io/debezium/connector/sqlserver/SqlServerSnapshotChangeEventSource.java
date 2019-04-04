@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -193,14 +196,40 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     }
 
     @Override
-    protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        return String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
-    }
-
-    @Override
     protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row) {
         ((SqlServerOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(getClock().currentTimeInMillis()));
         return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
+    }
+
+    @Override
+    protected Statement readTableStatement() throws SQLException {
+        int rowsFetchSize = connectorConfig.rowsFetchSize();
+        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(rowsFetchSize);
+        return statement;
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    @Override
+    protected Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = connectorConfig.snapshotSelectOverrides();
+
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                    TableId.parse(table),
+                    connectorConfig.snapshotSelectOverrideForTable(table)
+            );
+        }
+
+        return snapshotSelectOverridesByTable;
     }
 
     /**
