@@ -194,7 +194,12 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     @Override
     protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        return String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
+        String select = "SELECT * FROM [%s].[%s]";
+        if (!snapshotContext.hasPredicate(tableId)) {
+            return String.format(select, tableId.schema(), tableId.table());
+        }
+        select = select + " %s";
+        return String.format(select, tableId.schema(), tableId.table(), snapshotContext.predicate(tableId));
     }
 
     @Override
