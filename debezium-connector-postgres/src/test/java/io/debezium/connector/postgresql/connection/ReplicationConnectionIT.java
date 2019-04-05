@@ -92,7 +92,7 @@ public class ReplicationConnectionIT {
             slotsBefore = connection.queryAndMap(slotQuery, slotQueryMapper);
         }
 
-        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1-", true)) {
+        try (ReplicationConnection conn1 = TestHelper.createForReplication("test1", true)) {
             conn1.startStreaming();
             fail("Invalid slot name should fail");
         }
