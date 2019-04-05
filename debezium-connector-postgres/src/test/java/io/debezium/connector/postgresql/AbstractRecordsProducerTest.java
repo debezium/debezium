@@ -96,6 +96,10 @@ public abstract class AbstractRecordsProducerTest {
                                                                       "VALUES ('192.168.2.0/12')";
     protected static final String INSERT_CIDR_NETWORK_ADDRESS_TYPE_STMT = "INSERT INTO cidr_network_address_table (i) " +
                                                                       "VALUES ('192.168.100.128/25');";
+    protected static final String INSERT_MACADDR_TYPE_STMT = "INSERT INTO macaddr_table (m) " +
+                                                                      "VALUES ('08:00:2b:01:02:03');";
+    protected static final String INSERT_MACADDR8_TYPE_STMT = "INSERT INTO macaddr8_table (m) " +
+                                                                      "VALUES ('08:00:2b:01:02:03:04:05');";
     protected static final String INSERT_NUMERIC_TYPES_STMT =
             "INSERT INTO numeric_table (si, i, bi, r, db, r_int, db_int, r_nan, db_nan, r_pinf, db_pinf, r_ninf, db_ninf, ss, bs, b) " +
              "VALUES (1, 123456, 1234567890123, 3.3, 4.44, 3, 4, 'NaN', 'NaN', 'Infinity', 'Infinity', '-Infinity', '-Infinity', 1, 123, true)";
@@ -123,11 +127,11 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
             "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}', '{\"four\",\"five\",\"six\"}', '{\"192.168.2.0/12\",\"192.168.1.1\",\"192.168.0.2/1\"}', '{\"192.168.100.128/25\", \"192.168.0.0/25\", \"192.168.1.0/24\"}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array, macaddr_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}', '{\"four\",\"five\",\"six\"}', '{\"192.168.2.0/12\",\"192.168.1.1\",\"192.168.0.2/1\"}', '{\"192.168.100.128/25\", \"192.168.0.0/25\", \"192.168.1.0/24\"}', '{\"08:00:2b:01:02:03\", \"08-00-2b-01-02-03\", \"08002b:010203\"}')";
 
-    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array) " +
-            "VALUES (null, null, null, null, null, null, null, null, null)";
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array, macaddr_array) " +
+            "VALUES (null, null, null, null, null, null, null, null, null, null)";
 
     protected static final String INSERT_POSTGIS_TYPES_STMT = "INSERT INTO public.postgis_table (p, ml) " +
             "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
@@ -162,9 +166,9 @@ public abstract class AbstractRecordsProducerTest {
     protected static final String INSERT_HSTORE_TYPE_WITH_SPECIAL_CHAR_STMT = "INSERT INTO hstore_table_with_special (hs) VALUES ('\"key_#1\" => \"val 1\",\"key 2\" =>\" ##123 78\"')";
 
     protected static final Set<String> ALL_STMTS = new HashSet<>(Arrays.asList(INSERT_NUMERIC_TYPES_STMT, INSERT_NUMERIC_DECIMAL_TYPES_STMT_NO_NAN,
-                                                                 INSERT_DATE_TIME_TYPES_STMT,
-                                                                 INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
-                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_CIDR_NETWORK_ADDRESS_TYPE_STMT, INSERT_NETWORK_ADDRESS_TYPES_STMT,
+                                                                 INSERT_DATE_TIME_TYPES_STMT, INSERT_BIN_TYPES_STMT, INSERT_GEOM_TYPES_STMT, INSERT_TEXT_TYPES_STMT,
+                                                                 INSERT_CASH_TYPES_STMT, INSERT_STRING_TYPES_STMT, INSERT_CIDR_NETWORK_ADDRESS_TYPE_STMT,
+                                                                 INSERT_NETWORK_ADDRESS_TYPES_STMT, INSERT_MACADDR_TYPE_STMT,
                                                                  INSERT_ARRAY_TYPES_STMT, INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT, INSERT_QUOTED_TYPES_STMT,
                                                                  INSERT_POSTGIS_TYPES_STMT, INSERT_POSTGIS_ARRAY_TYPES_STMT));
 
@@ -327,6 +331,11 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
+    protected List<SchemaAndValueField> schemaAndValueForMacaddr8Type() {
+        final String expected = "08:00:2b:01:02:03:04:05";
+        return Arrays.asList(new SchemaAndValueField("m", Schema.OPTIONAL_STRING_SCHEMA, expected));
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
        return Arrays.asList(new SchemaAndValueField("vc", Schema.OPTIONAL_STRING_SCHEMA, "\u017E\u0161"),
                             new SchemaAndValueField("vcv", Schema.OPTIONAL_STRING_SCHEMA, "bb"),
@@ -367,8 +376,13 @@ public abstract class AbstractRecordsProducerTest {
     protected List<SchemaAndValueField> schemasAndValuesForNetworkAddressTypes() {
         return Arrays.asList(new SchemaAndValueField("i", Schema.OPTIONAL_STRING_SCHEMA, "192.168.2.0/12"));
     }
+
     protected List<SchemaAndValueField> schemasAndValueForCidrAddressType() {
         return Arrays.asList(new SchemaAndValueField("i", Schema.OPTIONAL_STRING_SCHEMA, "192.168.100.128/25"));
+    }
+
+    protected List<SchemaAndValueField> schemasAndValueForMacaddrType() {
+        return Arrays.asList(new SchemaAndValueField("m", Schema.OPTIONAL_STRING_SCHEMA, "08:00:2b:01:02:03"));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForNumericTypesWithSourceColumnTypeInfo() {
@@ -525,9 +539,10 @@ public abstract class AbstractRecordsProducerTest {
                                     Arrays.asList("four", "five", "six")),
                             new SchemaAndValueField("inet_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
                                     Arrays.asList("192.168.2.0/12", "192.168.1.1", "192.168.0.2/1")),
-
                            new SchemaAndValueField("cidr_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                    Arrays.asList("192.168.100.128/25", "192.168.0.0/25", "192.168.1.0/24"))
+                                    Arrays.asList("192.168.100.128/25", "192.168.0.0/25", "192.168.1.0/24")),
+                            new SchemaAndValueField("macaddr_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList("08:00:2b:01:02:03", "08:00:2b:01:02:03", "08:00:2b:01:02:03"))
                             );
     }
 
@@ -542,9 +557,9 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "10").optional().build()).optional().build(), null),
                 new SchemaAndValueField("citext_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("inet_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
-                new SchemaAndValueField("cidr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
-
-        );
+                new SchemaAndValueField("cidr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("macaddr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
+                );
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForPostgisTypes() {
@@ -639,6 +654,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForNetworkAddressTypes();
             case INSERT_CIDR_NETWORK_ADDRESS_TYPE_STMT:
                 return schemasAndValueForCidrAddressType();
+            case INSERT_MACADDR_TYPE_STMT:
+                return schemasAndValueForMacaddrType();
             case INSERT_TEXT_TYPES_STMT:
                 return schemasAndValuesForTextTypes();
             case INSERT_ARRAY_TYPES_STMT:

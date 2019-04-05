@@ -363,11 +363,12 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "tstzrange":
             case "inet":
             case "cidr":
-                return rawValue.asString();
-            // catch-all for other known/builtin PG types
-            // TODO: improve with more specific/useful classes here?
             case "macaddr":
             case "macaddr8":
+                return rawValue.asString();
+
+            // catch-all for other known/builtin PG types
+            // TODO: improve with more specific/useful classes here?
             case "pg_lsn":
             case "tsquery":
             case "tsvector":
