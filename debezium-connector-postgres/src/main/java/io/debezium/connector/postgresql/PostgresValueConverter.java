@@ -144,6 +144,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TSTZRANGE_OID:
             case PgOid.INET_OID:
             case PgOid.CIDR_OID:
+            case PgOid.MACADDR8_OID:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -168,6 +169,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BPCHAR_ARRAY:
             case PgOid.INET_ARRAY:
             case PgOid.CIDR_ARRAY:
+            case PgOid.MACADDR8_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
                 return SchemaBuilder.array(numericSchema(column).optional().build());
@@ -278,7 +280,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON:
             case PgOid.INET_OID:
             case PgOid.CIDR_OID:
-                return data -> super.convertString(column, fieldDefn, data);
+            case PgOid.MACADDR8_OID:
+            return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
@@ -301,6 +304,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.DATE_ARRAY:
             case PgOid.INET_ARRAY:
             case PgOid.CIDR_ARRAY:
+            case PgOid.MACADDR8_ARRAY:
                 return createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
