@@ -719,6 +719,12 @@ public class SnapshotReader extends AbstractReader {
                 }
             }
             failed(e, "Aborting snapshot due to error when last running '" + sql.get() + "': " + e.getMessage());
+        } finally {
+            try {
+                mysql.close();
+            } catch (SQLException e) {
+                logger.warn("Failed to close the connection properly", e);
+            }
         }
     }
 
