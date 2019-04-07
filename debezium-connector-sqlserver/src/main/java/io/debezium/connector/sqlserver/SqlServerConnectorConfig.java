@@ -188,7 +188,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             return mode;
         }
     }
-
+    private static final int DEFAULT_ROWS_FETCH_SIZE = 2000;
     public static final Field LOGICAL_NAME = Field.create("database.server.name")
             .withDisplayName("Namespace")
             .withType(Type.STRING)
@@ -231,6 +231,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue() + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue() + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
+            .withDisplayName("Result set fetch size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
+            .withDefault(DEFAULT_ROWS_FETCH_SIZE)
+            .withValidation(Field::isPositiveLong);
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -238,6 +247,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             LOGICAL_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
+            ROWS_FETCH_SIZE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
@@ -268,7 +278,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         return config;
     }
-
+    private final Configuration config;
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
@@ -277,6 +287,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
 
+        this.config = config;
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
@@ -319,5 +330,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                         .compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
             }
         };
+    }
+
+    public int rowsFetchSize() {
+        return config.getInteger(ROWS_FETCH_SIZE);
     }
 }
