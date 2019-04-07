@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Optional;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -116,25 +117,22 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
 
-            LOGGER.info("Snapshot step 3 - Determining predicate if any for the captured tables");
-            determineTablePredicate(ctx);
-
             snapshotProgressListener.monitoredTablesDetermined(ctx.capturedTables);
 
-            LOGGER.info("Snapshot step 4 - Locking captured tables");
+            LOGGER.info("Snapshot step 3 - Locking captured tables");
 
             if (snapshottingTask.snapshotSchema()) {
                 lockTablesForSchemaSnapshot(context, ctx);
             }
 
-            LOGGER.info("Snapshot step 5 - Determining snapshot offset");
+            LOGGER.info("Snapshot step 4 - Determining snapshot offset");
             determineSnapshotOffset(ctx);
 
-            LOGGER.info("Snapshot step 6 - Reading structure of captured tables");
+            LOGGER.info("Snapshot step 5 - Reading structure of captured tables");
             readTableStructure(context, ctx);
 
             if (snapshottingTask.snapshotSchema()) {
-                LOGGER.info("Snapshot step 7 - Persisting schema history");
+                LOGGER.info("Snapshot step 6 - Persisting schema history");
 
                 createSchemaChangeEventsForTables(context, ctx);
 
@@ -142,15 +140,15 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                 releaseSchemaSnapshotLocks(ctx);
             }
             else {
-                LOGGER.info("Snapshot step 7 - Skipping persisting of schema history");
+                LOGGER.info("Snapshot step 6 - Skipping persisting of schema history");
             }
 
             if (snapshottingTask.snapshotData()) {
-                LOGGER.info("Snapshot step 8 - Snapshotting data");
+                LOGGER.info("Snapshot step 7 - Snapshotting data");
                 createDataEvents(context, ctx);
             }
             else {
-                LOGGER.info("Snapshot step 8 - Skipping snapshotting of data");
+                LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
                 ctx.offset.preSnapshotCompletion();
                 ctx.offset.postSnapshotCompletion();
             }
@@ -238,17 +236,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         ctx.capturedTables = capturedTables;
     }
 
-    private void determineTablePredicate(SnapshotContext ctx) {
-        Map<TableId, String> predicateMap = new HashMap<>();
-        for (TableId tableId : ctx.capturedTables) {
-            String predicate = connectorConfig.getConfig().getString(tableId.toString());
-            if (!Strings.isNullOrEmpty(predicate)) {
-                predicateMap.put(tableId, predicate);
-            }
-        }
-        ctx.tablePredicate = predicateMap;
-    }
-
     /**
      * Returns all candidate tables; the current filter configuration will be applied to the result set, resulting in
      * the effective set of captured tables.
@@ -324,48 +311,49 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
+        long rows = 0;
+        final Optional<String> selectStatement = getSnapshotSelect(snapshotContext, table.id());
+        if (!selectStatement.isPresent()) {
+            LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
+        } else {
+            LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
 
-        final String selectStatement = getSnapshotSelect(snapshotContext, table.id());
-        LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
+            try (Statement statement = readTableStatement();
+                 ResultSet rs = statement.executeQuery(selectStatement.get())) {
 
-        try (Statement statement = readTableStatement();
-                ResultSet rs = statement.executeQuery(selectStatement)) {
+                Column[] columns = getColumnsForResultSet(table, rs);
+                final int numColumns = table.columns().size();
+                Timer logTimer = getTableScanLogTimer();
 
-            Column[] columns = getColumnsForResultSet(table, rs);
-            final int numColumns = table.columns().size();
-            long rows = 0;
-            Timer logTimer = getTableScanLogTimer();
+                while (rs.next()) {
+                    if (!sourceContext.isRunning()) {
+                        throw new InterruptedException("Interrupted while snapshotting table " + table.id());
+                    }
 
-            while (rs.next()) {
-                if (!sourceContext.isRunning()) {
-                    throw new InterruptedException("Interrupted while snapshotting table " + table.id());
+                    rows++;
+                    final Object[] row = new Object[numColumns];
+                    for (int i = 0; i < numColumns; i++) {
+                        row[i] = getColumnValue(rs, i + 1, columns[i]);
+                    }
+
+                    if (logTimer.expired()) {
+                        long stop = clock.currentTimeInMillis();
+                        LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
+                                Strings.duration(stop - exportStart));
+                        snapshotProgressListener.rowsScanned(table.id(), rows);
+                        logTimer = getTableScanLogTimer();
+                    }
+
+                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, row),
+                            snapshotReceiver);
                 }
-
-                rows++;
-                final Object[] row = new Object[numColumns];
-                for (int i = 0; i < numColumns; i++) {
-                    row[i] = getColumnValue(rs, i + 1, columns[i]);
-                }
-
-                if (logTimer.expired()) {
-                    long stop = clock.currentTimeInMillis();
-                    LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
-                            Strings.duration(stop - exportStart));
-                    snapshotProgressListener.rowsScanned(table.id(), rows);
-                    logTimer = getTableScanLogTimer();
-                }
-
-                dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, row),
-                        snapshotReceiver);
+                LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
+                        table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
+            } catch (SQLException e) {
+                throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
             }
-
-            LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
-                    table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
-            snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
         }
-        catch(SQLException e) {
-            throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
-        }
+        snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
     }
 
     private Timer getTableScanLogTimer() {
@@ -390,7 +378,14 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     // TODO Should it be Statement or similar?
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
-    protected abstract String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
+    /**
+     * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
+     * to skip snapshotting this table (but that table will still be streamed from)
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string, or none to skip snapshotting this table
+     */
+    protected abstract Optional<String>getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
 
     private Column[] getColumnsForResultSet(Table table, ResultSet rs) throws SQLException {
         ResultSetMetaData metaData = rs.getMetaData();
@@ -431,7 +426,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         public final String catalogName;
         public final Tables tables;
-        public Map<TableId, String> tablePredicate;
 
         public Set<TableId> capturedTables;
         public OffsetContext offset;
@@ -443,14 +437,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         @Override
         public void close() throws Exception {
-        }
-
-        public boolean hasPredicate(TableId tableId) {
-            return tablePredicate != null && tablePredicate.containsKey(tableId);
-        }
-
-        public String predicate(TableId tableId) {
-            return tablePredicate == null ? null : tablePredicate.get(tableId);
         }
     }
 
