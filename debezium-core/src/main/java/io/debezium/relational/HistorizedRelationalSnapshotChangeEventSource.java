@@ -380,6 +380,13 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
 
     /**
+     * Create 'Read' table statement for snapshot
+     * @return statement
+     * @throws SQLException any SQL exception thrown
+     */
+    protected abstract Statement readTableStatement() throws SQLException;
+
+    /**
      * Returns the SELECT statement to be used for scanning the given table
      */
     // TODO Should it be Statement or similar?
@@ -400,14 +407,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
     private Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
         return rs.getObject(columnIndex);
-    }
-
-    private Statement readTableStatement() throws SQLException {
-        // TODO read option
-        int rowsFetchSize = 2000;
-        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setFetchSize(rowsFetchSize);
-        return statement;
     }
 
     /**

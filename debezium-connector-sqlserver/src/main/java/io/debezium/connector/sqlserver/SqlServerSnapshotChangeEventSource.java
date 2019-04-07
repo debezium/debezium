@@ -208,6 +208,14 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
         return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
     }
 
+    @Override
+    protected Statement readTableStatement() throws SQLException {
+        int rowsFetchSize = connectorConfig.rowsFetchSize();
+        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(rowsFetchSize);
+        return statement;
+    }
+
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
