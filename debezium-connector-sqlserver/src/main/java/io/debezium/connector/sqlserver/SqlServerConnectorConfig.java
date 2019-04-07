@@ -240,6 +240,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDefault(DEFAULT_ROWS_FETCH_SIZE)
             .withValidation(Field::isPositiveLong);
 
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -248,6 +258,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             DATABASE_NAME,
             SNAPSHOT_MODE,
             ROWS_FETCH_SIZE,
+            SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
@@ -335,4 +346,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public int rowsFetchSize() {
         return config.getInteger(ROWS_FETCH_SIZE);
     }
+
+    public String snapshotSelectOverrides() {
+        return config.getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+    }
+
+    public String snapshotSelectOverrideForTable(String table) {
+        return config.getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+    }
+
 }
