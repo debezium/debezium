@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
 
-import io.debezium.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -202,12 +201,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     @Override
     protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         if (snapshotOverrides.containsKey(tableId)) {
-            String select = null;
-            String predicate = snapshotOverrides.get(tableId);
-            if (!Strings.isNullOrEmpty(predicate)) {
-                select = String.format("SELECT * FROM [%s].[%s] %s", tableId.schema(), tableId.table(), predicate);
-            }
-            return Optional.ofNullable(select);
+            return Optional.ofNullable(snapshotOverrides.get(tableId));
         }
         else {
             return Optional.of(String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table()));
