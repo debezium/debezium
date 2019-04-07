@@ -13,7 +13,12 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 
+import io.debezium.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +45,13 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     private final SqlServerConnectorConfig connectorConfig;
     private final SqlServerConnection jdbcConnection;
+    private Map<TableId, String> snapshotOverrides;
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
+        this.snapshotOverrides = getSnapshotSelectOverridesByTable();
     }
 
     @Override
@@ -193,13 +200,18 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     }
 
     @Override
-    protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        String select = "SELECT * FROM [%s].[%s]";
-        if (!snapshotContext.hasPredicate(tableId)) {
-            return String.format(select, tableId.schema(), tableId.table());
+    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+        if (snapshotOverrides.containsKey(tableId)) {
+            String select = null;
+            String predicate = snapshotOverrides.get(tableId);
+            if (!Strings.isNullOrEmpty(predicate)) {
+                select = String.format("SELECT * FROM [%s].[%s] %s", tableId.schema(), tableId.table(), predicate);
+            }
+            return Optional.ofNullable(select);
         }
-        select = select + " %s";
-        return String.format(select, tableId.schema(), tableId.table(), snapshotContext.predicate(tableId));
+        else {
+            return Optional.of(String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table()));
+        }
     }
 
     @Override
@@ -214,6 +226,28 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
         Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
         statement.setFetchSize(rowsFetchSize);
         return statement;
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = connectorConfig.snapshotSelectOverrides();
+
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                    TableId.parse(table),
+                    connectorConfig.snapshotSelectOverrideForTable(table)
+            );
+        }
+
+        return snapshotSelectOverridesByTable;
     }
 
     /**
