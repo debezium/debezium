@@ -1053,16 +1053,13 @@ public class BinlogReader extends AbstractReader {
     }
 
     protected void setBinlogSSLSocketFactory() {
-        if (connectionContext.jdbc() != null &&
-            connectionContext.jdbc().config() != null) {
-
-            String enabledTLSProtocols = connectionContext.jdbc().config()
-                .getString(MySqlJdbcContext.JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS);
-            if (enabledTLSProtocols != null) {
+        if (connectionContext.jdbc() != null) {
+            String acceptedTLSVersion = connectionContext.getSessionVariableForSslVersion();
+            if (acceptedTLSVersion != null) {
                 SSLMode sslMode = sslModeFor(connectionContext.sslMode());
 
                 if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
-                    client.setSslSocketFactory(new DefaultSSLSocketFactory(enabledTLSProtocols) {
+                    client.setSslSocketFactory(new DefaultSSLSocketFactory(acceptedTLSVersion) {
 
                         @Override
                         protected void initSSLContext(SSLContext sc)
@@ -1093,7 +1090,7 @@ public class BinlogReader extends AbstractReader {
                         }
                     });
                 } else {
-                    client.setSslSocketFactory(new DefaultSSLSocketFactory(enabledTLSProtocols));
+                    client.setSslSocketFactory(new DefaultSSLSocketFactory(acceptedTLSVersion));
                 }
             }
         }

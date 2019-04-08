@@ -37,10 +37,10 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL";
     protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
-    protected static final String JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS = "enabledTLSProtocols";
 
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
+    private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
 
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
 
@@ -351,5 +351,20 @@ public class MySqlJdbcContext implements AutoCloseable {
                 // Otherwise, there was an existing property, and the value is exactly the same (so do nothing!)
             }
         }
+    }
+
+    /**
+     * Read the Ssl Version session variable.
+     *
+     * @return the session variables that are related to sessions ssl version
+     */
+    protected String getSessionVariableForSslVersion() {
+        logger.debug("Reading MySQL Session variable for Ssl Version");
+        Map<String, String> systemVariableResults =
+            querySystemVariables(SQL_SHOW_SESSION_VARIABLE_SSL_VERSION);
+        if (!systemVariableResults.isEmpty() && systemVariableResults.containsKey("Ssl_version")) {
+            return systemVariableResults.get("Ssl_version");
+        }
+        return null;
     }
 }
