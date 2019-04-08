@@ -1096,12 +1096,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
             .withDisplayName("Enable Time Adjuster")
             .withType(Type.BOOLEAN)
-            .withDefault(false)
+            .withDefault(true)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("MySQL allows user to insert year value as either 2-digit or 4-digit. In case of two digit the value is automatically mapped into 1970 - 2069." +
-                    "false - (the default) delegates the implicit conversion to the database" +
-                    "true - Debezium makes the conversion");
+                    "false - delegates the implicit conversion to the database" +
+                    "true - (the default) Debezium makes the conversion");
 
     /**
      * The set of {@link Field}s defined as part of this configuration.

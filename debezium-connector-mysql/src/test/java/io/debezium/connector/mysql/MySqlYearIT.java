@@ -47,7 +47,8 @@ public class MySqlYearIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -58,6 +59,7 @@ public class MySqlYearIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER, false)
                 .build();
 
         // Start the connector ...
@@ -99,7 +101,6 @@ public class MySqlYearIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER, true)
                 .build();
 
         // Start the connector ...
