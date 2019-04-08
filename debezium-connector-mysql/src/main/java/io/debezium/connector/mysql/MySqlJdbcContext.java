@@ -37,7 +37,6 @@ public class MySqlJdbcContext implements AutoCloseable {
 
     protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL";
     protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
-    protected static final String JDBC_PROPERTY_VERIFY_SERVER_CERT = "verifyServerCertificate";
     protected static final String JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS = "enableTLSProtocols";
 
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
@@ -71,14 +70,6 @@ public class MySqlJdbcContext implements AutoCloseable {
         }
         else if ("true".equals(legacyDateTime)) {
             logger.warn("'" + JDBC_PROPERTY_LEGACY_DATETIME + "'" + " is set to 'true'. This setting is not recommended and can result in timezone issues.");
-        }
-
-        if (jdbcConfig.getString(JDBC_PROPERTY_VERIFY_SERVER_CERT) != null) {
-            jdbcConfigBuilder.with(JDBC_PROPERTY_VERIFY_SERVER_CERT, jdbcConfig.getString(JDBC_PROPERTY_VERIFY_SERVER_CERT));
-        }
-
-        if (jdbcConfig.getString(JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS) != null) {
-            jdbcConfigBuilder.with(JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS, jdbcConfig.getString(JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS));
         }
 
         jdbcConfig = jdbcConfigBuilder.build();

@@ -190,32 +190,8 @@ public class BinlogReader extends AbstractReader {
         client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false));
         client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
-        if (connectionContext.sslModeEnabled() &&
-            connectionContext.jdbc().config().getString(MySqlJdbcContext.JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS) != null) {
-            client.setSslSocketFactory(new DefaultSSLSocketFactory(
-                connectionContext.jdbc().config().getString(MySqlJdbcContext.JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS)) {
-
-                @Override
-                protected void initSSLContext(SSLContext sc) throws GeneralSecurityException {
-                    sc.init(null, new TrustManager[]{
-                        new X509TrustManager() {
-
-                            @Override
-                            public void checkClientTrusted(X509Certificate[] x509Certificates, String s)
-                                throws CertificateException { }
-
-                            @Override
-                            public void checkServerTrusted(X509Certificate[] x509Certificates, String s)
-                                throws CertificateException { }
-
-                            @Override
-                            public X509Certificate[] getAcceptedIssuers() {
-                                return new X509Certificate[0];
-                            }
-                        }
-                    }, null);
-                }
-            });
+        if (connectionContext.sslModeEnabled()) {
+            setBinlogSSLSocketFactory();
         }
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));
@@ -1074,5 +1050,52 @@ public class BinlogReader extends AbstractReader {
 
     public BinlogPosition getCurrentBinlogPosition() {
         return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
+    }
+
+    protected void setBinlogSSLSocketFactory() {
+        if (connectionContext.jdbc() != null &&
+            connectionContext.jdbc().config() != null) {
+
+            String enabledTLSProtocols = connectionContext.jdbc().config()
+                .getString(MySqlJdbcContext.JDBC_PROPERTY_ENABLE_TLS_PROTOCOLS);
+            if (enabledTLSProtocols != null) {
+                SSLMode sslMode = sslModeFor(connectionContext.sslMode());
+
+                if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
+                    client.setSslSocketFactory(new DefaultSSLSocketFactory(enabledTLSProtocols) {
+
+                        @Override
+                        protected void initSSLContext(SSLContext sc)
+                            throws GeneralSecurityException {
+                            sc.init(null, new TrustManager[]{
+                                new X509TrustManager() {
+
+                                    @Override
+                                    public void checkClientTrusted(
+                                        X509Certificate[] x509Certificates,
+                                        String s)
+                                        throws CertificateException {
+                                    }
+
+                                    @Override
+                                    public void checkServerTrusted(
+                                        X509Certificate[] x509Certificates,
+                                        String s)
+                                        throws CertificateException {
+                                    }
+
+                                    @Override
+                                    public X509Certificate[] getAcceptedIssuers() {
+                                        return new X509Certificate[0];
+                                    }
+                                }
+                            }, null);
+                        }
+                    });
+                } else {
+                    client.setSslSocketFactory(new DefaultSSLSocketFactory(enabledTLSProtocols));
+                }
+            }
+        }
     }
 }
