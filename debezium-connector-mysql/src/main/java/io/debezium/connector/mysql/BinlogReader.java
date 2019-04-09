@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
+import io.debezium.util.Strings;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
@@ -59,8 +60,9 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
-import io.debezium.util.Strings;
 import io.debezium.util.Threads;
+
+import static io.debezium.util.Strings.isNullOrEmpty;
 
 /**
  * A component that reads the binlog of a MySQL server, and records any schema changes in {@link MySqlSchema}.
@@ -1055,7 +1057,7 @@ public class BinlogReader extends AbstractReader {
     protected void setBinlogSSLSocketFactory() {
         if (connectionContext.jdbc() != null) {
             String acceptedTLSVersion = connectionContext.getSessionVariableForSslVersion();
-            if (acceptedTLSVersion != null) {
+            if (!isNullOrEmpty(acceptedTLSVersion)) {
                 SSLMode sslMode = sslModeFor(connectionContext.sslMode());
 
                 if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
@@ -1089,7 +1091,8 @@ public class BinlogReader extends AbstractReader {
                             }, null);
                         }
                     });
-                } else {
+                }
+                else {
                     client.setSslSocketFactory(new DefaultSSLSocketFactory(acceptedTLSVersion));
                 }
             }
