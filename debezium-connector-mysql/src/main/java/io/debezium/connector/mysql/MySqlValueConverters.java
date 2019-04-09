@@ -93,29 +93,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
-     * year values of YEAR type using these MySQL-specific rules:
-     * <ul>
-     * <li>Year values in the range 01-69 are converted to 2001-2069.</li>
-     * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
-     * </ul>
-     * MySQL treats YEAR(4) the same, except that a numeric 00 inserted into YEAR(4) results in 0000 rather than 2000; to
-     * specify zero for YEAR(4) and have it be interpreted as 2000, specify it as a string '0' or '00'. This should be handled
-     * by MySQL before Debezium sees the value.
-     *
-     * @param year the year value to adjust; may not be null
-     * @return the possibly adjusted year number; never null
-     */
-    protected static int adjustYear(int year) {
-        if (0 < year && year <= 69) {
-            year += 2000;
-        } else if (70 <= year && year <= 99) {
-            year += 1900;
-        }
-        return year;
-    }
-
-    /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones.
      * <p>
@@ -411,18 +388,19 @@ public class MySqlValueConverters extends JdbcValueConverters {
             Object mutData = data;
             if (data instanceof java.time.Year) {
                 // The MySQL binlog always returns a Year object ...
-                r.deliver(adjustYear(((java.time.Year) data).getValue()));
+                r.deliver(adjustTemporal(java.time.Year.of(((java.time.Year) data).getValue())).get(ChronoField.YEAR));
             }
             else if (data instanceof java.sql.Date) {
                 // MySQL JDBC driver sometimes returns a Java SQL Date object ...
-                r.deliver(adjustYear(((java.sql.Date) data).getYear()) + 1900);
+                // year from java.sql.Date is defined as number of years since 1900
+                r.deliver(((java.sql.Date) data).getYear() + 1900);
             }
             else if (data instanceof String) {
                 mutData = Integer.valueOf((String) data);
             }
             if (mutData instanceof Number) {
                 // MySQL JDBC driver sometimes returns a short ...
-                r.deliver(adjustYear(((Number) mutData).intValue()));
+                r.deliver(adjustTemporal(java.time.Year.of(((Number) mutData).intValue())).get(ChronoField.YEAR));
             }
         });
     }

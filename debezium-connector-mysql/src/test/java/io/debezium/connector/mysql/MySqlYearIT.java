@@ -87,7 +87,16 @@ public class MySqlYearIT extends AbstractConnectorTest {
                     "    '2018-04-01',\n" + 
                     "    '18-04-01 12:34:56',\n" + 
                     "    '0018-04-01 12:34:56',\n" + 
-                    "    '2018-04-01 12:34:56'\n" + 
+                    "    '2018-04-01 12:34:56',\n" + 
+                    "    '78',\n" + 
+                    "    '0078',\n" + 
+                    "    '1978',\n" + 
+                    "    '78-04-01',\n" + 
+                    "    '0078-04-01',\n" + 
+                    "    '1978-04-01',\n" + 
+                    "    '78-04-01 12:34:56',\n" + 
+                    "    '0078-04-01 12:34:56',\n" + 
+                    "    '1978-04-01 12:34:56'" +
                     ");");
         }
 
@@ -128,7 +137,16 @@ public class MySqlYearIT extends AbstractConnectorTest {
                     "    '2018-04-01',\n" + 
                     "    '18-04-01 12:34:56',\n" + 
                     "    '0018-04-01 12:34:56',\n" + 
-                    "    '2018-04-01 12:34:56'\n" + 
+                    "    '2018-04-01 12:34:56',\n" + 
+                    "    '78',\n" + 
+                    "    '0078',\n" + 
+                    "    '1978',\n" + 
+                    "    '78-04-01',\n" + 
+                    "    '0078-04-01',\n" + 
+                    "    '1978-04-01',\n" + 
+                    "    '78-04-01 12:34:56',\n" + 
+                    "    '0078-04-01 12:34:56',\n" + 
+                    "    '1978-04-01 12:34:56'" +
                     ");");
         }
 
@@ -153,6 +171,19 @@ public class MySqlYearIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt64("dt18")).isEqualTo(1_522_586_096_000L);
         // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
         Assertions.assertThat(change.getInt64("dt2018")).isEqualTo(1_522_586_096_000L);
+
+        // YEAR does not differentiate between 0078 and 78
+        Assertions.assertThat(change.getInt32("y78")).isEqualTo(1978);
+        Assertions.assertThat(change.getInt32("y0078")).isEqualTo(1978);
+        Assertions.assertThat(change.getInt32("y1978")).isEqualTo(1978);
+
+        Assertions.assertThat(change.getInt32("d78")).isEqualTo(3012);
+        Assertions.assertThat(change.getInt32("d0078")).isEqualTo(-690948);
+        Assertions.assertThat(change.getInt32("d1978")).isEqualTo(3012);
+
+        Assertions.assertThat(change.getInt64("dt78")).isEqualTo(260_282_096_000L);
+        // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
+        Assertions.assertThat(change.getInt64("dt1978")).isEqualTo(260_282_096_000L);
     }
 
     private void assertChangeRecordByConnector() throws InterruptedException {
@@ -172,5 +203,18 @@ public class MySqlYearIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt64("dt18")).isEqualTo(1_522_586_096_000L);
         // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
         Assertions.assertThat(change.getInt64("dt2018")).isEqualTo(1_522_586_096_000L);
+
+        // YEAR does not differentiate between 0078 and 78
+        Assertions.assertThat(change.getInt32("y78")).isEqualTo(1978);
+        Assertions.assertThat(change.getInt32("y0078")).isEqualTo(1978);
+        Assertions.assertThat(change.getInt32("y1978")).isEqualTo(1978);
+
+        Assertions.assertThat(change.getInt32("d78")).isEqualTo(3012);
+        Assertions.assertThat(change.getInt32("d0078")).isEqualTo(3012);
+        Assertions.assertThat(change.getInt32("d1978")).isEqualTo(3012);
+
+        Assertions.assertThat(change.getInt64("dt78")).isEqualTo(260_282_096_000L);
+        // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
+        Assertions.assertThat(change.getInt64("dt1978")).isEqualTo(260_282_096_000L);
     }
 }
