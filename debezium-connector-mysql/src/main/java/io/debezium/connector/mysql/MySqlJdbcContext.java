@@ -359,11 +359,12 @@ public class MySqlJdbcContext implements AutoCloseable {
      * @return the session variables that are related to sessions ssl version
      */
     protected String getSessionVariableForSslVersion() {
+        final String SSL_VERSION = "Ssl_version";
         logger.debug("Reading MySQL Session variable for Ssl Version");
-        Map<String, String> systemVariableResults =
+        Map<String, String> sessionVariables =
             querySystemVariables(SQL_SHOW_SESSION_VARIABLE_SSL_VERSION);
-        if (!systemVariableResults.isEmpty() && systemVariableResults.containsKey("Ssl_version")) {
-            return systemVariableResults.get("Ssl_version");
+        if (!sessionVariables.isEmpty() && sessionVariables.containsKey(SSL_VERSION)) {
+            return sessionVariables.get(SSL_VERSION);
         }
         return null;
     }
