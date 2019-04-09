@@ -1995,11 +1995,11 @@ dataType
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
       ) 
       lengthOneDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
-    | typeName=(REAL | FLOAT)
+    | typeName=REAL
       lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
     | typeName=DOUBLE PRECISION?
       lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
-    | typeName=(DECIMAL | DEC | FIXED | NUMERIC)
+    | typeName=(DECIMAL | DEC | FIXED | NUMERIC | FLOAT)
       lengthTwoOptionalDimension? (SIGNED | UNSIGNED)? ZEROFILL?               #dimensionDataType
     | typeName=(
         DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB

@@ -49,6 +49,33 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1220")
+    public void shouldParseFloatVariants() {
+        final String ddl =
+                "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        final Table table = tables.forTable(null, null, "mytable");
+        assertThat(table.columns().size()).isEqualTo(4);
+
+        final Column f1 = table.columnWithName("f1");
+        assertThat(f1.typeName()).isEqualTo("FLOAT");
+        assertThat(f1.length()).isEqualTo(-1);
+        assertThat(f1.scale().isPresent()).isFalse();
+
+        final Column f2 = table.columnWithName("f2");
+        assertThat(f2.typeName()).isEqualTo("FLOAT");
+        assertThat(f2.length()).isEqualTo(4);
+        assertThat(f2.scale().isPresent()).isFalse();
+
+        final Column f3 = table.columnWithName("f3");
+        assertThat(f3.typeName()).isEqualTo("FLOAT");
+        assertThat(f3.length()).isEqualTo(7);
+        assertThat(f3.scale().get()).isEqualTo(4);
+    }
+
+    @Test
     @FixFor("DBZ-1185")
     public void shouldProcessSerialDatatype() {
         final String ddl =
