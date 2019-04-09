@@ -27,12 +27,11 @@ public interface DataChangeEventListener {
     /**
      * Invoked for events pertaining to non-whitelisted tables.
      */
-    void onSkippedEvent(String event);
+    void onFilteredEvent(String event);
 
     static DataChangeEventListener NO_OP = new DataChangeEventListener() {
-
         @Override
-        public void onSkippedEvent(String event) {
+        public void onFilteredEvent(String event) {
         }
 
         @Override

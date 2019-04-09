@@ -34,7 +34,7 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
 
     protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
-    protected final AtomicLong numberOfEventsSkipped = new AtomicLong();
+    private final AtomicLong numberOfEventsFiltered = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
     private volatile String lastEvent;
 
@@ -98,8 +98,8 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
-    public void onSkippedEvent(String event) {
-        numberOfEventsSkipped.incrementAndGet();
+    public void onFilteredEvent(String event) {
+        numberOfEventsFiltered.incrementAndGet();
         updateCommonEventMetrics();
     }
 
@@ -119,15 +119,20 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
+    public long getNumberOfEventsFiltered() {
+        return numberOfEventsFiltered.get();
+    }
+
+    @Override
     public long getNumberOfEventsSkipped() {
-        return numberOfEventsSkipped.get();
+        return getNumberOfEventsFiltered();
     }
 
     @Override
     public void reset() {
         totalNumberOfEventsSeen.set(0);
         lastEventTimestamp.set(-1);
-        numberOfEventsSkipped.set(0);
+        numberOfEventsFiltered.set(0);
         lastEvent = null;
     }
 
