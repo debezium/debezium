@@ -106,6 +106,18 @@ public class BinlogReaderIT {
         return counter.get();
     }
 
+    protected long filterAtLeast(final int minNumber, final long timeout, final TimeUnit unit) throws InterruptedException {
+        final BinlogReaderMetrics metrics = reader.getMetrics();
+        final long initialFilterCount = metrics.getNumberOfEventsFiltered();
+        final long targetNumber = initialFilterCount + minNumber;
+        long startTime = System.currentTimeMillis();
+        while (metrics.getNumberOfEventsFiltered() < targetNumber && (System.currentTimeMillis() - startTime) < unit.toMillis(timeout)) {
+            // Ignore the records polled.
+            reader.poll();
+        }
+        return reader.getMetrics().getNumberOfEventsFiltered() - initialFilterCount;
+    }
+
     protected Configuration.Builder simpleConfig() {
         return DATABASE.defaultConfig()
                             .with(MySqlConnectorConfig.USER, "replicator")
@@ -237,6 +249,46 @@ public class BinlogReaderIT {
         assertThat(orders.numberOfTombstones()).isEqualTo(0);
         assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
         assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
+    }
+
+    /**
+     * Setup a DATABASE_WHITELIST filter that filters all events.
+     * Verify all events are properly filtered.
+     * Verify numberOfFilteredEvents metric is incremented correctly.
+     */
+    @Test
+    @FixFor( "DBZ-1206" )
+    public void shouldFilterAllRecordsBasedOnDatabaseWhitelistFilter() throws Exception {
+        // Define configuration that will ignore all events from MySQL source.
+        config = simpleConfig()
+            .with(MySqlConnectorConfig.DATABASE_WHITELIST, "db-does-not-exist")
+            .build();
+
+        final Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
+        context.start();
+        context.source().setBinlogStartPoint("", 0L); // start from beginning
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
+
+        // Start reading the binlog ...
+        reader.start();
+
+        // Lets wait for at least 35 events to be filtered.
+        final int expectedFilterCount = 35;
+        final long numberFiltered = filterAtLeast(expectedFilterCount, 20, TimeUnit.SECONDS);
+
+        // All events should have been filtered.
+        assertThat(numberFiltered).isGreaterThanOrEqualTo(expectedFilterCount);
+
+        // There should be no schema changes
+        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+
+        // There should be no records
+        assertThat(store.collectionCount()).isEqualTo(0);
+
+        // There should be no skipped
+        assertThat(reader.getMetrics().getNumberOfSkippedEvents()).isEqualTo(0);
     }
 
     @Test

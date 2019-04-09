@@ -111,8 +111,8 @@ public class EventDispatcher<T extends DataCollectionId> {
     public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
 
         if(!filter.isIncluded(dataCollectionId)) {
-            eventListener.onSkippedEvent("source = " + dataCollectionId);
-            LOGGER.trace("Skipping data change event for {}", dataCollectionId);
+            LOGGER.trace("Filtered data change event for {}", dataCollectionId);
+            eventListener.onFilteredEvent("source = " + dataCollectionId);
         }
         else {
             DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
@@ -142,7 +142,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
         if(!filter.isIncluded(dataCollectionId)) {
-            LOGGER.trace("Skipping data change event for {}", dataCollectionId);
+            LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
             return;
         }
 
