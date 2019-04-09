@@ -71,4 +71,10 @@ public interface BinlogReaderMetricsMXBean extends StreamingChangeEventSourceMet
      * within the connectors {@see io.debezium.connector.mysql.EventBuffer} instance.
      */
     long getNumberOfLargeTransactions();
+
+    /**
+     * Tracks if the connector is running using Gtids to track current offset.
+     * @return true if using Gtids, false if not.
+     */
+    boolean getIsGtidModeEnabled();
 }
