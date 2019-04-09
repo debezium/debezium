@@ -26,4 +26,10 @@ public interface BinlogReaderMetricsMXBean extends StreamingChangeEventSourceMet
     long getNumberOfRolledBackTransactions();
     long getNumberOfNotWellFormedTransactions();
     long getNumberOfLargeTransactions();
+
+    /**
+     * Tracks if the connector is running using Gtids to track current offset.
+     * @return true if using Gtids, false if not.
+     */
+    boolean getIsGtidModeEnabled();
 }

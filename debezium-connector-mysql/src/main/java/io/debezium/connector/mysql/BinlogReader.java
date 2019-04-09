@@ -292,9 +292,12 @@ public class BinlogReader extends AbstractReader {
             eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
         }
 
+        final boolean isGtidModeEnabled = connectionContext.isGtidModeEnabled();
+        metrics.setIsGtidModeEnabled(isGtidModeEnabled);
+
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = connectionContext.knownGtidSet();
-        if (connectionContext.isGtidModeEnabled()) {
+        if (isGtidModeEnabled) {
             // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
 

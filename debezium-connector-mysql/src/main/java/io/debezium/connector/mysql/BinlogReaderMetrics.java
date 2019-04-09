@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -29,6 +30,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
     private final AtomicLong numberOfNotWellFormedTransactions = new AtomicLong();
     private final AtomicLong numberOfLargeTransactions = new AtomicLong();
+    private final AtomicBoolean isGtidModeEnabled = new AtomicBoolean(false);
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
     public BinlogReaderMetrics(BinaryLogClient client, MySqlTaskContext taskContext, String name, ChangeEventQueueMetrics changeEventQueueMetrics) {
@@ -56,6 +58,11 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
     @Override
     public String getGtidSet() {
         return this.client.getGtidSet();
+    }
+
+    @Override
+    public boolean getIsGtidModeEnabled() {
+        return isGtidModeEnabled.get();
     }
 
     @Override
@@ -101,6 +108,7 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
         numberOfNotWellFormedTransactions.set(0);
         numberOfLargeTransactions.set(0);
         lastTransactionId.set(null);
+        isGtidModeEnabled.set(false);
     }
 
     @Override
@@ -141,6 +149,10 @@ class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
 
     public void onGtidChange(String gtid) {
         lastTransactionId.set(gtid);
+    }
+
+    public void setIsGtidModeEnabled(final boolean enabled) {
+        isGtidModeEnabled.set(enabled);
     }
 
     @Override
