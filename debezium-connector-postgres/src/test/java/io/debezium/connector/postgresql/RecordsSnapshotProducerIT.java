@@ -22,9 +22,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
-import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -36,6 +33,9 @@ import org.junit.rules.TestRule;
 
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
+import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
+import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -506,10 +506,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("val", Schema.OPTIONAL_INT32_SCHEMA, 1000));
 
         consumer.process(record -> {
+            assertThat(record.key()).isNull();
             String actualTopicName = record.topic().replace(TestHelper.TEST_SERVER + ".", "");
             assertEquals("public.table_without_pk", actualTopicName);
             assertRecordSchemaAndValues(schemaAndValueFields, record, Envelope.FieldName.AFTER);
         });
     }
-
 }
