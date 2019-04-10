@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -33,6 +32,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.function.BlockingConsumer;
@@ -404,7 +404,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         Struct value = tableSchema.valueFromColumnData(rowData);
 
         if (value == null) {
-            logger.trace("key: {}; value: {}; One is null", key, value);
+            logger.trace("Read event for null key with value {}", value);
             return;
         }
         Schema keySchema = tableSchema.keySchema();
