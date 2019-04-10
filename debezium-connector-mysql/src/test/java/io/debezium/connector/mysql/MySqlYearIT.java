@@ -164,12 +164,17 @@ public class MySqlYearIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt32("y0018")).isEqualTo(2018);
         Assertions.assertThat(change.getInt32("y2018")).isEqualTo(2018);
 
+        // days elapsed since epoch till 2018-04-01
         Assertions.assertThat(change.getInt32("d18")).isEqualTo(17622);
+        // days counted backward from epoch to 0018-04-01
         Assertions.assertThat(change.getInt32("d0018")).isEqualTo(-712863);
+        // days elapsed since epoch till 2018-04-01
         Assertions.assertThat(change.getInt32("d2018")).isEqualTo(17622);
 
+        // nanos elapsed since epoch till 2018-04-01
         Assertions.assertThat(change.getInt64("dt18")).isEqualTo(1_522_586_096_000L);
         // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
+        // nanos elapsed since epoch till 2018-04-01
         Assertions.assertThat(change.getInt64("dt2018")).isEqualTo(1_522_586_096_000L);
 
         // YEAR does not differentiate between 0078 and 78
@@ -177,12 +182,17 @@ public class MySqlYearIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt32("y0078")).isEqualTo(1978);
         Assertions.assertThat(change.getInt32("y1978")).isEqualTo(1978);
 
+        // days elapsed since epoch till 1978-04-01
         Assertions.assertThat(change.getInt32("d78")).isEqualTo(3012);
+        // days counted backward from epoch to 0078-04-01
         Assertions.assertThat(change.getInt32("d0078")).isEqualTo(-690948);
+        // days elapsed since epoch till 1978-04-01
         Assertions.assertThat(change.getInt32("d1978")).isEqualTo(3012);
 
+        // nanos elapsed since epoch till 1978-04-01
         Assertions.assertThat(change.getInt64("dt78")).isEqualTo(260_282_096_000L);
         // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
+        // nanos elapsed since epoch till 1978-04-01
         Assertions.assertThat(change.getInt64("dt1978")).isEqualTo(260_282_096_000L);
     }
 
@@ -196,12 +206,14 @@ public class MySqlYearIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt32("y0018")).isEqualTo(2018);
         Assertions.assertThat(change.getInt32("y2018")).isEqualTo(2018);
 
+        // days elapsed since epoch till 2018-04-01
         Assertions.assertThat(change.getInt32("d18")).isEqualTo(17622);
         Assertions.assertThat(change.getInt32("d0018")).isEqualTo(17622);
         Assertions.assertThat(change.getInt32("d2018")).isEqualTo(17622);
 
+        // nanos elapsed since epoch till 2018-04-01
         Assertions.assertThat(change.getInt64("dt18")).isEqualTo(1_522_586_096_000L);
-        // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
+        Assertions.assertThat(change.getInt64("dt0018")).isEqualTo(1_522_586_096_000L);
         Assertions.assertThat(change.getInt64("dt2018")).isEqualTo(1_522_586_096_000L);
 
         // YEAR does not differentiate between 0078 and 78
@@ -209,12 +221,14 @@ public class MySqlYearIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt32("y0078")).isEqualTo(1978);
         Assertions.assertThat(change.getInt32("y1978")).isEqualTo(1978);
 
+        // days elapsed since epoch till 1978-04-01
         Assertions.assertThat(change.getInt32("d78")).isEqualTo(3012);
         Assertions.assertThat(change.getInt32("d0078")).isEqualTo(3012);
         Assertions.assertThat(change.getInt32("d1978")).isEqualTo(3012);
 
+        // nanos elapsed since epoch till 1978-04-01
         Assertions.assertThat(change.getInt64("dt78")).isEqualTo(260_282_096_000L);
-        // Assert for 0018 will not work as long is able to handle only 292 years of nanos so we are underflowing
+        Assertions.assertThat(change.getInt64("dt0078")).isEqualTo(260_282_096_000L);
         Assertions.assertThat(change.getInt64("dt1978")).isEqualTo(260_282_096_000L);
     }
 }
