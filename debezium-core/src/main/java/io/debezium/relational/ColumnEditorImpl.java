@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.List;
 import java.util.Optional;
 
 final class ColumnEditorImpl implements ColumnEditor {
@@ -25,6 +26,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     private boolean generated = false;
     private Object defaultValue = null;
     private boolean hasDefaultValue = false;
+    private List<String> enumValues;
 
     protected ColumnEditorImpl() {
     }
@@ -108,6 +110,11 @@ final class ColumnEditorImpl implements ColumnEditor {
     public ColumnEditorImpl name(String name) {
         this.name = name;
         return this;
+    }
+
+    @Override
+    public List<String> enumValues() {
+        return enumValues;
     }
 
     @Override
@@ -204,9 +211,15 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditor enumValues(List<String> enumValues) {
+        this.enumValues = enumValues;
+        return this;
+    }
+
+    @Override
     public Column create() {
-        return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName, length, scale, optional,
-                              autoIncremented, generated, defaultValue, hasDefaultValue);
+        return new ColumnImpl(name, position, jdbcType, nativeType, typeName, typeExpression, charsetName, tableCharsetName,
+                             length, scale, enumValues, optional, autoIncremented, generated, defaultValue, hasDefaultValue);
     }
 
     @Override

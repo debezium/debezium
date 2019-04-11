@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.List;
 import java.util.Optional;
 
 import io.debezium.annotation.NotThreadSafe;
@@ -128,6 +129,13 @@ public interface ColumnEditor {
     boolean hasDefaultValue();
 
     /**
+     * get the enumeration values for the column.
+     *
+     * @return the list of enumeration values
+     */
+    List<String> enumValues();
+
+    /**
      * Set the name of the column.
      *
      * @param name the column name
@@ -241,6 +249,14 @@ public interface ColumnEditor {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor defaultValue(Object defaultValue);
+
+    /**
+     * Set the list of enumeration values.
+     *
+     * @param enumValues the enumeration values
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor enumValues(List<String> enumValues);
 
     /**
      * Unsets the default value of the column, reverting the editor to the state where {@link #defaultValue(Object))}

@@ -617,6 +617,28 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         assertThat(tables.forTable(new TableId(null, null, "test_stations_10"))).isNotNull();
     }
 
+    @Test
+    @FixFor("DBZ-1226")
+    public void parseAlterEnumColumnWithEmbeddedOrEscapedCharacters() {
+        String ddl =
+                "CREATE TABLE `test_stations_11` (\n" +
+                        "    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
+                        "    `name` varchar(500) COLLATE utf8_unicode_ci NOT NULL,\n" +
+                        "    `type` enum('station', 'post_office') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'station',\n" +
+                        "    `created` datetime DEFAULT CURRENT_TIMESTAMP,\n" +
+                        "    `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                        "    PRIMARY KEY (`id`)\n" +
+                        ");\n" +
+                        "\n" +
+                        "ALTER TABLE `test_stations_11`\n" +
+                        "    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now', 'a,b', 'c,\\'b')\n" +
+                        "    CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';\n";
+
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(tables.forTable(new TableId(null, null, "test_stations_11"))).isNotNull();
+    }
+
     @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
         List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);

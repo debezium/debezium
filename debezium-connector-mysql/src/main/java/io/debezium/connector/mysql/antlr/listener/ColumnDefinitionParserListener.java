@@ -6,15 +6,15 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
-import static io.debezium.antlr.AntlrDdlParser.getText;
-
 import java.sql.Types;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.mysql.MySqlDefaultValuePreConverter;
 import io.debezium.connector.mysql.MySqlValueConverters;
@@ -226,7 +226,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
             if (dataType.name().toUpperCase().equals("SET")) {
                 // After DBZ-132, it will always be comma separated
-                int optionsSize = collectionDataTypeContext.collectionOptions().STRING_LITERAL().size();
+                int optionsSize = collectionDataTypeContext.collectionOptions().collectionOption().size();
                 columnEditor.length(Math.max(0, optionsSize * 2 - 1)); // number of options + number of commas
             }
             else {
@@ -241,9 +241,12 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
             MySqlParser.CollectionDataTypeContext collectionDataTypeContext =
                        (MySqlParser.CollectionDataTypeContext) dataTypeContext;
 
-            int start = dataTypeContext.start.getStartIndex();
-            int stop = collectionDataTypeContext.collectionOptions().stop.getStopIndex();
-            columnEditor.type(dataTypeName, getText(dataTypeContext, start, stop));
+            List<String> collectionOptions = collectionDataTypeContext.collectionOptions().collectionOption().stream()
+                    .map(AntlrDdlParser::getText)
+                    .collect(Collectors.toList());
+
+            columnEditor.type(dataTypeName);
+            columnEditor.enumValues(collectionOptions);
         }
         else if (dataTypeName.equals("SERIAL")) {
             // SERIAL is an alias for BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE

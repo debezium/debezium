@@ -500,8 +500,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     protected List<String> extractEnumAndSetOptions(Column column) {
-//        return MySqlDdlParser.parseSetAndEnumOptions(column.typeExpression());
-        return MySqlAntlrDdlParser.parseSetAndEnumOptions(column.typeExpression());
+        return MySqlAntlrDdlParser.extractEnumAndSetOptions(column.enumValues());
     }
 
     protected String extractEnumAndSetOptionsAsString(Column column) {
