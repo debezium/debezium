@@ -315,6 +315,25 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return options;
     }
 
+    /**
+     * Extracts the enumeration values properly parsed and escaped.
+     *
+     * @param enumValues the raw enumeration values from the parsed column definition
+     * @return the list of options allowed for the {@code ENUM} or {@code SET}; never null.
+     */
+    public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
+        return enumValues.stream()
+                .map(MySqlAntlrDdlParser::withoutQuotes)
+                .map(MySqlAntlrDdlParser::escapeOption)
+                .collect(Collectors.toList());
+    }
+
+    public static String escapeOption(String option) {
+        // Escape comma to backslash followed by comma
+        // Escape backlash+single-quote to a single-quote.
+        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'");
+    }
+
     public MySqlValueConverters getConverters() {
         return converters;
     }

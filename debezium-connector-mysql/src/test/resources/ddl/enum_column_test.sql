@@ -10,7 +10,7 @@ CREATE TABLE `test_stations_10` (
 INSERT INTO test_stations_10 (`name`, `type`) values ( 'ha Tinh 7', 'station' );
 
 ALTER TABLE `test_stations_10`
-    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now')
+    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now', 'test', 'a,b', 'c,\'d', 'g,''h')
     CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';
 
 INSERT INTO test_stations_10 ( `name`, `type` ) values ( 'Ha Tinh 1', 'now' );

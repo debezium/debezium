@@ -29,10 +29,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.junit.SkipForLegacyParser;
+import io.debezium.connector.mysql.junit.SkipTestForLegacyParser;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -54,6 +58,9 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     private Configuration config;
 
+    @Rule
+    public final TestRule skip = new SkipTestForLegacyParser();
+
     @Before
     public void beforeEach() {
         stopConnector();
@@ -73,6 +80,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-61")
+    @SkipForLegacyParser
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -332,6 +340,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-61")
+    @SkipForLegacyParser
     public void shouldConsumeAllEventsFromDatabaseUsingBinlogAndNoSnapshotAndConnectTimesTypes() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -774,6 +783,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-147")
+    @SkipForLegacyParser
     public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()

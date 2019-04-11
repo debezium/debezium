@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.List;
 import java.util.Optional;
 
 import io.debezium.annotation.Immutable;
@@ -140,6 +141,13 @@ public interface Column extends Comparable<Column> {
      * @return {@code true} if the default value was provided, or {@code false} otherwise
      */
     boolean hasDefaultValue();
+
+    /**
+     * Get the list of values associated with the enum
+     *
+     * @return the list of enum values
+     */
+    List<String> enumValues();
 
     @Override
     default int compareTo(Column that) {
