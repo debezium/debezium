@@ -283,6 +283,17 @@ public class StringsTest {
         assertThat(Strings.hexStringToByteArray("00")).isEqualTo(new byte[] { 0 });
         assertThat(Strings.hexStringToByteArray("010203")).isEqualTo(new byte[] { 1, 2, 3 });
         assertThat(Strings.hexStringToByteArray("CAFEBABE")).isEqualTo(new byte[] { -54, -2, -70, -66 });
+        assertThat(Strings.hexStringToByteArray("cafebabe")).isEqualTo(new byte[] { -54, -2, -70, -66 });
+    }
+
+    @Test
+    public void byteArrayToHexStringShouldReturnCorrectString() {
+        assertThat(Strings.byteArrayToHexString(null)).isNull();
+        assertThat(Strings.byteArrayToHexString(new byte[] { 0 })).isEqualTo("00");
+        assertThat(Strings.byteArrayToHexString(new byte[] { 1, 2, 3 })).isEqualTo("010203");
+        assertThat(Strings.byteArrayToHexString(new byte[] { -54, -2, -70, -66 })).isEqualTo("cafebabe");
+        assertThat(Strings.byteArrayToHexString(new byte[] { (byte) 0xf1, 0x1f })).isEqualTo("f11f");
+        assertThat(Strings.byteArrayToHexString(new byte[] { -54, -2, -70, -66 })).isEqualTo("cafebabe");
     }
 
     @Test

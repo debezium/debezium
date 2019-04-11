@@ -947,6 +947,27 @@ public final class Strings {
         return bytes;
     }
 
+    /**
+     * Encodes a byte array as a hex string.
+     */
+    public static String byteArrayToHexString(byte[] data) {
+        final int ZERO = 48;
+        final int A = 87;
+        if (data == null) {
+            return null;
+        }
+
+        final char[] out = new char[data.length * 2];
+
+        for (int i = 0; i < data.length; i++) {
+            final int high = (data[i] & 0xff) >> 4;
+            final int low  = (data[i] & 0xff) & 0x0f;
+            out[i * 2] = (char) (high < 10 ? ZERO + high : A + high);
+            out[i * 2 + 1] = (char) (low < 10 ? ZERO + low : A + low);
+        }
+        return String.valueOf(out);
+    }
+
     private static Character deriveQuotingChar(String identifierPart) {
         char first = identifierPart.charAt(0);
         char last = identifierPart.charAt(identifierPart.length() - 1);
