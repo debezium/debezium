@@ -20,6 +20,7 @@ public class SourceInfo extends AbstractSourceInfo {
     public static final String TXID_KEY = "txId";
     public static final String TIMESTAMP_KEY = "ts_ms";
     public static final String SCN_KEY = "scn";
+    public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
 
     public static final Schema SCHEMA = schemaBuilder()
@@ -28,11 +29,13 @@ public class SourceInfo extends AbstractSourceInfo {
             .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
             .field(TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .field(SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+            .field(LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
             .build();
 
     private final String serverName;
     private long scn;
+    private LcrPosition lcrPosition;
     private String transactionId;
     private Instant sourceTime;
     private boolean snapshot;
@@ -54,12 +57,16 @@ public class SourceInfo extends AbstractSourceInfo {
 
     @Override
     public Struct struct() {
-        return super.struct()
-                .put(SERVER_NAME_KEY, serverName)
-                .put(TIMESTAMP_KEY, sourceTime.toEpochMilli())
-                .put(TXID_KEY, transactionId)
-                .put(SCN_KEY, scn)
-                .put(SNAPSHOT_KEY, snapshot);
+        final Struct r =  super.struct()
+                            .put(SERVER_NAME_KEY, serverName)
+                            .put(TIMESTAMP_KEY, sourceTime.toEpochMilli())
+                            .put(TXID_KEY, transactionId)
+                            .put(SCN_KEY, scn)
+                            .put(SNAPSHOT_KEY, snapshot);
+        if (lcrPosition != null) {
+            r.put(LCR_POSITION_KEY, lcrPosition.toString());
+        }
+        return r;
     }
 
     public String getServerName() {
@@ -72,6 +79,14 @@ public class SourceInfo extends AbstractSourceInfo {
 
     public void setScn(long scn) {
         this.scn = scn;
+    }
+
+    public LcrPosition getLcrPosition() {
+        return lcrPosition;
+    }
+
+    public void setLcrPosition(LcrPosition lcrPosition) {
+        this.lcrPosition = lcrPosition;
     }
 
     public String getTransactionId() {

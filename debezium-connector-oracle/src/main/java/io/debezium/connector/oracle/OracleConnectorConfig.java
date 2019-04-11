@@ -173,7 +173,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                return (recorded.getLong(SourceInfo.SCN_KEY).compareTo(desired.getLong(SourceInfo.SCN_KEY)) < 1);
+                final LcrPosition recordedPosition = LcrPosition.valueOf(recorded.getString(SourceInfo.LCR_POSITION_KEY));
+                final LcrPosition desiredPosition = LcrPosition.valueOf(desired.getString(SourceInfo.LCR_POSITION_KEY));
+                final Long recordedScn = recordedPosition != null ? recordedPosition.getScn() : recorded.getLong(SourceInfo.SCN_KEY);
+                final Long desiredScn = desiredPosition != null ? desiredPosition.getScn() : desired.getLong(SourceInfo.SCN_KEY);
+
+                return (recordedPosition != null && desiredPosition != null)
+                        ? recordedPosition.compareTo(desiredPosition) < 1
+                        : recordedScn.compareTo(desiredScn) < 1;
             }
         };
     }

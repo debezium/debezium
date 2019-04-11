@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.sql.SQLException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +19,6 @@ import oracle.streams.LCR;
 import oracle.streams.RowLCR;
 import oracle.streams.StreamsException;
 import oracle.streams.XStreamLCRCallbackHandler;
-import oracle.streams.XStreamUtility;
 
 /**
  * Handler for Oracle DDL and DML events. Just forwards events to the {@link EventDispatcher}.
@@ -50,15 +47,25 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     @Override
     public void processLCR(LCR lcr) throws StreamsException {
-        long scn = convertPositionToScn(lcr.getPosition());
+        LOGGER.trace("Received LCR {}", lcr);
+        final LcrPosition lcrPosition = new LcrPosition(lcr.getPosition());
 
-        // After a restart it may happen we get the event with the last processed SCN again
-        if (scn <= offsetContext.getScn()) {
-            LOGGER.debug("Ignoring change event with already processed SCN {}", scn);
+        // After a restart it may happen we get the event with the last processed LCR again
+        if (lcrPosition.compareTo(offsetContext.getLcrPosition()) <= 0) {
+            if (LOGGER.isDebugEnabled()) {
+                final LcrPosition recPosition = offsetContext.getLcrPosition();
+                LOGGER.debug("Ignoring change event with already processed SCN/LCR Position {}/{}, last recorded {}/{}",
+                        lcrPosition,
+                        lcrPosition.getScn(),
+                        recPosition != null ? recPosition : "none",
+                        recPosition != null ? recPosition.getScn() : "none"
+                );
+            }
             return;
         }
 
-        offsetContext.setScn(scn);
+        offsetContext.setScn(lcrPosition.getScn());
+        offsetContext.setLcrPosition(lcrPosition);
         offsetContext.setTransactionId(lcr.getTransactionId());
         offsetContext.setSourceTime(lcr.getSourceTime().timestampValue().toInstant());
 
@@ -78,15 +85,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         // XStream's receiveLCRCallback() doesn't reliably propagate exceptions, so we do that ourselves here
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
-        }
-    }
-
-    private long convertPositionToScn(byte[] position) {
-        try {
-            return XStreamUtility.getSCNFromPosition(position).longValue();
-        }
-        catch (SQLException | StreamsException e) {
-            throw new RuntimeException(e);
         }
     }
 

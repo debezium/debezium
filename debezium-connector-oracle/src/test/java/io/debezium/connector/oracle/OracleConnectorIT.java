@@ -199,6 +199,174 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1223")
+    public void shouldStreamTransaction() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        // Testing.Print.enable();
+        int expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
+        connection.execute("COMMIT");
+        expectedRecordCount += 2;
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        // read
+        SourceRecord record1 = testTableRecords.get(0);
+        VerifyRecord.isValidRead(record1, "ID", 1);
+        Struct after = (Struct) ((Struct) record1.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(1);
+
+        Struct source = (Struct) ((Struct) record1.value()).get("source");
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
+        assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
+        assertThat(source.get(SourceInfo.TXID_KEY)).isNull();
+        assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
+
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
+
+        SourceRecord record2 = testTableRecords.get(1);
+        VerifyRecord.isValidRead(record2, "ID", 2);
+        after = (Struct) ((Struct) record2.value()).get("after");
+        assertThat(after.get("ID")).isEqualTo(2);
+
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+
+        expectedRecordCount = 30;
+        connection.setAutoCommit(false);
+        sendTxBatch(expectedRecordCount, 100);
+        sendTxBatch(expectedRecordCount, 200);
+    }
+
+    private void sendTxBatch(int expectedRecordCount, int offset) throws SQLException, InterruptedException {
+        for (int i = offset; i < expectedRecordCount + offset; i++) {
+            connection.executeWithoutCommitting(String.format("INSERT INTO debezium.customer VALUES (%s, 'Brian%s', 2345.67, null)", i, i));
+        }
+        connection.connection().commit();
+
+        assertTxBatch(expectedRecordCount, offset);
+    }
+
+    private void assertTxBatch(int expectedRecordCount, int offset) throws InterruptedException {
+        SourceRecords records;
+        List<SourceRecord> testTableRecords;
+        Struct after;
+        Struct source;
+        records = consumeRecordsByTopic(expectedRecordCount);
+        testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        for (int i = 0; i < expectedRecordCount; i++) {
+            SourceRecord record3 = testTableRecords.get(i);
+            VerifyRecord.isValidInsert(record3, "ID", i + offset);
+            after = (Struct) ((Struct) record3.value()).get("after");
+            assertThat(after.get("ID")).isEqualTo(i + offset);
+
+            assertThat(record3.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse();
+            assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
+            assertThat(record3.sourceOffset().containsKey(SourceInfo.LCR_POSITION_KEY)).isTrue();
+            assertThat(record3.sourceOffset().containsKey(SourceInfo.SCN_KEY)).isFalse();
+
+            source = (Struct) ((Struct) record3.value()).get("source");
+            assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(false);
+            assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.LCR_POSITION_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
+            assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.TXID_KEY)).isNotNull();
+            assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
+        }
+    }
+
+    @Test
+    public void shouldStreamAfterRestart() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        // Testing.Print.enable();
+        int expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
+        connection.execute("COMMIT");
+        expectedRecordCount += 2;
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        expectedRecordCount = 30;
+        connection.setAutoCommit(false);
+        sendTxBatch(expectedRecordCount, 100);
+        sendTxBatch(expectedRecordCount, 200);
+
+        stopConnector();
+        final int OFFSET = 300;
+        for (int i = OFFSET; i < expectedRecordCount + OFFSET; i++) {
+            connection.executeWithoutCommitting(String.format("INSERT INTO debezium.customer VALUES (%s, 'Brian%s', 2345.67, null)", i, i));
+        }
+        connection.connection().commit();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        assertTxBatch(expectedRecordCount, 300);
+        sendTxBatch(expectedRecordCount, 400);
+        sendTxBatch(expectedRecordCount, 500);
+    }
+
+    @Test
+    public void shouldStreamAfterRestartAfterSnapshot() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .build();
+
+        // Testing.Print.enable();
+        int expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Bruce', 2345.67, null)");
+        connection.execute("COMMIT");
+        expectedRecordCount += 2;
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        stopConnector();
+
+        connection.setAutoCommit(false);
+        final int OFFSET = 100;
+        for (int i = OFFSET; i < expectedRecordCount + OFFSET; i++) {
+            connection.executeWithoutCommitting(String.format("INSERT INTO debezium.customer VALUES (%s, 'Brian%s', 2345.67, null)", i, i));
+        }
+        connection.connection().commit();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        assertTxBatch(expectedRecordCount, 100);
+        sendTxBatch(expectedRecordCount, 200);
+    }
+
+    @Test
     public void shouldReadChangeStreamForExistingTable() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")

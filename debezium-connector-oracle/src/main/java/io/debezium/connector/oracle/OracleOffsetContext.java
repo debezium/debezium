@@ -30,21 +30,28 @@ public class OracleOffsetContext implements OffsetContext {
      */
     private boolean snapshotCompleted;
 
-    private OracleOffsetContext(String serverName, long scn, boolean snapshot, boolean snapshotCompleted) {
+    private OracleOffsetContext(String serverName, long scn, LcrPosition lcrPosition, boolean snapshot, boolean snapshotCompleted) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
 
         sourceInfo = new SourceInfo(serverName);
         sourceInfo.setScn(scn);
-        sourceInfo.setSnapshot(snapshot);
+        sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
 
         this.snapshotCompleted = snapshotCompleted;
+        if (this.snapshotCompleted) {
+            postSnapshotCompletion();
+        }
+        else {
+            sourceInfo.setSnapshot(snapshot);
+        }
     }
 
     public static class Builder {
 
         private String logicalName;
         private long scn;
+        private LcrPosition lcrPosition;
         private boolean snapshot;
         private boolean snapshotCompleted;
 
@@ -55,6 +62,11 @@ public class OracleOffsetContext implements OffsetContext {
 
         public Builder scn(long scn) {
             this.scn = scn;
+            return this;
+        }
+
+        public Builder lcrPosition(LcrPosition lcrPosition) {
+            this.lcrPosition = lcrPosition;
             return this;
         }
 
@@ -69,7 +81,7 @@ public class OracleOffsetContext implements OffsetContext {
         }
 
         OracleOffsetContext build() {
-            return new OracleOffsetContext(logicalName, scn, snapshot, snapshotCompleted);
+            return new OracleOffsetContext(logicalName, scn, lcrPosition, snapshot, snapshotCompleted);
         }
     }
 
@@ -94,6 +106,9 @@ public class OracleOffsetContext implements OffsetContext {
             return offset;
         }
         else {
+            if (sourceInfo.getLcrPosition() != null) {
+                return Collections.singletonMap(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
+            }
             return Collections.singletonMap(SourceInfo.SCN_KEY, sourceInfo.getScn());
         }
     }
@@ -114,6 +129,14 @@ public class OracleOffsetContext implements OffsetContext {
 
     public long getScn() {
         return sourceInfo.getScn();
+    }
+
+    public void setLcrPosition(LcrPosition lcrPosition) {
+        sourceInfo.setLcrPosition(lcrPosition);
+    }
+
+    public LcrPosition getLcrPosition() {
+        return sourceInfo.getLcrPosition();
     }
 
     public void setTransactionId(String transactionId) {
@@ -174,11 +197,12 @@ public class OracleOffsetContext implements OffsetContext {
 
         @Override
         public OffsetContext load(Map<String, ?> offset) {
-            Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
+            LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
+            Long scn = lcrPosition != null ? lcrPosition.getScn() : (Long) offset.get(SourceInfo.SCN_KEY);
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            return new OracleOffsetContext(logicalName, scn, snapshot, snapshotCompleted);
+            return new OracleOffsetContext(logicalName, scn, lcrPosition, snapshot, snapshotCompleted);
         }
     }
 }

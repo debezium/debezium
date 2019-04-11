@@ -59,8 +59,9 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         try {
             // 1. connect
+            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition() : convertScnToPosition(offsetContext.getScn()); 
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
-                    convertScnToPosition(offsetContext.getScn()), 1, 1, XStreamOut.DEFAULT_MODE);
+                    startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
             LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive);
 
@@ -93,17 +94,36 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
         if (xsOut != null) {
             try {
                 LOGGER.debug("Recording offsets to Oracle");
-                xsOut.setProcessedLowWatermark(
-                        convertScnToPosition((Long) offset.get(SourceInfo.SCN_KEY)),
-                        XStreamOut.DEFAULT_MODE
-                );
+                final LcrPosition lcrPosition = LcrPosition.valueOf((String) offset.get(SourceInfo.LCR_POSITION_KEY));
+                final Long scn = (Long) offset.get(SourceInfo.SCN_KEY);
+                if (lcrPosition != null) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Recording position {}", lcrPosition);
+                    }
+                    xsOut.setProcessedLowWatermark(
+                            lcrPosition.getRawPosition(),
+                            XStreamOut.DEFAULT_MODE
+                    );
+                }
+                else if (scn != null) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Recording position with SCN {}", scn);
+                    }
+                    xsOut.setProcessedLowWatermark(
+                            convertScnToPosition(scn),
+                            XStreamOut.DEFAULT_MODE
+                    );
+                }
+                else {
+                    LOGGER.warn("Nothing in offsets could be recorded to Oracle");
+                    return;
+                }
                 LOGGER.trace("Offsets recorded to Oracle");
             }
             catch (StreamsException e) {
                 throw new RuntimeException("Couldn't set processed low watermark", e);
             }
         }
-
     }
 
     private byte[] convertScnToPosition(long scn) {
