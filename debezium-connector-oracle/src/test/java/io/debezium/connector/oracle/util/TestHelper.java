@@ -49,7 +49,7 @@ public class TestHelper {
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
         );
 
-        return builder.with(OracleConnectorConfig.LOGICAL_NAME, "server1")
+        return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                 .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)

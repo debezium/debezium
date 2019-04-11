@@ -35,17 +35,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     // TODO pull up to RelationalConnectorConfig
     public static final String DATABASE_CONFIG_PREFIX = "database.";
 
-    public static final Field LOGICAL_NAME = Field.create("database.server.name")
-            .withDisplayName("Namespace")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            // TODO
-            //.withValidation(Field::isRequired, MySqlConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
-            .withDescription("Unique name that identifies the database server and all recorded offsets, and"
-                    + "that is used as a prefix for all schemas and topics.");
-
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database name")
             .withType(Type.STRING)
@@ -98,7 +87,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(
-            LOGICAL_NAME,
+            RelationalDatabaseConnectorConfig.SERVER_NAME,
             DATABASE_NAME,
             PDB_NAME,
             XSTREAM_SERVER_NAME,
@@ -126,7 +115,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final OracleVersion oracleVersion;
 
     public OracleConnectorConfig(Configuration config) {
-        super(config, config.getString(LOGICAL_NAME), new SystemTablesPredicate());
+        super(config, config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME), new SystemTablesPredicate());
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.pdbName = config.getString(PDB_NAME);
@@ -139,7 +128,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "Oracle", LOGICAL_NAME, DATABASE_NAME, PDB_NAME, XSTREAM_SERVER_NAME, SNAPSHOT_MODE);
+        Field.group(config, "Oracle", RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, PDB_NAME,
+                XSTREAM_SERVER_NAME, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
