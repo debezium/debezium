@@ -514,6 +514,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    // MACADDR8 Postgres type is only supported since Postgres version 10
     @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
     @FixFor("DBZ-1193")
     public void shouldGenerateSnapshotForMacaddr8Datatype() throws Exception {
