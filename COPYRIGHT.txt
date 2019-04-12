@@ -21,6 +21,7 @@ David Leibovic
 David Szabo
 Deepak Barr
 Denis Mikhaylov
+Dennis Campagna 
 Dennis Persson
 Duncan Sands
 Echo Xu
@@ -84,6 +85,7 @@ Taylor Rolison
 Tom Bentley
 Tomaz Lemos Fernandes
 Tony Rizko
+Wang-Yu-Chao
 WenZe Hu
 Willie Cheong
 Muhammad Sufyian
