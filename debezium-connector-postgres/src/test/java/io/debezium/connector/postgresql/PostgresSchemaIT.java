@@ -17,9 +17,6 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
-import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -27,8 +24,11 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
@@ -38,6 +38,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -49,7 +50,6 @@ import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
-import org.junit.rules.TestRule;
 
 /**
  * Unit test for {@link PostgresSchema}
@@ -64,7 +64,7 @@ public class PostgresSchemaIT {
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
                                                                "public.cash_table", "public.bitbin_table", "public.network_address_table",
                                                                "public.cidr_network_address_table", "public.macaddr_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.range_table",
                                                                "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"",
                                                                "public.custom_table"
                                                              };
@@ -116,8 +116,11 @@ public class PostgresSchemaIT {
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
                               Uuid.builder().optional().build());
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
-            assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
-                              Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.range_table", "unbounded_exclusive_tsrange, bounded_inclusive_tsrange," +
+                            "unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange," +
+                            "unbounded_exclusive_daterange, bounded_exclusive_daterange",
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
                               SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
