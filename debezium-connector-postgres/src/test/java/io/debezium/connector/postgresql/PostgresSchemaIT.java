@@ -54,7 +54,7 @@ public class PostgresSchemaIT {
 
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
                                                                "public.cash_table", "public.bitbin_table", "public.network_address_table", "public.cidr_network_address_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.range_table",
                                                                "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"",
                                                                "public.custom_table"
                                                              };
@@ -105,8 +105,11 @@ public class PostgresSchemaIT {
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
                               Uuid.builder().optional().build());
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
-            assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
-                              Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.range_table", "unbounded_exclusive_tsrange, bounded_inclusive_tsrange," +
+                            "unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange," +
+                            "unbounded_exclusive_daterange, bounded_exclusive_daterange",
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
                               SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());

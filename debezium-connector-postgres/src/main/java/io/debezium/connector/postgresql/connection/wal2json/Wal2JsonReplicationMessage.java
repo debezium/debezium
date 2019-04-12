@@ -360,7 +360,9 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "jsonb":
             case "xml":
             case "uuid":
+            case "tsrange":
             case "tstzrange":
+            case "daterange":
             case "inet":
             case "cidr":
                 return rawValue.asString();

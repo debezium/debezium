@@ -212,7 +212,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 PgProto.Point datumPoint = datumMessage.getDatumPoint();
                 return new PGpoint(datumPoint.getX(), datumPoint.getY());
             }
+            case PgOid.TSRANGE_OID:
             case PgOid.TSTZRANGE_OID:
+            case PgOid.DATERANGE_OID:
                 return datumMessage.hasDatumBytes() ? new String(datumMessage.getDatumBytes().toByteArray(), Charset.forName("UTF-8")) : null;
             case PgOid.INT2_ARRAY:
             case PgOid.INT4_ARRAY:
@@ -244,6 +246,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.REF_CURSOR_ARRAY:
             case PgOid.INET_ARRAY:
             case PgOid.CIDR_ARRAY:
+            case PgOid.TSRANGE_ARRAY:
+            case PgOid.TSTZRANGE_ARRAY:
+            case PgOid.DATERANGE_ARRAY:
                 return getArray(datumMessage, connection, columnType);
 
             case PgOid.UNSPECIFIED:

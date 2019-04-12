@@ -120,14 +120,15 @@ public abstract class AbstractRecordsProducerTest {
                     + "null, null, null, null, null, null"
             + ")";
 
-    protected static final String INSERT_TSTZRANGE_TYPES_STMT = "INSERT INTO tstzrange_table (unbounded_exclusive_range, bounded_inclusive_range) " +
-            "VALUES ('[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]')";
+    protected static final String INSERT_RANGE_TYPES_STMT = "INSERT INTO range_table (unbounded_exclusive_tsrange, bounded_inclusive_tsrange, unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange, unbounded_exclusive_daterange, bounded_exclusive_daterange) " +
+            "VALUES ('[2019-03-31 15:30:00, infinity)', '[2019-03-31 15:30:00, 2019-04-30 15:30:00]', '[2017-06-05 11:29:12.549426+00,)', '[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]', '[2019-03-31, infinity)', '[2019-03-31, 2019-04-30)')";
 
-    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array) " +
-                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}', '{\"four\",\"five\",\"six\"}', '{\"192.168.2.0/12\",\"192.168.1.1\",\"192.168.0.2/1\"}', '{\"192.168.100.128/25\", \"192.168.0.0/25\", \"192.168.1.0/24\"}')";
+    protected static final String INSERT_ARRAY_TYPES_STMT = "INSERT INTO array_table (int_array, bigint_array, text_array, char_array, varchar_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array, tsrange_array, tstzrange_array, daterange_array) " +
+                                                             "VALUES ('{1,2,3}', '{1550166368505037572}', '{\"one\",\"two\",\"three\"}', '{\"cone\",\"ctwo\",\"cthree\"}', '{\"vcone\",\"vctwo\",\"vcthree\"}', '{2016-11-04,2016-11-05,2016-11-06}', '{1.2,3.4,5.6}', '{1.1,2.22,3.333}', '{\"four\",\"five\",\"six\"}', '{\"192.168.2.0/12\",\"192.168.1.1\",\"192.168.0.2/1\"}', '{\"192.168.100.128/25\", \"192.168.0.0/25\", \"192.168.1.0/24\"}'," +
+                                                                "'{\"[2019-03-31 15:30:00, infinity)\", \"[2019-03-31 15:30:00, 2019-04-30 15:30:00]\"}', '{\"[2017-06-05 11:29:12.549426+00,)\", \"[2017-06-05 11:29:12.549426+00, 2017-06-05 12:34:56.789012+00]\"}', '{\"[2019-03-31, infinity)\", \"[2019-03-31, 2019-04-30)\"}')";
 
-    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array) " +
-            "VALUES (null, null, null, null, null, null, null, null, null)";
+    protected static final String INSERT_ARRAY_TYPES_WITH_NULL_VALUES_STMT = "INSERT INTO array_table_with_nulls (int_array, bigint_array, text_array, date_array, numeric_array, varnumeric_array, citext_array, inet_array, cidr_array, tsrange_array, tstzrange_array, daterange_array) " +
+            "VALUES (null, null, null, null, null, null, null, null, null, null, null, null)";
 
     protected static final String INSERT_POSTGIS_TYPES_STMT = "INSERT INTO public.postgis_table (p, ml) " +
             "VALUES ('SRID=3187;POINT(174.9479 -36.7208)'::postgis.geometry, 'MULTILINESTRING((169.1321 -44.7032, 167.8974 -44.6414))'::postgis.geography)";
@@ -408,21 +409,42 @@ public abstract class AbstractRecordsProducerTest {
         return Collections.singletonList(new SchemaAndValueField("p", pointSchema, Point.createValue(pointSchema, 1, 1)));
     }
 
-    protected List<SchemaAndValueField> schemaAndValuesForTstzRangeTypes() {
+    protected List<SchemaAndValueField> schemaAndValuesForRangeTypes() {
+        String unboundedEnd = "infinity";
+
+        // Tstrange type
+        String beginTsrange = "2019-03-31 15:30:00";
+        String endTsrange = "2019-04-30 15:30:00";
+
+        String expectedUnboundedExclusiveTsrange = String.format("[\"%s\",%s)", beginTsrange, unboundedEnd);
+        String expectedBoundedInclusiveTsrange = String.format("[\"%s\",\"%s\"]", beginTsrange, endTsrange);
+
+        // Tstzrange type
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
-        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
-        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
+        Instant beginTstzrange = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
+        Instant endTstzrange = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
 
         // Acknowledge timezone expectation of the system running the test
-        String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(begin);
-        String endSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(end);
+        String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(beginTstzrange);
+        String endSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(endTstzrange);
 
-        String expectedField1 = String.format("[\"%s\",)", beginSystemTime);
-        String expectedField2 = String.format("[\"%s\",\"%s\"]", beginSystemTime, endSystemTime);
+        String expectedUnboundedExclusiveTstzrange = String.format("[\"%s\",)", beginSystemTime);
+        String expectedBoundedInclusiveTstzrange = String.format("[\"%s\",\"%s\"]", beginSystemTime, endSystemTime);
+
+        // Daterange
+        String beginDaterange = "2019-03-31";
+        String endDaterange = "2019-04-30";
+
+        String expectedUnboundedDaterange = String.format("[%s,%s)", beginDaterange, unboundedEnd);
+        String expectedBoundedDaterange = String.format("[%s,%s)", beginDaterange, endDaterange);
 
         return Arrays.asList(
-                new SchemaAndValueField("unbounded_exclusive_range", Schema.OPTIONAL_STRING_SCHEMA, expectedField1),
-                new SchemaAndValueField("bounded_inclusive_range", Schema.OPTIONAL_STRING_SCHEMA, expectedField2)
+                new SchemaAndValueField("unbounded_exclusive_tsrange", Schema.OPTIONAL_STRING_SCHEMA, expectedUnboundedExclusiveTsrange),
+                new SchemaAndValueField("bounded_inclusive_tsrange", Schema.OPTIONAL_STRING_SCHEMA, expectedBoundedInclusiveTsrange),
+                new SchemaAndValueField("unbounded_exclusive_tstzrange", Schema.OPTIONAL_STRING_SCHEMA, expectedUnboundedExclusiveTstzrange),
+                new SchemaAndValueField("bounded_inclusive_tstzrange", Schema.OPTIONAL_STRING_SCHEMA, expectedBoundedInclusiveTstzrange),
+                new SchemaAndValueField("unbounded_exclusive_daterange", Schema.OPTIONAL_STRING_SCHEMA, expectedUnboundedDaterange),
+                new SchemaAndValueField("bounded_exclusive_daterange", Schema.OPTIONAL_STRING_SCHEMA, expectedBoundedDaterange)
         );
     }
 
@@ -497,6 +519,17 @@ public abstract class AbstractRecordsProducerTest {
         element.put("scale", 3).put("value", new BigDecimal("3.333").unscaledValue().toByteArray());
         varnumArray.add(element);
 
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSx");
+        Instant begin = dateTimeFormatter.parse("2017-06-05 11:29:12.549426+00", Instant::from);
+        Instant end = dateTimeFormatter.parse("2017-06-05 12:34:56.789012+00", Instant::from);
+
+        // Acknowledge timezone expectation of the system running the test
+        String beginSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(begin);
+        String endSystemTime = dateTimeFormatter.withZone(ZoneId.systemDefault()).format(end);
+
+        String expectedFirstTstzrange = String.format("[\"%s\",)", beginSystemTime);
+        String expectedSecondTstzrange = String.format("[\"%s\",\"%s\"]", beginSystemTime, endSystemTime);
+
        return Arrays.asList(new SchemaAndValueField("int_array", SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(),
                                 Arrays.asList(1, 2, 3)),
                             new SchemaAndValueField("bigint_array", SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
@@ -525,9 +558,14 @@ public abstract class AbstractRecordsProducerTest {
                                     Arrays.asList("four", "five", "six")),
                             new SchemaAndValueField("inet_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
                                     Arrays.asList("192.168.2.0/12", "192.168.1.1", "192.168.0.2/1")),
-
                            new SchemaAndValueField("cidr_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
-                                    Arrays.asList("192.168.100.128/25", "192.168.0.0/25", "192.168.1.0/24"))
+                                    Arrays.asList("192.168.100.128/25", "192.168.0.0/25", "192.168.1.0/24")),
+                            new SchemaAndValueField("tsrange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList("[\"2019-03-31 15:30:00\",infinity)", "[\"2019-03-31 15:30:00\",\"2019-04-30 15:30:00\"]")),
+                            new SchemaAndValueField("tstzrange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList(expectedFirstTstzrange, expectedSecondTstzrange)),
+                            new SchemaAndValueField("daterange_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                                    Arrays.asList("[2019-03-31,infinity)", "[2019-03-31,2019-04-30)"))
                             );
     }
 
@@ -542,8 +580,10 @@ public abstract class AbstractRecordsProducerTest {
                 new SchemaAndValueField("numeric_array", SchemaBuilder.array(Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "10").optional().build()).optional().build(), null),
                 new SchemaAndValueField("citext_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
                 new SchemaAndValueField("inet_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
-                new SchemaAndValueField("cidr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
-
+                new SchemaAndValueField("cidr_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("tsrange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("tstzrange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null),
+                new SchemaAndValueField("daterange_array", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build(), null)
         );
     }
 
@@ -639,6 +679,8 @@ public abstract class AbstractRecordsProducerTest {
                 return schemasAndValuesForNetworkAddressTypes();
             case INSERT_CIDR_NETWORK_ADDRESS_TYPE_STMT:
                 return schemasAndValueForCidrAddressType();
+            case INSERT_RANGE_TYPES_STMT:
+                return schemaAndValuesForRangeTypes();
             case INSERT_TEXT_TYPES_STMT:
                 return schemasAndValuesForTextTypes();
             case INSERT_ARRAY_TYPES_STMT:

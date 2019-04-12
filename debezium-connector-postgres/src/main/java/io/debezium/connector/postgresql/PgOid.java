@@ -20,7 +20,12 @@ public final class PgOid extends Oid {
      * Internal PG types as returned by the plugin
      */
     public static final int JSONB_OID = 3802;
+    public static final int TSRANGE_OID = 3908;
+    public static final int TSRANGE_ARRAY = 3909;
     public static final int TSTZRANGE_OID = 3910;
+    public static final int TSTZRANGE_ARRAY = 3911;
+    public static final int DATERANGE_OID = 3912;
+    public static final int DATERANGE_ARRAY = 3913;
     public static final int INET_OID = 869;
     public static final int INET_ARRAY = 1041;
     public static final int CIDR_OID=650;
