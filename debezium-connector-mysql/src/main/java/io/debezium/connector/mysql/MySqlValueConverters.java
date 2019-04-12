@@ -20,6 +20,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;
+import java.time.temporal.TemporalAdjuster;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -92,29 +93,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * A utility method that adjusts <a href="https://dev.mysql.com/doc/refman/5.7/en/two-digit-years.html">ambiguous</a> 2-digit
-     * year values of YEAR type using these MySQL-specific rules:
-     * <ul>
-     * <li>Year values in the range 01-69 are converted to 2001-2069.</li>
-     * <li>Year values in the range 70-99 are converted to 1970-1999.</li>
-     * </ul>
-     * MySQL treats YEAR(4) the same, except that a numeric 00 inserted into YEAR(4) results in 0000 rather than 2000; to
-     * specify zero for YEAR(4) and have it be interpreted as 2000, specify it as a string '0' or '00'. This should be handled
-     * by MySQL before Debezium sees the value.
-     *
-     * @param year the year value to adjust; may not be null
-     * @return the possibly adjusted year number; never null
-     */
-    protected static int adjustYear(int year) {
-        if (0 < year && year <= 69) {
-            year += 2000;
-        } else if (70 <= year && year <= 99) {
-            year += 1900;
-        }
-        return year;
-    }
-
-    /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
      * to values that require timezones.
      * <p>
@@ -126,7 +104,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode);
+        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, x-> x);
     }
 
     /**
@@ -141,9 +119,26 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            have timezones; may be null if UTC is to be used
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
+     * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset, MySqlValueConverters::adjustTemporal, bigIntUnsignedMode);
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster) {
+        super(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode);
+    }
+
+    /**
+     * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
+     * to values that require timezones.
+     * <p>
+     *
+     * @param decimalMode how {@code DECIMAL} and {@code NUMERIC} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE} is to be used
+     * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
+     * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
+     *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
+     * @param adjuster a temporal adjuster to make a database specific time modification before conversion
+     */
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster) {
+        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, adjuster);
     }
 
     @Override
@@ -393,18 +388,19 @@ public class MySqlValueConverters extends JdbcValueConverters {
             Object mutData = data;
             if (data instanceof java.time.Year) {
                 // The MySQL binlog always returns a Year object ...
-                r.deliver(adjustYear(((java.time.Year) data).getValue()));
+                r.deliver(adjustTemporal(java.time.Year.of(((java.time.Year) data).getValue())).get(ChronoField.YEAR));
             }
             else if (data instanceof java.sql.Date) {
                 // MySQL JDBC driver sometimes returns a Java SQL Date object ...
-                r.deliver(adjustYear(((java.sql.Date) data).getYear()));
+                // year from java.sql.Date is defined as number of years since 1900
+                r.deliver(((java.sql.Date) data).getYear() + 1900);
             }
             else if (data instanceof String) {
                 mutData = Integer.valueOf((String) data);
             }
             if (mutData instanceof Number) {
                 // MySQL JDBC driver sometimes returns a short ...
-                r.deliver(adjustYear(((Number) mutData).intValue()));
+                r.deliver(adjustTemporal(java.time.Year.of(((Number) mutData).intValue())).get(ChronoField.YEAR));
             }
         });
     }

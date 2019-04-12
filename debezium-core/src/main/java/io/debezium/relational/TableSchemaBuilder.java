@@ -218,7 +218,7 @@ public class TableSchemaBuilder {
                     ValueConverter converter = converters[i];
 
                     if (converter != null) {
-                      LOGGER.trace("converter for value object: *** {} ***", converter.toString());
+                      LOGGER.trace("converter for value object: *** {} ***", converter);
                     }
                     else {
                       LOGGER.trace("converter is null...");

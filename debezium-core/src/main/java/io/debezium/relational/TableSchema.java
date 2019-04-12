@@ -127,8 +127,10 @@ public class TableSchema implements DataCollectionSchema {
      * @return the key, or null if the {@code columnData}
      */
     public Object keyFromColumnData(Object[] columnData) {
-        logger.trace("columnData from current stack: {}", String.valueOf(columnData));
-        logger.trace("key from column data stack: " , new Throwable());
+        if (logger.isTraceEnabled()) {
+            logger.trace("columnData from current stack: {}", columnData);
+            logger.trace("key from column data stack: ", new Throwable());
+        }
         return columnData == null ? null : keyGenerator.apply(columnData);
     }
 

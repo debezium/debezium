@@ -1093,6 +1093,16 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                             + "be masked with " + length + " asterisk ('*') characters.");
     }
 
+    public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
+            .withDisplayName("Enable Time Adjuster")
+            .withType(Type.BOOLEAN)
+            .withDefault(true)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("MySQL allows user to insert year value as either 2-digit or 4-digit. In case of two digit the value is automatically mapped into 1970 - 2069." +
+                    "false - delegates the implicit conversion to the database" +
+                    "true - (the default) Debezium makes the conversion");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -1119,7 +1129,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
                                                      DDL_PARSER_MODE,
-                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -1204,7 +1214,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE, ENABLE_TIME_ADJUSTER);
         return config;
     }
 

@@ -12,6 +12,7 @@ Attila Szucs
 Barry LaFond
 Ben Williams
 Brandon Maguire
+Chris Cranford
 Chris Riccomini
 Christian Posta
 Cliff Wheadon
@@ -38,6 +39,7 @@ Ivan Kovbas
 Ivan Vucina
 Jiri Pechanec
 Jon Casstevens
+Jordan Bragg
 Josh Stanfield
 Joy Gao
 Jure Kajzer
@@ -59,6 +61,7 @@ Orr Ganani
 Peter Goransson
 Philip Sanetra
 Prannoy Mittal
+Preethi Sadagopan
 Raf Liwoch
 Ramesh Reddy
 Randall Hauch

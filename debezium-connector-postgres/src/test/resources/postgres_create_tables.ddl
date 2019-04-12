@@ -15,6 +15,7 @@ CREATE TABLE numeric_decimal_table (pk SERIAL,
 	PRIMARY KEY(pk));
 CREATE TABLE string_table (pk SERIAL, vc VARCHAR(2), vcv CHARACTER VARYING(2), ch CHARACTER(4), c CHAR(3), t TEXT, b BYTEA, bnn BYTEA NOT NULL, ct CITEXT, PRIMARY KEY(pk));
 CREATE TABLE network_address_table (pk SERIAL, i INET, PRIMARY KEY(pk));
+CREATE TABLE cidr_network_address_table(pk SERIAL, i CIDR, PRIMARY KEY(pk));
 CREATE TABLE cash_table (pk SERIAL, csh MONEY, PRIMARY KEY(pk));
 CREATE TABLE bitbin_table (pk SERIAL, ba BYTEA, bol BIT(1), bs BIT(2), bv BIT VARYING(2) , PRIMARY KEY(pk));
 CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tsneg TIMESTAMP(6) WITHOUT TIME ZONE, ts_ms TIMESTAMP(3), ts_us TIMESTAMP(6), tz TIMESTAMPTZ, date DATE,
@@ -24,15 +25,15 @@ CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tsneg TIMESTAMP(6) WITHOUT TIM
 CREATE TABLE text_table (pk SERIAL, j JSON, jb JSONB, x XML, u Uuid, PRIMARY KEY(pk));
 CREATE TABLE geom_table (pk SERIAL, p POINT, PRIMARY KEY(pk));
 CREATE TABLE tstzrange_table (pk serial, unbounded_exclusive_range tstzrange, bounded_inclusive_range tstzrange, PRIMARY KEY(pk));
-CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], inet_array INET[], PRIMARY KEY(pk));
-CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], inet_array INET[], PRIMARY KEY(pk));
+CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], inet_array INET[], cidr_array CIDR[], PRIMARY KEY(pk));
+CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], inet_array INET[], cidr_array CIDR[], PRIMARY KEY(pk));
 CREATE TABLE custom_table (pk serial, lt ltree, i isbn NOT NULL, n TEXT, PRIMARY KEY(pk));
 CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_mul (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_null (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_special (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE not_null_table (pk serial, val numeric(20,8), created_at timestamp not null, created_at_tz timestamptz not null, ctime time not null, ctime_tz timetz not null, cdate date not null, cmoney money not null, cbits bit(3) not null, PRIMARY KEY(pk));
-
+CREATE TABLE table_without_pk(id serial, val INTEGER);
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";
 -- GRANT ALL ON ALL TABLES IN SCHEMA "Quoted_Schema" TO postgres;

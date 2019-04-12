@@ -10,7 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>0.9.4-SNAPSHOT</version>
+    <version>0.9.5-SNAPSHOT</version>
     <name>Debezium Parent POM</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>

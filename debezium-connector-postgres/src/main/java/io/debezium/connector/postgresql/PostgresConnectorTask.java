@@ -90,7 +90,9 @@ public class PostgresConnectorTask extends BaseSourceTask {
             //Print out the server information
             SlotState slotInfo = null;
             try (PostgresConnection connection = taskContext.createConnection()) {
-                logger.info(connection.serverInfo().toString());
+                if (logger.isInfoEnabled()) {
+                    logger.info(connection.serverInfo().toString());
+                }
                 slotInfo = connection.getReplicationSlotInfo(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
             }
             catch (SQLException e) {

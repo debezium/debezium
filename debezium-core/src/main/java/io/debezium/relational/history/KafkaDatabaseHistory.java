@@ -160,8 +160,10 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                                     .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                                     .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                                     .build();
-        logger.info("KafkaDatabaseHistory Consumer config: " + consumerConfig.withMaskedPasswords());
-        logger.info("KafkaDatabaseHistory Producer config: " + producerConfig.withMaskedPasswords());
+        if (logger.isInfoEnabled()) {
+            logger.info("KafkaDatabaseHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
+            logger.info("KafkaDatabaseHistory Producer config: {}", producerConfig.withMaskedPasswords());
+        }
     }
 
     @Override
@@ -343,7 +345,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             }
             else {
                 // Otherwise warn that no property was obtained and default it to 1 - users can increase this later if desired
-                logger.warn("Unable to obtain the default replication factor from the brokers at " + producerConfig.getString(BOOTSTRAP_SERVERS) + " - Setting value to 1 instead");
+                logger.warn("Unable to obtain the default replication factor from the brokers at {} - Setting value to 1 instead", producerConfig.getString(BOOTSTRAP_SERVERS));
                 replicationFactor = 1;
             }
 

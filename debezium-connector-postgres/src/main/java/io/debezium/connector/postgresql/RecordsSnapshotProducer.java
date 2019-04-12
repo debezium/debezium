@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 
 import io.debezium.connector.base.SnapshotStatementFactory;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -33,6 +34,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.function.BlockingConsumer;
@@ -45,6 +47,7 @@ import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
+
 
 /**
  * Producer of {@link org.apache.kafka.connect.source.SourceRecord source records} from a database snapshot. Once completed,
@@ -127,7 +130,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             // and then start streaming if necessary
             streamProducer.ifPresent(producer -> {
                 if (sourceInfo.lsn() != null) {
-                    logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
+                    if (logger.isInfoEnabled()) {
+                        logger.info("Snapshot finished, continuing streaming changes from {}", ReplicationConnection.format(sourceInfo.lsn()));
+                    }
                 }
 
                 // still starting the stream producer, also if the connector has stopped already.
@@ -204,7 +209,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             long xlogStart = connection.currentXLogLocation();
             long txId = connection.currentTransactionId().longValue();
-            logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
+            if (logger.isInfoEnabled()) {
+                logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
+            }
 
             // and mark the start of the snapshot
             sourceInfo.startSnapshot();
@@ -228,8 +235,10 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                         connection.queryWithBlockingConsumer(selectStatement.get(),
                                 snapshotStatementFactory,
                                 rs -> readTable(tableId, rs, consumer, rowsCounter));
-                        logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
-                                tableId, Strings.duration(clock().currentTimeInMillis() - exportStart));
+                        if (logger.isInfoEnabled()) {
+                            logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
+                                        tableId, Strings.duration(clock().currentTimeInMillis() - exportStart));
+                        }
                         rowsCounter.set(0);
                     }
                 } catch (SQLException e) {
@@ -260,7 +269,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             // and complete the snapshot
             sourceInfo.completeSnapshot();
-            logger.info("Snapshot completed in '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
+            if (logger.isInfoEnabled()) {
+                logger.info("Snapshot completed in '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
+            }
             Heartbeat
                 .create(
                     taskContext.config().getConfig(),
@@ -283,7 +294,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             Thread.interrupted();
             rollbackTransaction(jdbcConnection);
 
-            logger.warn("Snapshot aborted after '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
+            if (logger.isWarnEnabled()) {
+                logger.warn("Snapshot aborted after '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
+            }
         }
     }
 
@@ -329,9 +342,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             final String columnTypeName = metaData.getColumnTypeName(colIdx);
             final PostgresType type = taskContext.schema().getTypeRegistry().get(columnTypeName);
 
-            logger.trace("Type of incoming data is: " + String.valueOf(type.getOid()));
-            logger.trace("ColumnTypeName is: " + columnTypeName);
-            logger.trace("Type toString: " + type.toString());
+            logger.trace("Type of incoming data is: {}", type.getOid());
+            logger.trace("ColumnTypeName is: {}", columnTypeName);
+            logger.trace("Type is: {}", type);
 
             if (type.isArrayType()) {
                 Array array = rs.getArray(colIdx);
@@ -361,7 +374,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 default:
                     Object x = rs.getObject(colIdx);
                     if(x != null) {
-                        logger.trace("rs getobject returns class: {}; rs getObject toString is: {}", x.getClass(), x.toString());
+                        logger.trace("rs getobject returns class: {}; rs getObject value is: {}", x.getClass(), x);
                     }
                     return x;
             }
@@ -379,15 +392,14 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         if (rowData.length == 0) {
             return;
         }
-        logger.trace("tableId value is: {}", tableId.toString());
+        logger.trace("tableId value is: {}", tableId);
         TableSchema tableSchema = schema().schemaFor(tableId);
         assert tableSchema != null;
         Object key = tableSchema.keyFromColumnData(rowData);
         Struct value = tableSchema.valueFromColumnData(rowData);
 
-        //note this is different than implementation in Streams producer. See DBZ-1163
-        if (key == null || value == null) {
-            logger.trace("key: {}; value: {}; One is null", String.valueOf(key), String.valueOf(value) );
+        if (value == null) {
+            logger.trace("Read event for null key with value {}", value);
             return;
         }
         Schema keySchema = tableSchema.keySchema();

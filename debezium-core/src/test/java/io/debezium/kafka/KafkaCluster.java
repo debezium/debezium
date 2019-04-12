@@ -292,7 +292,9 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is not running
      */
     public void createTopics(String... topics) {
-        LOGGER.debug("Creating topics: {}", Arrays.toString(topics));
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Creating topics: {}", Arrays.toString(topics));
+        }
         if (!running){
             throw new IllegalStateException("The cluster must be running to create topics");
         }
@@ -317,8 +319,10 @@ public class KafkaCluster {
      * @param topics the names of the topics to create
      */
     public void createTopics(int numPartitions, int replicationFactor, String... topics) {
-        LOGGER.debug("Creating topics with {} partitions and {} replicas each: {}", numPartitions, replicationFactor,
-                     Arrays.toString(topics));
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Creating topics with {} partitions and {} replicas each: {}", numPartitions, replicationFactor,
+                         Arrays.toString(topics));
+        }
         if (!running){
             throw new IllegalStateException("The cluster must be running to create topics");
         }

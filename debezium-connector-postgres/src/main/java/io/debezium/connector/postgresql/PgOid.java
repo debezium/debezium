@@ -23,4 +23,6 @@ public final class PgOid extends Oid {
     public static final int TSTZRANGE_OID = 3910;
     public static final int INET_OID = 869;
     public static final int INET_ARRAY = 1041;
+    public static final int CIDR_OID=650;
+    public static final int CIDR_ARRAY=651;
 }
