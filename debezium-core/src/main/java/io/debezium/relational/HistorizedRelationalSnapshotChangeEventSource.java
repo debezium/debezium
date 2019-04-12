@@ -14,7 +14,9 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Optional;
+import java.util.Map;
 
+import io.debezium.connector.base.SnapshotStatementFactory;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +65,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
+    private Map<TableId, String> snapshotOverrides;
+    private final SnapshotStatementFactory snapshotStatementFactory;
 
     public HistorizedRelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
             OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
@@ -74,6 +78,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
+        this.snapshotStatementFactory = new SnapshotStatementFactory(connectorConfig, jdbcConnection);
     }
 
     @Override
@@ -219,12 +224,13 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     }
 
     private void determineCapturedTables(SnapshotContext ctx) throws Exception {
+        this.snapshotOverrides = getSnapshotSelectOverridesByTable();
         Set<TableId> allTableIds = getAllTableIds(ctx);
 
         Set<TableId> capturedTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId) && !skipSnapshot(tableId)) {
                 LOGGER.trace("Adding table {} to the list of captured tables", tableId);
                 capturedTables.add(tableId);
             }
@@ -234,6 +240,14 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         }
 
         ctx.capturedTables = capturedTables;
+    }
+
+    private boolean skipSnapshot(TableId inTableId) {
+        if (snapshotOverrides.containsKey(inTableId) && snapshotOverrides.get(inTableId) == null) {
+            LOGGER.warn("For table '{}' the select statement was not provided, skipping table", inTableId);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -312,48 +326,44 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
         long rows = 0;
-        final Optional<String> selectStatement = getSnapshotSelect(snapshotContext, table.id());
-        if (!selectStatement.isPresent()) {
-            LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
-        } else {
-            LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
+        final String selectStatement = getSnapshotSelect(table.id());
+        LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
 
-            try (Statement statement = readTableStatement();
-                 ResultSet rs = statement.executeQuery(selectStatement.get())) {
+        try (Statement statement = snapshotStatementFactory.readTableStatement();
+             ResultSet rs = statement.executeQuery(selectStatement)) {
 
-                Column[] columns = getColumnsForResultSet(table, rs);
-                final int numColumns = table.columns().size();
-                Timer logTimer = getTableScanLogTimer();
+            Column[] columns = getColumnsForResultSet(table, rs);
+            final int numColumns = table.columns().size();
+            Timer logTimer = getTableScanLogTimer();
 
-                while (rs.next()) {
-                    if (!sourceContext.isRunning()) {
-                        throw new InterruptedException("Interrupted while snapshotting table " + table.id());
-                    }
-
-                    rows++;
-                    final Object[] row = new Object[numColumns];
-                    for (int i = 0; i < numColumns; i++) {
-                        row[i] = getColumnValue(rs, i + 1, columns[i]);
-                    }
-
-                    if (logTimer.expired()) {
-                        long stop = clock.currentTimeInMillis();
-                        LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
-                                Strings.duration(stop - exportStart));
-                        snapshotProgressListener.rowsScanned(table.id(), rows);
-                        logTimer = getTableScanLogTimer();
-                    }
-
-                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, row),
-                            snapshotReceiver);
+            while (rs.next()) {
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while snapshotting table " + table.id());
                 }
-                LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
-                        table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
-            } catch (SQLException e) {
-                throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
+
+                rows++;
+                final Object[] row = new Object[numColumns];
+                for (int i = 0; i < numColumns; i++) {
+                    row[i] = getColumnValue(rs, i + 1, columns[i]);
+                }
+
+                if (logTimer.expired()) {
+                    long stop = clock.currentTimeInMillis();
+                    LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
+                            Strings.duration(stop - exportStart));
+                    snapshotProgressListener.rowsScanned(table.id(), rows);
+                    logTimer = getTableScanLogTimer();
+                }
+
+                dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, row),
+                        snapshotReceiver);
             }
+            LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
+                    table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
+            snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
+        } catch (SQLException e) {
+            throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
-        snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
     }
 
     private Timer getTableScanLogTimer() {
@@ -364,13 +374,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
     protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
-
-    /**
-     * Create 'Read' table statement for snapshot
-     * @return statement
-     * @throws SQLException any SQL exception thrown
-     */
-    protected abstract Statement readTableStatement() throws SQLException;
 
     /**
      * Returns the SELECT statement to be used for scanning the given table
@@ -385,7 +388,15 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      * @param tableId the table to generate a query for
      * @return a valid query string, or none to skip snapshotting this table
      */
-    protected abstract Optional<String>getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
+    private String getSnapshotSelect(TableId tableId) {
+        return snapshotOverrides.containsKey(tableId) ? snapshotOverrides.get(tableId) :
+                String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    protected abstract Map<TableId, String> getSnapshotSelectOverridesByTable();
 
     private Column[] getColumnsForResultSet(Table table, ResultSet rs) throws SQLException {
         ResultSetMetaData metaData = rs.getMetaData();

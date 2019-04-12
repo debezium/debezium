@@ -589,14 +589,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                       + "'table' (the default) each DB table will have a separate Kafka topic; "
                                                       + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
 
-    public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
-                                                     .withDisplayName("Result set fetch size")
-                                                     .withType(Type.INT)
-                                                     .withWidth(Width.MEDIUM)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
-                                                     .withDefault(DEFAULT_ROWS_FETCH_SIZE)
-                                                     .withValidation(Field::isPositiveLong);
+    public static final Field ROWS_FETCH_SIZE = RelationalDatabaseConnectorConfig.ROWS_FETCH_SIZE.withDefault(DEFAULT_ROWS_FETCH_SIZE);
 
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
@@ -960,10 +953,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected String columnBlacklist() {
         return config.getString(COLUMN_BLACKLIST);
-    }
-
-    protected int rowsFetchSize() {
-        return config.getInteger(ROWS_FETCH_SIZE);
     }
 
     protected long snapshotLockTimeoutMillis() {

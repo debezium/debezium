@@ -231,14 +231,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue() + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue() + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
-    public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
-            .withDisplayName("Result set fetch size")
-            .withType(Type.INT)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
-            .withDefault(DEFAULT_ROWS_FETCH_SIZE)
-            .withValidation(Field::isPositiveLong);
+    public static final Field ROWS_FETCH_SIZE = RelationalDatabaseConnectorConfig.ROWS_FETCH_SIZE.withDefault(DEFAULT_ROWS_FETCH_SIZE);
 
     public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
             .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
@@ -341,10 +334,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                         .compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
             }
         };
-    }
-
-    public int rowsFetchSize() {
-        return config.getInteger(ROWS_FETCH_SIZE);
     }
 
     public String snapshotSelectOverrides() {

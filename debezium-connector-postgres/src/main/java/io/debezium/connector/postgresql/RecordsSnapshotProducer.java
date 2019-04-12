@@ -11,7 +11,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
@@ -22,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import io.debezium.connector.base.SnapshotStatementFactory;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -213,7 +213,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
-
+            SnapshotStatementFactory snapshotStatementFactory = new SnapshotStatementFactory(taskContext.getConfig(), connection);
             for(TableId tableId : schema.tableIds()) {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
@@ -226,7 +226,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                         logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
 
                         connection.queryWithBlockingConsumer(selectStatement.get(),
-                                this::readTableStatement,
+                                snapshotStatementFactory,
                                 rs -> readTable(tableId, rs, consumer, rowsCounter));
                         logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
                                 tableId, Strings.duration(clock().currentTimeInMillis() - exportStart));
@@ -304,13 +304,6 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         catch (SQLException se) {
             logger.error("Cannot rollback snapshot transaction", se);
         }
-    }
-
-    private Statement readTableStatement(Connection conn) throws SQLException {
-        int rowsFetchSize = taskContext.config().rowsFetchSize();
-        Statement statement = conn.createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setFetchSize(rowsFetchSize);
-        return statement;
     }
 
     private void readTable(TableId tableId, ResultSet rs,

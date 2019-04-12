@@ -509,7 +509,7 @@ public class SnapshotReader extends AbstractReader {
                                         }
                                     });
                                     if (numRows.get() <= largeTableCount) {
-                                        statementFactory = this::createStatement;
+                                        statementFactory = getSnapshotStatementFactory();
                                     }
                                     rowCountStr.set(numRows.toString());
                                 } catch (SQLException e) {

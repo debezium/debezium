@@ -13,7 +13,6 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
@@ -44,13 +43,11 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
     private final SqlServerConnectorConfig connectorConfig;
     private final SqlServerConnection jdbcConnection;
-    private Map<TableId, String> snapshotOverrides;
 
     public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
-        this.snapshotOverrides = getSnapshotSelectOverridesByTable();
     }
 
     @Override
@@ -199,33 +196,16 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     }
 
     @Override
-    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        if (snapshotOverrides.containsKey(tableId)) {
-            return Optional.ofNullable(snapshotOverrides.get(tableId));
-        }
-        else {
-            return Optional.of(String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table()));
-        }
-    }
-
-    @Override
     protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row) {
         ((SqlServerOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(getClock().currentTimeInMillis()));
         return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
     }
 
-    @Override
-    protected Statement readTableStatement() throws SQLException {
-        int rowsFetchSize = connectorConfig.rowsFetchSize();
-        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setFetchSize(rowsFetchSize);
-        return statement;
-    }
-
     /**
      * Returns any SELECT overrides, if present.
      */
-    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
+    @Override
+    protected Map<TableId, String> getSnapshotSelectOverridesByTable() {
         String tableList = connectorConfig.snapshotSelectOverrides();
 
         if (tableList == null) {
