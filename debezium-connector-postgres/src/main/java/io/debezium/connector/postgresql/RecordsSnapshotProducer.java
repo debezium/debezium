@@ -34,7 +34,6 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.function.BlockingConsumer;
