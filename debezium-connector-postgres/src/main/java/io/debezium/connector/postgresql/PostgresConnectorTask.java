@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.postgresql.snapshot.SnapshotterWrapper;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.relational.TableId;
@@ -99,18 +100,19 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 logger.warn("unable to load info of replication slot, debezium will try to create the slot");
             }
 
+            SnapshotterWrapper snapWrapper;
             if (existingOffset == null) {
                 logger.info("No previous offset found");
                 // if we have no initial offset, indicate that to Snapshotter by passing null
-                snapshotter.init(connectorConfig, null, slotInfo);
+                snapWrapper = new SnapshotterWrapper(snapshotter, connectorConfig, null, slotInfo);
             }
             else {
                 logger.info("Found previous offset {}", sourceInfo);
                 sourceInfo.load(existingOffset);
-                snapshotter.init(connectorConfig, sourceInfo.asOffsetState(), slotInfo);
+                snapWrapper = new SnapshotterWrapper(snapshotter, connectorConfig, sourceInfo.asOffsetState(), slotInfo);
             }
 
-            createRecordProducer(taskContext, sourceInfo, snapshotter);
+            createRecordProducer(taskContext, sourceInfo, snapWrapper);
 
             changeEventQueue = new ChangeEventQueue.Builder<ChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
@@ -127,9 +129,10 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
     }
 
-    private void createRecordProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo, Snapshotter snapshotter) {
-        if (snapshotter.shouldSnapshot()) {
-            if (snapshotter.shouldStream()) {
+    private void createRecordProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo, SnapshotterWrapper snapshotter) {
+        Snapshotter snapInstance = snapshotter.getSnapshotter();
+        if (snapInstance.shouldSnapshot()) {
+            if (snapInstance.shouldStream()) {
                 logger.info("Taking a new snapshot of the DB and streaming logical changes once the snapshot is finished...");
                 producer = new RecordsSnapshotProducer(taskContext, sourceInfo, snapshotter);
             }
@@ -138,7 +141,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 producer = new RecordsSnapshotProducer(taskContext, sourceInfo, snapshotter);
             }
         }
-        else if (snapshotter.shouldStream()) {
+        else if (snapInstance.shouldStream()) {
             logger.info("Not attempting to take a snapshot, immediately starting to stream logical changes...");
             producer = new RecordsStreamProducer(taskContext, sourceInfo);
         }

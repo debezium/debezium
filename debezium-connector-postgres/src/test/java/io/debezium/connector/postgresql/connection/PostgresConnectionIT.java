@@ -107,6 +107,7 @@ public class PostgresConnectionIT {
         }
         // create a new replication slot via a replication connection
         try (ReplicationConnection connection = TestHelper.createForReplication("test", false)) {
+            connection.initConnection();
             assertTrue(connection.isConnected());
         }
         // drop the slot from the previous connection
@@ -120,6 +121,7 @@ public class PostgresConnectionIT {
     @FixFor("DBZ-934")
     public void temporaryReplicationSlotsShouldGetDroppedAutomatically() throws Exception {
         try(ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
+            replicationConnection.initConnection();
             PgConnection pgConnection = getUnderlyingConnection(replicationConnection);
 
             // temporary replication slots are not supported by Postgres < 10
@@ -171,6 +173,7 @@ public class PostgresConnectionIT {
                 // Create a replication connection that is blocked till the concurrent TX is completed
                 try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
                     Testing.print("Connecting with replication connection 1");
+                    replConnection.initConnection();
                     assertTrue(replConnection.isConnected());
                     Testing.print("Replication connection 1 - completed");
                 }
@@ -185,6 +188,7 @@ public class PostgresConnectionIT {
                 // Create a replication connection that receives confirmed_flush_lsn == null
                 try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
                     Testing.print("Connecting with replication connection 2");
+                    replConnection.initConnection();
                     assertTrue(replConnection.isConnected());
                     Testing.print("Replication connection 2 - completed");
                 }
@@ -213,6 +217,7 @@ public class PostgresConnectionIT {
     public void shouldSupportPG95RestartLsn() throws Exception {
         String slotName = "pg95";
         try (ReplicationConnection replConnection = TestHelper.createForReplication(slotName, false)) {
+            replConnection.initConnection();
             assertTrue(replConnection.isConnected());
         }
         try (PostgresConnection conn = buildPG95PGConn("pg95")) {

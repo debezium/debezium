@@ -65,7 +65,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     private static final String CONTEXT_NAME = "records-stream-producer";
 
     private final ExecutorService executorService;
-    private final ReplicationConnection replicationConnection;
+    private ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream;
     private final AtomicBoolean cleanupExecuted = new AtomicBoolean();
     private PgConnection typeResolverConnection = null;
@@ -94,21 +94,31 @@ public class RecordsStreamProducer extends RecordsProducer {
      *
      * @param taskContext a {@link PostgresTaskContext}, never null
      * @param sourceInfo a {@link SourceInfo} instance to track stored offsets
+     * @param replicationConnection a {@link ReplicationConnection} that is used to perform actual replication
      */
     public RecordsStreamProducer(PostgresTaskContext taskContext,
-                                 SourceInfo sourceInfo) {
+                                 SourceInfo sourceInfo,
+                                 ReplicationConnection replicationConnection) {
         super(taskContext, sourceInfo);
         executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         this.replicationStream = new AtomicReference<>();
-        try {
-            this.replicationConnection = taskContext.createReplicationConnection();
-        } catch (SQLException e) {
-            throw new ConnectException(e);
-        }
+        this.replicationConnection = replicationConnection;
 
         heartbeat = Heartbeat.create(taskContext.config().getConfig(), taskContext.topicSelector().getHeartbeatTopic(),
                 taskContext.config().getLogicalName());
         pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
+    }
+
+    // this maybe should only be used for testing?
+    public RecordsStreamProducer(PostgresTaskContext taskContext,
+                                 SourceInfo sourceInfo) {
+        this(taskContext, sourceInfo, null);
+        try {
+            this.replicationConnection = taskContext.createReplicationConnection(false);
+        }
+        catch (SQLException e) {
+            throw new ConnectException(e);
+        }
     }
 
     @Override

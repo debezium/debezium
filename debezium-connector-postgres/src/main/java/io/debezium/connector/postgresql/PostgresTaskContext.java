@@ -99,7 +99,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         }
     }
 
-    protected ReplicationConnection createReplicationConnection() throws SQLException {
+    protected ReplicationConnection createReplicationConnection(boolean exportSnapshot) throws SQLException {
         return ReplicationConnection.builder(config.jdbcConfig())
                                     .withSlot(config.slotName())
                                     .withPlugin(config.plugin())
@@ -107,6 +107,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                                     .streamParams(config.streamParams())
                                     .statusUpdateInterval(config.statusUpdateInterval())
                                     .withTypeRegistry(schema.getTypeRegistry())
+                                    .exportSnapshotOnCreate(exportSnapshot)
                                     .build();
     }
 

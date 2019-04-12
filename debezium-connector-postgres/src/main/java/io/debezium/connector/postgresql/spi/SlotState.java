@@ -17,7 +17,6 @@ public class SlotState {
     private final Long catalogXmin;
     private final boolean active;
 
-
     public SlotState(Long lastFlushLsn, Long restartLsn, Long catXmin, boolean active) {
         this.active = active;
         this.latestFlushedLsn = lastFlushLsn;

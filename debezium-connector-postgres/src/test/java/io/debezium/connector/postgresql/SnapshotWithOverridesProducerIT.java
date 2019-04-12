@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
+import io.debezium.connector.postgresql.snapshot.SnapshotterWrapper;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
@@ -126,7 +127,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
 
     private RecordsSnapshotProducer buildStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
         Snapshotter sn = new InitialOnlySnapshotter();
-        sn.init(config, null, null);
-        return new RecordsSnapshotProducer(ctx, TestHelper.sourceInfo(), sn);
+        SnapshotterWrapper snw = new SnapshotterWrapper(sn, config, null, null);
+        return new RecordsSnapshotProducer(ctx, TestHelper.sourceInfo(), snw);
     }
 }

@@ -88,7 +88,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "outboxsmtit")
                 .with(PostgresConnectorConfig.TABLE_WHITELIST, "outboxsmtit\\.outbox");
         start(PostgresConnector.class, configBuilder.build());
@@ -122,6 +122,12 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         assertThat(routedEvent).isNotNull();
         assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
+
+        Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        assertThat(valueStruct.getString("eventType")).isEqualTo("UserCreated");
+        JsonNode payload = (new ObjectMapper()).readTree(valueStruct.getString("payload"));
+        assertThat(payload.get("email")).isEqualTo(null);
+
     }
 
     @Test
@@ -142,6 +148,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
 
         Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        assertThat(valueStruct.getString("eventType")).isEqualTo("UserCreated");
         JsonNode payload = (new ObjectMapper()).readTree(valueStruct.getString("payload"));
         assertThat(payload.get("email").getTextValue()).isEqualTo("gh@mefi.in");
     }

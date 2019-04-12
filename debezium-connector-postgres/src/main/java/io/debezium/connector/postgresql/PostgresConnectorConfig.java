@@ -453,6 +453,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                 "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                                                                 "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
                                                         .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
                                                         .withType(Type.STRING)
@@ -733,6 +734,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "The bigger the value, the less likely this value is to be the current 'true' value, but the lower the performance penalty. " +
                     "The default is set to 0 ms, which disables tracking xmin.")
             .withValidation(Field::isNonNegativeLong);
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -847,8 +849,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(COLUMN_BLACKLIST);
     }
 
-    protected long snapshotLockTimeoutMillis() {
-        return getConfig().getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
+    protected Duration snapshotLockTimeout() {
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS));
     }
 
     protected Snapshotter getSnapshotter() {
@@ -877,14 +879,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
+                    DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
+                    SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
 
         return config;
     }

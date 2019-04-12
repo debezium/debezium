@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.TypeRegistry;
+import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnectionException;
 import io.debezium.util.Clock;
@@ -51,6 +53,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final String slotName;
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
+    private final boolean exportSnapshot;
     private final Configuration originalConfig;
     private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
@@ -58,6 +61,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final Properties streamParams;
 
     private long defaultStartingPos;
+    private SlotCreationResult slotCreationInfo;
+    private boolean hasInitedSlot;
 
     /**
      * Creates a new replication connection with the given params.
@@ -67,6 +72,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param plugin decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose whether the replication slot should be dropped once the connection is closed
      * @param statusUpdateInterval the interval at which the replication connection should periodically send status
+     * @param exportSnapshot whether the replication should export a snapshot when created
      * @param typeRegistry registry with PostgreSQL types
      *
      * updates to the server
@@ -75,6 +81,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          String slotName,
                                          PostgresConnectorConfig.LogicalDecoder plugin,
                                          boolean dropSlotOnClose,
+                                         boolean exportSnapshot,
                                          Duration statusUpdateInterval,
                                          TypeRegistry typeRegistry,
                                          Properties streamParams) {
@@ -85,64 +92,50 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
+        this.exportSnapshot = exportSnapshot;
         this.messageDecoder = plugin.messageDecoder();
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
+        this.slotCreationInfo = null;
+        this.hasInitedSlot = false;
 
+        // to keep the same
         try {
-            initReplicationSlot();
-        }
-        catch (ConnectException e) {
-            close();
-            throw e;
+            ensureSlotNotActive(getSlotInfo());
         }
         catch (Throwable t) {
             close();
-            throw new ConnectException("Cannot create replication connection", t);
+            throw new ConnectException(t);
         }
     }
 
-    private void initReplicationSlot() throws SQLException, InterruptedException {
-        final String postgresPluginName = plugin.getPostgresPluginName();
-        ServerInfo.ReplicationSlot slotInfo;
+
+    private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
-            slotInfo = connection.readReplicationSlotInfo(slotName, postgresPluginName);
+            return connection.readReplicationSlotInfo(slotName, plugin.getPostgresPluginName());
         }
+    }
+
+    private void ensureSlotNotActive(ServerInfo.ReplicationSlot slotInfo) throws IllegalStateException {
+        if (slotInfo.active()) {
+            throw new IllegalStateException(
+                    "A logical replication slot named '" + slotName + "' for plugin '" + plugin.getPostgresPluginName() + "' and database '" + database() + "' is already active on the server." +
+                    "You cannot have multiple slots with the same name active for the same database."
+            );
+        }
+    }
+
+    protected void initReplicationSlot() throws SQLException, InterruptedException {
+        final String postgresPluginName = plugin.getPostgresPluginName();
+        ServerInfo.ReplicationSlot slotInfo = getSlotInfo();
 
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
         try {
             // there's no info for this plugin and slot so create a new slot
             if (shouldCreateSlot) {
-                LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
-
-                // creating a temporary slot if it should be dropped an we're on 10 or newer;
-                // this is not supported through the API yet
-                // see https://github.com/pgjdbc/pgjdbc/issues/1305
-                if (useTemporarySlot()) {
-                    try (Statement stmt = pgConnection().createStatement()) {
-                        stmt.execute(String.format(
-                                "CREATE_REPLICATION_SLOT %s TEMPORARY LOGICAL %s",
-                                slotName,
-                                postgresPluginName
-                        ));
-                    }
-                }
-                else {
-                    pgConnection().getReplicationAPI()
-                        .createReplicationSlot()
-                        .logical()
-                        .withSlotName(slotName)
-                        .withOutputPlugin(postgresPluginName)
-                        .make();
-                }
+                this.createReplicationSlot();
             }
-            else if (slotInfo.active()) {
-                LOGGER.error(
-                        "A logical replication slot named '{}' for plugin '{}' and database '{}' is already active on the server." +
-                        "You cannot have multiple slots with the same name active for the same database",
-                        slotName, postgresPluginName, database());
-                throw new IllegalStateException();
-            }
+            ensureSlotNotActive(slotInfo);
 
             AtomicLong xlogStart = new AtomicLong();
             // replication connection does not support parsing of SQL statements so we need to create
@@ -161,32 +154,71 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
             });
 
-            if (shouldCreateSlot || !slotInfo.hasValidFlushedLsn()) {
+            if (slotCreationInfo != null) {
+                this.defaultStartingPos = slotCreationInfo.startLsn();
+            }
+            else if (shouldCreateSlot || !slotInfo.hasValidFlushedLsn()) {
                 // this is a new slot or we weren't able to read a valid flush LSN pos, so we always start from the xlog pos that was reported
                 this.defaultStartingPos = xlogStart.get();
-            } else {
+            }
+            else {
                 Long latestFlushedLsn = slotInfo.latestFlushedLsn();
                 this.defaultStartingPos = latestFlushedLsn < xlogStart.get() ? latestFlushedLsn : xlogStart.get();
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("found previous flushed LSN '{}'", ReplicationConnection.format(latestFlushedLsn));
                 }
             }
+            hasInitedSlot = true;
         } catch (SQLException e) {
             throw new JdbcConnectionException(e);
         }
     }
 
     private boolean useTemporarySlot() throws SQLException {
-        return dropSlotOnClose && pgConnection().getServerMajorVersion() >= 10;
+        return dropSlotOnClose && isPg10OrGreater();
     }
 
+    private boolean exportSnapshotOnCreate() throws SQLException {
+        return exportSnapshot && isPg10OrGreater();
+    }
+
+    private boolean isPg10OrGreater() throws SQLException {
+        return pgConnection().getServerMajorVersion() >= 10;
+    }
+
+    /**
+     * creating a replication connection and starting to stream involves a few steps:
+     * 1. we create the connection and ensure that
+     * a. the slot exists
+     * b. the slot isn't currently being used
+     * 2. we query to get our potential start position in the slot (lsn)
+     * 3. we try and start streaming, depending on our options (such as in wal2json)
+     *    this may fail, which can result in the connection being killed and we need to start
+     *    the process over if we are using a temporary slot
+     * 4. actually start the streamer
+     *
+     * This method takes care of all of these and this method queries for a default starting position
+     * If you know where you are starting from you should call {@link #startStreaming(Long)}, this method
+     * delegates to that method
+     * @return
+     * @throws SQLException
+     * @throws InterruptedException
+     */
     @Override
     public ReplicationStream startStreaming() throws SQLException, InterruptedException {
+        // this ensures we have the right type of connection, creates the slot if needed,
+        // and sets the defaultStartingPos, so we must set it here
+        initConnection();
         return startStreaming(defaultStartingPos);
     }
 
     @Override
     public ReplicationStream startStreaming(Long offset) throws SQLException, InterruptedException {
+        // if this method is being called by startStreaming without an offset, this
+        // will already be called, but it is made idempotent to ensure we can safely call it
+        // multiple times
+        initConnection();
+
         connect();
         if (offset == null || offset <= 0) {
             offset = defaultStartingPos;
@@ -198,9 +230,79 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return createReplicationStream(lsn);
     }
 
+    @Override
+    public void initConnection() throws SQLException, InterruptedException {
+        if (!hasInitedSlot) {
+            initReplicationSlot();
+        }
+    }
+
+    @Override
+    public void createReplicationSlot() throws SQLException {
+        // note that some of these options are only supported in pg10 or newer, additionally
+        // the options are not yet exported by the jdbc api wrapper, therefore, we just do this ourselves
+        // but eventually this should be moved back to the jdbc API
+        // see https://github.com/pgjdbc/pgjdbc/issues/1305
+
+        LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
+        String tempPart = "";
+        String exportPart = "";
+        Boolean isPg10 = isPg10OrGreater();
+        if ((dropSlotOnClose || exportSnapshot) && !isPg10OrGreater()) {
+            LOGGER.warn("A slot marked as temporary or with an exported snapshot was created, but not on a supported version of Postgres, ignoring!");
+        }
+        if (useTemporarySlot()) {
+            tempPart = "TEMPORARY";
+        }
+        if (exportSnapshotOnCreate()) {
+            exportPart = "EXPORT_SNAPSHOT";
+        }
+        try (Statement stmt = pgConnection().createStatement()) {
+            String createCommand = String.format(
+                    "CREATE_REPLICATION_SLOT %s %s LOGICAL %s %s",
+                    slotName,
+                    tempPart,
+                    plugin.getPostgresPluginName(),
+                    exportPart
+            );
+            LOGGER.info("Creating replication slot with command {}", createCommand);
+            stmt.execute(createCommand);
+            // when we are in pg10, we can parse the slot creation info, otherwise, it returns
+            // nothing
+            if (isPg10) {
+                this.slotCreationInfo = parseSlotCreation(stmt.getResultSet());
+            }
+        }
+    }
+
+    @Override
+    public Optional<SlotCreationResult> getSlotCreationResult() {
+        return Optional.ofNullable(slotCreationInfo);
+    }
+
     protected PgConnection pgConnection() throws SQLException {
         return (PgConnection) connection(false);
     }
+
+    private SlotCreationResult parseSlotCreation(ResultSet rs) {
+        try {
+            if (rs.next()) {
+                String slotName = rs.getString("slot_name");
+                String startPoint = rs.getString("consistent_point");
+                String snapName = rs.getString("snapshot_name");
+                String pluginName = rs.getString("output_plugin");
+
+                return new SlotCreationResult(slotName, startPoint, snapName, pluginName);
+            }
+            else {
+                throw new ConnectException("expected response to create_replication_slot");
+            }
+        }
+        catch (SQLException ex) {
+            throw new ConnectException("unable to parse create_replication_slot", ex);
+        }
+    }
+
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException, InterruptedException {
         PGReplicationStream s;
@@ -216,6 +318,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             catch (PSQLException e) {
                 LOGGER.debug("Could not register for streaming, retrying without optional options", e);
 
+                // re-init the slot after a failed start of slot, as this
+                // may have closed the slot
                 if (useTemporarySlot()) {
                     initReplicationSlot();
                 }
@@ -229,6 +333,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 // It is possible we are connecting to an old wal2json plug-in
                 LOGGER.warn("Could not register for streaming with metadata in messages, falling back to messages without metadata");
 
+                // re-init the slot after a failed start of slot, as this
+                // may have closed the slot
                 if (useTemporarySlot()) {
                     initReplicationSlot();
                 }
@@ -414,6 +520,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
         private Duration statusUpdateIntervalVal;
+        private boolean exportSnapshot = DEFAULT_EXPORT_SNAPSHOT;
         private TypeRegistry typeRegistry;
         private Properties slotStreamParams = new Properties();
 
@@ -467,9 +574,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public Builder exportSnapshotOnCreate(boolean exportSnapshot) {
+            this.exportSnapshot = exportSnapshot;
+            return this;
+        }
+
+
+        @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, statusUpdateIntervalVal, typeRegistry, slotStreamParams);
+            return new PostgresReplicationConnection(config, slotName, plugin, dropSlotOnClose, exportSnapshot,
+                    statusUpdateIntervalVal, typeRegistry, slotStreamParams);
         }
 
         @Override

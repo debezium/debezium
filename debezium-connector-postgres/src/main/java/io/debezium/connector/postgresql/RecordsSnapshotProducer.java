@@ -31,6 +31,8 @@ import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.snapshot.SnapshotterWrapper;
+import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
@@ -61,20 +63,38 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
     private final AtomicReference<SourceRecord> currentRecord;
     private final Snapshotter snapshotter;
+    private final SlotCreationResult slotCreatedInfo;
 
     public RecordsSnapshotProducer(PostgresTaskContext taskContext,
                                    SourceInfo sourceInfo,
-                                   Snapshotter snapshotter) {
+                                   SnapshotterWrapper snapWrapper) {
         super(taskContext, sourceInfo);
         executorService = Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME);
         currentRecord = new AtomicReference<>();
-        this.snapshotter = snapshotter;
+        this.snapshotter = snapWrapper.getSnapshotter();
         if (snapshotter.shouldStream()) {
-            // we need to create the stream producer here to make sure it creates the replication connection;
-            // otherwise we can't stream back changes happening while the snapshot is taking place
-            streamProducer = Optional.of(new RecordsStreamProducer(taskContext, sourceInfo));
-        } else {
+            boolean shouldExport = snapshotter.exportSnapshot();
+            ReplicationConnection replConn;
+            try {
+                replConn = taskContext.createReplicationConnection(shouldExport);
+                // we need to create the slot before we start streaming if it doesn't exist
+                // otherwise we can't stream back changes happening while the snapshot is taking place
+                if (!snapWrapper.doesSlotExist()) {
+                    replConn.createReplicationSlot();
+                    slotCreatedInfo = replConn.getSlotCreationResult().orElse(null);
+                }
+                else {
+                    slotCreatedInfo = null;
+                }
+            }
+            catch (SQLException ex) {
+                throw new ConnectException(ex);
+            }
+            streamProducer = Optional.of(new RecordsStreamProducer(taskContext, sourceInfo, replConn));
+        }
+        else {
             streamProducer = Optional.empty();
+            slotCreatedInfo = null;
         }
     }
 
@@ -171,37 +191,39 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         Connection jdbcConnection = null;
         try (PostgresConnection connection = taskContext.createConnection()) {
             jdbcConnection = connection.connection();
-            String lineSeparator = System.lineSeparator();
 
             logger.info("Step 0: disabling autocommit");
             connection.setAutoCommit(false);
 
-            long lockTimeoutMillis = taskContext.config().snapshotLockTimeoutMillis();
+            Duration lockTimeout = taskContext.config().snapshotLockTimeout();
             logger.info("Step 1: starting transaction and refreshing the DB schemas for database '{}' and user '{}'",
                         connection.database(), connection.username());
-            // we're using the same isolation level that pg_backup uses
-            StringBuilder statements = new StringBuilder("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;");
-            connection.executeWithoutCommitting(statements.toString());
-            statements.delete(0, statements.length());
+
+            String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo);
+            logger.info("openining transaction with statement {}", transactionStatement);
+            connection.executeWithoutCommitting(transactionStatement);
 
             //next refresh the schema which will load all the tables taking the filters into account
             PostgresSchema schema = schema();
             schema.refresh(connection, false);
 
-            logger.info("Step 2: locking each of the database tables, waiting a maximum of '{}' seconds for each lock",
-                        lockTimeoutMillis / 1000d);
-            statements.append("SET lock_timeout = ").append(lockTimeoutMillis).append(";").append(lineSeparator);
-            // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
-            // this does not prevent writes to the table, but prevents changes to the table's schema....
-            // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
-            schema.tableIds().forEach(tableId -> statements.append("LOCK TABLE ")
-                                                         .append(tableId.toDoubleQuotedString())
-                                                         .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
-                                                         .append(lineSeparator));
-            connection.executeWithoutCommitting(statements.toString());
-
-            //now that we have the locks, refresh the schema
-            schema.refresh(connection, false);
+            Optional<String> lockStatement = snapshotter.snapshotTableLockingStatement(lockTimeout, schema.tableIds());
+            if (lockStatement.isPresent()) {
+                logger.info("Step 2: locking each of the database tables, waiting a maximum of '{}' seconds for each lock",
+                        lockTimeout.getSeconds());
+                connection.executeWithoutCommitting(lockStatement.get());
+                //now that we have the locks, refresh the schema
+                schema.refresh(connection, false);
+            }
+            else {
+                // if we are not in an exported snapshot, this may result in some inconsistencies.
+                // Let the user know
+                if (!snapshotter.exportSnapshot()) {
+                    logger.warn("Step 2: skipping locking each table, this may result in inconsistent schema!");
+                } else {
+                    logger.info("Step 2: skipping locking each table in an exported snapshot");
+                }
+            }
 
             long xlogStart = connection.currentXLogLocation();
             long txId = connection.currentTransactionId().longValue();
