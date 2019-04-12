@@ -362,10 +362,10 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
             case "uuid":
             case "tstzrange":
             case "inet":
+            case "cidr":
                 return rawValue.asString();
             // catch-all for other known/builtin PG types
             // TODO: improve with more specific/useful classes here?
-            case "cidr":
             case "macaddr":
             case "macaddr8":
             case "pg_lsn":

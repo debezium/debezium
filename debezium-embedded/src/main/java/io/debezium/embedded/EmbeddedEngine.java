@@ -809,13 +809,13 @@ public final class EmbeddedEngine implements Runnable {
                         RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
                         while (runningThread.get() != null) {
                             try {
-                                logger.debug("Embedded engine is polling task for records on thread " + runningThread.get());
+                                logger.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
                                 changeRecords = task.poll(); // blocks until there are values ...
                                 logger.debug("Embedded engine returned from polling task for records");
                             }
                             catch (InterruptedException e) {
                                 // Interrupted while polling ...
-                                logger.debug("Embedded engine interrupted on thread " + runningThread.get() + " while polling the task for records");
+                                logger.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
                                 Thread.interrupted();
                                 break;
                             }
@@ -1004,7 +1004,7 @@ public final class EmbeddedEngine implements Runnable {
             }
             catch (InterruptedException e) {
             }
-            logger.debug("Interruping the embedded engine's thread " + thread + " (already interrupted: " + thread.isInterrupted() + ")");
+            logger.debug("Interrupting the embedded engine's thread {} (already interrupted: {})", thread, thread.isInterrupted());
             // Interrupt the thread in case it is blocked while polling the task for records ...
             thread.interrupt();
             return true;

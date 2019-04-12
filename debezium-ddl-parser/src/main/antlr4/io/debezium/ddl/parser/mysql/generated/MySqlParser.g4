@@ -1995,11 +1995,11 @@ dataType
         TINYINT | SMALLINT | MEDIUMINT | INT | INTEGER | BIGINT
       ) 
       lengthOneDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
-    | typeName=(REAL | FLOAT)
+    | typeName=REAL
       lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
     | typeName=DOUBLE PRECISION?
       lengthTwoDimension? (SIGNED | UNSIGNED)? ZEROFILL?                       #dimensionDataType
-    | typeName=(DECIMAL | DEC | FIXED | NUMERIC)
+    | typeName=(DECIMAL | DEC | FIXED | NUMERIC | FLOAT)
       lengthTwoOptionalDimension? (SIGNED | UNSIGNED)? ZEROFILL?               #dimensionDataType
     | typeName=(
         DATE | TINYBLOB | BLOB | MEDIUMBLOB | LONGBLOB
@@ -2010,8 +2010,8 @@ dataType
         | VARBINARY | YEAR
       ) 
       lengthOneDimension?                                           #dimensionDataType
-    | typeName=(ENUM | SET) 
-      '(' collectionOption (',' collectionOption)* ')' BINARY?
+    | typeName=(ENUM | SET)
+      collectionOptions BINARY?
       ((CHARACTER SET | CHARSET) charsetName)?                      #collectionDataType
     | typeName=(
         GEOMETRYCOLLECTION | GEOMCOLLECTION | LINESTRING | MULTILINESTRING
@@ -2019,8 +2019,8 @@ dataType
       )                                                             #spatialDataType
     ;
 
-collectionOption
-    : STRING_LITERAL
+collectionOptions
+    : '(' STRING_LITERAL (',' STRING_LITERAL)* ')'
     ;
 
 convertedDataType

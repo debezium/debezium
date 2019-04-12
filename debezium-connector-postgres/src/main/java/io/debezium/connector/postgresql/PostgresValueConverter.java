@@ -143,6 +143,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Json.builder();
             case PgOid.TSTZRANGE_OID:
             case PgOid.INET_OID:
+            case PgOid.CIDR_OID:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -166,6 +167,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TEXT_ARRAY:
             case PgOid.BPCHAR_ARRAY:
             case PgOid.INET_ARRAY:
+            case PgOid.CIDR_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
                 return SchemaBuilder.array(numericSchema(column).optional().build());
@@ -275,6 +277,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TSTZRANGE_OID:
             case PgOid.JSON:
             case PgOid.INET_OID:
+            case PgOid.CIDR_OID:
                 return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
@@ -297,6 +300,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BOOL_ARRAY:
             case PgOid.DATE_ARRAY:
             case PgOid.INET_ARRAY:
+            case PgOid.CIDR_ARRAY:
                 return createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
@@ -436,8 +440,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data){
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
-          logger.trace("in ANON: value from data object: *** {} ***", data.toString());
-          logger.trace("in ANON: object type is: *** {} ***", data.getClass());
+            logger.trace("in ANON: value from data object: *** {} ***", data);
+            logger.trace("in ANON: object type is: *** {} ***", data.getClass());
             if (data instanceof String) {
                 r.deliver(changePlainStringRepresentationToJsonStringRepresentation(((String) data)));
             }
@@ -451,7 +455,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private String changePlainStringRepresentationToJsonStringRepresentation(String text){
-        logger.trace("text value is: " + text);
+        logger.trace("text value is: {}", text);
         try {
             Map<String, String> map = HStoreConverter.fromString(text);
             return convertMapToJsonStringRepresentation(map);
@@ -473,7 +477,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return writer.getBuffer().toString();
         }
         catch(Exception e) {
-            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + map.toString(), e);
+            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + map, e);
         }
     }
 

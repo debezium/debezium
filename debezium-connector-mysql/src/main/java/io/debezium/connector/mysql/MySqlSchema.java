@@ -147,7 +147,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(bigIntUnsignedHandlingModeStr);
         BigIntUnsignedMode bigIntUnsignedMode = bigIntUnsignedHandlingMode.asBigIntUnsignedMode();
 
-        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode);
+        final boolean timeAdjusterEnabled = configuration.getConfig().getBoolean(MySqlConnectorConfig.ENABLE_TIME_ADJUSTER);
+        return new MySqlValueConverters(decimalMode, timePrecisionMode, bigIntUnsignedMode, timeAdjusterEnabled ? MySqlValueConverters::adjustTemporal : x -> x);
     }
 
     protected HistoryRecordComparator historyComparator() {

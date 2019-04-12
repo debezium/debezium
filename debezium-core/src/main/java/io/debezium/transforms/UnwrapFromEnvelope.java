@@ -154,7 +154,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
         handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
         if (config.hasKey(DROP_DELETES.name())) {
-            logger.warn(DROP_DELETES.name() + " option is deprecated. Please use " + HANDLE_DELETES.name());
+            logger.warn("{} option is deprecated. Please use {}", DROP_DELETES.name(), HANDLE_DELETES.name());
             dropDeletes = config.getBoolean(DROP_DELETES);
             if (dropDeletes) {
                 handleDeletes = DeleteHandling.DROP;

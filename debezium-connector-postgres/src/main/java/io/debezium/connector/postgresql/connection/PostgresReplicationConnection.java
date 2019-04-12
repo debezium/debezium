@@ -184,7 +184,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             offset = defaultStartingPos;
         }
         LogSequenceNumber lsn = LogSequenceNumber.valueOf(offset);
-        LOGGER.debug("starting streaming from LSN '{}'", lsn.asString());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("starting streaming from LSN '{}'", lsn.asString());
+        }
         return createReplicationStream(lsn);
     }
 
@@ -414,7 +416,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         this.slotStreamParams.setProperty(paramAndValue[0], paramAndValue[1]);
                     }
                     else {
-                        LOGGER.warn("The following STREAM_PARAMS value is invalid: " + paramsWithValue);
+                        LOGGER.warn("The following STREAM_PARAMS value is invalid: {}", paramsWithValue);
                     }
                 }
             }

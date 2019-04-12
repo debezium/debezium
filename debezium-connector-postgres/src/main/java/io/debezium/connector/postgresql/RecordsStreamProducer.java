@@ -276,7 +276,7 @@ public class RecordsStreamProducer extends RecordsProducer {
                     break;
                 }
                 default: {
-                   logger.warn("unknown message operation: " + operation);
+                   logger.warn("unknown message operation: {}", operation);
                 }
             }
         }
@@ -289,16 +289,16 @@ public class RecordsStreamProducer extends RecordsProducer {
 
     protected void generateCreateRecord(TableId tableId, Object[] rowData, BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (rowData == null || rowData.length == 0) {
-            logger.warn("no new values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
+            logger.warn("no new values found for table '{}' from update message at '{}'; skipping record", tableId, sourceInfo);
             return;
         }
         TableSchema tableSchema = schema().schemaFor(tableId);
         assert tableSchema != null;
         Object key = tableSchema.keyFromColumnData(rowData);
-        logger.trace("key value is: {}", String.valueOf(key));
+        logger.trace("key value is: {}", key);
         Struct value = tableSchema.valueFromColumnData(rowData);
         if (value == null) {
-            logger.warn("no values found for table '{}' from create message at '{}'; skipping record" , tableId, sourceInfo);
+            logger.warn("no values found for table '{}' from create message at '{}'; skipping record", tableId, sourceInfo);
             return;
         }
         Schema keySchema = tableSchema.keySchema();
@@ -318,7 +318,7 @@ public class RecordsStreamProducer extends RecordsProducer {
     protected void generateUpdateRecord(TableId tableId, Object[] oldRowData, Object[] newRowData,
                                         BlockingConsumer<ChangeEvent> recordConsumer) throws InterruptedException {
         if (newRowData == null || newRowData.length == 0) {
-            logger.warn("no values found for table '{}' from update message at '{}';skipping record" , tableId, sourceInfo);
+            logger.warn("no values found for table '{}' from update message at '{}'; skipping record" , tableId, sourceInfo);
             return;
         }
         Schema oldKeySchema = null;
@@ -562,10 +562,12 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         List<String> toastableColumns = schema().getToastableColumnsForTableId(table.id());
 
-        logger.debug("msg columns: '{}' --- missing columns: '{}' --- toastableColumns: '{}",
-                     String.join(",", msgColumnNames),
-                     String.join(",", missingColumnNames),
-                     String.join(",", toastableColumns));
+        if (logger.isDebugEnabled()) {
+            logger.debug("msg columns: '{}' --- missing columns: '{}' --- toastableColumns: '{}",
+                    String.join(",", msgColumnNames),
+                    String.join(",", missingColumnNames),
+                    String.join(",", toastableColumns));
+        }
         // Return `true` if we have some columns not in the replication message that are not toastable or that we do
         // not recognize
         return !toastableColumns.containsAll(missingColumnNames);

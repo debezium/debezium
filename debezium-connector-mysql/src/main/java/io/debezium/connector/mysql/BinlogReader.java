@@ -5,8 +5,13 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.util.Strings.isNullOrEmpty;
+
 import java.io.IOException;
 import java.io.Serializable;
+import java.security.GeneralSecurityException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -17,6 +22,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -42,7 +51,9 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
+import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
+import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
 import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -183,6 +194,12 @@ public class BinlogReader extends AbstractReader {
         client.setThreadFactory(Threads.threadFactory(MySqlConnector.class, context.getConnectorConfig().getLogicalName(), "binlog-client", false));
         client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
+        if (connectionContext.sslModeEnabled()) {
+            SSLSocketFactory sslSocketFactory = getBinlogSslSocketFactory(connectionContext);
+            if (sslSocketFactory != null) {
+                client.setSslSocketFactory(sslSocketFactory);
+            }
+        }
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
         client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));
         client.registerEventListener(context.bufferSizeForBinlogReader() == 0
@@ -292,9 +309,12 @@ public class BinlogReader extends AbstractReader {
             eventHandlers.put(EventType.ROWS_QUERY, this::handleRowsQuery);
         }
 
+        final boolean isGtidModeEnabled = connectionContext.isGtidModeEnabled();
+        metrics.setIsGtidModeEnabled(isGtidModeEnabled);
+
         // Get the current GtidSet from MySQL so we can get a filtered/merged GtidSet based off of the last Debezium checkpoint.
         String availableServerGtidStr = connectionContext.knownGtidSet();
-        if (connectionContext.isGtidModeEnabled()) {
+        if (isGtidModeEnabled) {
             // The server is using GTIDs, so enable the handler ...
             eventHandlers.put(EventType.GTID, this::handleGtidEvent);
 
@@ -418,10 +438,12 @@ public class BinlogReader extends AbstractReader {
                 // We want to record the status ...
                 long millisSinceLastOutput = clock.currentTimeInMillis() - previousOutputMillis;
                 try {
-                    context.temporaryLoggingContext("binlog", () -> {
-                        logger.info("{} records sent during previous {}, last recorded offset: {}",
-                                    recordCounter, Strings.duration(millisSinceLastOutput), lastOffset);
-                    });
+                    if (logger.isInfoEnabled()) {
+                        context.temporaryLoggingContext("binlog", () -> {
+                            logger.info("{} records sent during previous {}, last recorded offset: {}",
+                                        recordCounter, Strings.duration(millisSinceLastOutput), lastOffset);
+                        });
+                    }
                 } finally {
                     recordCounter = 0;
                     previousOutputMillis += millisSinceLastOutput;
@@ -767,7 +789,8 @@ public class BinlogReader extends AbstractReader {
             }
         }
         else {
-            logger.debug("Skipping {} event: {} for non-monitored table {}", typeToLog, event, tableId);
+            logger.debug("Filtering {} event: {} for non-monitored table {}", typeToLog, event, tableId);
+            metrics.onFilteredEvent("source = " + tableId);
         }
     }
 
@@ -941,7 +964,7 @@ public class BinlogReader extends AbstractReader {
         // do nothing
     }
 
-    protected SSLMode sslModeFor(SecureConnectionMode mode) {
+    protected static SSLMode sslModeFor(SecureConnectionMode mode) {
         switch (mode) {
             case DISABLED:
                 return SSLMode.DISABLED;
@@ -960,14 +983,16 @@ public class BinlogReader extends AbstractReader {
     protected final class ReaderThreadLifecycleListener implements LifecycleListener {
         @Override
         public void onDisconnect(BinaryLogClient client) {
-            context.temporaryLoggingContext("binlog", () -> {
-                Map<String, ?> offset = lastOffset;
-                if (offset != null) {
-                    logger.info("Stopped reading binlog after {} events, last recorded offset: {}", totalRecordCounter, offset);
-                } else {
-                    logger.info("Stopped reading binlog after {} events, no new offset was recorded", totalRecordCounter);
-                }
-            });
+            if (logger.isInfoEnabled()) {
+                context.temporaryLoggingContext("binlog", () -> {
+                    Map<String, ?> offset = lastOffset;
+                    if (offset != null) {
+                        logger.info("Stopped reading binlog after {} events, last recorded offset: {}", totalRecordCounter, offset);
+                    } else {
+                        logger.info("Stopped reading binlog after {} events, no new offset was recorded", totalRecordCounter);
+                    }
+                });
+            }
         }
 
         @Override
@@ -1040,5 +1065,52 @@ public class BinlogReader extends AbstractReader {
 
     public BinlogPosition getCurrentBinlogPosition() {
         return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
+    }
+
+    private static SSLSocketFactory getBinlogSslSocketFactory(MySqlJdbcContext connectionContext) {
+        String acceptedTlsVersion = connectionContext.getSessionVariableForSslVersion();
+        if (!isNullOrEmpty(acceptedTlsVersion)) {
+            SSLMode sslMode = sslModeFor(connectionContext.sslMode());
+
+            // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
+            // the accepted TLS version is passed to the constructed factory
+            if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
+                return new DefaultSSLSocketFactory(acceptedTlsVersion) {
+
+                    @Override
+                    protected void initSSLContext(SSLContext sc)
+                        throws GeneralSecurityException {
+                        sc.init(null, new TrustManager[]{
+                            new X509TrustManager() {
+
+                                @Override
+                                public void checkClientTrusted(
+                                    X509Certificate[] x509Certificates,
+                                    String s)
+                                    throws CertificateException {
+                                }
+
+                                @Override
+                                public void checkServerTrusted(
+                                    X509Certificate[] x509Certificates,
+                                    String s)
+                                    throws CertificateException {
+                                }
+
+                                @Override
+                                public X509Certificate[] getAcceptedIssuers() {
+                                    return new X509Certificate[0];
+                                }
+                            }
+                        }, null);
+                    }
+                };
+            }
+            else {
+                return new DefaultSSLSocketFactory(acceptedTlsVersion);
+            }
+        }
+
+        return null;
     }
 }

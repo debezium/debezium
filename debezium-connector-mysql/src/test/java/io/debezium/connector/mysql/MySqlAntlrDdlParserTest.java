@@ -49,6 +49,33 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1220")
+    public void shouldParseFloatVariants() {
+        final String ddl =
+                "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4));";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        final Table table = tables.forTable(null, null, "mytable");
+        assertThat(table.columns().size()).isEqualTo(4);
+
+        final Column f1 = table.columnWithName("f1");
+        assertThat(f1.typeName()).isEqualTo("FLOAT");
+        assertThat(f1.length()).isEqualTo(-1);
+        assertThat(f1.scale().isPresent()).isFalse();
+
+        final Column f2 = table.columnWithName("f2");
+        assertThat(f2.typeName()).isEqualTo("FLOAT");
+        assertThat(f2.length()).isEqualTo(4);
+        assertThat(f2.scale().isPresent()).isFalse();
+
+        final Column f3 = table.columnWithName("f3");
+        assertThat(f3.typeName()).isEqualTo("FLOAT");
+        assertThat(f3.length()).isEqualTo(7);
+        assertThat(f3.scale().get()).isEqualTo(4);
+    }
+
+    @Test
     @FixFor("DBZ-1185")
     public void shouldProcessSerialDatatype() {
         final String ddl =
@@ -566,6 +593,28 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         assertThat(tables.forTable(new TableId(null, null, "geomtable"))).isNotNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1203")
+    public void parseAlterEnumColumnWithNewCharacterSet() {
+        String ddl =
+                "CREATE TABLE `test_stations_10` (\n" +
+                        "    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
+                        "    `name` varchar(500) COLLATE utf8_unicode_ci NOT NULL,\n" +
+                        "    `type` enum('station', 'post_office') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'station',\n" +
+                        "    `created` datetime DEFAULT CURRENT_TIMESTAMP,\n" +
+                        "    `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                        "    PRIMARY KEY (`id`)\n" +
+                        ");\n" +
+                        "\n" +
+                        "ALTER TABLE `test_stations_10`\n" +
+                        "    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now')\n" +
+                        "    CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';\n";
+
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(tables.forTable(new TableId(null, null, "test_stations_10"))).isNotNull();
     }
 
     @Override
