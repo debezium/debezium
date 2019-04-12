@@ -13,7 +13,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Optional;
 import java.util.Map;
 
 import io.debezium.connector.base.SnapshotStatementFactory;
@@ -325,7 +324,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
-        long rows = 0;
         final String selectStatement = getSnapshotSelect(table.id());
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
 
@@ -334,6 +332,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             Column[] columns = getColumnsForResultSet(table, rs);
             final int numColumns = table.columns().size();
+            long rows = 0;
             Timer logTimer = getTableScanLogTimer();
 
             while (rs.next()) {
