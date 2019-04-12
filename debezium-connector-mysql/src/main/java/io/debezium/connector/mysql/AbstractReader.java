@@ -361,6 +361,10 @@ public abstract class AbstractReader implements Reader {
         }
     }
 
+    /**
+     *
+     * @return Snapshot statement factory
+     */
     public SnapshotStatementFactory getSnapshotStatementFactory() {
         return snapshotStatementFactory;
     }

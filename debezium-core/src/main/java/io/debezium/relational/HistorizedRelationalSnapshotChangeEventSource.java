@@ -120,7 +120,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
-
             snapshotProgressListener.monitoredTablesDetermined(ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables");
@@ -324,11 +323,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
+
         final String selectStatement = getSnapshotSelect(table.id());
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
 
         try (Statement statement = snapshotStatementFactory.readTableStatement();
-             ResultSet rs = statement.executeQuery(selectStatement)) {
+                ResultSet rs = statement.executeQuery(selectStatement)) {
 
             Column[] columns = getColumnsForResultSet(table, rs);
             final int numColumns = table.columns().size();
@@ -357,10 +357,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                 dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, row),
                         snapshotReceiver);
             }
+
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
             snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
-        } catch (SQLException e) {
+        }
+        catch(SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
     }
@@ -381,11 +383,10 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
     /**
-     * Generate a valid postgres query string for the specified table, or an empty {@link Optional}
-     * to skip snapshotting this table (but that table will still be streamed from)
+     * Generate a valid sqlserver query string for the specified table
      *
      * @param tableId the table to generate a query for
-     * @return a valid query string, or none to skip snapshotting this table
+     * @return a valid query string
      */
     private String getSnapshotSelect(TableId tableId) {
         return snapshotOverrides.containsKey(tableId) ? snapshotOverrides.get(tableId) :

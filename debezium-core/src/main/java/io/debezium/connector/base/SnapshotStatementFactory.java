@@ -40,6 +40,12 @@ public class SnapshotStatementFactory implements JdbcConnection.StatementFactory
         return createStatement(jdbcConnection.connection());
     }
 
+    /**
+     * Create statement for snapshot reading
+     * @param connection the JDBC connection; never null
+     * @return statement for snapshot reading
+     * @throws SQLException any SQL exception thrown
+     */
     @Override
     public Statement createStatement(Connection connection) throws SQLException {
         int rowsFetchSize = connectorConfig.rowsFetchSize();

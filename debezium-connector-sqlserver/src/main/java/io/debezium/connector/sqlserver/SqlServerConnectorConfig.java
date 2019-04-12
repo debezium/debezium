@@ -336,10 +336,17 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         };
     }
 
+    /**
+     * @return comma separated list of tables for which select is overridden
+     */
     public String snapshotSelectOverrides() {
         return config.getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
 
+    /**
+     * @param table table name
+     * @return snapshot select overridden
+     */
     public String snapshotSelectOverrideForTable(String table) {
         return config.getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
     }

@@ -217,6 +217,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
+    /**
+     * @return row fetch size that will be used to retrieve snapshot records
+     */
     public int rowsFetchSize() {
         return getConfig().getInteger(ROWS_FETCH_SIZE);
     }
