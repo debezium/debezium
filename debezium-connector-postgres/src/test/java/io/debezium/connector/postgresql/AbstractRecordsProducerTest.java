@@ -81,8 +81,8 @@ public abstract class AbstractRecordsProducerTest {
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
     protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttz, tptz, it) " +
-                                                                "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30+02:00'::TIMESTAMPTZ, " +
-                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '13:51:30+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
+                                                                "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, " +
+                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '13:51:30.123789+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
                                                                 "'P1Y2M3DT4H5M0S'::INTERVAL)";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv) " +
                                                           "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2))";
@@ -496,7 +496,7 @@ public abstract class AbstractRecordsProducerTest {
         long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
         long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
         long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-25T22:10:12.608"), null);
-        String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
+        String expectedTz = "2016-11-04T11:51:30.123456Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         long expectedTiPrecision = LocalTime.parse("13:51:30.123").toNanoOfDay() / 1_000_000;
@@ -521,7 +521,7 @@ public abstract class AbstractRecordsProducerTest {
         long expectedTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
         long expectedTsMs = Timestamp.toEpochMillis(LocalDateTime.parse("2016-11-04T13:51:30.123456"), null);
         long expectedNegTs = MicroTimestamp.toEpochMicros(LocalDateTime.parse("1936-10-25T22:10:12.608"), null);
-        String expectedTz = "2016-11-04T11:51:30Z"; //timestamp is stored with TZ, should be read back with UTC
+        String expectedTz = "2016-11-04T11:51:30.123456Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT

@@ -606,7 +606,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         else if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
-            data = OffsetDateTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
+            data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
         }
 
         return super.convertTimestampWithZone(column, fieldDefn, data);
