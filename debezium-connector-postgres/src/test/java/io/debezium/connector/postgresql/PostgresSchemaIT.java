@@ -118,7 +118,8 @@ public class PostgresSchemaIT {
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
             assertTableSchema("public.range_table", "unbounded_exclusive_tsrange, bounded_inclusive_tsrange," +
                             "unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange," +
-                            "unbounded_exclusive_daterange, bounded_exclusive_daterange",
+                            "unbounded_exclusive_daterange, bounded_exclusive_daterange, int4_number_range, numerange, int8_number_range",
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
                     Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
                     Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
