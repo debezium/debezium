@@ -34,4 +34,10 @@ public final class PgOid extends Oid {
     public static final int MACADDR_ARRAY = 1040;
     public static final int MACADDR8_OID = 774;
     public static final int MACADDR8_ARRAY = 775;
+    public static final int INT4RANGE_OID = 3904;
+    public static final int INT4RANGE_ARRAY = 3905;
+    public static final int NUM_RANGE_OID = 3906;
+    public static final int NUM_RANGE_ARRAY = 3907;
+    public static final int INT8RANGE_OID = 3926;
+    public static final int INT8RANGE_ARRAY = 3927;
 }
