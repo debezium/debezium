@@ -256,16 +256,16 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     @Test
     @FixFor("DBZ-1233")
     public void shouldParseCheckTableSomeOtherKeyword() {
-	String[] otherKeywords = new String[]{"cache","close","des_key_file","end","export","flush","found","general","handler","help",
-            "hosts","install","mode","next","open","relay","reset","slow","soname","traditional","triggers","uninstall","until","use_frm","user_resources" };
-	for(String keyword : otherKeywords) {
-	    String ddl = "create table t_"+keyword+"( "+keyword+" varchar(256))";
+        String[] otherKeywords = new String[]{"cache", "close", "des_key_file", "end", "export", "flush", "found", "general", "handler", "help",
+            "hosts", "install", "mode", "next", "open", "relay", "reset", "slow", "soname", "traditional", "triggers", "uninstall", "until", "use_frm", "user_resources" };
+        for(String keyword : otherKeywords) {
+            String ddl = "create table t_"+keyword+"( "+keyword+" varchar(256))";
             parser.parse(ddl, tables);
             assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);            
-            final Table table = tables.forTable(null,null,"t_"+keyword);
-	    assertThat(table).isNotNull();
-            assertThat(table.columnWithName(keyword)).isNotNull();	
-	}
+            final Table table = tables.forTable(null, null, "t_"+keyword);
+            assertThat(table).isNotNull();
+            assertThat(table.columnWithName(keyword)).isNotNull();
+        }
     }
 
     @Override
