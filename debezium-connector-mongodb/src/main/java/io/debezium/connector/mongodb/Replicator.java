@@ -23,12 +23,12 @@ import java.util.function.Predicate;
 
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,7 +153,7 @@ public class Replicator {
                             return;
                         }
                     }
-                    else {
+                    /*else {
                         List<CollectionId> collectionIdList = getListOfNewCollectionsAdded();
                         if (collectionIdList.size() != 0) {
                             recordCurrentOplogPosition();
@@ -161,7 +161,7 @@ public class Replicator {
                                 return;
                             }
                         }
-                    }
+                    }*/
                     readOplog();
                 }
             } finally {
@@ -183,14 +183,22 @@ public class Replicator {
         final List<CollectionId> collections = new ArrayList<>();
         mongoClient.collections().forEach(id -> {
             logger.debug("Collection name : {} to be considered for the colletion filter", id.name());
-            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id) && !topics.containsKey(context
-                    .topicSelector()
-                    .getTopic(id))) {
-                logger.info("Collection filter - add collection {} for the initial sync : ", id.name());
+            if (databaseFilter.test(id.dbName()) && collectionFilter.test(id) && isNewTopic(consumer, topics, id)) {
+                logger.info("Collection filter - add collection {} for the initial sync because topic {} not found ", id.name(),context.topicSelector().getTopic(id));
                 collections.add(id);
             }
         });
         return collections;
+    }
+    
+    private boolean isNewTopic(KafkaConsumer<String, String> consumer,Map<String, List<PartitionInfo>> topics, CollectionId id) {
+        if(!topics.containsKey(context.topicSelector().getTopic(id)))
+            return true;
+        List<TopicPartition> partitions = new ArrayList<>();
+        topics.get(context.topicSelector().getTopic(id)).forEach(partition ->{
+            partitions.add(new TopicPartition(partition.topic(), partition.partition()));
+        });
+        return consumer.endOffsets(partitions).values().contains(0);
     }
 
     /**
@@ -278,7 +286,7 @@ public class Replicator {
     protected boolean performInitialSync(List<CollectionId> collections) {
         logger.info("Beginning initial sync of '{}' at {}", rsName, source.lastOffset(rsName));
         source.startInitialSync(replicaSet.replicaSetName());
-
+       
         // Set up our recorder to buffer the last record ...
         try {
             bufferedRecorder.startBuffering();
@@ -402,6 +410,7 @@ public class Replicator {
         try (MongoCursor<Document> cursor = docCollection.find().iterator()) {
             while (cursor.hasNext()) {
                 Document doc = cursor.next();
+                Thread.sleep(config.getLong(MongoDbConnectorConfig.SLEEP_TIME_MONGO_READ));
                 logger.trace("Found existing doc in {}: {}", collectionId, doc);
                 counter += factory.recordObject(collectionId, doc, timestamp);
             }
@@ -451,11 +460,14 @@ public class Replicator {
         });
         try (MongoCursor<Document> cursor = results.iterator()) {
             while (running.get() && cursor.hasNext()) {
+                Thread.sleep(config.getLong(MongoDbConnectorConfig.SLEEP_TIME_MONGO_READ));
                 if (!handleOplogEvent(primaryAddress, cursor.next())) {
                     // Something happened, and we're supposed to stop reading
                     return;
                 }
             }
+        } catch (InterruptedException e) {
+            logger.warn("Sleep Interupted!!!");
         }
     }
 
@@ -523,9 +535,9 @@ public class Replicator {
             CollectionId collectionId = new CollectionId(rsName, dbName, collectionName);
             if (collectionFilter.test(collectionId)) {
                 Object o2 = event.get("o2");
-                String objId = o2 != null ? objectIdLiteral(o2) : objectIdLiteralFrom(object);
+                Object objId = o2 != null ? objectId(o2) : objectIdLiteralFrom(object);
                 Document fullData=null;
-                if(o2!=null && config.getBoolean(MongoDbConnectorConfig.READ_FULLDATA)) {
+                if(o2 != null && config.getBoolean(MongoDbConnectorConfig.READ_FULLDATA)) {
                     fullData= getDocumentById(collectionId, objId);
                     if(fullData!=null) {
                         event.append("fullData", fullData);
@@ -545,45 +557,32 @@ public class Replicator {
         return true;
     }
     
-    protected String objectIdLiteralFrom(Document obj) {
+    protected Object objectIdLiteralFrom(Document obj) {
         if (obj == null) {
             return null;
         }
         Object id = obj.get("_id");
-        return objectIdLiteral(id);
+        return objectId(id);
     }
 
-    protected String objectIdLiteral(Object id) {
-        if (id == null) {
-            return null;
-        }
-        if (id instanceof ObjectId) {
-            return ((ObjectId) id).toHexString();
-        }
-        if (id instanceof String) {
-            return (String) id;
-        }
+    protected Object objectId(Object id) {
         if (id instanceof Document) {
             Document doc = (Document)id;
             if (doc.containsKey("_id") && doc.size() == 1) {
                 // This is an embedded ObjectId ...
-                return objectIdLiteral(doc.get("_id"));
+                return doc.get("_id");
             }
-            return ((Document) id).toJson();
+            return id;
         }
-        return id.toString();
+        return id;
     }
 
     
-    private Document getDocumentById(CollectionId collectionId, String id) {
+    private Document getDocumentById(CollectionId collectionId, Object id) {
         MongoCollection<Document> collection=collectionsMap.get(collectionId);
         if(id!=null) {
             BasicDBObject query = null;
-            if(ObjectId.isValid(id)) {
-                query = new BasicDBObject("_id", new ObjectId(id));
-            }else {
-                query = new BasicDBObject("_id", id);
-            }
+            query = new BasicDBObject("_id", id);
             FindIterable<Document> findIterable = collection.find(query);
             if (findIterable != null) {
                 return findIterable.first();

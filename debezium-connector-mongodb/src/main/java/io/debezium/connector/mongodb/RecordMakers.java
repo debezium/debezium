@@ -83,6 +83,7 @@ public class RecordMakers {
      * A record producer for a given collection.
      */
     public static final class RecordsForCollection {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
         private final CollectionId collectionId;
         private final String replicaSetName;
         private final SourceInfo source;
@@ -111,6 +112,7 @@ public class RecordMakers {
                                             .field(FieldName.AFTER, Json.builder().optional().build())
                                             .field("patch", Json.builder().optional().build())
                                             .field("fullData", Json.builder().optional().build())
+                                            .field("_id", Schema.STRING_SCHEMA)
                                             .field(FieldName.SOURCE, source.schema())
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -180,12 +182,14 @@ public class RecordMakers {
                     // The object is the new document ...
                     String jsonStr = valueTransformer.apply(objectValue);
                     value.put(FieldName.AFTER, jsonStr);
+                    value.put("_id", objId);
                     break;
                 case UPDATE:
                     // The object is the idempotent patch document ...
                     String patchStr = valueTransformer.apply(objectValue);
                     value.put("patch", patchStr);
                     if(configuration.getBoolean(MongoDbConnectorConfig.READ_FULLDATA)) {
+                        fullObjectValue.put("_id", objId);
                         String fullDataStr = valueTransformer.apply(fullObjectValue);
                         value.put("fullData", fullDataStr);
                     }

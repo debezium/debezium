@@ -230,7 +230,7 @@ public final class MongoDbConnectorTask extends SourceTask {
          * @throws InterruptedException if the thread is interrupted while waiting to enqueue the record
          */
         public void enqueue(SourceRecord record) throws InterruptedException {
-            if (record != null) {
+            if(record!=null) {
                 records.put(record);
             }
         }
@@ -253,7 +253,14 @@ public final class MongoDbConnectorTask extends SourceTask {
             if (!summaryByReplicaSet.isEmpty()) {
                 PreviousContext prevContext = replContext.configureLoggingContext("task");
                 try {
+                    
                     summaryByReplicaSet.forEach((rsName, summary) -> {
+                        Map<String, Object> monData= new HashMap<>();
+                        monData.put("recordCount", summary.recordCount());
+                        monData.put("replicaSetName", rsName);
+                        monData.put("lastOffset", summary.lastOffset());
+                        monData.put("logicalName", replContext.config.getString(MongoDbConnectorConfig.LOGICAL_NAME));
+                        //NewRelic.getAgent().getInsights().recordCustomEvent("mongoDebezium", monData);
                         logger.info("{} records sent for replica set '{}', last offset: {}",
                                     summary.recordCount(), rsName, summary.lastOffset());
                     });
