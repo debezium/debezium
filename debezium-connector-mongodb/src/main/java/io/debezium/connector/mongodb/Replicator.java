@@ -418,7 +418,8 @@ public class Replicator {
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
         long counter = 0;
-        try (MongoCursor<Document> cursor = docCollection.find().iterator()) {
+        int documentsFetchSize = context.getConnectorConfig().getDocumentsFetchSize();
+        try (MongoCursor<Document> cursor = docCollection.find().batchSize(documentsFetchSize).iterator()) {
             while (running.get() && cursor.hasNext()) {
                 Document doc = cursor.next();
                 logger.trace("Found existing doc in {}: {}", collectionId, doc);
