@@ -73,4 +73,18 @@ public class MysqlAntlrDefaultValueTest extends AbstractMysqlDefaultValueTest {
         assertThat((Short) table.columnWithName("tival4").defaultValue()).isEqualTo((short) 18);
     }
 
+    @Test
+    @FixFor("DBZ-1249")
+    public void shouldAcceptBitSetDefaultValue() {
+        String ddl = "CREATE TABLE user_subscribe (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, content bit(24) DEFAULT b'111111111111101100001110', PRIMARY KEY (id)) ENGINE=InnoDB";
+
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "user_subscribe"));
+
+        final byte[] defVal = (byte[]) table.columnWithName("content").defaultValue();
+        assertThat(Byte.toUnsignedInt((defVal[0]))).isEqualTo(0b00001110);
+        assertThat(Byte.toUnsignedInt((defVal[1]))).isEqualTo(0b11111011);
+        assertThat(Byte.toUnsignedInt((defVal[2]))).isEqualTo(0b11111111);
+    }
 }
