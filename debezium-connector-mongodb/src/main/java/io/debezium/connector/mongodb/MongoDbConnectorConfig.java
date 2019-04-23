@@ -300,7 +300,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                             .withImportance(Importance.MEDIUM)
                                                             .withDescription("The maximum number of documents that should be loaded into memory while performing a snapshot")
                                                             .withDefault(0)
-                                                            .withValidation(Field::isPositiveInteger);
+                                                            .withValidation(Field::isNonNegativeInteger);
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
                                                 .withDescription("Internal use only")
