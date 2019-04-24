@@ -301,7 +301,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     public void shouldParseCreateStatements() {
         parser.parse(readFile("ddl/mysql-test-create.ddl"), tables);
         Testing.print(tables);
-        int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 49;
+        int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 50;
         assertThat(tables.size()).isEqualTo(57);
         assertThat(listener.total()).isEqualTo(144 - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel);
     }
@@ -327,7 +327,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
         parser.parse(readLines(189, "ddl/mysql-test-create.ddl"), tables);
         assertThat(tables.size()).isEqualTo(39);
         int numberOfAlteredTablesWhichDoesNotExists = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
-        int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 42;
+        int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 43;
         assertThat(listener.total()).isEqualTo(120 - numberOfAlteredTablesWhichDoesNotExists
                 - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel);
     }
