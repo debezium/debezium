@@ -235,7 +235,7 @@ public class MySqlDefaultValuePreConverter  {
     private DateTimeFormatter timestampFormat(int length) {
         final DateTimeFormatterBuilder dtf = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd HH:mm:ss");
-        if (length !=-1) {
+        if (length > 0) {
             dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
         }
         return dtf.toFormatter();
