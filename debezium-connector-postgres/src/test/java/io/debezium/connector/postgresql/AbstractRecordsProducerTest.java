@@ -477,7 +477,7 @@ public abstract class AbstractRecordsProducerTest {
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         long expectedTiPrecision = LocalTime.parse("13:51:30.123").toNanoOfDay() / 1_000_000;
-        String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
+        String expectedTtz = "11:51:30.123Z";  //time is stored with TZ, should be read back at GMT
         String expectedTtzPrecision = "11:51:30.123Z";
         double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
 
@@ -501,7 +501,7 @@ public abstract class AbstractRecordsProducerTest {
         String expectedTz = "2016-11-04T11:51:30.123456Z"; //timestamp is stored with TZ, should be read back with UTC
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
-        String expectedTtz = "11:51:30Z";  //time is stored with TZ, should be read back at GMT
+        String expectedTtz = "11:51:30.123Z";  //time is stored with TZ, should be read back at GMT
         double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
 
         return Arrays.asList(new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), expectedTs),
