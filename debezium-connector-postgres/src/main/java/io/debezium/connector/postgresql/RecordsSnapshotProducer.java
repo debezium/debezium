@@ -46,7 +46,6 @@ import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
-
 /**
  * Producer of {@link org.apache.kafka.connect.source.SourceRecord source records} from a database snapshot. Once completed,
  * this producer can optionally continue streaming records, using another {@link RecordsStreamProducer} instance.
@@ -318,9 +317,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     }
 
     private Statement readTableStatement(Connection conn) throws SQLException {
-        int rowsFetchSize = taskContext.config().rowsFetchSize();
+        int fetchSize = taskContext.config().getSnapshotFetchSize();
         Statement statement = conn.createStatement(); // the default cursor is FORWARD_ONLY
-        statement.setFetchSize(rowsFetchSize);
+        statement.setFetchSize(fetchSize);
         return statement;
     }
 

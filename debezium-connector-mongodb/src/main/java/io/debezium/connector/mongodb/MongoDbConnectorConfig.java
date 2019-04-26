@@ -90,6 +90,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
     }
 
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
+
     /**
      * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
      * replica set.
@@ -293,15 +295,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                               + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
                                                               + "'never' to specify the connector should never perform an initial sync ");
 
-    public static final Field DOCUMENTS_FETCH_SIZE = Field.create("documents.fetch.size")
-                                                            .withDisplayName("Cursor batch size")
-                                                            .withType(Type.INT)
-                                                            .withWidth(Width.MEDIUM)
-                                                            .withImportance(Importance.MEDIUM)
-                                                            .withDescription("The maximum number of documents that should be loaded into memory while performing a snapshot")
-                                                            .withDefault(0)
-                                                            .withValidation(Field::isNonNegativeInteger);
-
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
                                                 .withDescription("Internal use only")
                                                 .withValidation(Field::isInteger)
@@ -324,20 +317,18 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      DATABASE_BLACKLIST,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-                                                     SNAPSHOT_MODE,
-                                                     DOCUMENTS_FETCH_SIZE);
+                                                     CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+                                                     SNAPSHOT_MODE);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
     private final SnapshotMode snapshotMode;
-    private final int documentsFetchSize;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME));
 
         String snapshotModeValue = config.getString(SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, SNAPSHOT_MODE.defaultValueAsString());
-        this.documentsFetchSize = config.getInteger(DOCUMENTS_FETCH_SIZE);
     }
 
     protected static ConfigDef configDef() {
@@ -348,7 +339,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                CommonConnectorConfig.SNAPSHOT_DELAY_MS, SNAPSHOT_MODE, DOCUMENTS_FETCH_SIZE);
+                CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE);
         return config;
     }
 
@@ -384,17 +375,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         return 0;
     }
 
-    public SnapshotMode getSnapshotMode() {
-        return snapshotMode;
-    }
-
     /**
      * Gets the number of documents to return per fetch. Default to {@code 0}, which indicates that the server chooses
      * an appropriate fetch size.
      *
      * @return the fetch size
      */
-    public int getDocumentsFetchSize() {
-        return documentsFetchSize;
+    public int getSnapshotFetchSize() {
+        return getSnapshotFetchSize(DEFAULT_SNAPSHOT_FETCH_SIZE);
+    }
+
+    public SnapshotMode getSnapshotMode() {
+        return snapshotMode;
     }
 }

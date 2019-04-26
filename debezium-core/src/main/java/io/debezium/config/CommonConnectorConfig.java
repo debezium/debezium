@@ -77,6 +77,15 @@ public class CommonConnectorConfig {
         .withDefault(0L)
         .withValidation(Field::isNonNegativeLong);
 
+    public static final Field SNAPSHOT_FETCH_SIZE = Field.create("snapshot.fetch.size")
+        .withDisplayName("Snapshot fetch size")
+        .withType(Type.INT)
+        .withWidth(Width.MEDIUM)
+        .withImportance(Importance.MEDIUM)
+        .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
+        .withValidation(Field::isNonNegativeInteger);
+
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -85,6 +94,7 @@ public class CommonConnectorConfig {
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
     private final Duration snapshotDelayMs;
+    private final Integer snapshotFetchSize;
 
     protected CommonConnectorConfig(Configuration config, String logicalName) {
         this.config = config;
@@ -95,6 +105,7 @@ public class CommonConnectorConfig {
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
+        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE);
     }
 
     /**
@@ -131,6 +142,10 @@ public class CommonConnectorConfig {
 
     public Duration getSnapshotDelay() {
         return snapshotDelayMs;
+    }
+
+    public int getSnapshotFetchSize(int defaultFetchSize) {
+        return (snapshotFetchSize == null) ? defaultFetchSize : snapshotFetchSize;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
