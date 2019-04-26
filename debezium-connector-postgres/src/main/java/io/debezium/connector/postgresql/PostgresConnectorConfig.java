@@ -479,8 +479,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
-    protected static final int DEFAULT_PORT = 5432;
-    protected static final int DEFAULT_ROWS_FETCH_SIZE = 10240;
+    protected static final int DEFAULT_PORT = 5_432;
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
     protected static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
 
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
@@ -589,13 +589,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                       + "'table' (the default) each DB table will have a separate Kafka topic; "
                                                       + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
 
+    /**
+     * @deprecated use {@link CommonConnectorConfig#SNAPSHOT_FETCH_SIZE} instead of
+     */
+    @Deprecated
     public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
                                                      .withDisplayName("Result set fetch size")
                                                      .withType(Type.INT)
                                                      .withWidth(Width.MEDIUM)
                                                      .withImportance(Importance.MEDIUM)
                                                      .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
-                                                     .withDefault(DEFAULT_ROWS_FETCH_SIZE)
                                                      .withValidation(Field::isPositiveLong);
 
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
@@ -837,7 +840,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                                                      Heartbeat.HEARTBEAT_INTERVAL,
                                                      Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                                                      SCHEMA_WHITELIST,
@@ -962,8 +965,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return config.getString(COLUMN_BLACKLIST);
     }
 
-    protected int rowsFetchSize() {
-        return config.getInteger(ROWS_FETCH_SIZE);
+    public int getSnapshotFetchSize() {
+        Integer fetchSize = config.getInteger(ROWS_FETCH_SIZE);
+        return (fetchSize == null) ? getSnapshotFetchSize(DEFAULT_SNAPSHOT_FETCH_SIZE) : fetchSize;
     }
 
     protected long snapshotLockTimeoutMillis() {
@@ -1000,7 +1004,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                    CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+                    CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE, ROWS_FETCH_SIZE);
 
         return config;
