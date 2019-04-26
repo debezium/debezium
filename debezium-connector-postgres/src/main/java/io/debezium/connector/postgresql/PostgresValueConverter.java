@@ -19,7 +19,6 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -616,19 +615,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
-            // Restricted to MILLIS precision because java.sql.Time's maximum precision is milliseconds.
-            // While the supplied Long may be in nanoseconds, for consistency this makes sure this call
-            // treats both values in the same precision scope.
-            LocalTime localTime = LocalTime.ofNanoOfDay((Long) data).truncatedTo(ChronoUnit.MILLIS);
+            LocalTime localTime = LocalTime.ofNanoOfDay((Long) data);
             data = OffsetTime.of(localTime, ZoneOffset.UTC);
         }
         else if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
             data = OffsetTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
-        }
-        else if (data instanceof OffsetTime) {
-            data = ((OffsetTime) data).truncatedTo(ChronoUnit.MILLIS);
         }
 
         return super.convertTimeWithZone(column, fieldDefn, data);
