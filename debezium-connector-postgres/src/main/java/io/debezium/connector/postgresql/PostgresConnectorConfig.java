@@ -855,7 +855,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
 
-    private final Configuration config;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final HStoreHandlingMode  hStoreHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -870,7 +869,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 null
         );
 
-        this.config = config;
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
@@ -890,35 +888,35 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected String hostname() {
-        return config.getString(HOSTNAME);
+        return getConfig().getString(HOSTNAME);
     }
 
     protected int port() {
-        return config.getInteger(PORT);
+        return getConfig().getInteger(PORT);
     }
 
     protected String databaseName() {
-        return config.getString(DATABASE_NAME);
+        return getConfig().getString(DATABASE_NAME);
     }
 
     protected LogicalDecoder plugin() {
-        return LogicalDecoder.parse(config.getString(PLUGIN_NAME));
+        return LogicalDecoder.parse(getConfig().getString(PLUGIN_NAME));
     }
 
     protected String slotName() {
-        return config.getString(SLOT_NAME);
+        return getConfig().getString(SLOT_NAME);
     }
 
     protected boolean dropSlotOnStop() {
-        return config.getBoolean(DROP_SLOT_ON_STOP);
+        return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
     
     protected String streamParams() {
-        return config.getString(STREAM_PARAMS);
+        return getConfig().getString(STREAM_PARAMS);
     }
 
     protected Integer statusUpdateIntervalMillis() {
-        return config.getInteger(STATUS_UPDATE_INTERVAL_MS, null);
+        return getConfig().getInteger(STATUS_UPDATE_INTERVAL_MS, null);
     }
 
     protected TemporalPrecisionMode temporalPrecisionMode() {
@@ -930,11 +928,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected boolean includeUnknownDatatypes() {
-        return config.getBoolean(INCLUDE_UNKNOWN_DATATYPES);
+        return getConfig().getBoolean(INCLUDE_UNKNOWN_DATATYPES);
     }
 
     public Configuration jdbcConfig() {
-        return config.subset(DATABASE_CONFIG_PREFIX, true);
+        return getConfig().subset(DATABASE_CONFIG_PREFIX, true);
     }
 
     protected TopicSelectionStrategy topicSelectionStrategy() {
@@ -945,47 +943,47 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected Map<String, ConfigValue> validate() {
-        return config.validate(ALL_FIELDS);
+        return getConfig().validate(ALL_FIELDS);
     }
 
     protected String schemaBlacklist() {
-        return config.getString(SCHEMA_BLACKLIST);
+        return getConfig().getString(SCHEMA_BLACKLIST);
     }
 
     protected String schemaWhitelist() {
-        return config.getString(SCHEMA_WHITELIST);
+        return getConfig().getString(SCHEMA_WHITELIST);
     }
 
     protected String tableBlacklist() {
-        return config.getString(TABLE_BLACKLIST);
+        return getConfig().getString(TABLE_BLACKLIST);
     }
 
     protected String tableWhitelist() {
-        return config.getString(TABLE_WHITELIST);
+        return getConfig().getString(TABLE_WHITELIST);
     }
 
     protected String columnBlacklist() {
-        return config.getString(COLUMN_BLACKLIST);
+        return getConfig().getString(COLUMN_BLACKLIST);
     }
 
     protected long snapshotLockTimeoutMillis() {
-        return config.getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
+        return getConfig().getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
     }
 
     protected Snapshotter getSnapshotter() {
-        return this.snapshotMode.getSnapshotter(config);
+        return this.snapshotMode.getSnapshotter(getConfig());
     }
 
     public String snapshotSelectOverrides() {
-        return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+        return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
 
     public String snapshotSelectOverrideForTable(String table) {
-        return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+        return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
     }
 
     @Override
-    protected int defaultSnapshotFetchSize() {
+    protected int defaultSnapshotFetchSize(Configuration config) {
         // we use getString() method because it supports null as the return value
         String rowsFetchSize = config.getString(ROWS_FETCH_SIZE);
         if (rowsFetchSize != null) {
@@ -1004,7 +1002,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected Duration xminFetchInterval() {
-        return Duration.ofMillis(config.getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
 
     protected static ConfigDef configDef() {

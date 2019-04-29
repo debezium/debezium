@@ -82,7 +82,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     protected abstract HistoryRecordComparator getHistoryRecordComparator();
 
     @Override
-    protected int defaultSnapshotFetchSize() {
+    protected int defaultSnapshotFetchSize(Configuration config) {
         return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
 }
