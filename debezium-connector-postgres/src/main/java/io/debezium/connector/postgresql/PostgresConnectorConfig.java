@@ -36,7 +36,8 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -477,6 +478,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return null;
         }
     }
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorConfig.class);
 
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
@@ -945,11 +948,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return config.getString(COLUMN_BLACKLIST);
     }
 
-    public int getSnapshotFetchSize() {
-        Integer fetchSize = config.getInteger(ROWS_FETCH_SIZE);
-        return (fetchSize == null) ? getSnapshotFetchSize(DEFAULT_SNAPSHOT_FETCH_SIZE) : fetchSize;
-    }
-
     protected long snapshotLockTimeoutMillis() {
         return config.getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
     }
@@ -964,6 +962,21 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public String snapshotSelectOverrideForTable(String table) {
         return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+    }
+
+    @Override
+    protected int defaultSnapshotFetchSize() {
+        // we use getString() method because it supports null as the return value
+        String rowsFetchSize = config.getString(ROWS_FETCH_SIZE);
+        if (rowsFetchSize != null) {
+            LOGGER.warn("Property '{}' will be removed in next releases, use property '{}' instead of",
+                ROWS_FETCH_SIZE.name(), SNAPSHOT_FETCH_SIZE.name());
+            try {
+                return Integer.valueOf(rowsFetchSize);
+            }
+            catch (NumberFormatException e) {}
+        }
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
 
     protected boolean skipRefreshSchemaOnMissingToastableData() {

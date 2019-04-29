@@ -386,7 +386,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     }
 
     private Statement readTableStatement() throws SQLException {
-        int fetchSize = connectorConfig.getSnapshotFetchSize(2_000);
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
         Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
         statement.setFetchSize(fetchSize);
         return statement;
