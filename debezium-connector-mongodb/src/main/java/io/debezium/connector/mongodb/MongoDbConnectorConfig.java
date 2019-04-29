@@ -376,13 +376,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     }
 
     /**
-     * Gets the number of documents to return per fetch. Default to {@code 0}, which indicates that the server chooses
-     * an appropriate fetch size.
+     * Returns the number of documents to return per fetch by default. Default to {@code 0}, which indicates
+     * that the server chooses an appropriate fetch size.
      *
-     * @return the fetch size
+     * @return the default fetch size
      */
-    public int getSnapshotFetchSize() {
-        return getSnapshotFetchSize(DEFAULT_SNAPSHOT_FETCH_SIZE);
+    @Override
+    protected int defaultSnapshotFetchSize() {
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
 
     public SnapshotMode getSnapshotMode() {

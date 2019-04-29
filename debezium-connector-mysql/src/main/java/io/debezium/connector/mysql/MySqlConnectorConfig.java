@@ -589,6 +589,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    /**
+     * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
+     * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
+     */
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = Integer.MIN_VALUE;
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
@@ -1195,6 +1201,11 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public SnapshotNewTables getSnapshotNewTables() {
         return snapshotNewTables;
+    }
+
+    @Override
+    protected int defaultSnapshotFetchSize() {
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
 
     protected static ConfigDef configDef() {

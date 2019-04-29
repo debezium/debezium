@@ -94,7 +94,7 @@ public class CommonConnectorConfig {
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
     private final Duration snapshotDelayMs;
-    private final Integer snapshotFetchSize;
+    private final int snapshotFetchSize;
 
     protected CommonConnectorConfig(Configuration config, String logicalName) {
         this.config = config;
@@ -105,7 +105,17 @@ public class CommonConnectorConfig {
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
-        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE);
+        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, this::defaultSnapshotFetchSize);
+    }
+
+    /**
+     * Returns the number of records to return per fetch by default.
+     * <p><b>Important:</b> Each connector config must override this method to specify its default value.</p>
+     *
+     * @return the default fetch size
+     */
+    protected int defaultSnapshotFetchSize() {
+        throw new UnsupportedOperationException("not implemented");
     }
 
     /**
@@ -144,8 +154,8 @@ public class CommonConnectorConfig {
         return snapshotDelayMs;
     }
 
-    public int getSnapshotFetchSize(int defaultFetchSize) {
-        return (snapshotFetchSize == null) ? defaultFetchSize : snapshotFetchSize;
+    public int getSnapshotFetchSize() {
+        return snapshotFetchSize;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
