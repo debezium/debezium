@@ -21,6 +21,7 @@ David Leibovic
 David Szabo
 Deepak Barr
 Denis Mikhaylov
+Dennis Campagna 
 Dennis Persson
 Duncan Sands
 Echo Xu
@@ -52,6 +53,7 @@ Maciej Bryński
 MaoXiang Pan
 Mario Mueller
 Matteo Capitanio
+Mathieu Rozieres
 Matthias Wessendorf
 Moira Tagle
 Olavi Mustanoja
@@ -75,7 +77,7 @@ Satyajit Vegesna
 Saulius Valatka
 Scofield Xu
 Sherafudheen PM
-Shubham Raj
+Shubham Rawat
 Stanley Shyiko
 Stephen Powis
 Steven Siahetiong
@@ -84,6 +86,7 @@ Taylor Rolison
 Tom Bentley
 Tomaz Lemos Fernandes
 Tony Rizko
+Wang-Yu-Chao
 WenZe Hu
 Willie Cheong
 Muhammad Sufyian

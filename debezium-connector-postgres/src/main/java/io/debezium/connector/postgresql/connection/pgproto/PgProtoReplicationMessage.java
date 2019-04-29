@@ -177,6 +177,8 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.VARBIT:
             case PgOid.INET_OID:
             case PgOid.CIDR_OID:
+            case PgOid.MACADDR_OID:
+            case PgOid.MACADDR8_OID:
                 return datumMessage.hasDatumString() ? datumMessage.getDatumString() : null;
             case PgOid.DATE:
                 return datumMessage.hasDatumInt32() ? (long) datumMessage.getDatumInt32() : null;
@@ -212,7 +214,12 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 PgProto.Point datumPoint = datumMessage.getDatumPoint();
                 return new PGpoint(datumPoint.getX(), datumPoint.getY());
             }
+            case PgOid.TSRANGE_OID:
             case PgOid.TSTZRANGE_OID:
+            case PgOid.DATERANGE_OID:
+            case PgOid.INT4RANGE_OID:
+            case PgOid.NUM_RANGE_OID:
+            case PgOid.INT8RANGE_OID:
                 return datumMessage.hasDatumBytes() ? new String(datumMessage.getDatumBytes().toByteArray(), Charset.forName("UTF-8")) : null;
             case PgOid.INT2_ARRAY:
             case PgOid.INT4_ARRAY:
@@ -244,7 +251,15 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.REF_CURSOR_ARRAY:
             case PgOid.INET_ARRAY:
             case PgOid.CIDR_ARRAY:
-                return getArray(datumMessage, connection, columnType);
+            case PgOid.MACADDR_ARRAY:
+            case PgOid.MACADDR8_ARRAY:
+            case PgOid.TSRANGE_ARRAY:
+            case PgOid.TSTZRANGE_ARRAY:
+            case PgOid.DATERANGE_ARRAY:
+            case PgOid.INT4RANGE_ARRAY:
+            case PgOid.NUM_RANGE_ARRAY:
+            case PgOid.INT8RANGE_ARRAY:
+            return getArray(datumMessage, connection, columnType);
 
             case PgOid.UNSPECIFIED:
                 return null;

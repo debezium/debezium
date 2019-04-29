@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.PostgresConnectorConfig.SCHEMA_BLACKLIST;
+import static io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion.POSTGRES_10;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -21,9 +22,13 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
@@ -33,6 +38,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -52,9 +58,13 @@ import io.debezium.util.Strings;
  */
 public class PostgresSchemaIT {
 
+    @Rule
+    public final TestRule skip = new SkipTestDependingOnDatabaseVersionRule();
+
     private static final String[] TEST_TABLES = new String[] { "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
-                                                               "public.cash_table", "public.bitbin_table", "public.network_address_table", "public.cidr_network_address_table",
-                                                               "public.time_table", "public.text_table", "public.geom_table", "public.tstzrange_table",
+                                                               "public.cash_table", "public.bitbin_table", "public.network_address_table",
+                                                               "public.cidr_network_address_table", "public.macaddr_table",
+                                                               "public.time_table", "public.text_table", "public.geom_table", "public.range_table",
                                                                "public.array_table", "\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"",
                                                                "public.custom_table"
                                                              };
@@ -93,6 +103,7 @@ public class PostgresSchemaIT {
                               Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.network_address_table", "i", Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.cidr_network_address_table", "i", Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.macaddr_table", "m", Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.cash_table", "csh", Decimal.builder(2).optional().build());
             assertTableSchema("public.bitbin_table", "ba, bol, bs, bv",
                               Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BOOLEAN_SCHEMA, Bits.builder(2).optional().build(),
@@ -105,8 +116,12 @@ public class PostgresSchemaIT {
                               Json.builder().optional().build(), Json.builder().optional().build(), Xml.builder().optional().build(),
                               Uuid.builder().optional().build());
             assertTableSchema("public.geom_table", "p", Point.builder().optional().build());
-            assertTableSchema("public.tstzrange_table", "unbounded_exclusive_range, bounded_inclusive_range",
-                              Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
+            assertTableSchema("public.range_table", "unbounded_exclusive_tsrange, bounded_inclusive_tsrange," +
+                            "unbounded_exclusive_tstzrange, bounded_inclusive_tstzrange," +
+                            "unbounded_exclusive_daterange, bounded_exclusive_daterange, int4_number_range, numerange, int8_number_range",
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA,
+                    Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA);
             assertTableSchema("public.array_table", "int_array, bigint_array, text_array",
                               SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build(), SchemaBuilder.array(Schema.OPTIONAL_INT64_SCHEMA).optional().build(),
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
@@ -115,6 +130,26 @@ public class PostgresSchemaIT {
 
             TableSchema tableSchema = schemaFor("public.custom_table");
             assertThat(tableSchema.valueSchema().field("lt")).isNull();
+        }
+    }
+
+    @Test
+    // MACADDR8 Postgres type is only supported since Postgres version 10
+    @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
+    @FixFor("DBZ-1193")
+    public void shouldLoadSchemaForMacaddr8PostgresType() throws Exception {
+        String tableId = "public.macaddr8_table";
+        String ddl = "CREATE TABLE macaddr8_table (pk SERIAL, m MACADDR8, PRIMARY KEY(pk));";
+
+        TestHelper.execute(ddl);
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        schema = TestHelper.getSchema(config);
+
+        try (PostgresConnection connection = TestHelper.create()) {
+            schema.refresh(connection, false);
+            assertTablesIncluded(tableId);
+            assertKeySchema(tableId, "pk", Schema.INT32_SCHEMA);
+            assertTableSchema(tableId, "m", Schema.OPTIONAL_STRING_SCHEMA);
         }
     }
 

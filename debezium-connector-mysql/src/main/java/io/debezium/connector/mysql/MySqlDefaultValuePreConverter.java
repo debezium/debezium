@@ -212,7 +212,7 @@ public class MySqlDefaultValuePreConverter  {
         for (int i = 0; i < nums; i++) {
             int s = value.length() - Byte.SIZE < 0 ? 0 : value.length() - Byte.SIZE;
             int e = value.length();
-            bytes[nums - i - 1] = Byte.parseByte(value.substring(s, e), 2);
+            bytes[nums - i - 1] = (byte) Integer.parseInt(value.substring(s, e), 2);
             value = value.substring(0, s);
         }
         return bytes;
@@ -235,7 +235,7 @@ public class MySqlDefaultValuePreConverter  {
     private DateTimeFormatter timestampFormat(int length) {
         final DateTimeFormatterBuilder dtf = new DateTimeFormatterBuilder()
                 .appendPattern("yyyy-MM-dd HH:mm:ss");
-        if (length !=-1) {
+        if (length > 0) {
             dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
         }
         return dtf.toFormatter();

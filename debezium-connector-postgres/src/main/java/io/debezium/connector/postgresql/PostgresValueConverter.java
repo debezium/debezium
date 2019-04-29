@@ -141,9 +141,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSONB_OID:
             case PgOid.JSON:
                 return Json.builder();
+            case PgOid.TSRANGE_OID:
             case PgOid.TSTZRANGE_OID:
+            case PgOid.DATERANGE_OID:
             case PgOid.INET_OID:
             case PgOid.CIDR_OID:
+            case PgOid.MACADDR_OID:
+            case PgOid.MACADDR8_OID:
+            case PgOid.INT4RANGE_OID:
+            case PgOid.NUM_RANGE_OID:
+            case PgOid.INT8RANGE_OID:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -168,7 +175,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BPCHAR_ARRAY:
             case PgOid.INET_ARRAY:
             case PgOid.CIDR_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+            case PgOid.MACADDR_ARRAY:
+            case PgOid.MACADDR8_ARRAY:
+            case PgOid.TSRANGE_ARRAY:
+            case PgOid.TSTZRANGE_ARRAY:
+            case PgOid.DATERANGE_ARRAY:
+            case PgOid.INT4RANGE_ARRAY:
+            case PgOid.NUM_RANGE_ARRAY:
+            case PgOid.INT8RANGE_ARRAY:
+            return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
             case PgOid.NUMERIC_ARRAY:
                 return SchemaBuilder.array(numericSchema(column).optional().build());
             case PgOid.FLOAT4_ARRAY:
@@ -274,11 +289,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_OID:
             case PgOid.UUID:
+            case PgOid.TSRANGE_OID:
             case PgOid.TSTZRANGE_OID:
+            case PgOid.DATERANGE_OID:
             case PgOid.JSON:
             case PgOid.INET_OID:
             case PgOid.CIDR_OID:
-                return data -> super.convertString(column, fieldDefn, data);
+            case PgOid.MACADDR_OID:
+            case PgOid.MACADDR8_OID:
+            case PgOid.INT4RANGE_OID:
+            case PgOid.NUM_RANGE_OID:
+            case PgOid.INT8RANGE_OID:
+            return data -> super.convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
@@ -301,6 +323,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.DATE_ARRAY:
             case PgOid.INET_ARRAY:
             case PgOid.CIDR_ARRAY:
+            case PgOid.MACADDR_ARRAY:
+            case PgOid.MACADDR8_ARRAY:
+            case PgOid.TSRANGE_ARRAY:
+            case PgOid.TSTZRANGE_ARRAY:
+            case PgOid.DATERANGE_ARRAY:
+            case PgOid.INT4RANGE_ARRAY:
+            case PgOid.NUM_RANGE_ARRAY:
+            case PgOid.INT8RANGE_ARRAY:
                 return createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.

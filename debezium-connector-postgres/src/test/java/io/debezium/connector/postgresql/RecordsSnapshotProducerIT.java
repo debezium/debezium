@@ -512,4 +512,30 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertRecordSchemaAndValues(schemaAndValueFields, record, Envelope.FieldName.AFTER);
         });
     }
+
+    @Test
+    // MACADDR8 Postgres type is only supported since Postgres version 10
+    @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
+    @FixFor("DBZ-1193")
+    public void shouldGenerateSnapshotForMacaddr8Datatype() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE macaddr8_table(pk SERIAL, m MACADDR8, PRIMARY KEY(pk));");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .build());
+        snapshotProducer = buildNoStreamProducer(context, config);
+
+        final TestConsumer consumer = testConsumer(1, "public");
+
+        // insert macaddr8 data
+        TestHelper.execute(INSERT_MACADDR8_TYPE_STMT);
+
+        // then start the producer and validate the record are there
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.macaddr8_table", schemaAndValueForMacaddr8Type());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
 }
