@@ -570,16 +570,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                    + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
                                                                    + "and not as a delimiter.");
 
-    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
-                                                 .withDisplayName("Namespace")
-                                                 .withType(Type.STRING)
-                                                 .withWidth(Width.MEDIUM)
-                                                 .withImportance(Importance.HIGH)
-                                                 .withDescription("Unique name that identifies the database server and all recorded offsets, and"
-                                                         + "that is used as a prefix for all schemas and topics. "
-                                                         + "Each distinct Postgres installation should have a separate namespace and monitored by "
-                                                         + "at most one Debezium connector. Defaults to 'host:port/database'");
-
     public static final Field TOPIC_SELECTION_STRATEGY = Field.create("topic.selection.strategy")
                                                               .withDisplayName("Topic selection strategy")
                                                               .withEnum(TopicSelectionStrategy.class, TopicSelectionStrategy.TOPIC_PER_TABLE)
@@ -588,8 +578,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                               .withDescription("How events received from the DB should be placed on topics. Options include"
                                                       + "'table' (the default) each DB table will have a separate Kafka topic; "
                                                       + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
-
-    public static final Field ROWS_FETCH_SIZE = RelationalDatabaseConnectorConfig.ROWS_FETCH_SIZE.withDefault(DEFAULT_ROWS_FETCH_SIZE);
 
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
@@ -786,17 +774,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                     + "'false' (the default) omits the fields; "
                                                                     + "'true' converts the field into an implementation dependent binary representation.");
 
-    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
-                                                            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
-                                                            .withType(Type.STRING)
-                                                            .withWidth(Width.LONG)
-                                                            .withImportance(Importance.MEDIUM)
-                                                            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
-                                                                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
-                                                                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
-                                                                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
-
-
     public static final Field SCHEMA_REFRESH_MODE = Field.create("schema.refresh.mode")
             .withDisplayName("Schema refresh mode")
             .withEnum(SchemaRefreshMode.class, SchemaRefreshMode.COLUMNS_DIFF)
@@ -827,7 +804,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, STREAM_PARAMS,
-                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_NAME,
+                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
                                                      TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
@@ -837,9 +814,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
+                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, RelationalDatabaseConnectorConfig.ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
 
     private final Configuration config;
@@ -852,7 +829,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected PostgresConnectorConfig(Configuration config) {
         super(
                 config,
-                getLogicalName(config),
+                config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
                 null, // TODO whitelist handling implemented locally here for the time being
                 null
         );
@@ -864,16 +841,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.hStoreHandlingMode = hStoreHandlingMode;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
-    }
-
-    private static String getLogicalName(Configuration config) {
-        String logicalName = config.getString(PostgresConnectorConfig.SERVER_NAME);
-
-        if (logicalName == null) {
-            logicalName = config.getString(HOSTNAME) + ":" + config.getInteger(PORT) + "/" + config.getString(DATABASE_NAME);
-        }
-
-        return logicalName;
     }
 
     protected String hostname() {
@@ -963,14 +930,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return this.snapshotMode.getSnapshotter(config);
     }
 
-    public String snapshotSelectOverrides() {
-        return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-    }
-
-    public String snapshotSelectOverrideForTable(String table) {
-        return config.getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
-    }
-
     protected boolean skipRefreshSchemaOnMissingToastableData() {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
@@ -981,7 +940,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
+        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,

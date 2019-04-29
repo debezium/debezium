@@ -12,8 +12,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
+import java.util.Map;
 
 import io.debezium.connector.base.SnapshotStatementFactory;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -64,7 +64,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
-    private Map<TableId, String> snapshotOverrides;
     private final SnapshotStatementFactory snapshotStatementFactory;
 
     public HistorizedRelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
@@ -222,13 +221,13 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     }
 
     private void determineCapturedTables(SnapshotContext ctx) throws Exception {
-        this.snapshotOverrides = getSnapshotSelectOverridesByTable();
+        ctx.snapshotOverrides = getSnapshotSelectOverridesByTable();
         Set<TableId> allTableIds = getAllTableIds(ctx);
 
         Set<TableId> capturedTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId) && !skipSnapshot(tableId)) {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId) && !ctx.skipSnapshot(tableId)) {
                 LOGGER.trace("Adding table {} to the list of captured tables", tableId);
                 capturedTables.add(tableId);
             }
@@ -238,14 +237,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         }
 
         ctx.capturedTables = capturedTables;
-    }
-
-    private boolean skipSnapshot(TableId inTableId) {
-        if (snapshotOverrides.containsKey(inTableId) && snapshotOverrides.get(inTableId) == null) {
-            LOGGER.warn("For table '{}' the select statement was not provided, skipping table", inTableId);
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -324,7 +315,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
 
-        final String selectStatement = getSnapshotSelect(table.id());
+        final String selectStatement = determineSnapshotSelect(snapshotContext, table.id());
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
 
         try (Statement statement = snapshotStatementFactory.readTableStatement();
@@ -377,11 +368,15 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
 
     /**
-     * Create 'Read' table statement for snapshot
-     * @return statement
-     * @throws SQLException any SQL exception thrown
+     * Generate a valid sqlserver query string for the specified table
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
      */
-    protected abstract Statement readTableStatement() throws SQLException;
+    private String determineSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+        return snapshotContext.isSnapshotSelectOveridden(tableId) ? snapshotContext.getSnapshotSelectOveridden(tableId) :
+                getSnapshotSelect(snapshotContext, tableId);
+    }
 
     /**
      * Returns the SELECT statement to be used for scanning the given table
@@ -389,16 +384,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     // TODO Should it be Statement or similar?
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
-    /**
-     * Generate a valid sqlserver query string for the specified table
-     *
-     * @param tableId the table to generate a query for
-     * @return a valid query string
-     */
-    private String getSnapshotSelect(TableId tableId) {
-        return snapshotOverrides.containsKey(tableId) ? snapshotOverrides.get(tableId) :
-                String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
-    }
+    protected abstract String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
 
     /**
      * Returns any SELECT overrides, if present.
@@ -441,7 +427,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      * Mutable context which is populated in the course of snapshotting.
      */
     public static class SnapshotContext implements AutoCloseable {
-
+        public Map<TableId, String> snapshotOverrides;
         public final String catalogName;
         public final Tables tables;
 
@@ -455,6 +441,22 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         @Override
         public void close() throws Exception {
+        }
+
+        public boolean skipSnapshot(TableId inTableId) {
+            if (snapshotOverrides.containsKey(inTableId) && snapshotOverrides.get(inTableId) == null) {
+                LOGGER.warn("For table '{}' the select statement was not provided, skipping table", inTableId);
+                return true;
+            }
+            return false;
+        }
+
+        public boolean isSnapshotSelectOveridden(TableId tableId) {
+            return snapshotOverrides.containsKey(tableId);
+        }
+
+        public String getSnapshotSelectOveridden(TableId tableId) {
+            return snapshotOverrides.get(tableId);
         }
     }
 
