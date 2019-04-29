@@ -195,6 +195,16 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
         }
     }
 
+    /**
+     * Generate a valid sqlserver query string for the specified table
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
+    protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+        return String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
+    }
+
     @Override
     protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row) {
         ((SqlServerOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(getClock().currentTimeInMillis()));

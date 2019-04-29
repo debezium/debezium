@@ -109,6 +109,17 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
+    public static final Field SERVER_NAME = Field.create(DATABASE_CONFIG_PREFIX + "server.name")
+            .withDisplayName("Namespace")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName)
+            .withDescription("Unique name that identifies the database server and all "
+                    + "recorded offsets, and that is used as a prefix for all schemas and topics. "
+                    + "Each distinct installation should have a separate namespace and be monitored by "
+                    + "at most one Debezium connector.");
+
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
      * Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or
@@ -177,6 +188,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isPositiveLong);
 
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
+
     private final RelationalTableFilters tableFilters;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
@@ -223,4 +244,13 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     public int rowsFetchSize() {
         return getConfig().getInteger(ROWS_FETCH_SIZE);
     }
+
+    public String snapshotSelectOverrides() {
+        return getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+    }
+
+    public String snapshotSelectOverrideForTable(String table) {
+        return getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+    }
+
 }
