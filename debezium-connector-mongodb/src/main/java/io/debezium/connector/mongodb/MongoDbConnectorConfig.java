@@ -327,8 +327,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME));
 
-        String snapshotModeValue = config.getString(SNAPSHOT_MODE);
-        this.snapshotMode = SnapshotMode.parse(snapshotModeValue, SNAPSHOT_MODE.defaultValueAsString());
+        String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
+        this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
     protected static ConfigDef configDef() {
@@ -379,10 +379,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * Returns the number of documents to return per fetch by default. Default to {@code 0}, which indicates
      * that the server chooses an appropriate fetch size.
      *
+     * @param config configuration
      * @return the default fetch size
      */
     @Override
-    protected int defaultSnapshotFetchSize() {
+    protected int defaultSnapshotFetchSize(Configuration config) {
         return DEFAULT_SNAPSHOT_FETCH_SIZE;
     }
 

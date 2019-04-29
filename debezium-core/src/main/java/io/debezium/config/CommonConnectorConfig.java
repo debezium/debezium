@@ -69,22 +69,21 @@ public class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger);
 
     public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
-        .withDisplayName("Snapshot Delay (milliseconds)")
-        .withType(Type.LONG)
-        .withWidth(Width.MEDIUM)
-        .withImportance(Importance.LOW)
-        .withDescription("The number of milliseconds to delay before a snapshot will begin.")
-        .withDefault(0L)
-        .withValidation(Field::isNonNegativeLong);
+            .withDisplayName("Snapshot Delay (milliseconds)")
+            .withType(Type.LONG)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The number of milliseconds to delay before a snapshot will begin.")
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong);
 
     public static final Field SNAPSHOT_FETCH_SIZE = Field.create("snapshot.fetch.size")
-        .withDisplayName("Snapshot fetch size")
-        .withType(Type.INT)
-        .withWidth(Width.MEDIUM)
-        .withImportance(Importance.MEDIUM)
-        .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
-        .withValidation(Field::isNonNegativeInteger);
-
+            .withDisplayName("Snapshot fetch size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
+            .withValidation(Field::isNonNegativeInteger);
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
@@ -105,16 +104,17 @@ public class CommonConnectorConfig {
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
-        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, this::defaultSnapshotFetchSize);
+        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, () -> defaultSnapshotFetchSize(config));
     }
 
     /**
      * Returns the number of records to return per fetch by default.
      * <p><b>Important:</b> Each connector config must override this method to specify its default value.</p>
      *
+     * @param config configuration
      * @return the default fetch size
      */
-    protected int defaultSnapshotFetchSize() {
+    protected int defaultSnapshotFetchSize(Configuration config) {
         throw new UnsupportedOperationException("not implemented");
     }
 
