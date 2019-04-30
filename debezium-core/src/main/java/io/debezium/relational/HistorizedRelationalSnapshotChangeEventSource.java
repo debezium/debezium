@@ -368,7 +368,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
 
     /**
-     * Generate a valid sqlserver query string for the specified table
+     * Generate a valid query string for the specified table
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
