@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,5 +34,11 @@ public class SourceInfoTest {
     @Test
     public void connectorIsPresent() {
         assertThat(source.source().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+    }
+
+    @Test
+    @FixFor("DBZ-934")
+    public void canHandleNullValues() {
+        source.update(null, null, null, null, null);
     }
 }
