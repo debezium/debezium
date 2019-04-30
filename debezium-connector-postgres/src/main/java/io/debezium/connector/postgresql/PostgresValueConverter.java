@@ -19,6 +19,9 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -90,6 +93,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * A string denoting negative infinity for FP and Numeric types
      */
     public static final String NEGATIVE_INFINITY = "-Infinity";
+
+    /**
+     * A formatter used to parse TIMETZ columns when provided as strings.
+     */
+    private static final DateTimeFormatter TIME_WITH_TIMEZONE_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("HH:mm:ss")
+            .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+            .appendPattern("[XXX][XX][X]")
+            .toFormatter();
 
     /**
      * {@code true} if fields of data type not know should be handle as opaque binary;
@@ -622,6 +634,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
             data = OffsetTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
+        }
+        else if (data instanceof String) {
+            // The TIMETZ column is returned as a String which we initially parse here
+            // The parsed offset-time potentially has a zone-offset from the data, shift it after to GMT.
+            final OffsetTime offsetTime = OffsetTime.parse((String) data, TIME_WITH_TIMEZONE_FORMATTER);
+            data = offsetTime.withOffsetSameInstant(ZoneOffset.UTC);
         }
 
         return super.convertTimeWithZone(column, fieldDefn, data);
