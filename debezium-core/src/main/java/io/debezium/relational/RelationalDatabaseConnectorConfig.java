@@ -27,7 +27,7 @@ import io.debezium.relational.Tables.TableFilter;
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
 
-    private static final int DEFAULT_ROWS_FETCH_SIZE = 2000;
+    private static final int DEFAULT_ROWS_FETCH_SIZE = 10240;
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
