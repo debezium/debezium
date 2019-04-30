@@ -21,7 +21,7 @@ David Leibovic
 David Szabo
 Deepak Barr
 Denis Mikhaylov
-Dennis Campagna 
+Dennis Campagna
 Dennis Persson
 Duncan Sands
 Echo Xu
@@ -57,12 +57,14 @@ Matteo Capitanio
 Mathieu Rozieres
 Matthias Wessendorf
 Moira Tagle
+Muhammad Sufyian
 Olavi Mustanoja
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
 Peter Goransson
 Philip Sanetra
+Pradeep Mamillapalli
 Prannoy Mittal
 Preethi Sadagopan
 Raf Liwoch
@@ -90,4 +92,4 @@ Tony Rizko
 Wang-Yu-Chao
 WenZe Hu
 Willie Cheong
-Muhammad Sufyian
+Wout Scheepers
