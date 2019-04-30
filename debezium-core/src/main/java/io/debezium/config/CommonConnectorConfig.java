@@ -13,8 +13,8 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
@@ -22,7 +22,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  *
  * @author Gunnar Morling
  */
-public class CommonConnectorConfig {
+public abstract class CommonConnectorConfig {
 
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
@@ -114,9 +114,7 @@ public class CommonConnectorConfig {
      * @param config configuration
      * @return the default fetch size
      */
-    protected int defaultSnapshotFetchSize(Configuration config) {
-        throw new UnsupportedOperationException("not implemented");
-    }
+    protected abstract int defaultSnapshotFetchSize(Configuration config);
 
     /**
      * Provides access to the "raw" config instance. In most cases, access via typed getters for individual properties
