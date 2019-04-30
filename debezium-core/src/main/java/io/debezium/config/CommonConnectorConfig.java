@@ -13,8 +13,8 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
@@ -22,7 +22,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  *
  * @author Gunnar Morling
  */
-public class CommonConnectorConfig {
+public abstract class CommonConnectorConfig {
 
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
@@ -69,13 +69,21 @@ public class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger);
 
     public static final Field SNAPSHOT_DELAY_MS = Field.create("snapshot.delay.ms")
-        .withDisplayName("Snapshot Delay (milliseconds)")
-        .withType(Type.LONG)
-        .withWidth(Width.MEDIUM)
-        .withImportance(Importance.LOW)
-        .withDescription("The number of milliseconds to delay before a snapshot will begin.")
-        .withDefault(0L)
-        .withValidation(Field::isNonNegativeLong);
+            .withDisplayName("Snapshot Delay (milliseconds)")
+            .withType(Type.LONG)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The number of milliseconds to delay before a snapshot will begin.")
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong);
+
+    public static final Field SNAPSHOT_FETCH_SIZE = Field.create("snapshot.fetch.size")
+            .withDisplayName("Snapshot fetch size")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
+            .withValidation(Field::isNonNegativeInteger);
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
@@ -85,6 +93,7 @@ public class CommonConnectorConfig {
     private final String logicalName;
     private final String heartbeatTopicsPrefix;
     private final Duration snapshotDelayMs;
+    private final int snapshotFetchSize;
 
     protected CommonConnectorConfig(Configuration config, String logicalName) {
         this.config = config;
@@ -95,7 +104,17 @@ public class CommonConnectorConfig {
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
+        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, () -> defaultSnapshotFetchSize(config));
     }
+
+    /**
+     * Returns the number of records to return per fetch by default.
+     * <p><b>Important:</b> Each connector config must override this method to specify its default value.</p>
+     *
+     * @param config configuration
+     * @return the default fetch size
+     */
+    protected abstract int defaultSnapshotFetchSize(Configuration config);
 
     /**
      * Provides access to the "raw" config instance. In most cases, access via typed getters for individual properties
@@ -131,6 +150,10 @@ public class CommonConnectorConfig {
 
     public Duration getSnapshotDelay() {
         return snapshotDelayMs;
+    }
+
+    public int getSnapshotFetchSize() {
+        return snapshotFetchSize;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {

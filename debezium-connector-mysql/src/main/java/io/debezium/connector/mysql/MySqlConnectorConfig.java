@@ -589,6 +589,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    /**
+     * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
+     * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
+     */
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = Integer.MIN_VALUE;
+
     private static final String DATABASE_WHITELIST_NAME = "database.whitelist";
     private static final String DATABASE_BLACKLIST_NAME = "database.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
@@ -1117,6 +1123,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+                                                     CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                                                      DDL_PARSER_MODE,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER);
 
@@ -1186,6 +1193,11 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         return snapshotNewTables;
     }
 
+    @Override
+    protected int defaultSnapshotFetchSize(Configuration config) {
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
+    }
+
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
@@ -1203,7 +1215,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, DDL_PARSER_MODE, ENABLE_TIME_ADJUSTER);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, DDL_PARSER_MODE, ENABLE_TIME_ADJUSTER);
         return config;
     }
 

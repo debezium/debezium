@@ -810,8 +810,9 @@ public class SnapshotReader extends AbstractReader {
      * @throws SQLException if there is a problem creating the statement
      */
     private Statement createStatementWithLargeResultSet(Connection connection) throws SQLException {
+        int fetchSize = context.getConnectorConfig().getSnapshotFetchSize();
         Statement stmt = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-        stmt.setFetchSize(Integer.MIN_VALUE);
+        stmt.setFetchSize(fetchSize);
         return stmt;
     }
 

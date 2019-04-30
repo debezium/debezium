@@ -196,7 +196,9 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     protected SourceInfo update(Long lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lsn = lsn;
-        this.useconds = Conversions.toEpochMicros(commitTime);
+        if (commitTime != null) {
+            this.useconds = Conversions.toEpochMicros(commitTime);
+        }
         this.txId = txId;
         this.xmin = xmin;
         if (tableId != null && tableId.schema() != null) {

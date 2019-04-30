@@ -25,6 +25,8 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  */
 public abstract class HistorizedRelationalDatabaseConnectorConfig extends RelationalDatabaseConnectorConfig {
 
+    protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
+
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
      * and in these situations using Kafka is the only way to go.
@@ -78,4 +80,9 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      * records have been persisted but no new offset has been committed yet).
      */
     protected abstract HistoryRecordComparator getHistoryRecordComparator();
+
+    @Override
+    protected int defaultSnapshotFetchSize(Configuration config) {
+        return DEFAULT_SNAPSHOT_FETCH_SIZE;
+    }
 }

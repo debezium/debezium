@@ -15,7 +15,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 
-import io.debezium.connector.base.SnapshotStatementFactory;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +63,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
-    private final SnapshotStatementFactory snapshotStatementFactory;
 
     public HistorizedRelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
             OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
@@ -76,7 +74,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
-        this.snapshotStatementFactory = new SnapshotStatementFactory(connectorConfig, jdbcConnection);
     }
 
     @Override
@@ -318,7 +315,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         final String selectStatement = determineSnapshotSelect(snapshotContext, table.id());
         LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
 
-        try (Statement statement = snapshotStatementFactory.readTableStatement();
+        try (Statement statement = readTableStatement();
                 ResultSet rs = statement.executeQuery(selectStatement)) {
 
             Column[] columns = getColumnsForResultSet(table, rs);
@@ -404,6 +401,13 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
     private Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
         return rs.getObject(columnIndex);
+    }
+
+    private Statement readTableStatement() throws SQLException {
+        int fetchSize = connectorConfig.getSnapshotFetchSize();
+        Statement statement = jdbcConnection.connection().createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
     }
 
     /**

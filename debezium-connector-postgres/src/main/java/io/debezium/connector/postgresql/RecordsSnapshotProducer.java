@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
@@ -21,8 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import io.debezium.connector.base.SnapshotStatementFactory;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -33,6 +32,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.function.BlockingConsumer;
@@ -45,7 +45,6 @@ import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
-
 
 /**
  * Producer of {@link org.apache.kafka.connect.source.SourceRecord source records} from a database snapshot. Once completed,
@@ -218,7 +217,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
             logger.info("Step 3: reading and exporting the contents of each table");
             AtomicInteger rowsCounter = new AtomicInteger(0);
-            SnapshotStatementFactory snapshotStatementFactory = new SnapshotStatementFactory(taskContext.getConfig(), connection);
+
             for(TableId tableId : schema.tableIds()) {
                 long exportStart = clock().currentTimeInMillis();
                 logger.info("\t exporting data from table '{}'", tableId);
@@ -231,7 +230,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                         logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
 
                         connection.queryWithBlockingConsumer(selectStatement.get(),
-                                snapshotStatementFactory,
+                                this::readTableStatement,
                                 rs -> readTable(tableId, rs, consumer, rowsCounter));
                         if (logger.isInfoEnabled()) {
                             logger.info("\t finished exporting '{}' records for '{}'; total duration '{}'", rowsCounter.get(),
@@ -317,6 +316,13 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         }
     }
 
+    private Statement readTableStatement(Connection conn) throws SQLException {
+        int fetchSize = taskContext.config().getSnapshotFetchSize();
+        Statement statement = conn.createStatement(); // the default cursor is FORWARD_ONLY
+        statement.setFetchSize(fetchSize);
+        return statement;
+    }
+
     private void readTable(TableId tableId, ResultSet rs,
                            BlockingConsumer<ChangeEvent> consumer,
                            AtomicInteger rowsCounter) throws SQLException, InterruptedException {
@@ -397,7 +403,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         Struct value = tableSchema.valueFromColumnData(rowData);
 
         if (value == null) {
-            logger.trace("key: {}; value: {}; One is null", key, value);
+            logger.trace("Read event for null key with value {}", value);
             return;
         }
         Schema keySchema = tableSchema.keySchema();
