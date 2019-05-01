@@ -640,10 +640,53 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     }
 
     @Override
+    @Test
+    @FixFor("DBZ-1226")
+    public void shouldParseEnumOptions() {
+        // NOTE: We've excluded the ENUM() use cases with empty values based that is not valid
+        // THe parser adheres to MySQL's grammar and expects a minimum of one option supplied in the data type definition.
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
+        assertParseEnumAndSetOptions("enum('a','b','c')", "a,b,c");
+        assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
+        assertParseEnumAndSetOptions("ENUM('a')", "a");
+        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET utf8", "a,b,c");
+        assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET utf8", "a");
+    }
+
+    @Override
+    @Test
+    @FixFor("DBZ-1226")
+    public void shouldParseEscapedEnumOptions() {
+        assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a',b,c");
+        assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a',b,c");
+        assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\",b,c");
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\",b,c");
+    }
+
+    @Override
+    @Test
+    @FixFor("DBZ-1226")
+    public void shouldParseSetOptions() {
+        // NOTE: We've excluded the SET() use cases with empty values based that is not valid
+        // THe parser adheres to MySQL's grammar and expects a minimum of one option supplied in the data type definition.
+        assertParseEnumAndSetOptions("SET('a','b','c')", "a,b,c");
+        assertParseEnumAndSetOptions("set('a','b','c')", "a,b,c");
+        assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
+        assertParseEnumAndSetOptions("SET('a')", "a");
+        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET utf8", "a,b,c");
+        assertParseEnumAndSetOptions("SET ('a') CHARACTER SET utf8", "a");
+    }
+
+    @Override
     protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
-        List<String> options = MySqlAntlrDdlParser.parseSetAndEnumOptions(typeExpression);
-        String commaSeperatedOptions = Strings.join(",", options);
-        assertThat(optionString).isEqualTo(commaSeperatedOptions);
+        String ddl = "CREATE TABLE `enum_set_option_test_table` (`id` int not null auto_increment, `options` " +
+                typeExpression + ", primary key(`id`));";
+
+        parser.parse(ddl, tables);
+
+        final Column column = tables.forTable(null, null, "enum_set_option_test_table").columnWithName("options");
+        List<String> enumOptions = MySqlAntlrDdlParser.extractEnumAndSetOptions(column.enumValues());
+        assertThat(optionString).isEqualTo(Strings.join(",", enumOptions));
     }
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {
