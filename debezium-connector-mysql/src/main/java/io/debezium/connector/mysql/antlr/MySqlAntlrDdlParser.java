@@ -329,9 +329,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     public static String escapeOption(String option) {
-        // Escape comma to backslash followed by comma
-        // Escape backlash+single-quote to a single-quote.
-        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'");
+        // Replace comma to backslash followed by comma (this escape sequence implies comma is part of the option)
+        // Replace backlash+single-quote to a single-quote.
+        // Replace double single-quote to a single-quote.
+        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replaceAll("''", "'");
     }
 
     public MySqlValueConverters getConverters() {
