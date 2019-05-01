@@ -80,7 +80,7 @@ public class MySqlEnumColumnIT extends AbstractConnectorTest {
         String allowedAfterAlter = schemaAfterAlter.field("type").schema().parameters().get("allowed");
 
         assertThat(allowedBeforeAlter).isEqualTo("station,post_office");
-        assertThat(allowedAfterAlter).isEqualTo("station,post_office,plane,ahihi_dongok,now,test,a\\,b,c\\,'d,g\\,''h");
+        assertThat(allowedAfterAlter).isEqualTo("station,post_office,plane,ahihi_dongok,now,test,a\\,b,c\\,'d,g\\,'h");
         stopConnector();
     }
 }
