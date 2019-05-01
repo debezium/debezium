@@ -7,13 +7,10 @@
 package io.debezium.connector.mysql.antlr;
 
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.CharStream;
@@ -293,26 +290,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
             }
         }
         function.run();
-    }
-
-    /**
-     * Parse the {@code ENUM} or {@code SET} data type expression to extract the character options, where the index(es) appearing
-     * in the {@code ENUM} or {@code SET} values can be used to identify the acceptable characters.
-     *
-     * @param typeExpression the data type expression
-     * @return the string containing the character options allowed by the {@code ENUM} or {@code SET}; never null
-     */
-    public static List<String> parseSetAndEnumOptions(String typeExpression) {
-        List<String> options = new ArrayList<>();
-        final String ucTypeExpression = typeExpression.toUpperCase();
-        if (ucTypeExpression.startsWith("ENUM") || ucTypeExpression.startsWith("SET")) {
-            Pattern pattern = Pattern.compile("['\"][a-zA-Z0-9-!$%^&*()_+|~=`{}\\[\\]:\";'<>?\\/\\\\ ]*['\"]");
-            Matcher matcher = pattern.matcher(typeExpression);
-            while (matcher.find()) {
-                options.add(withoutQuotes(matcher.group()));
-            }
-        }
-        return options;
     }
 
     /**
