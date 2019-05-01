@@ -25,7 +25,6 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
-import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 /**
@@ -661,11 +660,11 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     public void shouldParseEnumOptions() {
         // NOTE: We've excluded the ENUM() use cases with empty values based that is not valid
         // THe parser adheres to MySQL's grammar and expects a minimum of one option supplied in the data type definition.
-        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("enum('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("enum('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a", "multi", "multi with () paren", "other");
         assertParseEnumAndSetOptions("ENUM('a')", "a");
-        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET utf8", "a,b,c");
+        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET utf8", "a", "b", "c");
         assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET utf8", "a");
     }
 
@@ -673,10 +672,10 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     @Test
     @FixFor("DBZ-1226")
     public void shouldParseEscapedEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a',b,c");
-        assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a',b,c");
-        assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\",b,c");
-        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\",b,c");
+        assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a'", "b", "c");
+        assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a'", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\"", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\"", "b", "c");
     }
 
     @Override
@@ -685,16 +684,28 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
     public void shouldParseSetOptions() {
         // NOTE: We've excluded the SET() use cases with empty values based that is not valid
         // THe parser adheres to MySQL's grammar and expects a minimum of one option supplied in the data type definition.
-        assertParseEnumAndSetOptions("SET('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("set('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
+        assertParseEnumAndSetOptions("SET('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("set('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a", "multi", "multi with () paren", "other");
         assertParseEnumAndSetOptions("SET('a')", "a");
-        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET utf8", "a,b,c");
+        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET utf8", "a", "b", "c");
         assertParseEnumAndSetOptions("SET ('a') CHARACTER SET utf8", "a");
     }
 
+    /**
+     * Assert whether the provided {@code typeExpression} string after being parsed results in a
+     * list of {@code ENUM} or {@code SET} options that match exactly to the provided list of
+     * {@code expecetedValues}.
+     * <p/>
+     * In this particular implementation, we construct a {@code CREATE} statement and invoke the
+     * antlr parser on the statement defining a column named {@code options} that represents the
+     * supplied {@code ENUM} or {@code SET} expression.
+     *
+     * @param typeExpression The {@code ENUM} or {@code SET} expression to be parsed
+     * @param expectedValues An array of options expected to have been parsed from the expression.
+     */
     @Override
-    protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
+    protected void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
         String ddl = "CREATE TABLE `enum_set_option_test_table` (`id` int not null auto_increment, `options` " +
                 typeExpression + ", primary key(`id`));";
 
@@ -702,7 +713,7 @@ public class MySqlAntlrDdlParserTest extends MySqlDdlParserTest {
 
         final Column column = tables.forTable(null, null, "enum_set_option_test_table").columnWithName("options");
         List<String> enumOptions = MySqlAntlrDdlParser.extractEnumAndSetOptions(column.enumValues());
-        assertThat(optionString).isEqualTo(Strings.join(",", enumOptions));
+        assertThat(enumOptions).contains(expectedValues);
     }
 
     class MysqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {

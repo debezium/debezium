@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mysql.junit.SkipForLegacyParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -32,7 +33,6 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
 import io.debezium.util.IoUtil;
-import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 public class MySqlDdlParserTest {
@@ -1133,36 +1133,39 @@ public class MySqlDdlParserTest {
     }
 
     @Test
+    @SkipForLegacyParser
     public void shouldParseEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("enum('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
+        assertParseEnumAndSetOptions("ENUM('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("enum('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("ENUM('a','multi','multi with () paren', 'other')", "a", "multi", "multi with () paren", "other");
         assertParseEnumAndSetOptions("ENUM('a')", "a");
-        assertParseEnumAndSetOptions("ENUM()", "");
-        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET", "a,b,c");
+        assertParseEnumAndSetOptions("ENUM()");
+        assertParseEnumAndSetOptions("ENUM ('a','b','c') CHARACTER SET", "a", "b", "c");
         assertParseEnumAndSetOptions("ENUM ('a') CHARACTER SET", "a");
-        assertParseEnumAndSetOptions("ENUM () CHARACTER SET", "");
+        assertParseEnumAndSetOptions("ENUM () CHARACTER SET");
     }
 
     @Test
     @FixFor("DBZ-476")
+    @SkipForLegacyParser
     public void shouldParseEscapedEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a'',b,c");
-        assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a\\',b,c");
-        assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\",b,c");
-        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\",b,c");
+        assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a''", "b", "c");
+        assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a\\'", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\"", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\"", "b", "c");
     }
 
    @Test
+   @SkipForLegacyParser
     public void shouldParseSetOptions() {
-        assertParseEnumAndSetOptions("SET('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("set('a','b','c')", "a,b,c");
-        assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a,multi,multi with () paren,other");
+        assertParseEnumAndSetOptions("SET('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("set('a','b','c')", "a", "b", "c");
+        assertParseEnumAndSetOptions("SET('a','multi','multi with () paren', 'other')", "a", "multi", "multi with () paren", "other");
         assertParseEnumAndSetOptions("SET('a')", "a");
-        assertParseEnumAndSetOptions("SET()", "");
-        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "a,b,c");
+        assertParseEnumAndSetOptions("SET()");
+        assertParseEnumAndSetOptions("SET ('a','b','c') CHARACTER SET", "a", "b", "c");
         assertParseEnumAndSetOptions("SET ('a') CHARACTER SET", "a");
-        assertParseEnumAndSetOptions("SET () CHARACTER SET", "");
+        assertParseEnumAndSetOptions("SET () CHARACTER SET");
     }
 
     @FixFor("DBZ-160")
@@ -1638,10 +1641,17 @@ public class MySqlDdlParserTest {
         assertThat(table.columnWithName("id").defaultValue()).isEqualTo(1);
     }
 
-    protected void assertParseEnumAndSetOptions(String typeExpression, String optionString) {
+    /**
+     * Assert whether the provided {@code typeExpression} string after being parsed results in a
+     * list of {@code ENUM} or {@code SET} options that match exactly to the provided list of
+     * {@code expectedValues}.
+     *
+     * @param typeExpression The {@code ENUM} or {@code SET} expression to be parsed
+     * @param expectedValues An array of options expected to have been parsed from the expression.
+     */
+    protected void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
         List<String> options = MySqlDdlParser.parseSetAndEnumOptions(typeExpression);
-        String commaSeperatedOptions = Strings.join(",", options);
-        assertThat(optionString).isEqualTo(commaSeperatedOptions);
+        assertThat(options).contains(expectedValues);
     }
 
     protected void assertVariable(String name, String expectedValue) {
