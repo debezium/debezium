@@ -16,6 +16,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectionFactory;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
