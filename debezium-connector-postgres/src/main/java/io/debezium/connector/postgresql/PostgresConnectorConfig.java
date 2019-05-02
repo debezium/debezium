@@ -581,18 +581,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                       + "'table' (the default) each DB table will have a separate Kafka topic; "
                                                       + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
 
-    /**
-     * @deprecated use {@link CommonConnectorConfig#SNAPSHOT_FETCH_SIZE} instead of
-     */
-    @Deprecated
-    public static final Field ROWS_FETCH_SIZE = Field.create("rows.fetch.size")
-                                                     .withDisplayName("Result set fetch size")
-                                                     .withType(Type.INT)
-                                                     .withWidth(Width.MEDIUM)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withDescription("The maximum number of DB rows that should be loaded into memory while performing a snapshot")
-                                                     .withValidation(Field::isPositiveLong);
-
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
                                               .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
@@ -840,7 +828,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, ROWS_FETCH_SIZE, SSL_SOCKET_FACTORY,
+                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
                                                      SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
@@ -856,7 +844,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 config,
                 config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
                 null, // TODO whitelist handling implemented locally here for the time being
-                null
+                null,
+                DEFAULT_SNAPSHOT_FETCH_SIZE
         );
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
@@ -962,26 +951,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
     }
 
-    /**
-     * DBZ-1234 Obsolete once rows.fetch.size option has been removed;
-     * value can be passed to super constructor instead
-     */
-    @Deprecated
-    @Override
-    protected int defaultSnapshotFetchSize(Configuration config) {
-        // we use getString() method because it supports null as the return value
-        String rowsFetchSize = config.getString(ROWS_FETCH_SIZE);
-        if (rowsFetchSize != null) {
-            LOGGER.warn("Property '{}' will be removed in next releases, use property '{}' instead of",
-                ROWS_FETCH_SIZE.name(), SNAPSHOT_FETCH_SIZE.name());
-            try {
-                return Integer.valueOf(rowsFetchSize);
-            }
-            catch (NumberFormatException e) {}
-        }
-        return DEFAULT_SNAPSHOT_FETCH_SIZE;
-    }
-
     protected boolean skipRefreshSchemaOnMissingToastableData() {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
@@ -1001,7 +970,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE, ROWS_FETCH_SIZE);
+                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE);
 
         return config;
     }

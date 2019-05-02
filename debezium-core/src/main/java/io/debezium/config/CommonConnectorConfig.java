@@ -95,7 +95,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final int snapshotFetchSize;
 
-    protected CommonConnectorConfig(Configuration config, String logicalName) {
+    protected CommonConnectorConfig(Configuration config, String logicalName, Integer defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
@@ -104,17 +104,8 @@ public abstract class CommonConnectorConfig {
         this.logicalName = logicalName;
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
-        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, () -> defaultSnapshotFetchSize(config));
+        this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
     }
-
-    /**
-     * Returns the number of records to return per fetch by default.
-     * <p><b>Important:</b> Each connector config must override this method to specify its default value.</p>
-     *
-     * @param config configuration
-     * @return the default fetch size
-     */
-    protected abstract int defaultSnapshotFetchSize(Configuration config);
 
     /**
      * Provides access to the "raw" config instance. In most cases, access via typed getters for individual properties
