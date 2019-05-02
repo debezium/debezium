@@ -626,15 +626,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
+        // during streaming
         if (data instanceof Long) {
             LocalTime localTime = LocalTime.ofNanoOfDay((Long) data);
             data = OffsetTime.of(localTime, ZoneOffset.UTC);
         }
-        else if (data instanceof java.util.Date) {
-            // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
-            // back to GMT
-            data = OffsetTime.ofInstant(Instant.ofEpochMilli(((Date) data).getTime()), ZoneOffset.UTC);
-        }
+        // during snapshotting
         else if (data instanceof String) {
             // The TIMETZ column is returned as a String which we initially parse here
             // The parsed offset-time potentially has a zone-offset from the data, shift it after to GMT.
