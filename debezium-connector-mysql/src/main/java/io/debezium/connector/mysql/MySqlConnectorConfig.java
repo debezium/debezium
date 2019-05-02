@@ -879,24 +879,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the beginning of the binlog. "
                                                            + "The 'never' mode should be used with care, and only when the binlog is known to contain all history.");
 
-    /**
-     * @deprecated Replaced with SNAPSHOT_LOCKING_MODE
-     */
-    @Deprecated
-    public static final Field SNAPSHOT_MINIMAL_LOCKING = Field.create("snapshot.minimal.locks")
-                                                              .withDisplayName("Use shortest database locking for snapshots")
-                                                              .withType(Type.BOOLEAN)
-                                                              .withWidth(Width.SHORT)
-                                                              .withImportance(Importance.LOW)
-                                                              .withDescription("NOTE: This option has been deprecated in favor of snapshot.locking.mode. \n"
-                                                                      + "Controls how long the connector holds onto the global read lock while it is performing a snapshot. The default is 'true', "
-                                                                      + "which means the connector holds the global read lock (and thus prevents any updates) for just the initial portion of the snapshot "
-                                                                      + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
-                                                                      + "each table, and this can be done using the snapshot process' REPEATABLE READ transaction even when the lock is no longer held and "
-                                                                      + "other operations are updating the database. However, in some cases it may be desirable to block all writes for the entire duration "
-                                                                      + "of the snapshot; in such cases set this property to 'false'.")
-                                                              .withDefault(true);
-
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
                                                            .withDisplayName("Snapshot locking mode")
                                                            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
@@ -1034,7 +1016,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      TABLE_WHITELIST, TABLE_BLACKLIST, TABLES_IGNORE_BUILTIN,
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST,
-                                                     SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, SNAPSHOT_LOCKING_MODE,
+                                                     SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_LOCKING_MODE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      GTID_NEW_CHANNEL_POSITION,
@@ -1071,21 +1053,11 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                 config,
                 config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
                 null, // TODO whitelist handling is still done locally here
-                null
+                null,
+                DEFAULT_SNAPSHOT_FETCH_SIZE
         );
 
-        // If deprecated snapshot.minimal.locking property is explicitly configured
-        if (config.hasKey(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING.name())) {
-            // Coerce it into its replacement appropriate snapshot.locking.mode value
-            if (config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING)) {
-                this.snapshotLockingMode = SnapshotLockingMode.MINIMAL;
-            } else {
-                this.snapshotLockingMode = SnapshotLockingMode.EXTENDED;
-            }
-        } else {
-            // Otherwise use configured snapshot.locking.mode configuration.
-            this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
-        }
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
 
         String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
         this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
@@ -1106,11 +1078,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         return snapshotNewTables;
     }
 
-    @Override
-    protected int defaultSnapshotFetchSize(Configuration config) {
-        return DEFAULT_SNAPSHOT_FETCH_SIZE;
-    }
-
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
@@ -1127,7 +1094,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
+                    SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                     BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, ENABLE_TIME_ADJUSTER);
         return config;
     }
@@ -1176,42 +1143,15 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      */
     private static int validateSnapshotLockingMode(Configuration config, Field field, ValidationOutput problems) {
         // Determine which configurations are explicitly defined
-        final boolean isMinimalLockingExplicitlyDefined = config.hasKey(SNAPSHOT_MINIMAL_LOCKING.name());
-        final boolean isSnapshotModeExplicitlyDefined = config.hasKey(SNAPSHOT_LOCKING_MODE.name());
-
-        // If both configuration options are explicitly defined, we'll throw a validation error.
-        if (isMinimalLockingExplicitlyDefined && isSnapshotModeExplicitlyDefined) {
-            // Then display a validation error.
-            problems.accept(SNAPSHOT_MINIMAL_LOCKING,
-                            config.getBoolean(SNAPSHOT_MINIMAL_LOCKING),
-                            "Deprecated configuration " + SNAPSHOT_MINIMAL_LOCKING.name() + " in conflict. Cannot use both " + SNAPSHOT_MINIMAL_LOCKING.name() + " and " + SNAPSHOT_LOCKING_MODE.name() + " configuration options.");
-            return 1;
-        }
-
-        // Determine what value to use for SnapshotLockingMode
-        final SnapshotLockingMode lockingModeValue;
-
-        // if minimalLocking is defined
-        if (isMinimalLockingExplicitlyDefined) {
-            // Grab the configured minimal locks configuration option
-            final boolean minimalLocksEnabled = config.getBoolean(MySqlConnectorConfig.SNAPSHOT_MINIMAL_LOCKING);
-
-            // Coerce minimal locking => snapshot mode.
-            if (minimalLocksEnabled) {
-                lockingModeValue = SnapshotLockingMode.MINIMAL;
-            } else {
-                lockingModeValue = SnapshotLockingMode.EXTENDED;
+        if (config.hasKey(SNAPSHOT_LOCKING_MODE.name())) {
+            final SnapshotLockingMode lockingModeValue = SnapshotLockingMode.parse(
+                    config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE)
+            );
+            // Sanity check, validate the configured value is a valid option.
+            if (lockingModeValue == null) {
+                problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Must be a valid snapshot.locking.mode value");
+                return 1;
             }
-        } else {
-            // Otherwise use SnapshotLockingMode
-            // Grab explicitly configured value
-            lockingModeValue = SnapshotLockingMode.parse(config.getString(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE));
-        }
-
-        // Sanity check, validate the configured value is a valid option.
-        if (lockingModeValue == null) {
-            problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Must be a valid snapshot.locking.mode value");
-            return 1;
         }
 
         // Everything checks out ok.

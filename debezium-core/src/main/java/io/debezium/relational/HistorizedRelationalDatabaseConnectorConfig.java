@@ -43,11 +43,11 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
             .withDefault(KafkaDatabaseHistory.class.getName());
 
     protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
-        super(config, logicalName, systemTablesFilter, TableId::toString);
+        super(config, logicalName, systemTablesFilter, TableId::toString, DEFAULT_SNAPSHOT_FETCH_SIZE);
     }
 
     protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
-        super(config, logicalName, systemTablesFilter, tableIdMapper);
+        super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE);
     }
 
     /**
@@ -81,8 +81,4 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      */
     protected abstract HistoryRecordComparator getHistoryRecordComparator();
 
-    @Override
-    protected int defaultSnapshotFetchSize(Configuration config) {
-        return DEFAULT_SNAPSHOT_FETCH_SIZE;
-    }
 }

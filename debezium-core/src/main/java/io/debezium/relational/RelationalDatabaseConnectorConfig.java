@@ -179,8 +179,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
 
-    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
-        super(config, logicalName);
+    protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
+                                                TableIdToStringMapper tableIdMapper, Integer defaultSnapshotFetchSize) {
+        super(config, logicalName, defaultSnapshotFetchSize);
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
