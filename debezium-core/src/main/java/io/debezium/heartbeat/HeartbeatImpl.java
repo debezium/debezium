@@ -77,6 +77,10 @@ class HeartbeatImpl implements Heartbeat {
     public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
             throws InterruptedException {
         LOGGER.debug("Generating heartbeat event");
+        if (offset == null || offset.isEmpty()) {
+            // Do not send heartbeat message if no offset is available yet
+            return;
+        }
         consumer.accept(heartbeatRecord(partition, offset));
     }
 
