@@ -6,7 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static junit.framework.TestCase.assertEquals;
@@ -27,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Struct;
@@ -45,6 +43,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
@@ -52,7 +51,9 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
 
 /**
@@ -614,6 +615,27 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         String sourceTable = ((Struct) record.value()).getStruct("source").getString("table");
         assertThat(sourceTable).isEqualTo("dbz_878_some|test@data");
+    }
+
+    @Test
+    @FixFor("DBZ-1245")
+    public void shouldNotSendEmptyOffset() throws InterruptedException, SQLException {
+        final String statement = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+                "CREATE SCHEMA s1; " +
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));";
+        Configuration config = TestHelper.defaultConfig()
+                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                                         .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
+                                         .with(Heartbeat.HEARTBEAT_INTERVAL, 10)
+                                         .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        // Generate empty logical decoding message
+        TestHelper.execute(statement);
+        waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
     }
 
     @Test
