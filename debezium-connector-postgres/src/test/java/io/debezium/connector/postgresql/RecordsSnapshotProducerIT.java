@@ -538,4 +538,27 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
+
+    @Test
+    @FixFor("DBZ-1164")
+    public void shouldGenerateSnapshotForTwentyFourHourTime() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .build());
+        snapshotProducer = buildNoStreamProducer(context, config);
+
+        final TestConsumer consumer = testConsumer(1, "public");
+
+        // insert data and time data
+        TestHelper.execute(INSERT_DATE_TIME_TYPES_STMT);
+
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.time_table", schemaAndValuesForDateTimeTypes());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
 }
