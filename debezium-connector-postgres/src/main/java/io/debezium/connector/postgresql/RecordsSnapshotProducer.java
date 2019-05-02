@@ -374,12 +374,12 @@ public class RecordsSnapshotProducer extends RecordsProducer {
 
                     Optional<SpecialValueDecimal> value = PostgresValueConverter.toSpecialValue(s);
                     return value.isPresent() ? value.get() : new SpecialValueDecimal(rs.getBigDecimal(colIdx));
-
+                case PgOid.TIME:
+                    // To handle time 24:00:00 supported by TIME columns, read the column as a string.
                 case PgOid.TIMETZ:
                     // In order to guarantee that we resolve TIMETZ columns with proper microsecond precision,
                     // read the column as a string instead and then re-parse inside the converter.
                     return rs.getString(colIdx);
-
                 default:
                     Object x = rs.getObject(colIdx);
                     if(x != null) {

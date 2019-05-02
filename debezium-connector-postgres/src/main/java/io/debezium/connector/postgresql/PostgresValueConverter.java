@@ -19,6 +19,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -29,8 +30,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import io.debezium.util.Strings;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -291,6 +295,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return convertBits(column, fieldDefn);
             case PgOid.INTERVAL:
                 return data -> convertInterval(column, fieldDefn, data);
+            case PgOid.TIME:
+                return data -> convertTwentyFourHourTime(column, fieldDefn, data);
             case PgOid.TIMESTAMP:
                 return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             case PgOid.TIMESTAMPTZ:
@@ -640,6 +646,73 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         return super.convertTimeWithZone(column, fieldDefn, data);
+    }
+
+    private Object convertTwentyFourHourTime(Column column, Field fieldDefn, Object data) {
+        final long nanosecondsPerDay = TimeUnit.DAYS.toNanos(1);
+        long twentyFourHour = nanosecondsPerDay;
+
+        if (adaptiveTimeMicrosecondsPrecisionMode) {
+            twentyFourHour = nanosecondsPerDay / 1_000;
+        }
+        if (adaptiveTimePrecisionMode) {
+            if (getTimePrecision(column) <= 3) {
+                twentyFourHour = nanosecondsPerDay / 1_000_000;
+            }
+            if (getTimePrecision(column) <= 6) {
+                twentyFourHour = nanosecondsPerDay / 1_000;
+            }
+        }
+
+        // during streaming
+        if (data instanceof Long) {
+            if ((Long) data == nanosecondsPerDay) {
+                return twentyFourHour;
+            }
+            return super.converter(column, fieldDefn).convert(data);
+        }
+        // during snapshotting
+        else if (data instanceof String) {
+            Duration d = stringToDuration((String) data);
+
+            if (d.toNanos() == nanosecondsPerDay) {
+                return twentyFourHour;
+            }
+            return super.converter(column, fieldDefn).convert(d);
+        }
+
+        return super.converter(column, fieldDefn).convert(data);
+    }
+
+    private static Duration stringToDuration(String timeString) {
+        final Pattern timeFieldPattern = Pattern.compile("([0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
+        Matcher matcher = timeFieldPattern.matcher(timeString);
+
+        if (!matcher.matches()) {
+            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
+        }
+
+        long hours = Long.parseLong(matcher.group(1));
+        long minutes = Long.parseLong(matcher.group(2));
+        long seconds = Long.parseLong(matcher.group(3));
+        long nanoSeconds = 0;
+        String microSecondsString = matcher.group(5);
+        if (microSecondsString != null) {
+            nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
+        }
+
+        if (hours >= 0) {
+            return Duration.ofHours(hours)
+                    .plusMinutes(minutes)
+                    .plusSeconds(seconds)
+                    .plusNanos(nanoSeconds);
+        }
+        else {
+            return Duration.ofHours(hours)
+                    .minusMinutes(minutes)
+                    .minusSeconds(seconds)
+                    .minusNanos(nanoSeconds);
+        }
     }
 
     private static LocalDateTime nanosToLocalDateTimeUTC(long epocNanos) {

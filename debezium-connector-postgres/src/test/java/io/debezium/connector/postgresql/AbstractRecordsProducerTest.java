@@ -80,9 +80,9 @@ public abstract class AbstractRecordsProducerTest {
     protected static final Pattern INSERT_TABLE_MATCHING_PATTERN = Pattern.compile("insert into (.*)\\(.*\\) VALUES .*", Pattern.CASE_INSENSITIVE);
 
     protected static final String INSERT_CASH_TYPES_STMT = "INSERT INTO cash_table (csh) VALUES ('$1234.11')";
-    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttz, tptz, it) " +
+    protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttf, ttz, tptz, it) " +
                                                                 "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, " +
-                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '13:51:30.123789+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
+                                                                "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '24:00:00'::TIME, '13:51:30.123789+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
                                                                 "'P1Y2M3DT4H5M0S'::INTERVAL)";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv) " +
                                                           "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2))";
@@ -500,6 +500,7 @@ public abstract class AbstractRecordsProducerTest {
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         long expectedTiPrecision = LocalTime.parse("13:51:30.123").toNanoOfDay() / 1_000_000;
+        long expectedTtf = TimeUnit.DAYS.toNanos(1) / 1_000;
         String expectedTtz = "11:51:30.123789Z";  //time is stored with TZ, should be read back at GMT
         String expectedTtzPrecision = "11:51:30.123Z";
         double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
@@ -512,6 +513,7 @@ public abstract class AbstractRecordsProducerTest {
                              new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
                              new SchemaAndValueField("ti", MicroTime.builder().optional().build(), expectedTi),
                              new SchemaAndValueField("tip", Time.builder().optional().build(), (int) expectedTiPrecision),
+                             new SchemaAndValueField("ttf", MicroTime.builder().optional().build(), expectedTtf),
                              new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
                              new SchemaAndValueField("tptz", ZonedTime.builder().optional().build(), expectedTtzPrecision),
                              new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval));

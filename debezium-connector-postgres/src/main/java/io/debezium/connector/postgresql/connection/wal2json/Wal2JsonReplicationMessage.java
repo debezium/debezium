@@ -269,6 +269,8 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
                 return Conversions.toEpochNanos(serverLocal.toInstant(ZoneOffset.UTC));
 
             case "time":
+                return rawValue.asString();
+
             case "time without time zone":
                 return DateTimeFormat.get().time(rawValue.asString());
 
