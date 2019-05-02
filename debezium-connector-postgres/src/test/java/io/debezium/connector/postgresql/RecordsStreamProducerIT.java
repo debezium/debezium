@@ -1281,11 +1281,22 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
                 .build());
         setupRecordsProducer(config);
-        String statement = "CREATE SCHEMA s1;" ;
 
-        // Expecting one empty DDL change
-        consumer = testConsumer(1);
+        // Expecting 1 heartbeat + 1 data change
+        consumer = testConsumer(1 + 1);
         recordsProducer.start(consumer, blackHole);
+
+        executeAndWait(
+                "DROP TABLE IF EXISTS test_table;" +
+                "CREATE TABLE test_table (id SERIAL, text TEXT);" +
+                "INSERT INTO test_table (text) VALUES ('mydata');"
+        );
+        consumer.clear();
+
+        consumer.expects(1);
+        // Expecting one empty DDL change
+        String statement = "CREATE SCHEMA s1;";
+
         executeAndWait(statement);
 
         // Expecting one heartbeat for the empty DDL change
