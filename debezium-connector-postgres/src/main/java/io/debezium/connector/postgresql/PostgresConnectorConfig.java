@@ -764,6 +764,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
                                                           .withDisplayName("Status update interval (ms)")
                                                           .withType(Type.INT) // Postgres doesn't accept long for this value
+                                                          .withDefault(10_000)
                                                           .withWidth(Width.SHORT)
                                                           .withImportance(Importance.MEDIUM)
                                                           .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
