@@ -7,9 +7,16 @@ package io.debezium.connector.mysql;
 
 import static io.debezium.util.Strings.isNullOrEmpty;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.UnrecoverableKeyException;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.KeyManager;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.BitSet;
@@ -76,6 +83,7 @@ public class BinlogReader extends AbstractReader {
 
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
+    private static KeyManager[] KMS = null;
 
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
@@ -195,7 +203,25 @@ public class BinlogReader extends AbstractReader {
         client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         if (connectionContext.sslModeEnabled()) {
-            SSLSocketFactory sslSocketFactory = getBinlogSslSocketFactory(connectionContext);
+            SSLSocketFactory sslSocketFactory = null;
+            try {
+                sslSocketFactory = getBinlogSslSocketFactory(connectionContext);
+            } catch (KeyStoreException e) {
+                logger.info("Encountered KeyStoreException: " + e.getMessage());
+                logger.error("Exception Stacktrace: " + e);
+            } catch (IOException e) {
+                logger.info("Encountered IOException: " + e.getMessage());
+                logger.error("Exception Stacktrace: " + e);
+            } catch (CertificateException e) {
+                logger.info("Encountered CertificateException: " + e.getMessage());
+                logger.error("Exception Stacktrace: " + e);
+            } catch (NoSuchAlgorithmException e) {
+                logger.info("Encountered NoSuchAlgorithmException: " + e.getMessage());
+                logger.error("Exception Stacktrace: " + e);
+            } catch (UnrecoverableKeyException e) {
+                logger.info("Encountered UnrecoverableKeyException: " + e.getMessage());
+                logger.error("Exception Stacktrace: " + e);
+            }
             if (sslSocketFactory != null) {
                 client.setSslSocketFactory(sslSocketFactory);
             }
@@ -1067,10 +1093,23 @@ public class BinlogReader extends AbstractReader {
         return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
     }
 
-    private static SSLSocketFactory getBinlogSslSocketFactory(MySqlJdbcContext connectionContext) {
+    private static SSLSocketFactory getBinlogSslSocketFactory(MySqlJdbcContext connectionContext) throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
         String acceptedTlsVersion = connectionContext.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectionContext.sslMode());
+            String password = System.getProperty("javax.net.ssl.keyStorePassword");
+            if (password != null) {
+                char[] password_array = password.toCharArray();
+                String keyFilename = System.getProperty("javax.net.ssl.keyStore");
+
+                KeyStore ks = KeyStore.getInstance("JKS");
+                ks.load(new FileInputStream(keyFilename), password_array);
+
+                KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
+                kmf.init(ks, password_array);
+
+                KMS = kmf.getKeyManagers();
+            }
 
             // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
             // the accepted TLS version is passed to the constructed factory
@@ -1080,7 +1119,7 @@ public class BinlogReader extends AbstractReader {
                     @Override
                     protected void initSSLContext(SSLContext sc)
                         throws GeneralSecurityException {
-                        sc.init(null, new TrustManager[]{
+                        sc.init(KMS, new TrustManager[]{
                             new X509TrustManager() {
 
                                 @Override
