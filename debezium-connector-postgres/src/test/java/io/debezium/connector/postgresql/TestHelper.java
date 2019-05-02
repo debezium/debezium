@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -75,6 +76,7 @@ public final class TestHelper {
                                     .withSlot(slotName)
                                     .withTypeRegistry(getTypeRegistry())
                                     .dropSlotOnClose(dropOnClose)
+                                    .statusUpdateInterval(Duration.ofSeconds(10))
                                     .build();
     }
 
