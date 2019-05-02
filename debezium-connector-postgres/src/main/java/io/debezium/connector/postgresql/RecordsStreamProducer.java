@@ -113,7 +113,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
             // for large databases with many tables, we can timeout the slot while refreshing schema
             // so we need to start a background thread that just responds to keep alive
-            replicationStream.get().startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME));
+            replicationStream.get().startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME + "-keep-alive"));
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
 
@@ -192,7 +192,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             }
 
             ReplicationStream stream = this.replicationStream.get();
-            // if we have a stream, ensure that it hs been stopped
+            // if we have a stream, ensure that it has been stopped
             if (stream != null) {
                 stream.stopKeepAlive();
             }
