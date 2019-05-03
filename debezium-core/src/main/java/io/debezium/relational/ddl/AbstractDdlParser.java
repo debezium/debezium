@@ -125,7 +125,11 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     protected void signalSetVariable(String variableName, String variableValue, String statement) {
-        signalChangeEvent(new DdlParserListener.SetVariableEvent(variableName, variableValue, statement));
+        signalChangeEvent(new DdlParserListener.SetVariableEvent(variableName, variableValue, currentSchema, statement));
+    }
+
+    protected void signalUseDatabase(String statement) {
+        signalChangeEvent(new DdlParserListener.DatabaseSwitchedEvent(currentSchema, statement));
     }
 
     /**

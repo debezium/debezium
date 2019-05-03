@@ -699,7 +699,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.getDatabaseName() + ".products")
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, DATABASE.getDatabaseName()+".products")
-                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE+"."+DATABASE.getDatabaseName()+".products", String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
+                .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + DATABASE.getDatabaseName()+".products", String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
@@ -747,6 +748,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.DATABASE_WHITELIST, DATABASE.getDatabaseName())
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, tables)
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE+"."+DATABASE.getDatabaseName()+".products", String.format("SELECT * from %s.products where id>=108 order by id", DATABASE.getDatabaseName()))
                 .with(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE+"."+DATABASE.getDatabaseName()+".products_on_hand", String.format("SELECT * from %s.products_on_hand where product_id>=108 order by product_id", DATABASE.getDatabaseName()))
@@ -796,8 +798,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(2);
+        SourceRecords records = consumeRecordsByTopic(1 + 5);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -843,12 +845,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        SourceRecords records = consumeRecordsByTopic(8);
+        SourceRecords records = consumeRecordsByTopic(16);
         final List<SourceRecord> migrationTestRecords = records.recordsForTopic(DATABASE.topicForTable("migration_test"));
         assertThat(migrationTestRecords.size()).isEqualTo(1);
         final SourceRecord record = migrationTestRecords.get(0);
         assertThat(((Struct) record.key()).getString("mgb_no")).isEqualTo("2");
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(6);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(14);
 
         stopConnector();
     }
@@ -865,13 +867,15 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
                               .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                               .build();
 
+        dropDatabases();
+
         // Start the connector ...
         start(MySqlConnector.class, config);
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(6);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1 + 2 + 2 * 4);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -914,8 +918,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(2);
+        SourceRecords records = consumeRecordsByTopic(6);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(5);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -928,6 +932,57 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         final SourceRecord record = consumeRecord();
         Assertions.assertThat(record.topic()).isEqualTo(DATABASE.topicForTable("customers"));
+    }
+
+    @Test
+    @FixFor("DBZ-683")
+    public void shouldReceiveSchemaForNonWhitelistedTablesAndDatabases() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tables = String.format("%s.customers,%s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(MySqlConnectorConfig.DATABASE_WHITELIST, ".*")
+                              .build();
+
+        dropDatabases();
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("mysql");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(
+                        "CREATE DATABASE non_wh",
+                        "USE non_wh",
+                        "CREATE TABLE t1 (ID INT PRIMARY KEY)"
+                );
+            }
+        }
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        // Four tables in database, only two are whitelisted
+        SourceRecords records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 3 + 2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1 + 2 + 2 * 4);
+        stopConnector();
+    }
+
+    private void dropDatabases() throws SQLException {
+        try (MySQLConnection db = MySQLConnection.forTestDatabase("mysql");) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.query("SHOW DATABASES", rs -> {
+                    while (rs.next()) {
+                        final String dbName = rs.getString(1);
+                        if (!Filters.isBuiltInDatabase(dbName) && !dbName.equals(DATABASE.getDatabaseName())) {
+                            connection.execute("DROP DATABASE IF EXISTS " + dbName);
+                        }
+                    }
+                });
+            }
+        }
     }
 
     protected static class BinlogPosition {

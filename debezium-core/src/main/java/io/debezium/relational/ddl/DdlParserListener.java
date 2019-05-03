@@ -5,6 +5,8 @@
  */
 package io.debezium.relational.ddl;
 
+import java.util.Optional;
+
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.TableId;
 
@@ -33,7 +35,7 @@ public interface DdlParserListener {
     public static enum EventType {
         CREATE_TABLE, ALTER_TABLE, DROP_TABLE, TRUNCATE_TABLE,
         CREATE_INDEX, DROP_INDEX,
-        CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE,
+        CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE, USE_DATABASE,
         SET_VARIABLE,
     }
 
@@ -294,6 +296,16 @@ public interface DdlParserListener {
     }
 
     /**
+     * An event describing the switching of a database.
+     */
+    @Immutable
+    public static class DatabaseSwitchedEvent extends DatabaseEvent {
+        public DatabaseSwitchedEvent(String databaseName, String ddlStatement) {
+            super(EventType.USE_DATABASE, databaseName, ddlStatement);
+        }
+    }
+
+    /**
      * An event describing the setting of a variable.
      */
     @Immutable
@@ -301,11 +313,13 @@ public interface DdlParserListener {
         
         private final String variableName;
         private final String value;
+        private final String databaseName;
 
-        public SetVariableEvent(String variableName, String value, String ddlStatement) {
+        public SetVariableEvent(String variableName, String value, String currentDatabaseName, String ddlStatement) {
             super(EventType.SET_VARIABLE, ddlStatement);
             this.variableName = variableName;
             this.value = value;
+            this.databaseName = currentDatabaseName;
         }
 
         /**
@@ -323,7 +337,11 @@ public interface DdlParserListener {
         public String variableValue() {
             return value;
         }
-        
+
+        public Optional<String> databaseName() {
+            return Optional.ofNullable(databaseName);
+        }
+
         @Override
         public String toString() {
             return statement();

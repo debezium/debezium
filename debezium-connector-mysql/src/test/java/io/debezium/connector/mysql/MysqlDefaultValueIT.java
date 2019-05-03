@@ -36,6 +36,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTimestamp;
@@ -517,6 +518,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .build();
         start(MySqlConnector.class, config);
 
@@ -582,6 +584,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
                 .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
                 .build();
         start(MySqlConnector.class, config);
 

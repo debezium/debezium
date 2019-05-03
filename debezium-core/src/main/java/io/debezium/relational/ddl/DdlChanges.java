@@ -9,8 +9,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.relational.TableId;
 
 /**
  * A {@link DdlParserListener} that accumulates changes, allowing them to be consumed in the same order by database.
@@ -129,10 +131,12 @@ public class DdlChanges implements DdlParserListener {
             case CREATE_DATABASE:
             case ALTER_DATABASE:
             case DROP_DATABASE:
+            case USE_DATABASE:
                 DatabaseEvent dbEvent = (DatabaseEvent) event;
                 return dbEvent.databaseName();
             case SET_VARIABLE:
-                return "";
+                SetVariableEvent varEvent = (SetVariableEvent) event;
+                return varEvent.databaseName().orElse("");
         }
         assert false : "Should never happen";
         return null;
@@ -161,5 +165,16 @@ public class DdlChanges implements DdlParserListener {
 
     public static interface DatabaseStatementStringConsumer {
         void consume(String databaseName, String ddlStatements);
+    }
+
+    public boolean anyMatch(Predicate<String> databaseFilter, Predicate<TableId> tableFilter) {
+        return events.stream().anyMatch(event ->
+            (event instanceof DatabaseEvent) && databaseFilter.test(((DatabaseEvent) event).databaseName())
+            || (event instanceof TableEvent) && tableFilter.test(((TableEvent) event).tableId())
+            || (event instanceof SetVariableEvent) && (
+                    !((SetVariableEvent) event).databaseName().isPresent()
+                    || databaseFilter.test(((SetVariableEvent) event).databaseName().get())
+                )
+            );
     }
 }
