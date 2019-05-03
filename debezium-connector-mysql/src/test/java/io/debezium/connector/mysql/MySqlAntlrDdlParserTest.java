@@ -1385,7 +1385,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(readFile("ddl/mysql-quoted.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(4);
-        assertThat(listener.total()).isEqualTo(10);
+        assertThat(listener.total()).isEqualTo(11);
         assertThat(tables.forTable("connector_test_ro", null, "products")).isNotNull();
         assertThat(tables.forTable("connector_test_ro", null, "products_on_hand")).isNotNull();
         assertThat(tables.forTable("connector_test_ro", null, "customers")).isNotNull();
@@ -1397,7 +1397,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(readFile("ddl/mysql-integration.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(10);
-        assertThat(listener.total()).isEqualTo(17);
+        assertThat(listener.total()).isEqualTo(20);
     }
 
     @Test
@@ -1690,7 +1690,7 @@ public class MySqlAntlrDdlParserTest {
     public void shouldParseTicketMonsterLiquibaseStatements() {
         parser.parse(readLines(1, "ddl/mysql-ticketmonster-liquibase.ddl"), tables);
         assertThat(tables.size()).isEqualTo(7);
-        assertThat(listener.total()).isEqualTo(16);
+        assertThat(listener.total()).isEqualTo(17);
         listener.forEach(this::printEvent);
     }
 

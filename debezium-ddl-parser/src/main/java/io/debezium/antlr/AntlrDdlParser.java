@@ -197,6 +197,10 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         signalSetVariable(variableName, variableValue, getText(ctx));
     }
 
+    public void signalUseDatabase(ParserRuleContext ctx) {
+        signalUseDatabase(getText(ctx));
+    }
+
     /**
      * Signal a create database event to ddl changes listener.
      *

@@ -35,6 +35,9 @@ public class UseStatementParserListener extends MySqlParserBaseListener {
         // right for the current database.
         String charsetForDb = parser.charsetNameForDatabase().get(dbName);
         parser.systemVariables().setVariable(MySqlSystemVariables.MySqlScope.SESSION, MySqlSystemVariables.CHARSET_NAME_DATABASE, charsetForDb);
+
+        // Signal that the variable was set ...
+        parser.signalUseDatabase(ctx);
         super.enterUseStatement(ctx);
     }
 }

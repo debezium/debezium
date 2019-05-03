@@ -315,7 +315,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             // Note that, unlike with the DB history topic, we don't filter out non-whitelisted tables here
             // (which writes to the public schema change topic); if required, a second option could be added
             // for controlling this, too
-            if (!storeOnlyMonitoredTablesDdl || !changes.isEmpty()) {
+            if (!storeOnlyMonitoredTablesDdl || ddlChanges.anyMatch(filters.databaseFilter(), filters.tableFilter())) {
                 if (statementConsumer != null) {
 
                     // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
@@ -349,16 +349,12 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 // Record the DDL statement so that we can later recover them if needed. We do this _after_ writing the
                 // schema change records so that failure recovery (which is based on of the history) won't lose
                 // schema change records.
-                try {
-                    if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
-                        dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
-                    } else {
-                        logger.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
-                    }
-                } catch (Throwable e) {
-                    throw new ConnectException(
-                            "Error recording the DDL statement(s) in the database history " + dbHistory + ": " + ddlStatements, e);
+                if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
+                    dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
                 }
+            }
+            else {
+                logger.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
             }
         }
 
@@ -373,5 +369,13 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             }
         });
         return true;
+    }
+
+
+    /**
+     * @return true if only monitored tables should be stored in database history, false if all tables should be stored
+     */
+    public boolean isStoreOnlyMonitoredTablesDdl() {
+        return storeOnlyMonitoredTablesDdl;
     }
 }

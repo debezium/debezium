@@ -302,12 +302,12 @@ public class SnapshotReader extends AbstractReader {
                         mysql.query(sql.get(), rs -> {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
-                                if (createTableFilters.tableFilter().test(id)) {
+                                if ((createTableFilters == filters && shouldRecordTableSchema(schema, filters, id)) || createTableFilters.tableFilter().test(id)) {
                                     createTablesMap.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                                 }
-                                if (filters.tableFilter().test(id)) {
+                                if (shouldRecordTableSchema(schema, filters, id)) {
                                     tableIds.add(id);
-                                    logger.info("\t including '{}'", id);
+                                    logger.info("\t including '{}' for further processing", id);
                                 } else {
                                     logger.info("\t '{}' is filtered out, discarding", id);
                                 }
@@ -481,6 +481,10 @@ public class SnapshotReader extends AbstractReader {
                     Iterator<TableId> tableIdIter = tableIds.iterator();
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
+                        if (!filters.tableFilter().test(tableId)) {
+                            // Table schema was recorded but the table is filtered out so will not be snapshotted
+                            continue;
+                        }
                         AtomicLong rowNum = new AtomicLong();
                         if (!isRunning()) {
                             break;
@@ -728,6 +732,10 @@ public class SnapshotReader extends AbstractReader {
                 logger.warn("Failed to close the connection properly", e);
             }
         }
+    }
+
+    private boolean shouldRecordTableSchema(final MySqlSchema schema, final Filters filters, TableId id) {
+        return !schema.isStoreOnlyMonitoredTablesDdl() || filters.tableFilter().test(id);
     }
 
     protected void readBinlogPosition(int step, SourceInfo source, JdbcConnection mysql, AtomicReference<String> sql) throws SQLException {
