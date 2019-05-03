@@ -83,7 +83,6 @@ public class BinlogReader extends AbstractReader {
 
     private static final long INITIAL_POLL_PERIOD_IN_MILLIS = TimeUnit.SECONDS.toMillis(5);
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
-    private static KeyManager[] KMS = null;
 
     private final boolean recordSchemaChangesInSourceRecords;
     private final RecordMakers recordMakers;
@@ -206,21 +205,10 @@ public class BinlogReader extends AbstractReader {
             SSLSocketFactory sslSocketFactory = null;
             try {
                 sslSocketFactory = getBinlogSslSocketFactory(connectionContext);
-            } catch (KeyStoreException e) {
+            } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
                 logger.info("Encountered KeyStoreException: " + e.getMessage());
                 logger.error("Exception Stacktrace: " + e);
-            } catch (IOException e) {
-                logger.info("Encountered IOException: " + e.getMessage());
-                logger.error("Exception Stacktrace: " + e);
-            } catch (CertificateException e) {
-                logger.info("Encountered CertificateException: " + e.getMessage());
-                logger.error("Exception Stacktrace: " + e);
-            } catch (NoSuchAlgorithmException e) {
-                logger.info("Encountered NoSuchAlgorithmException: " + e.getMessage());
-                logger.error("Exception Stacktrace: " + e);
-            } catch (UnrecoverableKeyException e) {
-                logger.info("Encountered UnrecoverableKeyException: " + e.getMessage());
-                logger.error("Exception Stacktrace: " + e);
+                throw new ConnectException(e);
             }
             if (sslSocketFactory != null) {
                 client.setSslSocketFactory(sslSocketFactory);
@@ -1098,6 +1086,7 @@ public class BinlogReader extends AbstractReader {
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectionContext.sslMode());
             String password = System.getProperty("javax.net.ssl.keyStorePassword");
+            KeyManager[] keyManagers = null;
             if (password != null) {
                 char[] password_array = password.toCharArray();
                 String keyFilename = System.getProperty("javax.net.ssl.keyStore");
@@ -1108,18 +1097,19 @@ public class BinlogReader extends AbstractReader {
                 KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
                 kmf.init(ks, password_array);
 
-                KMS = kmf.getKeyManagers();
+                keyManagers = kmf.getKeyManagers();
             }
 
             // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
             // the accepted TLS version is passed to the constructed factory
             if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
+                KeyManager[] finalKMS = keyManagers;
                 return new DefaultSSLSocketFactory(acceptedTlsVersion) {
 
                     @Override
                     protected void initSSLContext(SSLContext sc)
                         throws GeneralSecurityException {
-                        sc.init(KMS, new TrustManager[]{
+                        sc.init(finalKMS, new TrustManager[]{
                             new X509TrustManager() {
 
                                 @Override
