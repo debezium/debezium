@@ -124,11 +124,6 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     }
 
     @Override
-    public long getNumberOfEventsSkipped() {
-        return getNumberOfEventsFiltered();
-    }
-
-    @Override
     public void reset() {
         totalNumberOfEventsSeen.set(0);
         lastEventTimestamp.set(-1);
