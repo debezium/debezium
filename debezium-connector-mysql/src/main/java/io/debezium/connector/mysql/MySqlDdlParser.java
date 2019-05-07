@@ -60,13 +60,14 @@ public class MySqlDdlParser extends LegacyDdlParser {
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private MySqlValueConverters converters = null;
-    private final MySqlDefaultValuePreConverter defaultValuePreConverter = new MySqlDefaultValuePreConverter();
+    private final MySqlDefaultValueConverter defaultValuePreConverter;
 
     /**
      * Create a new DDL parser for MySQL that does not include view definitions.
      */
     public MySqlDdlParser() {
         super(";");
+        this.defaultValuePreConverter = new MySqlDefaultValueConverter(converters);
     }
 
     /**
@@ -76,6 +77,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
      */
     public MySqlDdlParser(boolean includeViews) {
         super(";", includeViews);
+        this.defaultValuePreConverter = new MySqlDefaultValueConverter(converters);
     }
 
     @Override
@@ -87,6 +89,7 @@ public class MySqlDdlParser extends LegacyDdlParser {
         super(";", includeViews);
         this.converters = converters;
         systemVariables = new MySqlSystemVariables();
+        this.defaultValuePreConverter = new MySqlDefaultValueConverter(converters);
     }
 
     @Override
