@@ -211,7 +211,7 @@ public abstract class AbstractMysqlDefaultValueTest {
                 "  F CHAR DEFAULT NULL,\n" +
                 "  G VARCHAR(10) DEFAULT NULL,\n" +
                 "  H NCHAR(10) DEFAULT NULL\n" +
-                ");";
+                ") CHARACTER SET 'latin2';";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_STRING_TABLE"));
         assertThat(table.columnWithName("A").defaultValue()).isEqualTo("A");

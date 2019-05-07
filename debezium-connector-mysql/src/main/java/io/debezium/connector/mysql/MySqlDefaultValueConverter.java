@@ -19,8 +19,14 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
+import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.ValueConverter;
 
 /**
  * This class is used by a DDL parser to convert the string default value to a Java type
@@ -31,7 +37,7 @@ import io.debezium.relational.Column;
  * @see com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer
  */
 @Immutable
-public class MySqlDefaultValuePreConverter  {
+public class MySqlDefaultValueConverter  {
 
 
     private static final Pattern EPOCH_EQUIVALENT_TIMESTAMP = Pattern.compile("(\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}) (00:00:00(\\.\\d{1,6})?)");
@@ -41,6 +47,12 @@ public class MySqlDefaultValuePreConverter  {
     private static final String EPOCH_TIMESTAMP = "1970-01-01 00:00:00";
 
     private static final String EPOCH_DATE = "1970-01-01";
+
+    private final MySqlValueConverters converters;
+
+    public MySqlDefaultValueConverter(MySqlValueConverters converters) {
+        this.converters = converters;
+    }
 
     /**
      * Converts a default value from the expected format to a logical object acceptable by the main JDBC
@@ -239,5 +251,30 @@ public class MySqlDefaultValuePreConverter  {
             dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
         }
         return dtf.toFormatter();
+    }
+
+    public ColumnEditor setColumnDefaultValue(ColumnEditor columnEditor) {
+        final Column column = columnEditor.create();
+
+        // if converters is not null and the default value is not null, we need to convert default value
+        if (converters != null && columnEditor.defaultValue() != null) {
+            Object defaultValue = columnEditor.defaultValue();
+            final SchemaBuilder schemaBuilder = converters.schemaBuilder(column);
+            if (schemaBuilder == null) {
+                return columnEditor;
+            }
+            final Schema schema = schemaBuilder.build();
+            //In order to get the valueConverter for this column, we have to create a field;
+            //The index value -1 in the field will never used when converting default value;
+            //So we can set any number here;
+            final Field field = new Field(columnEditor.name(), -1, schema);
+            final ValueConverter valueConverter = converters.converter(columnEditor.create(), field);
+            if (defaultValue instanceof String) {
+                defaultValue = convert(column, (String) defaultValue);
+            }
+            defaultValue = valueConverter.convert(defaultValue);
+            columnEditor.defaultValue(defaultValue);
+        }
+        return columnEditor;
     }
 }
