@@ -76,7 +76,6 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void unsignedTinyIntTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.DDL_PARSER_MODE, "antlr")
                 .build();
         start(MySqlConnector.class, config);
 
@@ -770,7 +769,6 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     public void generatedValueTest() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.DDL_PARSER_MODE, "antlr")
                 .build();
         start(MySqlConnector.class, config);
 
