@@ -18,13 +18,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.junit.SkipForLegacyParser;
-import io.debezium.connector.mysql.junit.SkipTestForLegacyParser;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -33,7 +29,6 @@ import io.debezium.util.Testing;
 /**
  * @author Omar Al-Safi
  */
-@SkipForLegacyParser
 public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
@@ -43,9 +38,6 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
 
     private final UniqueDatabase DATABASE = new UniqueDatabase("unsignednumericit", "unsigned_integer_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
-
-    @Rule
-    public final TestRule skip = new SkipTestForLegacyParser();
 
     @Before
     public void beforeEach() {

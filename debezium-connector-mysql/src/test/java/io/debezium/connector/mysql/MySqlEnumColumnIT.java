@@ -10,13 +10,9 @@ import java.nio.file.Path;
 import org.apache.kafka.connect.data.Schema;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.junit.SkipForLegacyParser;
-import io.debezium.connector.mysql.junit.SkipTestForLegacyParser;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
@@ -26,15 +22,11 @@ import static org.fest.assertions.Assertions.assertThat;
 /**
  * @author Chris Cranford
  */
-@SkipForLegacyParser
 public class MySqlEnumColumnIT extends AbstractConnectorTest {
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-enum-column.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("enumcolumnit", "enum_column_test").withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
-
-    @Rule
-    public final TestRule skip = new SkipTestForLegacyParser();
 
     @Before
     public void beforeEach() {
