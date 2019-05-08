@@ -113,8 +113,6 @@
         <docker.filter>debezium/mysql-server-test-database</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.initimage>ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
-
-        <ddl.parser.mode>antlr</ddl.parser.mode>
     </properties>
     <build>
         <plugins>
@@ -327,7 +325,6 @@
                         <database.replica.hostname>${docker.host.address}</database.replica.hostname>
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                        <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
                     </systemPropertyVariables>
                     <runOrder>alphabetical</runOrder>
                 </configuration>
@@ -444,7 +441,6 @@
                                 <database.port>${mysql.port}</database.port>
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <ddl.parser.mode>${ddl.parser.mode}</ddl.parser.mode>
                                 <runOrder>alphabetical</runOrder>
                             </systemPropertyVariables>
                         </configuration>
@@ -549,14 +545,5 @@
         </properties>
       </profile>
 
-      <profile>
-        <id>parser-legacy</id>
-        <activation>
-          <activeByDefault>false</activeByDefault>
-        </activation>
-        <properties>
-          <ddl.parser.mode>legacy</ddl.parser.mode>
-        </properties>
-      </profile>
     </profiles>
 </project>

@@ -19,14 +19,10 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.Tables.TableFilter;
-import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -526,69 +522,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-    public static enum DdlParsingMode implements EnumeratedValue {
-
-        LEGACY("legacy") {
-            @Override
-            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters, TableFilter tableFilter) {
-                return new MySqlDdlParser(false, (MySqlValueConverters) valueConverters);
-            }
-        },
-        ANTLR("antlr") {
-            @Override
-            public DdlParser getNewParserInstance(JdbcValueConverters valueConverters, TableFilter tableFilter) {
-                return new MySqlAntlrDdlParser((MySqlValueConverters) valueConverters, tableFilter);
-            }
-        };
-
-        private final String value;
-
-        private DdlParsingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public abstract DdlParser getNewParserInstance(JdbcValueConverters valueConverters, TableFilter tableFilter);
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static DdlParsingMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (DdlParsingMode option : DdlParsingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static DdlParsingMode parse(String value, String defaultValue) {
-            DdlParsingMode mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
     /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
@@ -1042,17 +975,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
-    public static final Field DDL_PARSER_MODE = Field.create("ddl.parser.mode")
-            .withDisplayName("DDL parser mode")
-            .withEnum(DdlParsingMode.class, DdlParsingMode.ANTLR)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("MySQL DDL statements can be parsed in different ways:" +
-                    "'legacy' parsing is creating a TokenStream and comparing token by token with an expected values." +
-                    "The decisions are made by matched token values." +
-                    "'antlr' (the default) uses generated parser from MySQL grammar using ANTLR v4 tool which use ALL(*) algorithm for parsing." +
-                    "This parser creates a parsing tree for DDL statement, then walks trough it and apply changes by node types in parsed tree.");
-
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -1124,7 +1046,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
                                                      CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                                                     DDL_PARSER_MODE,
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER);
 
     /**
@@ -1142,7 +1063,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                 DatabaseHistory.DDL_FILTER);
 
     private final SnapshotLockingMode snapshotLockingMode;
-    private final DdlParsingMode ddlParsingMode;
     private final GtidNewChannelPosition gitIdNewChannelPosition;
     private final SnapshotNewTables snapshotNewTables;
 
@@ -1167,9 +1087,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         }
 
-        String ddlParsingModeStr = config.getString(MySqlConnectorConfig.DDL_PARSER_MODE);
-        this.ddlParsingMode = DdlParsingMode.parse(ddlParsingModeStr, MySqlConnectorConfig.DDL_PARSER_MODE.defaultValueAsString());
-
         String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
         this.gitIdNewChannelPosition = GtidNewChannelPosition.parse(gitIdNewChannelPosition, MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION.defaultValueAsString());
 
@@ -1179,10 +1096,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public SnapshotLockingMode getSnapshotLockingMode() {
         return this.snapshotLockingMode;
-    }
-
-    public DdlParsingMode getDdlParsingMode() {
-        return ddlParsingMode;
     }
 
     public GtidNewChannelPosition gtidNewChannelPosition() {
@@ -1215,7 +1128,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_MINIMAL_LOCKING, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
-                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, DDL_PARSER_MODE, ENABLE_TIME_ADJUSTER);
+                    BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, ENABLE_TIME_ADJUSTER);
         return config;
     }
 
