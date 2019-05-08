@@ -19,6 +19,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.BigIntUnsignedHandlingMode;
 import io.debezium.connector.mysql.MySqlSystemVariables.MySqlScope;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -111,10 +112,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
 
-        this.ddlParser = configuration.getDdlParsingMode().getNewParserInstance(
-                getValueConverters(configuration),
-                getTableFilter()
-        );
+        this.ddlParser = new MySqlAntlrDdlParser(getValueConverters(configuration), getTableFilter());
         this.ddlChanges = this.ddlParser.getDdlChanges();
 
         // Create and configure the database history ...

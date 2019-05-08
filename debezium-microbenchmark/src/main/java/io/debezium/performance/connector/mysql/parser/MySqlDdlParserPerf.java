@@ -20,7 +20,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import io.debezium.connector.mysql.MySqlDdlParser;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
@@ -37,7 +36,6 @@ public class MySqlDdlParserPerf {
     @State(Scope.Thread)
     public static class ParserState {
 
-        public AbstractDdlParser legacyParser;
         public AbstractDdlParser antlrParser;
         public Tables tables;
         public String ddl;
@@ -48,7 +46,6 @@ public class MySqlDdlParserPerf {
 
         @Setup(Level.Trial)
         public void doSetup() {
-            legacyParser = new MySqlDdlParser();
             antlrParser = new MySqlAntlrDdlParser();
             tables = new Tables();
             ddl = testStatement();
@@ -62,17 +59,6 @@ public class MySqlDdlParserPerf {
             final String statement = sb.append(")").toString();
             return statement;
         }
-    }
-
-
-    @Benchmark
-    @BenchmarkMode(Mode.AverageTime)
-    @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    @Fork(value = 1)
-    @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
-    @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
-    public void legacy(ParserState state) {
-        state.legacyParser.parse(state.ddl, state.tables);
     }
 
     @Benchmark
