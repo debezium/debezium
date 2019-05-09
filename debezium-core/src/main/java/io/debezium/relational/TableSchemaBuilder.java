@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -168,6 +169,7 @@ public class TableSchemaBuilder {
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
+                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
@@ -189,6 +191,22 @@ public class TableSchemaBuilder {
             };
         }
         return null;
+    }
+
+    private void validateIncomingRowToInternalMetadata(int[] recordIndexes, Field[] fields, ValueConverter[] converters,
+            Object[] row, int position) {
+        if (position >= converters.length) {
+            LOGGER.error("Error requesting a converter, converters: {}, requested index: {}", converters.length, position);
+            throw new ConnectException("Column indexing array is larger than number of converters, internal schema represantion is probably out of sync with real database schema");
+        }
+        if (position >= fields.length) {
+            LOGGER.error("Error requesting a field, fields: {}, requested index: {}", fields.length, position);
+            throw new ConnectException("Too few schema fields, internal schema represantion is probably out of sync with real database schema");
+        }
+        if (recordIndexes[position] >= row.length) {
+            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {}", row.length, recordIndexes[position], position);
+            throw new ConnectException("Data row is smaller than a column index, internal schema represantion is probably out of sync with real database schema");
+        }
     }
 
     /**
@@ -213,6 +231,7 @@ public class TableSchemaBuilder {
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
+                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
                     Object value = row[recordIndexes[i]];
 
                     ValueConverter converter = converters[i];
