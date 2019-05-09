@@ -23,6 +23,7 @@ import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -972,6 +973,47 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(2);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1264")
+    public void shouldIgnoreCreateIndexForNonCapturedTablesNotStoredInHistory() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tables = String.format("%s.customers", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        config = DATABASE.defaultConfig()
+                              .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                              .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
+                              .build();
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(
+                        "CREATE TABLE nonmon (id INT)"
+                );
+            }
+        }
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(2);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute(
+                        "CREATE UNIQUE INDEX pk ON nonmon(id)",
+                        "INSERT INTO customers VALUES (default,'name','surname','email');"
+                );
+           }
+        }
+
+        final SourceRecord record = consumeRecord();
+        Assertions.assertThat(record.topic()).isEqualTo(DATABASE.topicForTable("customers"));
     }
 
     protected static class BinlogPosition {
