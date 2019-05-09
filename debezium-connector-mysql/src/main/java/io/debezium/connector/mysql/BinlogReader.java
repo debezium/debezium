@@ -202,14 +202,7 @@ public class BinlogReader extends AbstractReader {
         client.setServerId(serverId);
         client.setSSLMode(sslModeFor(connectionContext.sslMode()));
         if (connectionContext.sslModeEnabled()) {
-            SSLSocketFactory sslSocketFactory = null;
-            try {
-                sslSocketFactory = getBinlogSslSocketFactory(connectionContext);
-            } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-                logger.info("Encountered KeyStoreException: " + e.getMessage());
-                logger.error("Exception Stacktrace: " + e);
-                throw new ConnectException(e);
-            }
+            SSLSocketFactory sslSocketFactory = getBinlogSslSocketFactory(connectionContext);
             if (sslSocketFactory != null) {
                 client.setSslSocketFactory(sslSocketFactory);
             }
@@ -1081,35 +1074,40 @@ public class BinlogReader extends AbstractReader {
         return new BinlogPosition(client.getBinlogFilename(), client.getBinlogPosition());
     }
 
-    private static SSLSocketFactory getBinlogSslSocketFactory(MySqlJdbcContext connectionContext) throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException {
+    private SSLSocketFactory getBinlogSslSocketFactory(MySqlJdbcContext connectionContext) {
         String acceptedTlsVersion = connectionContext.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectionContext.sslMode());
-            String password = System.getProperty("javax.net.ssl.keyStorePassword");
+
+            // Keystore settings can be passed via system properties too so we need to read them
+            final String password = System.getProperty("javax.net.ssl.keyStorePassword");
+            final String keyFilename = System.getProperty("javax.net.ssl.keyStore");
             KeyManager[] keyManagers = null;
-            if (password != null) {
-                char[] password_array = password.toCharArray();
-                String keyFilename = System.getProperty("javax.net.ssl.keyStore");
+            if (keyFilename != null) {
+                final char[] passwordArray = (password == null) ? null : password.toCharArray();
+                try {
+                    KeyStore ks = KeyStore.getInstance("JKS");
+                    ks.load(new FileInputStream(keyFilename), passwordArray);
 
-                KeyStore ks = KeyStore.getInstance("JKS");
-                ks.load(new FileInputStream(keyFilename), password_array);
+                    KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
+                    kmf.init(ks, passwordArray);
 
-                KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
-                kmf.init(ks, password_array);
-
-                keyManagers = kmf.getKeyManagers();
+                    keyManagers = kmf.getKeyManagers();
+                } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
+                    throw new ConnectException("Could not load keystore", e);
+                }
             }
 
             // DBZ-1208 Resembles the logic from the upstream BinaryLogClient, only that
             // the accepted TLS version is passed to the constructed factory
             if (sslMode == SSLMode.PREFERRED || sslMode == SSLMode.REQUIRED) {
-                KeyManager[] finalKMS = keyManagers;
+                final KeyManager[] finalKMS = keyManagers;
                 return new DefaultSSLSocketFactory(acceptedTlsVersion) {
 
                     @Override
                     protected void initSSLContext(SSLContext sc)
                         throws GeneralSecurityException {
-                        sc.init(finalKMS, new TrustManager[]{
+                        sc.init(finalKMS, new TrustManager[] {
                             new X509TrustManager() {
 
                                 @Override
