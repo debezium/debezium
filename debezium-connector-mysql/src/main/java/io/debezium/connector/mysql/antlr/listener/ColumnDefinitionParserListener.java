@@ -16,6 +16,7 @@ import io.debezium.connector.mysql.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.DefaultValueContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.TimeDefinitionContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -138,12 +139,15 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                 columnEditor.defaultValue(ctx.constant().REAL_LITERAL().getText());
             }
         }
-        else if (ctx.timeDefinition() != null) {
-            if (ctx.timeDefinition().CURRENT_TIMESTAMP() != null || ctx.timeDefinition().NOW() != null) {
-                columnEditor.defaultValue("1970-01-01 00:00:00");
-            }
-            else {
-                columnEditor.defaultValue(ctx.timeDefinition().getText());
+        else if (ctx.timeDefinition() != null && !ctx.timeDefinition().isEmpty()) {
+            if (ctx.timeDefinition().size() > 1 || (ctx.ON() == null && ctx.UPDATE() == null)) {
+                final TimeDefinitionContext timeDefinition = ctx.timeDefinition(0);
+                if (timeDefinition.CURRENT_TIMESTAMP() != null || timeDefinition.NOW() != null) {
+                    columnEditor.defaultValue("1970-01-01 00:00:00");
+                }
+                else {
+                    columnEditor.defaultValue(timeDefinition.getText());
+                }
             }
         }
         // For CREATE TABLE are all column default values converted only after charset is known

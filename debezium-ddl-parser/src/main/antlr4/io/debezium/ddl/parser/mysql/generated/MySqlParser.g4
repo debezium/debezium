@@ -55,35 +55,35 @@ ddlStatement
     : createDatabase | createEvent | createIndex
     | createLogfileGroup | createProcedure | createFunction
     | createServer | createTable | createTablespaceInnodb
-    | createTablespaceNdb | createTrigger | createView 
-    | alterDatabase | alterEvent | alterFunction 
-    | alterInstance | alterLogfileGroup | alterProcedure 
+    | createTablespaceNdb | createTrigger | createView
+    | alterDatabase | alterEvent | alterFunction
+    | alterInstance | alterLogfileGroup | alterProcedure
     | alterServer | alterTable | alterTablespace | alterView
-    | dropDatabase | dropEvent | dropIndex 
-    | dropLogfileGroup | dropProcedure | dropFunction 
-    | dropServer | dropTable | dropTablespace 
-    | dropTrigger | dropView 
+    | dropDatabase | dropEvent | dropIndex
+    | dropLogfileGroup | dropProcedure | dropFunction
+    | dropServer | dropTable | dropTablespace
+    | dropTrigger | dropView
     | renameTable | truncateTable
     ;
 
 dmlStatement
-    : selectStatement | insertStatement | updateStatement 
+    : selectStatement | insertStatement | updateStatement
     | deleteStatement | replaceStatement | callStatement
     | loadDataStatement | loadXmlStatement | doStatement
     | handlerStatement
     ;
 
 transactionStatement
-    : startTransaction 
+    : startTransaction
     | beginWork | commitWork | rollbackWork
-    | savepointStatement | rollbackStatement 
+    | savepointStatement | rollbackStatement
     | releaseStatement | lockTables | unlockTables
     ;
 
 replicationStatement
     : changeMaster | changeReplicationFilter | purgeBinaryLogs
     | resetMaster | resetSlave | startSlave | stopSlave
-    | startGroupReplication | stopGroupReplication 
+    | startGroupReplication | stopGroupReplication
     | xaStartTransaction | xaEndTransaction | xaPrepareStatement
     | xaCommitWork | xaRollbackWork | xaRecoverWork
     ;
@@ -95,26 +95,26 @@ preparedStatement
 // remark: NOT INCLUDED IN sqlStatement, but include in body
 //  of routine's statements
 compoundStatement
-    : blockStatement 
-    | caseStatement | ifStatement | leaveStatement 
-    | loopStatement | repeatStatement | whileStatement 
+    : blockStatement
+    | caseStatement | ifStatement | leaveStatement
+    | loopStatement | repeatStatement | whileStatement
     | iterateStatement | returnStatement | cursorStatement
     ;
 
 administrationStatement
-    : alterUser | createUser | dropUser | grantStatement 
-    | grantProxy | renameUser | revokeStatement 
-    | revokeProxy | analyzeTable | checkTable 
-    | checksumTable | optimizeTable | repairTable 
-    | createUdfunction | installPlugin | uninstallPlugin 
-    | setStatement | showStatement | binlogStatement 
-    | cacheIndexStatement | flushStatement | killStatement 
-    | loadIndexIntoCache | resetStatement 
+    : alterUser | createUser | dropUser | grantStatement
+    | grantProxy | renameUser | revokeStatement
+    | revokeProxy | analyzeTable | checkTable
+    | checksumTable | optimizeTable | repairTable
+    | createUdfunction | installPlugin | uninstallPlugin
+    | setStatement | showStatement | binlogStatement
+    | cacheIndexStatement | flushStatement | killStatement
+    | loadIndexIntoCache | resetStatement
     | shutdownStatement
     ;
 
 utilityStatement
-    : simpleDescribeStatement | fullDescribeStatement 
+    : simpleDescribeStatement | fullDescribeStatement
     | helpStatement | useStatement
     ;
 
@@ -124,7 +124,7 @@ utilityStatement
 //    Create statements
 
 createDatabase
-    : CREATE dbFormat=(DATABASE | SCHEMA) 
+    : CREATE dbFormat=(DATABASE | SCHEMA)
       ifNotExists? uid createDatabaseOption*
     ;
 
@@ -137,15 +137,15 @@ createEvent
     ;
 
 createIndex
-    : CREATE 
-      intimeAction=(ONLINE | OFFLINE)? 
-      indexCategory=(UNIQUE | FULLTEXT | SPATIAL)? 
-      INDEX uid indexType? 
+    : CREATE
+      intimeAction=(ONLINE | OFFLINE)?
+      indexCategory=(UNIQUE | FULLTEXT | SPATIAL)?
+      INDEX uid indexType?
       ON tableName indexColumnNames
-      indexOption* 
+      indexOption*
       (
-        ALGORITHM '='? algType=(DEFAULT | INPLACE | COPY) 
-        | LOCK '='? 
+        ALGORITHM '='? algType=(DEFAULT | INPLACE | COPY)
+        | LOCK '='?
           lockType=(DEFAULT | NONE | SHARED | EXCLUSIVE)
       )?
     ;
@@ -164,18 +164,18 @@ createLogfileGroup
 
 createProcedure
     : CREATE ownerStatement?
-    PROCEDURE fullId 
-      '(' procedureParameter? (',' procedureParameter)* ')' 
-      routineOption* 
+    PROCEDURE fullId
+      '(' procedureParameter? (',' procedureParameter)* ')'
+      routineOption*
     routineBody
     ;
 
 createFunction
     : CREATE ownerStatement?
     FUNCTION fullId
-      '(' functionParameter? (',' functionParameter)* ')' 
-      RETURNS dataType 
-      routineOption* 
+      '(' functionParameter? (',' functionParameter)* ')'
+      RETURNS dataType
+      routineOption*
     routineBody
     ;
 
@@ -186,32 +186,32 @@ createServer
     ;
 
 createTable
-    : CREATE TEMPORARY? TABLE ifNotExists? 
-       tableName 
+    : CREATE TEMPORARY? TABLE ifNotExists?
+       tableName
        (
-         LIKE tableName 
-         | '(' LIKE parenthesisTable=tableName ')' 
+         LIKE tableName
+         | '(' LIKE parenthesisTable=tableName ')'
        )                                                            #copyCreateTable
-    | CREATE TEMPORARY? TABLE ifNotExists? 
+    | CREATE TEMPORARY? TABLE ifNotExists?
        tableName createDefinitions?
        ( tableOption (','? tableOption)* )?
        partitionDefinitions? keyViolate=(IGNORE | REPLACE)?
        AS? selectStatement                                          #queryCreateTable
-    | CREATE TEMPORARY? TABLE ifNotExists? 
+    | CREATE TEMPORARY? TABLE ifNotExists?
        tableName createDefinitions
        ( tableOption (','? tableOption)* )?
        partitionDefinitions?                                        #columnCreateTable
     ;
 
 createTablespaceInnodb
-    : CREATE TABLESPACE uid 
+    : CREATE TABLESPACE uid
       ADD DATAFILE datafile=STRING_LITERAL
       (FILE_BLOCK_SIZE '=' fileBlockSize=fileSizeLiteral)?
       (ENGINE '='? engineName)?
     ;
 
 createTablespaceNdb
-    : CREATE TABLESPACE uid 
+    : CREATE TABLESPACE uid
       ADD DATAFILE datafile=STRING_LITERAL
       USE LOGFILE GROUP uid
       (EXTENT_SIZE '='? extentSize=fileSizeLiteral)?
@@ -225,8 +225,8 @@ createTablespaceNdb
     ;
 
 createTrigger
-    : CREATE ownerStatement? 
-      TRIGGER thisTrigger=fullId 
+    : CREATE ownerStatement?
+      TRIGGER thisTrigger=fullId
       triggerTime=(BEFORE | AFTER)
       triggerEvent=(INSERT | UPDATE | DELETE)
       ON tableName FOR EACH ROW
@@ -235,12 +235,12 @@ createTrigger
     ;
 
 createView
-    : CREATE (OR REPLACE)? 
+    : CREATE (OR REPLACE)?
       (
         ALGORITHM '=' algType=(UNDEFINED | MERGE | TEMPTABLE)
-      )? 
-      ownerStatement? 
-      (SQL SECURITY secContext=(DEFINER | INVOKER))? 
+      )?
+      ownerStatement?
+      (SQL SECURITY secContext=(DEFINER | INVOKER))?
       VIEW fullId ('(' uidList ')')? AS selectStatement
       (WITH checkOption=(CASCADED | LOCAL)? CHECK OPTION)?
     ;
@@ -492,7 +492,7 @@ partitionDefinition
     ;
 
 partitionDefinerAtom
-    : constant  | expression | MAXVALUE
+    : constant | expression | MAXVALUE
     ;
 
 partitionDefinerVector
@@ -1970,6 +1970,7 @@ nullNotnull
 
 constant
     : stringLiteral | decimalLiteral
+    | '-' decimalLiteral
     | hexadecimalLiteral | booleanLiteral
     | REAL_LITERAL | BIT_STRING
     | NOT? nullLiteral=(NULL_LITERAL | NULL_SPEC_LITERAL)
@@ -2088,12 +2089,11 @@ userVariables
 defaultValue
     : NULL_LITERAL
     | unaryOperator? constant
-    | timeDefinition
+    | timeDefinition (ON UPDATE timeDefinition)?
     ;
 
 timeDefinition
-    : (CURRENT_TIMESTAMP | NOW | LOCALTIME | LOCALTIMESTAMP)
-          ('(' functionArgs? ')')?
+    : (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP | NOW) ('(' decimalLiteral? ')')?
     ;
 
 expressionOrDefault
