@@ -6,31 +6,6 @@
 
 package io.debezium.connector.postgresql.connection.wal2json;
 
-import java.math.BigDecimal;
-import java.sql.SQLException;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.geometric.PGbox;
-import org.postgresql.geometric.PGcircle;
-import org.postgresql.geometric.PGline;
-import org.postgresql.geometric.PGlseg;
-import org.postgresql.geometric.PGpath;
-import org.postgresql.geometric.PGpoint;
-import org.postgresql.geometric.PGpolygon;
-import org.postgresql.jdbc.PgArray;
-import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGmoney;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
@@ -41,8 +16,25 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.Value;
-import io.debezium.time.Conversions;
 import io.debezium.util.Strings;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.postgresql.geometric.*;
+import org.postgresql.jdbc.PgArray;
+import org.postgresql.util.PGInterval;
+import org.postgresql.util.PGmoney;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
 
 /**
  * Replication message representing message sent by the wal2json logical decoding plug-in.
@@ -265,8 +257,8 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
 
             case "timestamp":
             case "timestamp without time zone":
-                final LocalDateTime serverLocal = Conversions.fromNanosToLocalDateTimeUTC(DateTimeFormat.get().timestamp(rawValue.asString()));
-                return Conversions.toEpochNanos(serverLocal.toInstant(ZoneOffset.UTC));
+                final LocalDateTime serverLocal = DateParser.parsePostgresTimestampWithoutTimeZone(rawValue.asString());
+                return serverLocal.atZone(ZoneOffset.UTC).toInstant();
 
             case "time":
             case "time without time zone":
