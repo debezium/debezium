@@ -179,7 +179,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     }
 
     /**
-     * Determine the available GTID set for MySQL.
+     * Determine the executed GTID set for MySQL.
      *
      * @return the string representation of MySQL's GTID sets; never null but an empty string if the server does not use GTIDs
      */
@@ -197,6 +197,29 @@ public class MySqlJdbcContext implements AutoCloseable {
 
         String result = gtidSetStr.get();
         return result != null ? result : "";
+    }
+
+    /**
+     * Determine the difference between two sets.
+     *
+     * @return a subtraction of two GTID sets; never null
+     */
+    public GtidSet subtractGtidSet(GtidSet set1, GtidSet set2) {
+        try {
+            return jdbc.prepareQueryAndMap("SELECT GTID_SUBTRACT(?, ?)",
+                    ps -> {
+                        ps.setString(1, set1.toString());
+                        ps.setString(2, set2.toString());
+                    },
+                    rs -> {
+                        if (rs.next()) {
+                            return new GtidSet(rs.getString(1));
+                        }
+                        return new GtidSet("");
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
+        }
     }
 
     /**

@@ -491,6 +491,15 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             GtidSet availableGtidSet = new GtidSet(availableGtidStr);
             if (gtidSet.isContainedWithin(availableGtidSet)) {
                 logger.info("MySQL current GTID set {} does contain the GTID set required by the connector {}", availableGtidSet, gtidSet);
+                final GtidSet knownServerSet = availableGtidSet.retainAll(taskContext.gtidSourceFilter());
+                final GtidSet gtidSetToReplicate = connectionContext.subtractGtidSet(knownServerSet, gtidSet);
+                final GtidSet purgedGtidSet = connectionContext.purgedGtidSet();
+                final GtidSet nonPurgedGtidSetToReplicate = connectionContext.subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
+                logger.info("GTIDs known by the server but not processed yet {}, for replication are available only {}", gtidSetToReplicate, nonPurgedGtidSetToReplicate);
+                if (!gtidSetToReplicate.equals(nonPurgedGtidSetToReplicate)) {
+                    logger.info("Some of the GTIDs needed to replicate have been already purged");
+                    return false;
+                }
                 return true;
             }
             logger.info("Connector last known GTIDs are {}, but MySQL has {}", gtidSet, availableGtidSet);
