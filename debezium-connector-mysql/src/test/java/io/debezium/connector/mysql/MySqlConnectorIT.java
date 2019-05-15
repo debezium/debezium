@@ -708,7 +708,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        //Testing.Print.enable();
+        // Testing.Print.enable();
 
         // And consume the one insert ...
         records = consumeRecordsByTopic(2);
@@ -750,8 +750,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         } else {
             // the replica is not the same server as the master, so it will have a different binlog filename and position ...
         }
-        // Last event is 'SHOW MASTER STATUS' which will reset the event number to 0 ...
-        assertThat(persistedOffsetSource.eventsToSkipUponRestart()).isEqualTo(0);
+        // Event number is 2 ...
+        assertThat(persistedOffsetSource.eventsToSkipUponRestart()).isEqualTo(2);
         // GTID set should match the before-inserts GTID set ...
         // assertThat(persistedOffsetSource.gtidSet()).isEqualTo(positionBeforeInserts.gtidSet());
 

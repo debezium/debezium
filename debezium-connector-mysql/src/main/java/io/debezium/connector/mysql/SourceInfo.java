@@ -575,7 +575,6 @@ final class SourceInfo extends AbstractSourceInfo {
         if (sourceOffset != null) {
             // We have previously recorded an offset ...
             setCompletedGtidSet((String) sourceOffset.get(GTID_SET_KEY)); // may be null
-            restartEventsToSkip = longOffsetValue(sourceOffset, EVENTS_TO_SKIP_OFFSET_KEY);
             String binlogFilename = (String) sourceOffset.get(BINLOG_FILENAME_OFFSET_KEY);
             if (binlogFilename == null) {
                 throw new ConnectException("Source offset '" + BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
@@ -583,6 +582,7 @@ final class SourceInfo extends AbstractSourceInfo {
             long binlogPosition = longOffsetValue(sourceOffset, BINLOG_POSITION_OFFSET_KEY);
             setBinlogStartPoint(binlogFilename, binlogPosition);
             this.restartRowsToSkip = (int) longOffsetValue(sourceOffset, BINLOG_ROW_IN_EVENT_OFFSET_KEY);
+            this.restartEventsToSkip = longOffsetValue(sourceOffset, EVENTS_TO_SKIP_OFFSET_KEY);
             nextSnapshot = booleanOffsetValue(sourceOffset, SNAPSHOT_KEY);
             lastSnapshot = nextSnapshot;
             this.databaseWhitelist = (String) sourceOffset.get(DATABASE_WHITELIST_KEY);
