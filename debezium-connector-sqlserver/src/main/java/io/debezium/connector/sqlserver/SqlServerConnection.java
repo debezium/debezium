@@ -254,7 +254,8 @@ public class SqlServerConnection extends JdbcConnection {
                                 rs.getString(3),
                                 rs.getInt(4),
                                 Lsn.valueOf(rs.getBytes(6)),
-                                Lsn.valueOf(rs.getBytes(7))
+                                Lsn.valueOf(rs.getBytes(7)),
+                                rs.getTimestamp(13)
                         )
                 );
             }

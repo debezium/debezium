@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import io.debezium.relational.TableId;
+import java.sql.Timestamp;
 
 /**
  * A logical representation of change table containing changes for a given source table.
@@ -49,7 +50,12 @@ public class ChangeTable {
      */
     private final int changeTableObjectId;
 
-    public ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
+    /**
+     * Date that the capture instance was enabled.
+     */
+    private final Timestamp createDate;
+
+    public ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn, Timestamp createDate) {
         super();
         this.sourceTableId = sourceTableId;
         this.captureInstance = captureInstance;
@@ -57,10 +63,11 @@ public class ChangeTable {
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
         this.changeTableId = sourceTableId != null ? new TableId(sourceTableId.catalog(), CDC_SCHEMA, captureInstance + "_CT") : null;
+        this.createDate = createDate;
     }
 
     public ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
-        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn);
+        this(null, captureInstance, changeTableObjectId, startLsn, stopLsn, null);
     }
 
     public String getCaptureInstance() {
@@ -89,10 +96,14 @@ public class ChangeTable {
         return changeTableObjectId;
     }
 
+    public Timestamp getCreateDate() {
+        return createDate;
+    }
+
     @Override
     public String toString() {
         return "Capture instance \"" + captureInstance + "\" [sourceTableId=" + sourceTableId
                 + ", changeTableId=" + changeTableId + ", startLsn=" + startLsn + ", changeTableObjectId="
-                + changeTableObjectId + ", stopLsn=" + stopLsn + "]";
+                + changeTableObjectId + ", stopLsn=" + stopLsn + ", createDate=" + createDate + "]";
     }
 }

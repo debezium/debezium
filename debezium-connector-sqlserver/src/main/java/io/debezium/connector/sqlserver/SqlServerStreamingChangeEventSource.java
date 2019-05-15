@@ -266,7 +266,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             ChangeTable currentTable = captures.get(0);
             if (captures.size() > 1) {
                 ChangeTable futureTable;
-                if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
+                if (captures.get(0).getCreateDate().compareTo(captures.get(1).getCreateDate()) < 0) {
                     futureTable = captures.get(1);
                 }
                 else {
