@@ -319,7 +319,7 @@ public class MySqlAntlrDdlParserTest {
 
     @Test
     public void shouldParseTestStatements() {
-        parser.parse(readFile("ddl/mysql-test-statements-fixed.ddl"), tables);
+        parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
         int numberOfAlteredTablesWhichDoesNotExists = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
