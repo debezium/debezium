@@ -258,6 +258,13 @@ node('Slave') {
         }
     }
 
+    stage ('Check Contributors') {
+        def rc = sh(script: "jenkins-jobs/scripts/check-contributors.sh", returnStatus: true)
+        if (rc != 0) {
+            error "Error, not all contributors have been added to COPYRIGHT.txt.  See log for details."
+        }
+    }
+
     stage ('Check Jira') {
         if (!DRY_RUN) {
             unresolvedIssues = unresolvedIssuesFromJira()
