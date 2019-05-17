@@ -68,11 +68,11 @@
         <!-- Databases -->
         <version.postgresql.driver>42.2.5</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>
-        <version.mysql.driver>8.0.13</version.mysql.driver>
+        <version.mysql.driver>8.0.16</version.mysql.driver>
         <version.mysql.binlog>0.19.1</version.mysql.binlog>
         <version.mongo.server>3.6</version.mongo.server>
-        <version.mongo.driver>3.9.0</version.mongo.driver>
-        <version.sqlserver.driver>6.4.0.jre8</version.sqlserver.driver>
+        <version.mongo.driver>3.9.1</version.mongo.driver>
+        <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
 
         <!-- Connectors -->
         <version.com.google.protobuf>2.6.1</version.com.google.protobuf>

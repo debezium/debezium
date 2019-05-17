@@ -131,7 +131,7 @@ public class MetadataIT implements Testing {
             assertThat(product.columnWithName("createdByDate").name()).isEqualTo("createdByDate");
             assertThat(product.columnWithName("createdByDate").typeName()).isEqualTo("DATETIME");
             assertThat(product.columnWithName("createdByDate").jdbcType()).isEqualTo(Types.TIMESTAMP);
-            assertThat(product.columnWithName("createdByDate").length()).isEqualTo(26);
+            assertThat(product.columnWithName("createdByDate").length()).isEqualTo(19);
             assertFalse(product.columnWithName("createdByDate").scale().isPresent());
             assertThat(product.columnWithName("createdByDate").position()).isEqualTo(2);
             assertThat(product.columnWithName("createdByDate").isAutoIncremented()).isFalse();
@@ -140,7 +140,7 @@ public class MetadataIT implements Testing {
             assertThat(product.columnWithName("modifiedDate").name()).isEqualTo("modifiedDate");
             assertThat(product.columnWithName("modifiedDate").typeName()).isEqualTo("DATETIME");
             assertThat(product.columnWithName("modifiedDate").jdbcType()).isEqualTo(Types.TIMESTAMP);
-            assertThat(product.columnWithName("modifiedDate").length()).isEqualTo(26);
+            assertThat(product.columnWithName("modifiedDate").length()).isEqualTo(19);
             assertFalse(product.columnWithName("modifiedDate").scale().isPresent());
             assertThat(product.columnWithName("modifiedDate").position()).isEqualTo(3);
             assertThat(product.columnWithName("modifiedDate").isAutoIncremented()).isFalse();
@@ -186,7 +186,7 @@ public class MetadataIT implements Testing {
             assertThat(purchased.columnWithName("purchaseDate").name()).isEqualTo("purchaseDate");
             assertThat(purchased.columnWithName("purchaseDate").typeName()).isEqualTo("DATETIME");
             assertThat(purchased.columnWithName("purchaseDate").jdbcType()).isEqualTo(Types.TIMESTAMP);
-            assertThat(purchased.columnWithName("purchaseDate").length()).isEqualTo(26);
+            assertThat(purchased.columnWithName("purchaseDate").length()).isEqualTo(19);
             assertFalse(purchased.columnWithName("purchaseDate").scale().isPresent());
             assertThat(purchased.columnWithName("purchaseDate").position()).isEqualTo(3);
             assertThat(purchased.columnWithName("purchaseDate").isAutoIncremented()).isFalse();
