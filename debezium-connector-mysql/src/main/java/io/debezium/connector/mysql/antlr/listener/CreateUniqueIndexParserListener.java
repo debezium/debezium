@@ -26,8 +26,9 @@ import io.debezium.text.ParsingException;
  */
 public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
 
-    private final MySqlAntlrDdlParser parser;
     private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
+
+    private final MySqlAntlrDdlParser parser;
 
     public CreateUniqueIndexParserListener(MySqlAntlrDdlParser parser) {
         this.parser = parser;
