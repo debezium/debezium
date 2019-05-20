@@ -9,16 +9,17 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
-import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -31,19 +32,18 @@ import io.debezium.time.ZonedTimestamp;
 /**
  * @author laomei
  */
-public abstract class AbstractMysqlDefaultValueTest {
+public class MySqlDefaultValueTest {
 
     protected AbstractDdlParser parser;
     protected Tables tables;
     private MySqlValueConverters converters;
-    protected Function<MySqlValueConverters, AbstractDdlParser> parserProducer;
 
     @Before
     public void beforeEach() {
         converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                                               TemporalPrecisionMode.CONNECT,
                                               JdbcValueConverters.BigIntUnsignedMode.LONG);
-        parser = parserProducer.apply(converters);
+        parser = new MySqlAntlrDdlParser(converters);
         tables = new Tables();
     }
 
@@ -176,7 +176,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE);
-        final AbstractDdlParser parser = parserProducer.apply(converters);
+        final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
                 "  B BIGINT UNSIGNED NULL DEFAULT '10',\n" +
@@ -326,7 +326,7 @@ public abstract class AbstractMysqlDefaultValueTest {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG);
-        final AbstractDdlParser parser = parserProducer.apply(converters);
+        final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
                 "  B DECIMAL(5,3) NOT NULL DEFAULT 2.321,\n" +
@@ -415,4 +415,64 @@ public abstract class AbstractMysqlDefaultValueTest {
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
     }
 
+    @Test
+    @FixFor("DBZ-870")
+    public void shouldAcceptZeroAsDefaultValueForDateColumn() {
+        String ddl = "CREATE TABLE data(id INT, nullable_date date default 0, not_nullable_date date not null default 0, PRIMARY KEY (id))";
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "data"));
+
+        assertThat(table.columnWithName("nullable_date").hasDefaultValue()).isTrue();
+
+        // zero date should be mapped to null for nullable column
+        assertThat(table.columnWithName("nullable_date").defaultValue()).isNull();
+
+        assertThat(table.columnWithName("not_nullable_date").hasDefaultValue()).isTrue();
+
+        // zero date should be mapped to epoch for non-nullable column (expecting Date, as this test is using "connect"
+        // mode)
+        assertThat(table.columnWithName("not_nullable_date").defaultValue()).isEqualTo(getEpochDate());
+    }
+
+    private Date getEpochDate() {
+        return Date.from(LocalDate.of(1970, 1, 1).atStartOfDay(ZoneId.of("UTC")).toInstant());
+    }
+
+    @Test
+    @FixFor("DBZ-1204")
+    public void shouldAcceptBooleanAsDefaultValue() {
+        String ddl = "CREATE TABLE data(id INT, "
+                        + "bval BOOLEAN DEFAULT TRUE, "
+                        + "tival1 TINYINT(1) DEFAULT FALSE, "
+                        + "tival2 TINYINT(1) DEFAULT 3, "
+                        + "tival3 TINYINT(2) DEFAULT TRUE, "
+                        + "tival4 TINYINT(2) DEFAULT 18, "
+                        + "PRIMARY KEY (id))";
+
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "data"));
+
+        assertThat((Boolean) table.columnWithName("bval").defaultValue()).isTrue();
+        assertThat((Short) table.columnWithName("tival1").defaultValue()).isZero();
+        assertThat((Short) table.columnWithName("tival2").defaultValue()).isEqualTo((short) 3);
+        assertThat((Short) table.columnWithName("tival3").defaultValue()).isEqualTo((short) 1);
+        assertThat((Short) table.columnWithName("tival4").defaultValue()).isEqualTo((short) 18);
+    }
+
+    @Test
+    @FixFor("DBZ-1249")
+    public void shouldAcceptBitSetDefaultValue() {
+        String ddl = "CREATE TABLE user_subscribe (id bigint(20) unsigned NOT NULL AUTO_INCREMENT, content bit(24) DEFAULT b'111111111111101100001110', PRIMARY KEY (id)) ENGINE=InnoDB";
+
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "user_subscribe"));
+
+        final byte[] defVal = (byte[]) table.columnWithName("content").defaultValue();
+        assertThat(Byte.toUnsignedInt((defVal[0]))).isEqualTo(0b00001110);
+        assertThat(Byte.toUnsignedInt((defVal[1]))).isEqualTo(0b11111011);
+        assertThat(Byte.toUnsignedInt((defVal[2]))).isEqualTo(0b11111111);
+    }
 }
