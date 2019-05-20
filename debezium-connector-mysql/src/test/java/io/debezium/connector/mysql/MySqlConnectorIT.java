@@ -18,29 +18,25 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.junit.SkipForLegacyParser;
-import io.debezium.connector.mysql.junit.SkipTestForLegacyParser;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -61,9 +57,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     private static final int PRODUCTS_TABLE_EVENT_COUNT = 9;
     private static final int ORDERS_TABLE_EVENT_COUNT = 5;
     private static final int INITIAL_EVENT_COUNT = PRODUCTS_TABLE_EVENT_COUNT + 9 + 4 + ORDERS_TABLE_EVENT_COUNT + 6;
-
-    @Rule
-    public final TestRule skip = new SkipTestForLegacyParser();
 
     private Configuration config;
 
@@ -947,7 +940,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1246")
-    @SkipForLegacyParser
     public void shouldProcessCreateUniqueIndex() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
 
