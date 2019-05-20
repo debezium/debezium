@@ -36,6 +36,13 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     private Boolean optionalColumn;
 
     private final MySqlDefaultValueConverter defaultValueConverter;
+
+    /**
+     * Whether to convert the column's default value into the corresponding schema type or not. This is done for column
+     * definitions of ALTER TABLE statements but not for CREATE TABLE. In case of the latter, the default value
+     * conversion is handled by the CREATE TABLE statement listener itself, as a default character set given at the
+     * table level might have to be applied.
+     */
     private final boolean convertDefault;
 
     public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver, MySqlValueConverters converters, boolean convertDefault) {
