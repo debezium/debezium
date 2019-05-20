@@ -25,13 +25,14 @@ do
             # Check the alias file and transform the git user to an alias if one is defined.
             # If no alias is defined, NAME will be empty.
             NAME=`grep -i "^$LINE," $ALIASES | head -1 | awk '{split($0,a,","); print a[2]}'`
+            EMAIL=`grep -i "^$LINE|" $CONTRIBUTORS | head -1 | awk '{split($0,a,"|"); print a[2]}'`
 
             # Test if the history username was an alias.
             # If it was not a defined alias, write that to the log and return 1
             # If it did resolve as an alias, use the resolved name to see if its in the COPYRIGHT file
             # and return 1 only if the resolved name was not already listed.
             if test -z "$NAME"; then
-                echo "Commit $(git log --pretty=format:"%H" --author "$LINE" | head -1) : Did not find [$LINE]."
+                echo "Commit $(git log --pretty=format:"%H" --author "$LINE" | head -1) : Did not find [$LINE] with email [$EMAIL]."
                 rc=1
             else
                 if ! grep -qi "$NAME" $COPYRIGHT; then
