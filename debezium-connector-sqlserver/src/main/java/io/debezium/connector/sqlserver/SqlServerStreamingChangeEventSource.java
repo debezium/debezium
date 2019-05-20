@@ -249,6 +249,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private ChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
         final Set<ChangeTable> cdcEnabledTables = connection.listOfChangeTables();
 
+        if (cdcEnabledTables.isEmpty()) {
+            LOGGER.warn("No table has enabled CDC or security constraints prevents getting the list of change tables");
+        }
+
         final Map<TableId, List<ChangeTable>> whitelistedCdcEnabledTables = cdcEnabledTables.stream()
                 .filter(changeTable -> {
                     if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(changeTable.getSourceTableId())) {
@@ -260,6 +264,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     }
                 })
                 .collect(Collectors.groupingBy(x -> x.getSourceTableId()));
+
+        if (whitelistedCdcEnabledTables.isEmpty()) {
+            LOGGER.warn("No whitelisted table has enabled CDC, whitelisted table list does not contain any table with CDC enabled or no table match the white/blacklist filter(s)");
+        }
 
         final List<ChangeTable> tables = new ArrayList<>();
         for (List<ChangeTable> captures: whitelistedCdcEnabledTables.values()) {
