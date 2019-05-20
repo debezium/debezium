@@ -204,7 +204,7 @@ public abstract class AbstractMysqlDefaultValueTest {
     public void parseStringDefaultValue() {
         String sql = "CREATE TABLE UNSIGNED_STRING_TABLE (\n" +
                 "  A CHAR NULL DEFAULT 'A',\n" +
-                "  B CHAR NULL DEFAULT 'b',\n" +
+                "  B CHAR CHARACTER SET utf8 NULL DEFAULT 'b',\n" +
                 "  C VARCHAR(10) NULL DEFAULT 'CC',\n" +
                 "  D NCHAR(10) NULL DEFAULT '10',\n" +
                 "  E NVARCHAR NULL DEFAULT '0',\n" +
@@ -215,7 +215,9 @@ public abstract class AbstractMysqlDefaultValueTest {
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "UNSIGNED_STRING_TABLE"));
         assertThat(table.columnWithName("A").defaultValue()).isEqualTo("A");
+        assertThat(table.columnWithName("A").charsetName()).isEqualTo("latin2");
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo("b");
+        assertThat(table.columnWithName("B").charsetName()).isEqualTo("utf8");
         assertThat(table.columnWithName("C").defaultValue()).isEqualTo("CC");
         assertThat(table.columnWithName("D").defaultValue()).isEqualTo("10");
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo("0");
