@@ -8,6 +8,8 @@ Andras Istvan Nagy
 Andrew Tongen
 Andrey Pustovetov
 Anton Martynov
+Arkoprabho Chakraborti
+artiship
 Ashhar Hasan
 Attila Szucs
 Barry LaFond
@@ -71,6 +73,7 @@ Orr Ganani
 Peng Lyu
 Peter Goransson
 Philip Sanetra
+pmx
 Pradeep Mamillapalli
 Prannoy Mittal
 Preethi Sadagopan
