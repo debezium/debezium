@@ -349,7 +349,7 @@ columnDefinition
 columnConstraint
     : nullNotnull                                                   #nullColumnConstraint
     | DEFAULT defaultValue                                          #defaultColumnConstraint
-    | (AUTO_INCREMENT | ON UPDATE timeDefinition)                   #autoIncrementColumnConstraint
+    | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                 #autoIncrementColumnConstraint
     | PRIMARY? KEY                                                  #primaryKeyColumnConstraint
     | UNIQUE KEY?                                                   #uniqueKeyColumnConstraint
     | COMMENT STRING_LITERAL                                        #commentColumnConstraint
@@ -2089,11 +2089,15 @@ userVariables
 defaultValue
     : NULL_LITERAL
     | unaryOperator? constant
-    | timeDefinition (ON UPDATE timeDefinition)?
+    | currentTimestamp (ON UPDATE currentTimestamp)?
     ;
 
-timeDefinition
-    : (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP | NOW) ('(' decimalLiteral? ')')?
+currentTimestamp
+    :
+    (
+      (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) ('(' decimalLiteral? ')')?
+      | NOW '(' decimalLiteral? ')'
+    )
     ;
 
 expressionOrDefault

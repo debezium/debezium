@@ -15,8 +15,8 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.mysql.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.CurrentTimestampContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.DefaultValueContext;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.TimeDefinitionContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -139,14 +139,14 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
                 columnEditor.defaultValue(ctx.constant().REAL_LITERAL().getText());
             }
         }
-        else if (ctx.timeDefinition() != null && !ctx.timeDefinition().isEmpty()) {
-            if (ctx.timeDefinition().size() > 1 || (ctx.ON() == null && ctx.UPDATE() == null)) {
-                final TimeDefinitionContext timeDefinition = ctx.timeDefinition(0);
-                if (timeDefinition.CURRENT_TIMESTAMP() != null || timeDefinition.NOW() != null) {
+        else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {
+            if (ctx.currentTimestamp().size() > 1 || (ctx.ON() == null && ctx.UPDATE() == null)) {
+                final CurrentTimestampContext currentTimestamp = ctx.currentTimestamp(0);
+                if (currentTimestamp.CURRENT_TIMESTAMP() != null || currentTimestamp.NOW() != null) {
                     columnEditor.defaultValue("1970-01-01 00:00:00");
                 }
                 else {
-                    columnEditor.defaultValue(timeDefinition.getText());
+                    columnEditor.defaultValue(currentTimestamp.getText());
                 }
             }
         }
