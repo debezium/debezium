@@ -912,9 +912,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                          .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                                                          .withWidth(Width.SHORT)
                                                          .withImportance(Importance.MEDIUM)
+                                                         .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)
                                                          .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
                                                                  + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
-                                                                 + "'adaptive' (deprecated) bases the precision of time, date, and timestamp values on the database column's precision; "
                                                                  + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                  + "which uses millisecond precision regardless of the database columns' precision.");
 
@@ -1150,6 +1150,26 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             // Sanity check, validate the configured value is a valid option.
             if (lockingModeValue == null) {
                 problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Must be a valid snapshot.locking.mode value");
+                return 1;
+            }
+        }
+
+        // Everything checks out ok.
+        return 0;
+    }
+
+    /**
+     * Validate the time.precision.mode configuration.
+     *
+     * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
+     * option was deprecated and no longer supported for this connector.
+     */
+    private static int validateTimePrecisionMode(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(TIME_PRECISION_MODE.name())) {
+            final String timePrecisionMode = config.getString(TIME_PRECISION_MODE.name());
+            if (TemporalPrecisionMode.ADAPTIVE.getValue().equals(timePrecisionMode)) {
+                // this is a problem
+                problems.accept(TIME_PRECISION_MODE, timePrecisionMode, "The 'adaptive' time.precision.mode is no longer supported");
                 return 1;
             }
         }

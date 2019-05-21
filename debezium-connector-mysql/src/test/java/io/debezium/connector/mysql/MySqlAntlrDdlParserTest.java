@@ -2313,7 +2313,7 @@ public class MySqlAntlrDdlParserTest {
                     includeViews,
                     new MySqlValueConverters(
                         JdbcValueConverters.DecimalMode.DOUBLE,
-                        TemporalPrecisionMode.ADAPTIVE,
+                        TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
                         JdbcValueConverters.BigIntUnsignedMode.PRECISE
                     ),
                     tableFilter);
