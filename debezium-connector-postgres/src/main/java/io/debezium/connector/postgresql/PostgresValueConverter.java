@@ -13,13 +13,13 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
-import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -30,11 +30,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import io.debezium.util.Strings;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -65,6 +62,7 @@ import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
+import io.debezium.util.Strings;
 
 /**
  * A provider of {@link ValueConverter}s and {@link SchemaBuilder}s for various Postgres specific column types.
@@ -106,6 +104,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
             .appendPattern("[XXX][XX][X]")
             .toFormatter();
+
+    private static final Duration ONE_DAY = Duration.ofDays(1);
+    private static final long NANO_SECONDS_PER_DAY = TimeUnit.DAYS.toNanos(1);
 
     /**
      * {@code true} if fields of data type not know should be handle as opaque binary;
@@ -649,70 +650,38 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private Object convertTwentyFourHourTime(Column column, Field fieldDefn, Object data) {
-        final long nanosecondsPerDay = TimeUnit.DAYS.toNanos(1);
-        long twentyFourHour = nanosecondsPerDay;
+        long twentyFourHour = NANO_SECONDS_PER_DAY;
 
         if (adaptiveTimeMicrosecondsPrecisionMode) {
-            twentyFourHour = nanosecondsPerDay / 1_000;
+            twentyFourHour = NANO_SECONDS_PER_DAY / 1_000;
         }
         if (adaptiveTimePrecisionMode) {
             if (getTimePrecision(column) <= 3) {
-                twentyFourHour = nanosecondsPerDay / 1_000_000;
+                twentyFourHour = NANO_SECONDS_PER_DAY / 1_000_000;
             }
             if (getTimePrecision(column) <= 6) {
-                twentyFourHour = nanosecondsPerDay / 1_000;
+                twentyFourHour = NANO_SECONDS_PER_DAY / 1_000;
             }
         }
 
         // during streaming
         if (data instanceof Long) {
-            if ((Long) data == nanosecondsPerDay) {
+            if ((Long) data == NANO_SECONDS_PER_DAY) {
                 return twentyFourHour;
             }
             return super.converter(column, fieldDefn).convert(data);
         }
         // during snapshotting
         else if (data instanceof String) {
-            Duration d = stringToDuration((String) data);
+            Duration d = Strings.asDuration((String) data);
 
-            if (d.toNanos() == nanosecondsPerDay) {
+            if (d.equals(ONE_DAY)) {
                 return twentyFourHour;
             }
             return super.converter(column, fieldDefn).convert(d);
         }
 
         return super.converter(column, fieldDefn).convert(data);
-    }
-
-    private static Duration stringToDuration(String timeString) {
-        final Pattern timeFieldPattern = Pattern.compile("([0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?");
-        Matcher matcher = timeFieldPattern.matcher(timeString);
-
-        if (!matcher.matches()) {
-            throw new RuntimeException("Unexpected format for TIME column: " + timeString);
-        }
-
-        long hours = Long.parseLong(matcher.group(1));
-        long minutes = Long.parseLong(matcher.group(2));
-        long seconds = Long.parseLong(matcher.group(3));
-        long nanoSeconds = 0;
-        String microSecondsString = matcher.group(5);
-        if (microSecondsString != null) {
-            nanoSeconds = Long.parseLong(Strings.justifyLeft(microSecondsString, 9, '0'));
-        }
-
-        if (hours >= 0) {
-            return Duration.ofHours(hours)
-                    .plusMinutes(minutes)
-                    .plusSeconds(seconds)
-                    .plusNanos(nanoSeconds);
-        }
-        else {
-            return Duration.ofHours(hours)
-                    .minusMinutes(minutes)
-                    .minusSeconds(seconds)
-                    .minusNanos(nanoSeconds);
-        }
     }
 
     private static LocalDateTime nanosToLocalDateTimeUTC(long epocNanos) {

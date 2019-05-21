@@ -11,6 +11,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.text.ParsingException;
 
 /**
@@ -331,6 +333,16 @@ public class StringsTest {
     @Test(expected = ParsingException.class)
     public void regexSplitWrongEscape() {
         Strings.setOfRegex("a,b\\,c\\");
+    }
+
+    @Test
+    @FixFor("DBZ-1164")
+    public void asDurationShouldConvertValue() {
+        assertThat(Strings.asDuration(null)).isNull();
+        assertThat(Strings.asDuration("24:00:00")).isEqualTo(Duration.parse("PT24H"));
+        assertThat(Strings.asDuration("18:02:54.123")).isEqualTo(Duration.parse("PT18H2M54.123S"));
+        assertThat(Strings.asDuration("18:02:54.123456789")).isEqualTo(Duration.parse("PT18H2M54.123456789S"));
+        assertThat(Strings.asDuration("24:00:01")).isEqualTo(Duration.parse("PT24H1S"));
     }
 
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
