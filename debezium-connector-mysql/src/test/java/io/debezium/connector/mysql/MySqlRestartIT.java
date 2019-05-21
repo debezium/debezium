@@ -73,7 +73,7 @@ public class MySqlRestartIT extends AbstractConnectorTest {
 
         // Testing.Print.enable();
 
-        SourceRecords records = consumeRecordsByTopic(7);
+        SourceRecords records = consumeRecordsByTopic(15);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("restart_table")).size()).isEqualTo(1);
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {

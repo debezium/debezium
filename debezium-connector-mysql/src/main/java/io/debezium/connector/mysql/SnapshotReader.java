@@ -302,10 +302,12 @@ public class SnapshotReader extends AbstractReader {
                         mysql.query(sql.get(), rs -> {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
-                                if ((createTableFilters == filters && shouldRecordTableSchema(schema, filters, id)) || createTableFilters.tableFilter().test(id)) {
+                                final boolean shouldRecordTableSchema = shouldRecordTableSchema(schema, filters, id);
+                                // Apply only when the whitelist table list is not dynamically reconfigured 
+                                if ((createTableFilters == filters && shouldRecordTableSchema) || createTableFilters.tableFilter().test(id)) {
                                     createTablesMap.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                                 }
-                                if (shouldRecordTableSchema(schema, filters, id)) {
+                                if (shouldRecordTableSchema) {
                                     tableIds.add(id);
                                     logger.info("\t including '{}' for further processing", id);
                                 } else {

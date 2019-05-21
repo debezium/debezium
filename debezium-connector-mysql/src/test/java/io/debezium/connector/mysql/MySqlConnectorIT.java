@@ -964,8 +964,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        // Four tables in database, only two are whitelisted
-        SourceRecords records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 3 + 2);
+        // Two databases
+        // SET + USE + DROP DB + CREATE DB + 4 tables (2 whitelisted) (DROP + CREATE) TABLE
+        // USE + DROP DB + CREATE DB + (DROP + CREATE) TABLE
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4 + 1 + 2 + 2);
+        // Records for one of the databases only
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1 + 2 + 2 * 4);
         stopConnector();
     }

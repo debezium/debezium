@@ -167,10 +167,10 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
-        SourceRecords records = consumeRecordsByTopic(1 + 5 + 4); // 5 DDL changes
+        SourceRecords records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 4); // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 4 data
         assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(4);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
-        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(5);
+        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(11);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
@@ -196,10 +196,11 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         }
         purgeDatabaseLogs();
         start(MySqlConnector.class, config);
-        records = consumeRecordsByTopic(1 + 5 + 1 + 8); // 5 DDL changes, DROP TABLE is sent twice
+        // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 1 additional DROP whitelisted table + 8 data
+        records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 1 + 8);
         assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(8);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
-        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(6);
+        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(12);
         stopConnector();
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
@@ -216,10 +217,11 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             );
         }
         start(MySqlConnector.class, config);
-        records = consumeRecordsByTopic(1 + 5 + 1 + 12); // 5 DDL changes, DROP TABLE is sent twice
+        // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 1 additional DROP whitelisted table + 8 data
+        records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 1 + 12);
         assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(12);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
-        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(6);
+        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(12);
         stopConnector();
     }
 }
