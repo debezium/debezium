@@ -26,7 +26,6 @@ import io.debezium.doc.FixFor;
  */
 public class UnwrapFromEnvelopeTest {
 
-    private static final String DROP_DELETES = "drop.deletes";
     private static final String DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
     private static final String OPERATION_HEADER = "operation.header";
@@ -131,36 +130,6 @@ public class UnwrapFromEnvelopeTest {
     }
 
     @Test
-    public void testDeleteDroppedConfigured() {
-        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(DROP_DELETES, "true");
-            props.put(OPERATION_HEADER, "true");
-            transform.configure(props);
-
-            final SourceRecord deleteRecord = createDeleteRecord();
-            assertThat(transform.apply(deleteRecord)).isNull();
-        }
-    }
-
-    @Test
-    public void testDeleteForwardConfigured() {
-        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(DROP_DELETES, "false");
-            props.put(OPERATION_HEADER, "true");
-            transform.configure(props);
-
-            final SourceRecord deleteRecord = createDeleteRecord();
-            final SourceRecord tombstone = transform.apply(deleteRecord);
-            assertThat(tombstone.value()).isNull();
-            assertThat(tombstone.headers()).hasSize(1);
-            String headerValue = getSourceRecordHeaderByKey(tombstone, transform.DEBEZIUM_OPERATION_HEADER_KEY);
-            assertThat(headerValue).isEqualTo(Envelope.Operation.DELETE.code());
-        }
-    }
-
-    @Test
     public void testHandleDeleteDrop() {
         try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -210,7 +179,7 @@ public class UnwrapFromEnvelopeTest {
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("false");
             assertThat(unwrapped.headers()).hasSize(1);
-            String headerValue = getSourceRecordHeaderByKey(unwrapped, transform.DEBEZIUM_OPERATION_HEADER_KEY);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, UnwrapFromEnvelope.DEBEZIUM_OPERATION_HEADER_KEY);
             assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
         }
     }

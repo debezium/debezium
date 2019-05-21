@@ -8,8 +8,6 @@ package io.debezium.transforms;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.debezium.config.EnumeratedValue;
-import io.debezium.data.Envelope;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
@@ -21,7 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.data.Envelope;
 
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values
@@ -107,14 +107,6 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                     + "a delete record was generated. This record is usually filtered out to avoid duplicates "
                     + "as a delete record is converted to a tombstone record, too");
 
-    private static final Field DROP_DELETES = Field.create("drop.deletes")
-            .withDisplayName("Drop outgoing tombstones")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("Drop delete records converted to tombstones records if a processing connector "
-                    + "cannot process them or a compaction is undesirable.");
-
     private static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
             .withDisplayName("Handle delete records")
             .withEnum(DeleteHandling.class, DeleteHandling.DROP)
@@ -122,7 +114,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDescription("How to handle delete records. Options are: "
                     + "none - records are passed,"
-                    + "drop - records are removed,"
+                    + "drop - records are removed (the default),"
                     + "rewrite - __deleted field is added to records.");
 
     private static final Field OPERATION_HEADER = Field.create("operation.header")
@@ -135,7 +127,6 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
                     "Its key is '" + DEBEZIUM_OPERATION_HEADER_KEY +"'");
 
     private boolean dropTombstones;
-    private boolean dropDeletes;
     private DeleteHandling handleDeletes;
     private boolean addOperationHeader;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
@@ -146,22 +137,13 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     @Override
     public void configure(final Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
-        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, DROP_DELETES, HANDLE_DELETES);
+        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, HANDLE_DELETES);
         if (!config.validateAndRecord(configFields, logger::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
         dropTombstones = config.getBoolean(DROP_TOMBSTONES);
         handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
-        if (config.hasKey(DROP_DELETES.name())) {
-            logger.warn("{} option is deprecated. Please use {}", DROP_DELETES.name(), HANDLE_DELETES.name());
-            dropDeletes = config.getBoolean(DROP_DELETES);
-            if (dropDeletes) {
-                handleDeletes = DeleteHandling.DROP;
-            } else {
-                handleDeletes = DeleteHandling.NONE;
-            }
-        }
 
         addOperationHeader = config.getBoolean(OPERATION_HEADER);
 
@@ -245,7 +227,7 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> implements Transform
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, DROP_TOMBSTONES, DROP_DELETES, HANDLE_DELETES, OPERATION_HEADER);
+        Field.group(config, null, DROP_TOMBSTONES, HANDLE_DELETES, OPERATION_HEADER);
         return config;
     }
 
