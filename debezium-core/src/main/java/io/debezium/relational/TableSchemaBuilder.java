@@ -197,15 +197,15 @@ public class TableSchemaBuilder {
             Object[] row, int position) {
         if (position >= converters.length) {
             LOGGER.error("Error requesting a converter, converters: {}, requested index: {}", converters.length, position);
-            throw new ConnectException("Column indexing array is larger than number of converters, internal schema represantion is probably out of sync with real database schema");
+            throw new ConnectException("Column indexing array is larger than number of converters, internal schema representation is probably out of sync with real database schema");
         }
         if (position >= fields.length) {
             LOGGER.error("Error requesting a field, fields: {}, requested index: {}", fields.length, position);
-            throw new ConnectException("Too few schema fields, internal schema represantion is probably out of sync with real database schema");
+            throw new ConnectException("Too few schema fields, internal schema representation is probably out of sync with real database schema");
         }
         if (recordIndexes[position] >= row.length) {
             LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {}", row.length, recordIndexes[position], position);
-            throw new ConnectException("Data row is smaller than a column index, internal schema represantion is probably out of sync with real database schema");
+            throw new ConnectException("Data row is smaller than a column index, internal schema representation is probably out of sync with real database schema");
         }
     }
 
