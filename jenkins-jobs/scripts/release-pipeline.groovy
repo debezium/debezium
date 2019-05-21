@@ -259,9 +259,11 @@ node('Slave') {
     }
 
     stage ('Check Contributors') {
-        def rc = sh(script: "jenkins-jobs/scripts/check-contributors.sh", returnStatus: true)
-        if (rc != 0) {
-            error "Error, not all contributors have been added to COPYRIGHT.txt.  See log for details."
+        dir (DEBEZIUM_DIR) {
+            def rc = sh(script: "jenkins-jobs/scripts/check-contributors.sh", returnStatus: true)
+            if (rc != 0) {
+                error "Error, not all contributors have been added to COPYRIGHT.txt.  See log for details."
+            }
         }
     }
 
