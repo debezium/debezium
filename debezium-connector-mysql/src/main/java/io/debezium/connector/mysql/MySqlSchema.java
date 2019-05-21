@@ -312,9 +312,6 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         } finally {
             changes = tables().drainChanges();
             // No need to send schema events or store DDL if no table has changed
-            // Note that, unlike with the DB history topic, we don't filter out non-whitelisted tables here
-            // (which writes to the public schema change topic); if required, a second option could be added
-            // for controlling this, too
             if (!storeOnlyMonitoredTablesDdl || ddlChanges.anyMatch(filters.databaseFilter(), filters.tableFilter())) {
                 if (statementConsumer != null) {
 

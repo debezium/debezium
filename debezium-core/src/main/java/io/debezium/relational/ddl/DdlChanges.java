@@ -167,6 +167,14 @@ public class DdlChanges implements DdlParserListener {
         void consume(String databaseName, String ddlStatements);
     }
 
+    /**
+     * @return true if any event stored is one of
+     * <ul>
+     * <li>database-wide events and affects whitelisted database</li>
+     * <li>table related events and the table is whitelisted</li>
+     * <li>events that set a variable and either affects whitelisted database or is a system-wide variable</li>
+     * <ul>
+     */
     public boolean anyMatch(Predicate<String> databaseFilter, Predicate<TableId> tableFilter) {
         return events.stream().anyMatch(event ->
             (event instanceof DatabaseEvent) && databaseFilter.test(((DatabaseEvent) event).databaseName())
