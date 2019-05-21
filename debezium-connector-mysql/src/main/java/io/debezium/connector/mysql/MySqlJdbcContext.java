@@ -217,7 +217,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                         }
                         return new GtidSet("");
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
     }
