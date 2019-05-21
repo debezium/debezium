@@ -37,6 +37,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.FileDatabaseHistory;
@@ -1654,6 +1655,25 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         validate(sourceRecord2);
         assertUpdate(sourceRecord2, "order_number", 10004);
         assertSourceQuery(sourceRecord2, updateSqlStatement);
+    }
+
+    /**
+     * Specifying the adaptive time.precision.mode is no longer valid and a configuration validation
+     * problem should be reported when that configuration option is used.
+     */
+    @Test
+    @FixFor("DBZ-1234")
+    public void shouldFailToValidateAdaptivePrecisionMode() throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
+                .build();
+
+        MySqlConnector connector = new MySqlConnector();
+        Config result = connector.validate(config.asMap());
+
+        assertConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {

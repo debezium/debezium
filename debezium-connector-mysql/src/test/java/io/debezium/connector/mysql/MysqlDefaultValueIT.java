@@ -577,57 +577,6 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void timeTypeWithAdaptiveMode() throws InterruptedException {
-        config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("DATE_TIME_TABLE"))
-                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE)
-                .build();
-        start(MySqlConnector.class, config);
-
-        // Testing.Print.enable();
-
-        SourceRecords records = consumeRecordsByTopic(7);
-        final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATE_TIME_TABLE")).get(0);
-        validate(record);
-
-        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
-        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
-        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
-        Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
-        Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
-        Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
-        Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
-        Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
-        Schema schemaI = record.valueSchema().fields().get(1).schema().fields().get(8).schema();
-
-        assertThat(schemaA.defaultValue()).isEqualTo(2426);
-
-        String value1 = "1970-01-01 00:00:01";
-        ZonedDateTime t = java.sql.Timestamp.valueOf(value1).toInstant().atZone(ZoneId.systemDefault());
-        String isoString = ZonedTimestamp.toIsoString(t, ZoneId.systemDefault(), MySqlValueConverters::adjustTemporal);
-        assertThat(schemaB.defaultValue()).isEqualTo(isoString);
-
-        String value2 = "2018-01-03 00:00:10";
-        long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)), MySqlValueConverters::adjustTemporal);
-        assertThat(schemaC.defaultValue()).isEqualTo(toEpochMillis1);
-
-        String value3 = "2018-01-03 00:00:10.7";
-        long toEpochMillis2 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").parse(value3)), MySqlValueConverters::adjustTemporal);
-        assertThat(schemaD.defaultValue()).isEqualTo(toEpochMillis2);
-
-        String value4 = "2018-01-03 00:00:10.123456";
-        long toEpochMicro = MicroTimestamp.toEpochMicros(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse(value4)), MySqlValueConverters::adjustTemporal);
-        assertThat(schemaE.defaultValue()).isEqualTo(toEpochMicro);
-
-        assertThat(schemaF.defaultValue()).isEqualTo(2001);
-        assertThat(schemaG.defaultValue()).isEqualTo(0);
-        assertThat(schemaH.defaultValue()).isEqualTo(82800700);
-        assertThat(schemaI.defaultValue()).isEqualTo(82800123456L);
-        assertEmptyFieldValue(record, "K");
-    }
-
-    @Test
     public void timeTypeWithConnectMode() throws InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
