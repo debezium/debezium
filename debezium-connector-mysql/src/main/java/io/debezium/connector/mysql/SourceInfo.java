@@ -98,7 +98,6 @@ final class SourceInfo extends AbstractSourceInfo {
     // Ref https://issues.apache.org/jira/browse/AVRO-838.
     public static final String SERVER_ID_KEY = "server_id";
 
-    public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String GTID_SET_KEY = "gtids";
     public static final String GTID_KEY = "gtid";
@@ -123,7 +122,6 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public static final Schema SCHEMA = schemaBuilder()
                                                      .name("io.debezium.connector.mysql.Source")
-                                                     .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
                                                      .field(TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                                                      .field(GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
@@ -149,7 +147,6 @@ final class SourceInfo extends AbstractSourceInfo {
     private long restartEventsToSkip = 0;
     private int restartRowsToSkip = 0;
     private boolean inTransaction = false;
-    private String serverName;
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
     private long threadId = -1L;
@@ -162,18 +159,9 @@ final class SourceInfo extends AbstractSourceInfo {
     private String tableWhitelist;
     private String tableBlacklist;
 
-    public SourceInfo() {
-        super(Module.version());
-    }
-
-    /**
-     * Set the database identifier. This is typically called once upon initialization.
-     *
-     * @param logicalId the logical identifier for the database; may not be null
-     */
-    public void setServerName(String logicalId) {
-        this.serverName = logicalId;
-        sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+    public SourceInfo(String logicalId) {
+        super(Module.version(), logicalId);
+        sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, logicalId);
     }
 
     /**
@@ -350,9 +338,7 @@ final class SourceInfo extends AbstractSourceInfo {
      * @see #schema()
      */
     public Struct struct(TableId tableId) {
-        assert serverName != null;
         Struct result = super.struct();
-        result.put(SERVER_NAME_KEY, serverName);
         result.put(SERVER_ID_KEY, serverId);
         if (currentGtid != null) {
             // Don't put the GTID Set into the struct; only the current GTID is fine ...
@@ -670,15 +656,6 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public int rowsToSkipUponRestart() {
         return restartRowsToSkip;
-    }
-
-    /**
-     * Get the logical identifier of the database that is the source of the events.
-     *
-     * @return the database name; null if it has not been {@link #setServerName(String) set}
-     */
-    public String serverName() {
-        return serverName;
     }
 
     @Override

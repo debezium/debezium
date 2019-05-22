@@ -79,7 +79,6 @@ import io.debezium.time.Conversions;
 @NotThreadSafe
 public final class SourceInfo extends AbstractSourceInfo {
 
-    public static final String SERVER_NAME_KEY = "name";
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String DB_NAME_KEY = "db";
     public static final String TIMESTAMP_KEY = "ts_usec";
@@ -96,7 +95,6 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     public static final Schema SCHEMA = schemaBuilder()
                                                      .name("io.debezium.connector.postgresql.Source")
-                                                     .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(DB_NAME_KEY, Schema.STRING_SCHEMA)
                                                      .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .field(TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
@@ -108,7 +106,6 @@ public final class SourceInfo extends AbstractSourceInfo {
                                                      .field(XMIN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                      .build();
 
-    private final String serverName;
     private final String dbName;
     private final Map<String, String> sourcePartition;
 
@@ -122,8 +119,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     private String tableName;
 
     protected SourceInfo(String serverName, String dbName) {
-        super(Module.version());
-        this.serverName = serverName;
+        super(Module.version(), serverName);
         this.dbName = dbName;
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
     }
@@ -157,7 +153,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
-        assert serverName != null && dbName != null;
+        assert getServerName() != null && dbName != null;
         Map<String, Object> result = new HashMap<>();
         if (useconds != null) {
             result.put(TIMESTAMP_KEY, useconds);
@@ -252,12 +248,10 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @see #schema()
      */
     protected Struct source() {
-        assert serverName != null
-                && dbName != null
+        assert dbName != null
                 && schemaName != null
                 && tableName != null;
         Struct result = super.struct();
-        result.put(SERVER_NAME_KEY, serverName);
         result.put(DB_NAME_KEY, dbName);
         result.put(SCHEMA_NAME_KEY, schemaName);
         result.put(TABLE_NAME_KEY, tableName);
@@ -305,7 +299,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");
-        sb.append("server='").append(serverName).append('\'');
+        sb.append("server='").append(getServerName()).append('\'');
         sb.append("db='").append(dbName).append('\'');
         if (lsn != null) {
             sb.append(", lsn=").append(ReplicationConnection.format(lsn));

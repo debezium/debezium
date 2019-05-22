@@ -42,7 +42,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo();
+        source = new SourceInfo("server");
         inTxn = false;
         positionOfBeginEvent = 0L;
         eventNumberInTxn = 0;
@@ -473,9 +473,8 @@ public class SourceInfoTest {
     }
 
     protected SourceInfo sourceWith(Map<String, String> offset) {
-        source = new SourceInfo();
+        source = new SourceInfo(SERVER_NAME);
         source.setOffset(offset);
-        source.setServerName(SERVER_NAME);
         return source;
     }
 

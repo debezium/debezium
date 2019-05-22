@@ -19,17 +19,21 @@ import org.apache.kafka.connect.data.Struct;
 public abstract class AbstractSourceInfo {
     public static final String DEBEZIUM_VERSION_KEY = "version";
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
+    public static final String SERVER_NAME_KEY = "name";
 
     private final String version;
+    private final String serverName;
 
     protected static SchemaBuilder schemaBuilder() {
         return SchemaBuilder.struct()
                 .field(DEBEZIUM_VERSION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(DEBEZIUM_CONNECTOR_KEY, Schema.OPTIONAL_STRING_SCHEMA);
+                .field(DEBEZIUM_CONNECTOR_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA);
     }
 
-    protected AbstractSourceInfo(String version) {
+    protected AbstractSourceInfo(String version, String serverName) {
         this.version = Objects.requireNonNull(version);
+        this.serverName = Objects.requireNonNull(serverName);
     }
 
     /**
@@ -49,6 +53,11 @@ public abstract class AbstractSourceInfo {
     protected Struct struct() {
         return new Struct(schema())
                 .put(DEBEZIUM_VERSION_KEY, version)
-                .put(DEBEZIUM_CONNECTOR_KEY, connector());
+                .put(DEBEZIUM_CONNECTOR_KEY, connector())
+                .put(SERVER_NAME_KEY, serverName);
+    }
+
+    public String getServerName() {
+        return serverName;
     }
 }

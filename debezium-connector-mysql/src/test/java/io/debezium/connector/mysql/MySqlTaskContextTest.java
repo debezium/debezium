@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
@@ -322,7 +323,7 @@ public class MySqlTaskContextTest {
 
     protected HistoryRecord historyRecord(String serverName, String binlogFilename, int position, String gtids,
                                           int event, int row, boolean snapshot) {
-        Document source = Document.create(SourceInfo.SERVER_NAME_KEY, serverName);
+        Document source = Document.create(AbstractSourceInfo.SERVER_NAME_KEY, serverName);
         Document pos = Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
                                        SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
         if (row >= 0) {
