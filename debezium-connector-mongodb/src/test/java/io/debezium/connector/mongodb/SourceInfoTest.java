@@ -37,7 +37,7 @@ public class SourceInfoTest {
         Schema schema = source.schema();
         assertThat(schema.name()).isNotEmpty();
         assertThat(schema.version()).isNotNull();
-        assertThat(schema.field(SourceInfo.SERVER_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.NAMESPACE).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.TIMESTAMP).schema()).isEqualTo(Schema.INT32_SCHEMA);
@@ -95,7 +95,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
         assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
+        assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
     }
 
@@ -118,7 +118,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
         assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
+        assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
@@ -149,7 +149,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
         assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
+        assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
     }
 
@@ -173,7 +173,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
         assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
+        assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
@@ -206,7 +206,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
         assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(struct.getString(SourceInfo.SERVER_NAME)).isEqualTo("serverX");
+        assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
     }
 

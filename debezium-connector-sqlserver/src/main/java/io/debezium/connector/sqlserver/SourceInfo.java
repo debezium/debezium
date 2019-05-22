@@ -23,7 +23,6 @@ import io.debezium.connector.AbstractSourceInfo;
 @NotThreadSafe
 public class SourceInfo extends AbstractSourceInfo {
 
-    public static final String SERVER_NAME_KEY = "name";
     public static final String LOG_TIMESTAMP_KEY = "ts_ms";
     public static final String CHANGE_LSN_KEY = "change_lsn";
     public static final String COMMIT_LSN_KEY = "commit_lsn";
@@ -31,14 +30,11 @@ public class SourceInfo extends AbstractSourceInfo {
 
     public static final Schema SCHEMA = schemaBuilder()
             .name("io.debezium.connector.sqlserver.Source")
-            .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
             .field(LOG_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
             .field(CHANGE_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .field(COMMIT_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
             .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
             .build();
-
-    private final String serverName;
 
     private Lsn changeLsn;
     private Lsn commitLsn;
@@ -46,8 +42,7 @@ public class SourceInfo extends AbstractSourceInfo {
     private Instant sourceTime;
 
     protected SourceInfo(String serverName) {
-        super(Module.version());
-        this.serverName = serverName;
+        super(Module.version(), serverName);
     }
 
     /**
@@ -106,7 +101,6 @@ public class SourceInfo extends AbstractSourceInfo {
     @Override
     public Struct struct() {
         final Struct ret = super.struct()
-                .put(SERVER_NAME_KEY, serverName)
                 .put(LOG_TIMESTAMP_KEY, sourceTime == null ? null : sourceTime.toEpochMilli())
                 .put(SNAPSHOT_KEY, snapshot);
 
@@ -122,7 +116,7 @@ public class SourceInfo extends AbstractSourceInfo {
     @Override
     public String toString() {
         return "SourceInfo [" +
-                "serverName=" + serverName +
+                "serverName=" + getServerName() +
                 ", changeLsn=" + changeLsn +
                 ", commitLsn=" + commitLsn +
                 ", snapshot=" + snapshot +

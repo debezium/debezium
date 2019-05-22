@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -70,7 +69,6 @@ public final class SourceInfo extends AbstractSourceInfo {
     public static final int SCHEMA_VERSION = 1;
 
     public static final String SERVER_ID_KEY = "server_id";
-    public static final String SERVER_NAME = "name";
     public static final String REPLICA_SET_NAME = "rs";
     public static final String NAMESPACE = "ns";
     public static final String TIMESTAMP = "sec";
@@ -88,7 +86,6 @@ public final class SourceInfo extends AbstractSourceInfo {
     private final Schema SOURCE_SCHEMA = schemaBuilder()
                                                       .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
                                                       .version(SCHEMA_VERSION)
-                                                      .field(SERVER_NAME, Schema.STRING_SCHEMA)
                                                       .field(REPLICA_SET_NAME, Schema.STRING_SCHEMA)
                                                       .field(NAMESPACE, Schema.STRING_SCHEMA)
                                                       .field(TIMESTAMP, Schema.INT32_SCHEMA)
@@ -144,11 +141,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         return partition != null ? (String) partition.get(REPLICA_SET_NAME) : null;
     }
 
-    private final String serverName;
-
     public SourceInfo(String serverName) {
-        super(Module.version());
-        this.serverName = Objects.requireNonNull(serverName);
+        super(Module.version(), serverName);
     }
 
     /**
@@ -180,7 +174,7 @@ public final class SourceInfo extends AbstractSourceInfo {
             throw new IllegalArgumentException("Replica set name may not be null");
         }
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
-            return Collect.hashMapOf(SERVER_ID_KEY, serverName, REPLICA_SET_NAME, rsName);
+            return Collect.hashMapOf(SERVER_ID_KEY, getServerName(), REPLICA_SET_NAME, rsName);
         });
     }
 
@@ -271,7 +265,6 @@ public final class SourceInfo extends AbstractSourceInfo {
             position = INITIAL_POSITION;
         }
         Struct result = super.struct();
-        result.put(SERVER_NAME, serverName);
         result.put(REPLICA_SET_NAME, replicaSetName);
         result.put(NAMESPACE, namespace);
         result.put(TIMESTAMP, position.getTime());
