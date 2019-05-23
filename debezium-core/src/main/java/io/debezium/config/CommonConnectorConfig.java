@@ -14,6 +14,8 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -85,6 +87,14 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field SOURCE_STRUCT_MAKER_CLASS = Field.create("source.struct.make.class")
+            .withDisplayName("Source struct maker")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("A class name used to create publicly visible source part in the message")
+            .withValidation(Field::isClassName);
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -94,7 +104,9 @@ public abstract class CommonConnectorConfig {
     private final String heartbeatTopicsPrefix;
     private final Duration snapshotDelayMs;
     private final int snapshotFetchSize;
+    private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
 
+    @SuppressWarnings("unchecked")
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
@@ -105,6 +117,8 @@ public abstract class CommonConnectorConfig {
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
+        final SourceInfoStructMaker<? extends AbstractSourceInfo> maker = config.getInstance(SOURCE_STRUCT_MAKER_CLASS, SourceInfoStructMaker.class);
+        this.sourceInfoStructMaker = (maker != null) ? maker : getDefaultSourceInfoStructMaker();
     }
 
     /**
@@ -147,6 +161,11 @@ public abstract class CommonConnectorConfig {
         return snapshotFetchSize;
     }
 
+    @SuppressWarnings("unchecked")
+    public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker(Class<T> sourceInfoClass) {
+        return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
+    }
+
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);
         int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
@@ -174,4 +193,7 @@ public abstract class CommonConnectorConfig {
         return 0;
     }
 
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getDefaultSourceInfoStructMaker() {
+        return null;
+    }
 }
