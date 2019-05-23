@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.relational.TableId;
 
 /**
  * Coordinates from the database log to establish the relation between the change streamed and the source log position.
@@ -33,6 +34,8 @@ public class SourceInfo extends AbstractSourceInfo {
     private Lsn commitLsn;
     private boolean snapshot;
     private Instant sourceTime;
+    private TableId tableId;
+
     private final SourceInfoStructMaker<SourceInfo> structMaker;
 
     protected SourceInfo(SqlServerConnectorConfig connectorConfig) {
@@ -92,6 +95,17 @@ public class SourceInfo extends AbstractSourceInfo {
     @Override
     protected String connector() {
         return Module.name();
+    }
+
+    public TableId getTableId() {
+        return tableId;
+    }
+
+    /**
+     * @param tableId - source table of the event
+     */
+    public void setTableId(TableId tableId) {
+        this.tableId = tableId;
     }
 
     /**

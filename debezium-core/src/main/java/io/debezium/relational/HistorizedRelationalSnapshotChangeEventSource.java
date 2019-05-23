@@ -340,7 +340,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                     logTimer = getTableScanLogTimer();
                 }
 
-                dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, row),
+                dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row),
                         snapshotReceiver);
             }
 
@@ -360,7 +360,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
+    protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row);
 
     /**
      * Returns a valid query string for the specified table, either given by the user via snapshot select overrides or

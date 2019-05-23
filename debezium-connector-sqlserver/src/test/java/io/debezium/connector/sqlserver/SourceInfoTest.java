@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.relational.TableId;
 
 public class SourceInfoTest {
 
@@ -32,6 +33,7 @@ public class SourceInfoTest {
         source.setCommitLsn(Lsn.valueOf(new byte [] { 0x02 }));
         source.setSnapshot(true);
         source.setSourceTime(Instant.ofEpochMilli(3000));
+        source.setTableId(new TableId("c", "s", "t"));
     }
 
     @Test
@@ -70,13 +72,22 @@ public class SourceInfoTest {
     }
 
     @Test
+    public void tableIdIsPresent() {
+        assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.DB_NAME_KEY)).isEqualTo("c");
+        assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.SCHEMA_NAME_KEY)).isEqualTo("s");
+        assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.TABLE_NAME_KEY)).isEqualTo("t");
+    }
+    @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.sqlserver.Source")
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
-                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("db", Schema.STRING_SCHEMA)
+                .field("schema", Schema.STRING_SCHEMA)
+                .field("table", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("change_lsn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("commit_lsn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("snapshot", Schema.OPTIONAL_BOOLEAN_SCHEMA)

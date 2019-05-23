@@ -198,6 +198,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition());
                             offsetContext.setSourceTime(connection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn()));
+                            offsetContext.setTableId(tableWithSmallestLsn.getChangeTable().getSourceTableId());
 
                             dispatcher
                                     .dispatchDataChangeEvent(
