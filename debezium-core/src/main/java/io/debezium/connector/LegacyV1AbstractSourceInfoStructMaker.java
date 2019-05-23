@@ -11,6 +11,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.config.CommonConnectorConfig;
+
 /**
  * Legacy source info that does not enforce presence of the version and connector fields
  *
@@ -20,14 +22,14 @@ public abstract class LegacyV1AbstractSourceInfoStructMaker<T extends AbstractSo
     public static final String DEBEZIUM_VERSION_KEY = "version";
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
  
-    private String version;
-    private String connector;
-    protected String serverName;
+    private final String version;
+    private final String connector;
+    protected final String serverName;
 
-    public void init(String connector, String version, String serverName) {
+    public LegacyV1AbstractSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         this.connector = Objects.requireNonNull(connector);
         this.version = Objects.requireNonNull(version);
-        this.serverName = serverName;
+        this.serverName = connectorConfig.getLogicalName();
     }
 
     protected SchemaBuilder commonSchemaBuilder() {

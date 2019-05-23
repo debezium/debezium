@@ -25,11 +25,6 @@ public interface SourceInfoStructMaker<T extends AbstractSourceInfo> {
     public Schema schema();
 
     /**
-     * Must be called before the first call of {@link SourceInfoStructMaker#struct(AbstractSourceInfo)}
-     */
-    public void init(String connector, String version, String serverName);
-
-    /**
      * Converts the connector's source info into the struct to be included in the message as the source field.
      *
      * @param sourceInfo

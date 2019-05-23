@@ -38,8 +38,6 @@ public class SourceInfo extends AbstractSourceInfo {
     protected SourceInfo(SqlServerConnectorConfig connectorConfig) {
         super(Module.version(), connectorConfig.getLogicalName());
         this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
-
-        structMaker.init(Module.name(), Module.version(), connectorConfig.getLogicalName());
     }
 
     /**

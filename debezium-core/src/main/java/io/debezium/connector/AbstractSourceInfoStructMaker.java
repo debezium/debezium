@@ -11,6 +11,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.config.CommonConnectorConfig;
+
 /**
  * Common information provided by all connectors in either source field or offsets.
  * When this class schema changes the connector implementations should create
@@ -23,14 +25,14 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
     public static final String SERVER_NAME_KEY = "name";
 
-    private String version;
-    private String connector;
-    private String serverName;
+    private final String version;
+    private final String connector;
+    private final String serverName;
 
-    public void init(String connector, String version, String serverName) {
+    public AbstractSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         this.connector = Objects.requireNonNull(connector);
         this.version = Objects.requireNonNull(version);
-        this.serverName = Objects.requireNonNull(serverName);
+        this.serverName = Objects.requireNonNull(connectorConfig.getLogicalName());
     }
 
     protected SchemaBuilder commonSchemaBuilder() {

@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 
 public class LegacyV1SourceInfoTest {
@@ -25,7 +26,7 @@ public class LegacyV1SourceInfoTest {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 Configuration.create()
                     .with(SqlServerConnectorConfig.SERVER_NAME, "serverX")
-                    .with(SqlServerConnectorConfig.SOURCE_STRUCT_MAKER_CLASS, LegacyV1SqlServerSourceInfoStructMaker.class)
+                    .with(SqlServerConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                     .build()
         );
         source = new SourceInfo(connectorConfig);
