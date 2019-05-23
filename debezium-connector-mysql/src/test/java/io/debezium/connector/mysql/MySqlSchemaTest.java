@@ -16,6 +16,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -42,7 +43,9 @@ public class MySqlSchemaTest {
         Testing.Files.delete(TEST_FILE_PATH);
         build = new Configurator();
         mysql = null;
-        source = new SourceInfo("server");
+        source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
+                .with(MySqlConnectorConfig.SERVER_NAME, "server")
+                .build()));
     }
 
     @After

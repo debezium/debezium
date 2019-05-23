@@ -10,13 +10,13 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.relational.TableId;
@@ -117,24 +117,6 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String TABLE_BLACKLIST_KEY = "table_blacklist";
     public static final String RESTART_PREFIX = "RESTART_";
 
-    /**
-     * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition()} and {@link #offset()} information.
-     */
-    public static final Schema SCHEMA = schemaBuilder()
-                                                     .name("io.debezium.connector.mysql.Source")
-                                                     .field(SERVER_ID_KEY, Schema.INT64_SCHEMA)
-                                                     .field(TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                                                     .field(GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(BINLOG_FILENAME_OFFSET_KEY, Schema.STRING_SCHEMA)
-                                                     .field(BINLOG_POSITION_OFFSET_KEY, Schema.INT64_SCHEMA)
-                                                     .field(BINLOG_ROW_IN_EVENT_OFFSET_KEY, Schema.INT32_SCHEMA)
-                                                     .field(SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
-                                                     .field(THREAD_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                                                     .field(DB_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(TABLE_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .field(QUERY_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                                                     .build();
-
     private String currentGtidSet;
     private String currentGtid;
     private String currentBinlogFilename;
@@ -158,10 +140,14 @@ final class SourceInfo extends AbstractSourceInfo {
     private String databaseBlacklist;
     private String tableWhitelist;
     private String tableBlacklist;
+    private SourceInfoStructMaker<SourceInfo> structMaker;
+    private TableId tableId;
 
-    public SourceInfo(String logicalId) {
-        super(Module.version(), logicalId);
-        sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, logicalId);
+    public SourceInfo(MySqlConnectorConfig connectorConfig) {
+        super(Module.version(), connectorConfig.getLogicalName());
+        this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
+
+        sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
     }
 
     /**
@@ -305,7 +291,7 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     @Override
     public Schema schema() {
-        return SCHEMA;
+        return structMaker.schema();
     }
 
     @Override
@@ -315,7 +301,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
-     * complies with the {@link #SCHEMA} for the MySQL connector.
+     * complies with the versioned source schema for the MySQL connector.
      * <p>
      * This method should always be called after {@link #offsetForRow(int, int)}.
      *
@@ -329,7 +315,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     /**
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
-     * complies with the {@link #SCHEMA} for the MySQL connector.
+     * complies with the versioned source schema for the MySQL connector.
      * <p>
      * This method should always be called after {@link #offsetForRow(int, int)}.
      *
@@ -338,31 +324,8 @@ final class SourceInfo extends AbstractSourceInfo {
      * @see #schema()
      */
     public Struct struct(TableId tableId) {
-        Struct result = super.struct();
-        result.put(SERVER_ID_KEY, serverId);
-        if (currentGtid != null) {
-            // Don't put the GTID Set into the struct; only the current GTID is fine ...
-            result.put(GTID_KEY, currentGtid);
-        }
-        result.put(BINLOG_FILENAME_OFFSET_KEY, currentBinlogFilename);
-        result.put(BINLOG_POSITION_OFFSET_KEY, currentBinlogPosition);
-        result.put(BINLOG_ROW_IN_EVENT_OFFSET_KEY, currentRowNumber);
-        result.put(TIMESTAMP_KEY, binlogTimestampSeconds);
-        if (lastSnapshot) {
-            // if the snapshot is COMPLETED, then this will not happen.
-            result.put(SNAPSHOT_KEY, true);
-        }
-        if (threadId >= 0) {
-            result.put(THREAD_KEY, threadId);
-        }
-        if (tableId != null) {
-            result.put(DB_NAME_KEY, tableId.catalog());
-            result.put(TABLE_NAME_KEY, tableId.table());
-        }
-        if (currentQuery != null) {
-            result.put(QUERY_KEY, currentQuery);
-        }
-        return result;
+        this.tableId = tableId;
+        return structMaker.struct(this);
     }
 
     /**
@@ -656,6 +619,42 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public int rowsToSkipUponRestart() {
         return restartRowsToSkip;
+    }
+
+    long getServerId() {
+        return serverId;
+    }
+
+    long getThreadId() {
+        return threadId;
+    }
+
+    TableId getTableId() {
+        return tableId;
+    }
+
+    String getCurrentGtid() {
+        return currentGtid;
+    }
+
+    boolean isLastSnapshot() {
+        return lastSnapshot;
+    }
+
+    String getCurrentBinlogFilename() {
+        return currentBinlogFilename;
+    }
+
+    long getCurrentBinlogPosition() {
+        return currentBinlogPosition;
+    }
+
+    long getBinlogTimestampSeconds() {
+        return binlogTimestampSeconds;
+    }
+
+    int getCurrentRowNumber() {
+        return currentRowNumber;
     }
 
     @Override

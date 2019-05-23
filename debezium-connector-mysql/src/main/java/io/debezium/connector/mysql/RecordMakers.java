@@ -76,7 +76,7 @@ public class RecordMakers {
                                                   .build();
         this.schemaChangeValueSchema = SchemaBuilder.struct()
                                                     .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeValue"))
-                                                    .field(Fields.SOURCE, SourceInfo.SCHEMA)
+                                                    .field(Fields.SOURCE, source.schema())
                                                     .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
                                                     .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
                                                     .build();
