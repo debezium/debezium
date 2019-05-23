@@ -12,7 +12,12 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
-    public static final String LOG_TIMESTAMP_KEY = "ts_ms";
+
+    public static final String DB_NAME_KEY = "db";
+    public static final String SCHEMA_NAME_KEY = "schema";
+    public static final String TABLE_NAME_KEY = "table";
+
+    public static final String TIMESTAMP_KEY = "ts_ms";
     public static final String CHANGE_LSN_KEY = "change_lsn";
     public static final String COMMIT_LSN_KEY = "commit_lsn";
     public static final String SNAPSHOT_KEY = "snapshot";
@@ -23,7 +28,10 @@ public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMake
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.sqlserver.Source")
-                .field(LOG_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(DB_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(TABLE_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .field(CHANGE_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(COMMIT_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
@@ -38,7 +46,10 @@ public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMake
     @Override
     public Struct struct(SourceInfo sourceInfo) {
         final Struct ret = super.commonStruct()
-                .put(LOG_TIMESTAMP_KEY, sourceInfo.getSourceTime() == null ? null : sourceInfo.getSourceTime().toEpochMilli())
+                .put(DB_NAME_KEY, sourceInfo.getTableId().catalog())
+                .put(SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
+                .put(TABLE_NAME_KEY, sourceInfo.getTableId().table())
+                .put(TIMESTAMP_KEY, sourceInfo.getSourceTime() == null ? null : sourceInfo.getSourceTime().toEpochMilli())
                 .put(SNAPSHOT_KEY, sourceInfo.isSnapshot());
 
         if (sourceInfo.getChangeLsn() != null && sourceInfo.getChangeLsn().isAvailable()) {

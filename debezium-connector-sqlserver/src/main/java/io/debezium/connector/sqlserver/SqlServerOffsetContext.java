@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext implements OffsetContext {
@@ -86,6 +87,10 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     public void setSourceTime(Instant instant) {
         sourceInfo.setSourceTime(instant);
+    }
+
+    public void setTableId(TableId tableId) {
+        sourceInfo.setTableId(tableId);
     }
 
     @Override
