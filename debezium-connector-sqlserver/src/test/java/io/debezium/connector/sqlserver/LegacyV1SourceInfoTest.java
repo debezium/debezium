@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 
-public class SourceInfoTest {
+public class LegacyV1SourceInfoTest {
 
     private SourceInfo source;
 
@@ -25,6 +25,7 @@ public class SourceInfoTest {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 Configuration.create()
                     .with(SqlServerConnectorConfig.SERVER_NAME, "serverX")
+                    .with(SqlServerConnectorConfig.SOURCE_STRUCT_MAKER_CLASS, LegacyV1SqlServerSourceInfoStructMaker.class)
                     .build()
         );
         source = new SourceInfo(connectorConfig);
@@ -73,8 +74,8 @@ public class SourceInfoTest {
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.sqlserver.Source")
-                .field("version", Schema.STRING_SCHEMA)
-                .field("connector", Schema.STRING_SCHEMA)
+                .field("version", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("connector", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("change_lsn", Schema.OPTIONAL_STRING_SCHEMA)
@@ -84,4 +85,5 @@ public class SourceInfoTest {
 
         assertThat(source.struct().schema()).isEqualTo(schema);
     }
+    
 }

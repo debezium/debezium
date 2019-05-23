@@ -25,9 +25,9 @@ public class SqlServerOffsetContext implements OffsetContext {
     private final Map<String, String> partition;
     private boolean snapshotCompleted;
 
-    public SqlServerOffsetContext(String serverName, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
-        sourceInfo = new SourceInfo(serverName);
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
+        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
+        sourceInfo = new SourceInfo(connectorConfig);
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
@@ -115,15 +115,15 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     public static class Loader implements OffsetContext.Loader {
 
-        private final String logicalName;
+        private final SqlServerConnectorConfig connectorConfig;
 
-        public Loader(String logicalName) {
-            this.logicalName = logicalName;
+        public Loader(SqlServerConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
         }
 
         @Override
         public Map<String, ?> getPartition() {
-            return Collections.singletonMap(SERVER_PARTITION_KEY, logicalName);
+            return Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         }
 
         @Override
@@ -133,7 +133,7 @@ public class SqlServerOffsetContext implements OffsetContext {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            return new SqlServerOffsetContext(logicalName, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted);
+            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted);
         }
     }
 

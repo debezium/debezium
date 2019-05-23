@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 
 /**
  * Coordinates from the database log to establish the relation between the change streamed and the source log position.
@@ -28,21 +29,17 @@ public class SourceInfo extends AbstractSourceInfo {
     public static final String COMMIT_LSN_KEY = "commit_lsn";
     public static final String SNAPSHOT_KEY = "snapshot";
 
-    public static final Schema SCHEMA = schemaBuilder()
-            .name("io.debezium.connector.sqlserver.Source")
-            .field(LOG_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-            .field(CHANGE_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-            .field(COMMIT_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-            .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-            .build();
-
     private Lsn changeLsn;
     private Lsn commitLsn;
     private boolean snapshot;
     private Instant sourceTime;
+    private final SourceInfoStructMaker<SourceInfo> structMaker;
 
-    protected SourceInfo(String serverName) {
-        super(Module.version(), serverName);
+    protected SourceInfo(SqlServerConnectorConfig connectorConfig) {
+        super(Module.version(), connectorConfig.getLogicalName());
+        this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
+
+        structMaker.init(Module.name(), Module.version(), connectorConfig.getLogicalName());
     }
 
     /**
@@ -74,6 +71,10 @@ public class SourceInfo extends AbstractSourceInfo {
         sourceTime = instant;
     }
 
+    public Instant getSourceTime() {
+        return sourceTime;
+    }
+
     public boolean isSnapshot() {
         return snapshot;
     }
@@ -87,7 +88,7 @@ public class SourceInfo extends AbstractSourceInfo {
 
     @Override
     protected Schema schema() {
-        return SCHEMA;
+        return structMaker.schema();
     }
 
     @Override
@@ -100,17 +101,7 @@ public class SourceInfo extends AbstractSourceInfo {
      */
     @Override
     public Struct struct() {
-        final Struct ret = super.struct()
-                .put(LOG_TIMESTAMP_KEY, sourceTime == null ? null : sourceTime.toEpochMilli())
-                .put(SNAPSHOT_KEY, snapshot);
-
-        if (changeLsn != null && changeLsn.isAvailable()) {
-            ret.put(CHANGE_LSN_KEY, changeLsn.toString());
-        }
-        if (commitLsn != null && commitLsn.isAvailable()) {
-            ret.put(COMMIT_LSN_KEY, commitLsn.toString());
-        }
-        return ret;
+        return structMaker.struct(this);
     }
 
     @Override
