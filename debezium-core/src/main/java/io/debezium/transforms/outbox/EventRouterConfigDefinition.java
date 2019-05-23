@@ -5,13 +5,14 @@
  */
 package io.debezium.transforms.outbox;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.kafka.common.config.ConfigDef;
+
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
-import org.apache.kafka.common.config.ConfigDef;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Debezium Outbox Transform configuration definition
@@ -121,14 +122,14 @@ public class EventRouterConfigDefinition {
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("id")
-            .withDescription("The column which contains the Event ID within the outbox table");
+            .withDescription("The column which contains the event ID within the outbox table");
 
     static final Field FIELD_EVENT_KEY = Field.create("table.field.event.key")
             .withDisplayName("Event Key Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("The column which contains the Event Key within the outbox table");
+            .withDescription("The column which contains the event key within the outbox table");
 
     static final Field FIELD_EVENT_TYPE = Field.create("table.field.event.type")
             .withDisplayName("Event Type Field")
@@ -136,7 +137,7 @@ public class EventRouterConfigDefinition {
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("type")
-            .withDescription("The column which contains the Event Type within the outbox table");
+            .withDescription("The column which contains the event type within the outbox table");
 
     static final Field FIELD_EVENT_TIMESTAMP = Field.create("table.field.event.timestamp")
             .withDisplayName("Event Timestamp Field")
@@ -144,23 +145,23 @@ public class EventRouterConfigDefinition {
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDescription("Optionally you can override the Kafka message timestamp with a value from a chosen" +
-                    " field, otherwise it'll be the debezium event processed timestamp.");
+                    " column, otherwise it'll be the Debezium event processed timestamp.");
 
-    static final Field FIELD_PAYLOAD = Field.create("table.field.payload")
+    static final Field FIELD_PAYLOAD = Field.create("table.field.event.payload")
             .withDisplayName("Event Payload Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("payload")
-            .withDescription("The column which contains the Event Type within the outbox table");
+            .withDescription("The column which contains the event payload within the outbox table");
 
-    static final Field FIELD_PAYLOAD_ID = Field.create("table.field.payload.id")
+    static final Field FIELD_PAYLOAD_ID = Field.create("table.field.event.payload.id")
             .withDisplayName("Event Payload ID Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("aggregateid")
-            .withDescription("The column which contains the Payload ID within the outbox table");
+            .withDescription("The column which contains the payload ID within the outbox table");
 
     static final Field FIELDS_ADDITIONAL_PLACEMENT = Field.create("table.fields.additional.placement")
             .withDisplayName("Settings for each additional column in the outbox table")
@@ -172,12 +173,12 @@ public class EventRouterConfigDefinition {
                     " is a list of colon-delimited pairs or trios when you desire to have aliases," +
                     " e.g. <code>id:header,field_name:envelope:alias</code> ");
 
-    static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.schema.version")
+    static final Field FIELD_SCHEMA_VERSION = Field.create("table.field.event.schema.version")
             .withDisplayName("Event Schema Version Field")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("The column which contains the Schema version within the outbox table");
+            .withDescription("The column which contains the event schema version within the outbox table");
 
     static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Field to route events by")
