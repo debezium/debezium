@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -14,20 +15,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import io.debezium.config.Configuration;
 import org.apache.avro.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
 import io.confluent.connect.avro.AvroData;
+import io.debezium.config.CommonConnectorConfig.Version;
+import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 
-public class SourceInfoTest {
+public class LegacyV1SourceInfoTest {
 
     private static int avroSchemaCacheSize = 1000;
     private static final AvroData avroData = new AvroData(avroSchemaCacheSize);
@@ -44,6 +44,7 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, "server")
+                .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
         inTxn = false;
         positionOfBeginEvent = 0L;
@@ -477,6 +478,7 @@ public class SourceInfoTest {
     protected SourceInfo sourceWith(Map<String, String> offset) {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
+                .with(MySqlConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
         source.setOffset(offset);
         return source;
@@ -622,7 +624,7 @@ public class SourceInfoTest {
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setBinlogTimestampSeconds(1_024);
-        assertThat(source.struct().get("ts_ms")).isEqualTo(1_024_000L);
+        assertThat(source.struct().get("ts_sec")).isEqualTo(1_024L);
     }
 
     @Test

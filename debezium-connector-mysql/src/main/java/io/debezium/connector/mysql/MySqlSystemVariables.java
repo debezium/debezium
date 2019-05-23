@@ -6,10 +6,10 @@
 
 package io.debezium.connector.mysql;
 
-import io.debezium.relational.SystemVariables;
-
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentMap;
+
+import io.debezium.relational.SystemVariables;
 
 /**
  * Custom class for MySQL {@link SystemVariables}, which defines MySQL scopes and constants of used variable names.

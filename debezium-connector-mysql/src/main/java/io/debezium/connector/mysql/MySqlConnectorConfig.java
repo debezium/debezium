@@ -19,6 +19,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -1174,5 +1176,15 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         int lowestServerId = 5400;
         int highestServerId = 6400;
         return lowestServerId + new Random().nextInt(highestServerId - lowestServerId);
+    }
+
+    @Override
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
+        switch (version) {
+        case V1:
+            return new LegacyV1MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+        default:
+            return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
+        }
     }
 }
