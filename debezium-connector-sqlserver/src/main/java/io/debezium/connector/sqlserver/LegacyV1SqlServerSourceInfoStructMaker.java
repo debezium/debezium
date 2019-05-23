@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.LegacyV1AbstractSourceInfoStructMaker;
 
 public class LegacyV1SqlServerSourceInfoStructMaker extends LegacyV1AbstractSourceInfoStructMaker<SourceInfo> {
@@ -20,7 +21,8 @@ public class LegacyV1SqlServerSourceInfoStructMaker extends LegacyV1AbstractSour
 
     private final Schema schema;
 
-    public LegacyV1SqlServerSourceInfoStructMaker() {
+    public LegacyV1SqlServerSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
+        super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.sqlserver.Source")
                 .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)

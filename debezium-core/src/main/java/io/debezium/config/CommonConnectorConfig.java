@@ -26,6 +26,59 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  */
 public abstract class CommonConnectorConfig {
 
+    /**
+     * The set of predefined versions e.g. for source struct maker version
+     */
+    public enum Version implements EnumeratedValue {
+        V1("v1"),
+        V2("v2");
+
+        private final String value;
+
+        private Version(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static Version parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (Version option : Version.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static Version parse(String value, String defaultValue) {
+            Version mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
@@ -87,12 +140,12 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field SOURCE_STRUCT_MAKER_CLASS = Field.create("source.struct.make.class")
-            .withDisplayName("Source struct maker")
-            .withType(Type.CLASS)
+    public static final Field SOURCE_STRUCT_MAKER_VERSION = Field.create("source.struct.make.version")
+            .withDisplayName("Source struct maker version")
+            .withEnum(Version.class, Version.V2)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("A class name used to create publicly visible source part in the message")
+            .withDescription("A version of the format of the publicly visible source part in the message")
             .withValidation(Field::isClassName);
 
     private final Configuration config;
@@ -106,7 +159,6 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
 
-    @SuppressWarnings("unchecked")
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
@@ -117,8 +169,7 @@ public abstract class CommonConnectorConfig {
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
-        final SourceInfoStructMaker<? extends AbstractSourceInfo> maker = config.getInstance(SOURCE_STRUCT_MAKER_CLASS, SourceInfoStructMaker.class);
-        this.sourceInfoStructMaker = (maker != null) ? maker : getDefaultSourceInfoStructMaker();
+        this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
     }
 
     /**
@@ -193,7 +244,7 @@ public abstract class CommonConnectorConfig {
         return 0;
     }
 
-    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getDefaultSourceInfoStructMaker() {
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return null;
     }
 }

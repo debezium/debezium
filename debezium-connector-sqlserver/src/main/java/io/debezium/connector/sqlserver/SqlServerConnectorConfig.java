@@ -258,7 +258,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         );
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_CLASS);
+                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
 
         return config;
     }
@@ -295,8 +295,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getDefaultSourceInfoStructMaker() {
-        return new SqlServerSourceInfoStructMaker();
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
+        switch (version) {
+        case V1:
+            return new LegacyV1SqlServerSourceInfoStructMaker(Module.name(), Module.version(), this);
+        default:
+            return new SqlServerSourceInfoStructMaker(Module.name(), Module.version(), this);
+        }
     }
 
     private static class SystemTablesPredicate implements TableFilter {
