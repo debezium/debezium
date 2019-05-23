@@ -6,11 +6,15 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.config.Configuration;
-import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.data.Uuid;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.transforms.outbox.EventRouter;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
@@ -22,14 +26,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.data.Uuid;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.transforms.outbox.EventRouter;
 
 /**
  * Integration test for {@link io.debezium.transforms.outbox.EventRouter} with {@link PostgresConnector}
@@ -149,7 +150,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     public void shouldSupportAllFeatures() throws Exception {
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
-        config.put("table.field.schema.version", "version");
+        config.put("table.field.event.schema.version", "version");
         config.put("table.field.event.timestamp", "createdat");
         config.put(
                 "table.fields.additional.placement",
