@@ -232,4 +232,12 @@ public final class TestHelper {
     protected static int waitTimeForRecords() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
     }
+
+    protected static SourceInfo sourceInfo() {
+        return new SourceInfo( new PostgresConnectorConfig(
+                Configuration.create()
+                .with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
+                .with(PostgresConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+                .build()));
+    }
 }

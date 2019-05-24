@@ -127,6 +127,6 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
     private RecordsSnapshotProducer buildStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
         Snapshotter sn = new InitialOnlySnapshotter();
         sn.init(config, null, null);
-        return new RecordsSnapshotProducer(ctx, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), sn);
+        return new RecordsSnapshotProducer(ctx, TestHelper.sourceInfo(), sn);
     }
 }

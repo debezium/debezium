@@ -86,5 +86,4 @@ public class LegacyV1SourceInfoTest {
 
         assertThat(source.struct().schema()).isEqualTo(schema);
     }
-    
 }

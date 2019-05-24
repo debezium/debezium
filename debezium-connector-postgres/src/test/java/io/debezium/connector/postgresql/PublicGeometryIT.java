@@ -116,7 +116,7 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
                 TestHelper.getSchema(config),
                 selector
         );
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config.getLogicalName(), config.databaseName()));
+        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config));
     }
 
     private void assertInsert(String statement, Integer pk, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

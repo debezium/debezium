@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
@@ -20,7 +21,7 @@ import io.debezium.relational.TableId;
  * @author Jiri Pechanec
  *
  */
-public class SourceInfoTest {
+public class LegacyV1SourceInfoTest {
 
     private SourceInfo source;
 
@@ -30,6 +31,7 @@ public class SourceInfoTest {
                 Configuration.create()
                 .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
                 .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
+                .with(PostgresConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
         source.update(123_456_789L, new TableId("catalogNameX", "schemaNameX", "tableNameX"));
     }
@@ -52,23 +54,24 @@ public class SourceInfoTest {
 
     @Test
     public void shouldHaveTimestamp() {
-        assertThat(source.source().getInt64("ts_ms")).isEqualTo(123_456L);
+        assertThat(source.source().getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(123_456_789L);
     }
 
     @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.postgresql.Source")
-                .field("version", Schema.STRING_SCHEMA)
-                .field("connector", Schema.STRING_SCHEMA)
+                .field("version", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("connector", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
-                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
+                .field("ts_usec", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("schema", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("table", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("last_snapshot_record", Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
