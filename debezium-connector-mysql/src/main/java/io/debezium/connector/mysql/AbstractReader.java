@@ -14,6 +14,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.base.SnapshotStatementFactory;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -53,6 +54,7 @@ public abstract class AbstractReader implements Reader {
     protected final ChangeEventQueueMetrics changeEventQueueMetrics;
 
     private final HaltingPredicate acceptAndContinue;
+    private final SnapshotStatementFactory snapshotStatementFactory;
 
     /**
      * Create a snapshot reader.
@@ -85,6 +87,7 @@ public abstract class AbstractReader implements Reader {
                 return records.remainingCapacity();
             }
         };
+        this.snapshotStatementFactory = new SnapshotStatementFactory(context.getConnectorConfig(), connectionContext.jdbc());
     }
 
     @Override
@@ -356,5 +359,13 @@ public abstract class AbstractReader implements Reader {
         public boolean accepts(SourceRecord sourceRecord) {
             return true;
         }
+    }
+
+    /**
+     *
+     * @return Snapshot statement factory
+     */
+    public SnapshotStatementFactory getSnapshotStatementFactory() {
+        return snapshotStatementFactory;
     }
 }

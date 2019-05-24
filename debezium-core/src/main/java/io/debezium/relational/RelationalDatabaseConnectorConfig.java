@@ -177,6 +177,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "'string' uses string to represent values; "
                     + "'double' represents values using Java's 'double', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
+            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
+                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
+
     private final RelationalTableFilters tableFilters;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
@@ -217,4 +227,13 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         return 0;
     }
+
+    public String snapshotSelectOverrides() {
+        return getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+    }
+
+    public String snapshotSelectOverrideForTable(String table) {
+        return getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
+    }
+
 }

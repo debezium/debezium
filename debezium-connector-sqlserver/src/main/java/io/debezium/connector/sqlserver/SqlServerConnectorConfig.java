@@ -226,6 +226,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             RelationalDatabaseConnectorConfig.SERVER_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
+            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
@@ -249,6 +250,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                 RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
+                RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
         );
