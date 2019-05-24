@@ -28,7 +28,7 @@ public interface SourceInfoStructMaker<T extends AbstractSourceInfo> {
      * Converts the connector's source info into the struct to be included in the message as the source field.
      *
      * @param sourceInfo
-     * @return the coverted struct
+     * @return the converted struct
      */
     public Struct struct(T sourceInfo);
 }

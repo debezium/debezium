@@ -26,6 +26,7 @@ import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
+import io.debezium.relational.TableId;
 
 public class LegacyV1SourceInfoTest {
 
@@ -442,7 +443,7 @@ public class LegacyV1SourceInfoTest {
                 assertThat(rowsToSkip).isEqualTo(row + 1);
             }
             // Get the source struct for this row (always second), which should always reflect this row in this event ...
-            Struct recordSource = source.struct();
+            Struct recordSource = source.struct((TableId) null);
             assertThat(recordSource.getInt64(SourceInfo.BINLOG_POSITION_OFFSET_KEY)).isEqualTo(positionOfEvent);
             assertThat(recordSource.getInt32(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY)).isEqualTo(row);
             assertThat(recordSource.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY)).isEqualTo(FILENAME);
@@ -624,19 +625,19 @@ public class LegacyV1SourceInfoTest {
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setBinlogTimestampSeconds(1_024);
-        assertThat(source.struct().get("ts_sec")).isEqualTo(1_024L);
+        assertThat(source.struct((TableId) null).get("ts_sec")).isEqualTo(1_024L);
     }
 
     @Test
     public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.struct((TableId) null).getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+        assertThat(source.struct((TableId) null).getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     protected Document positionWithGtids(String gtids) {

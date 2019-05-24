@@ -16,6 +16,7 @@ import io.debezium.util.SchemaNameAdjuster;
 public class LegacyV1MongoDbSourceInfoStructMaker extends LegacyV1AbstractSourceInfoStructMaker<SourceInfo> {
 
     private final Schema schema;
+    private final String serverName;
 
     public LegacyV1MongoDbSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
@@ -30,6 +31,7 @@ public class LegacyV1MongoDbSourceInfoStructMaker extends LegacyV1AbstractSource
             .field(SourceInfo.OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
             .field(SourceInfo.INITIAL_SYNC, SchemaBuilder.bool().optional().defaultValue(false).build())
             .build();
+        this.serverName = connectorConfig.getLogicalName();
     }
 
     @Override
@@ -40,13 +42,13 @@ public class LegacyV1MongoDbSourceInfoStructMaker extends LegacyV1AbstractSource
     @Override
     public Struct struct(SourceInfo sourceInfo) {
         final Struct result = super.commonStruct()
-                .put(SourceInfo.SERVER_NAME_KEY, sourceInfo.getServerName())
-                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.getCollectionId().replicaSetName())
-                .put(SourceInfo.NAMESPACE, sourceInfo.getCollectionId().namespace())
-                .put(SourceInfo.TIMESTAMP, sourceInfo.getPosition().getTime())
-                .put(SourceInfo.ORDER, sourceInfo.getPosition().getInc())
-                .put(SourceInfo.OPERATION_ID, sourceInfo.getPosition().getOperationId());
-        if (sourceInfo.isInitialSyncOngoing(sourceInfo.getCollectionId().replicaSetName())) {
+                .put(SourceInfo.SERVER_NAME_KEY, serverName)
+                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.collectionId().replicaSetName())
+                .put(SourceInfo.NAMESPACE, sourceInfo.collectionId().namespace())
+                .put(SourceInfo.TIMESTAMP, sourceInfo.position().getTime())
+                .put(SourceInfo.ORDER, sourceInfo.position().getInc())
+                .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
+        if (sourceInfo.isInitialSyncOngoing(sourceInfo.collectionId().replicaSetName())) {
             result.put(SourceInfo.INITIAL_SYNC, true);
         }
         return result;

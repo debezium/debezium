@@ -244,7 +244,5 @@ public abstract class CommonConnectorConfig {
         return 0;
     }
 
-    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return null;
-    }
+    protected abstract SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version);
 }

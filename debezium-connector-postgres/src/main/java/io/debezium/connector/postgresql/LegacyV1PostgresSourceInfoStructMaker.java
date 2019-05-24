@@ -15,6 +15,7 @@ import io.debezium.connector.LegacyV1AbstractSourceInfoStructMaker;
 public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourceInfoStructMaker<SourceInfo> {
 
     private final Schema schema;
+    private final String serverName;
 
     public LegacyV1PostgresSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
@@ -22,7 +23,7 @@ public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourc
                 .name("io.debezium.connector.postgresql.Source")
                 .field(SourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.DB_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(SourceInfo.TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.TIMESTAMP_USEC_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.SCHEMA_NAME_KEY, Schema.OPTIONAL_STRING_SCHEMA)
@@ -31,6 +32,7 @@ public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourc
                 .field(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(SourceInfo.XMIN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
+        this.serverName = connectorConfig.getLogicalName();
     }
 
     @Override
@@ -40,13 +42,13 @@ public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourc
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        assert sourceInfo.dbName() != null
+        assert sourceInfo.database() != null
                 && sourceInfo.schemaName() != null
                 && sourceInfo.tableName() != null;
 
         Struct result = super.commonStruct();
-        result.put(SourceInfo.SERVER_NAME_KEY, sourceInfo.getServerName());
-        result.put(SourceInfo.DB_NAME_KEY, sourceInfo.dbName());
+        result.put(SourceInfo.SERVER_NAME_KEY, serverName);
+        result.put(SourceInfo.DB_NAME_KEY, sourceInfo.database());
         result.put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.schemaName());
         result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tableName());
         // use the offset information without the snapshot part (see below)

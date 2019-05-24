@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
@@ -81,7 +80,7 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_PARTITION_KEY = "server";
     public static final String DB_NAME_KEY = "db";
-    public static final String TIMESTAMP_KEY = "ts_usec";
+    public static final String TIMESTAMP_USEC_KEY = "ts_usec";
     public static final String TXID_KEY = "txId";
     public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
@@ -104,7 +103,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     private SourceInfoStructMaker<SourceInfo> structMaker;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
-        super(Module.version(), connectorConfig.getLogicalName());
+        super(connectorConfig);
         this.dbName = connectorConfig.databaseName();
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
@@ -115,7 +114,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         this.lsn = ((Number) lastStoredOffset.get(LSN_KEY)).longValue();
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
         this.xmin = (Long) lastStoredOffset.get(XMIN_KEY);
-        this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_KEY);
+        this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_USEC_KEY);
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
         if (this.snapshot) {
             this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
@@ -140,10 +139,10 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @return a copy of the current offset; never null
      */
     public Map<String, ?> offset() {
-        assert getServerName() != null && dbName != null;
+        assert serverName() != null && dbName != null;
         Map<String, Object> result = new HashMap<>();
         if (useconds != null) {
-            result.put(TIMESTAMP_KEY, useconds);
+            result.put(TIMESTAMP_USEC_KEY, useconds);
         }
         if (txId != null) {
             result.put(TXID_KEY, txId);
@@ -210,22 +209,6 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
-     * Get a {@link Schema} representation of the source {@link #partition()} and {@link #offset()} information.
-     *
-     * @return the source partition and offset {@link Schema}; never null
-     * @see #source()
-     */
-    @Override
-    protected Schema schema() {
-        return structMaker.schema();
-    }
-
-    @Override
-    protected String connector() {
-        return Module.name();
-    }
-
-    /**
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
      * complies with the {@link PostgresSourceInfoStructMaker#schema()} for the Postgres connector.
      * <p>
@@ -270,7 +253,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         return this.xmin;
     }
 
-    String dbName() {
+    @Override
+    protected String database() {
         return dbName;
     }
 
@@ -282,6 +266,16 @@ public final class SourceInfo extends AbstractSourceInfo {
         return tableName;
     }
 
+    @Override
+    protected long timestamp() {
+        return useconds / 1_000;
+    }
+
+    @Override
+    protected boolean snapshot() {
+        return snapshot;
+    }
+
     public boolean hasLastKnownPosition() {
         return this.lsn != null;
     }
@@ -289,7 +283,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("source_info[");
-        sb.append("server='").append(getServerName()).append('\'');
+        sb.append("server='").append(serverName()).append('\'');
         sb.append("db='").append(dbName).append('\'');
         if (lsn != null) {
             sb.append(", lsn=").append(ReplicationConnection.format(lsn));

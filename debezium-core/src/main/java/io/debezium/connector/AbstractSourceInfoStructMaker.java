@@ -21,9 +21,6 @@ import io.debezium.config.CommonConnectorConfig;
  * @author Jiri Pechanec
  */
 public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo> implements SourceInfoStructMaker<T> {
-    public static final String DEBEZIUM_VERSION_KEY = "version";
-    public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
-    public static final String SERVER_NAME_KEY = "name";
 
     private final String version;
     private final String connector;
@@ -32,20 +29,26 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
     public AbstractSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         this.connector = Objects.requireNonNull(connector);
         this.version = Objects.requireNonNull(version);
-        this.serverName = Objects.requireNonNull(connectorConfig.getLogicalName());
+        this.serverName = connectorConfig.getLogicalName();
     }
 
     protected SchemaBuilder commonSchemaBuilder() {
         return SchemaBuilder.struct()
-                .field(DEBEZIUM_VERSION_KEY, Schema.STRING_SCHEMA)
-                .field(DEBEZIUM_CONNECTOR_KEY, Schema.STRING_SCHEMA)
-                .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA);
+                .field(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .field(AbstractSourceInfo.SNAPSHOT_KEY, SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA);
     }
 
-    protected Struct commonStruct() {
+    protected Struct commonStruct(T sourceInfo) {
         return new Struct(schema())
-                .put(DEBEZIUM_VERSION_KEY, version)
-                .put(DEBEZIUM_CONNECTOR_KEY, connector)
-                .put(SERVER_NAME_KEY, serverName);
+                .put(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, version)
+                .put(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, connector)
+                .put(AbstractSourceInfo.SERVER_NAME_KEY, serverName)
+                .put(AbstractSourceInfo.TIMESTAMP_KEY, sourceInfo.timestamp())
+                .put(AbstractSourceInfo.SNAPSHOT_KEY, sourceInfo.snapshot() ? true : null)
+                .put(AbstractSourceInfo.DATABASE_NAME_KEY, sourceInfo.database());
     }
 }

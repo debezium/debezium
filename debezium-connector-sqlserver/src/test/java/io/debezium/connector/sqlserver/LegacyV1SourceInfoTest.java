@@ -68,7 +68,7 @@ public class LegacyV1SourceInfoTest {
 
     @Test
     public void timestampIsPresent() {
-        assertThat(source.struct().getInt64(SourceInfo.LOG_TIMESTAMP_KEY)).isEqualTo(3000);
+        assertThat(source.struct().getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(3000);
     }
 
     @Test
