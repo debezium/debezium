@@ -13,7 +13,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Map;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -218,13 +217,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     }
 
     private void determineCapturedTables(SnapshotContext ctx) throws Exception {
-        ctx.snapshotOverrides = getSnapshotSelectOverridesByTable();
         Set<TableId> allTableIds = getAllTableIds(ctx);
 
         Set<TableId> capturedTables = new HashSet<>();
 
         for (TableId tableId : allTableIds) {
-            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId) && !ctx.skipSnapshot(tableId)) {
+            if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
                 LOGGER.trace("Adding table {} to the list of captured tables", tableId);
                 capturedTables.add(tableId);
             }
@@ -365,14 +363,21 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row);
 
     /**
-     * Generate a valid query string for the specified table
+     * Returns a valid query string for the specified table, either given by the user via snapshot select overrides or
+     * defaulting to a statement provided by the DB-specific change event source.
      *
      * @param tableId the table to generate a query for
      * @return a valid query string
      */
     private String determineSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        return snapshotContext.isSnapshotSelectOveridden(tableId) ? snapshotContext.getSnapshotSelectOveridden(tableId) :
-                getSnapshotSelect(snapshotContext, tableId);
+        String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
+
+        // try without catalog id, as this might or might not be populated based on the given connector
+        if (overriddenSelect == null) {
+            overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
+        }
+
+        return overriddenSelect != null ? overriddenSelect : getSnapshotSelect(snapshotContext, tableId);
     }
 
     /**
@@ -382,11 +387,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
     protected abstract String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
-
-    /**
-     * Returns any SELECT overrides, if present.
-     */
-    protected abstract Map<TableId, String> getSnapshotSelectOverridesByTable();
 
     private Column[] getColumnsForResultSet(Table table, ResultSet rs) throws SQLException {
         ResultSetMetaData metaData = rs.getMetaData();
@@ -431,7 +431,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      * Mutable context which is populated in the course of snapshotting.
      */
     public static class SnapshotContext implements AutoCloseable {
-        public Map<TableId, String> snapshotOverrides;
         public final String catalogName;
         public final Tables tables;
 
@@ -445,22 +444,6 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         @Override
         public void close() throws Exception {
-        }
-
-        public boolean skipSnapshot(TableId inTableId) {
-            if (snapshotOverrides.containsKey(inTableId) && snapshotOverrides.get(inTableId) == null) {
-                LOGGER.warn("For table '{}' the select statement was not provided, skipping table", inTableId);
-                return true;
-            }
-            return false;
-        }
-
-        public boolean isSnapshotSelectOveridden(TableId tableId) {
-            return snapshotOverrides.containsKey(tableId);
-        }
-
-        public String getSnapshotSelectOveridden(TableId tableId) {
-            return snapshotOverrides.get(tableId);
         }
     }
 

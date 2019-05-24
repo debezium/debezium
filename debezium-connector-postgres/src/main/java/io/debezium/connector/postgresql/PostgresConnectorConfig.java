@@ -932,16 +932,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return this.snapshotMode.getSnapshotter(getConfig());
     }
 
-    @Override
-    public String snapshotSelectOverrides() {
-        return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-    }
-
-    @Override
-    public String snapshotSelectOverrideForTable(String table) {
-        return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
-    }
-
     protected boolean skipRefreshSchemaOnMissingToastableData() {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }

@@ -5,28 +5,25 @@
  */
 package io.debezium.connector.postgresql.snapshot;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.relational.TableId;
-
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.spi.OffsetState;
+import io.debezium.connector.postgresql.spi.SlotState;
+import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.relational.TableId;
+
 public abstract class QueryingSnapshotter implements Snapshotter {
 
-    private PostgresConnectorConfig config;
     private Map<TableId, String> snapshotOverrides;
 
     @Override
     public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
-        this.config = config;
-        this.snapshotOverrides = getSnapshotSelectOverridesByTable();
+        this.snapshotOverrides = config.getSnapshotSelectOverridesByTable();
     }
 
+    @Override
     public Optional<String> buildSnapshotQuery(TableId tableId) {
         if (snapshotOverrides.containsKey(tableId)) {
             return Optional.of(snapshotOverrides.get(tableId));
@@ -40,25 +37,5 @@ public abstract class QueryingSnapshotter implements Snapshotter {
         }
     }
 
-    /**
-     * Returns any SELECT overrides, if present.
-     */
-    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
-        String tableList = config.snapshotSelectOverrides();
 
-        if (tableList == null) {
-            return Collections.emptyMap();
-        }
-
-        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
-
-        for (String table : tableList.split(",")) {
-            snapshotSelectOverridesByTable.put(
-                    TableId.parse(table),
-                    config.snapshotSelectOverrideForTable(table)
-            );
-        }
-
-        return snapshotSelectOverridesByTable;
-    }
 }

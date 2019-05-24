@@ -245,10 +245,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         return SnapshotMode.parse(value, MySqlConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
     }
 
-    public String getSnapshotSelectOverrides() {
-        return config.getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-    }
-
     public void start() {
         connectionContext.start();
         // Start the MySQL database history, which simply starts up resources but does not recover the history to a specific point
