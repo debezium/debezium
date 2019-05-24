@@ -9,7 +9,6 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -18,13 +17,14 @@ import org.bson.Document;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 
 /**
  * @author Randall Hauch
  *
  */
-public class SourceInfoTest {
+public class LegacyV1SourceInfoTest {
 
     private static String REPLICA_SET_NAME = "myReplicaSet";
     private SourceInfo source;
@@ -35,6 +35,7 @@ public class SourceInfoTest {
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
+                .with(MongoDbConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
     }
 
@@ -42,15 +43,14 @@ public class SourceInfoTest {
     public void shouldHaveSchemaForSource() {
         Schema schema = source.schema();
         assertThat(schema.name()).isNotEmpty();
-        assertThat(schema.version()).isNull();
+        assertThat(schema.version()).isNotNull();
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.DATABASE).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.TIMESTAMP).schema()).isEqualTo(Schema.INT64_SCHEMA);
+        assertThat(schema.field(SourceInfo.NAMESPACE).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.TIMESTAMP).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.SNAPSHOT).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
+        assertThat(schema.field(SourceInfo.INITIAL_SYNC).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
     }
 
     @Test
@@ -87,9 +87,10 @@ public class SourceInfoTest {
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
+                .with(MongoDbConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
         source.setOffsetFor(partition, offset);
-
+        
         offset = source.lastOffset(REPLICA_SET_NAME);
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo(2);
@@ -100,14 +101,13 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(2);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(100_000);
+        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
     }
 
     @Test
@@ -124,14 +124,13 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(0);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(0);
+        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -156,14 +155,13 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(2);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(100_000);
+        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isNull();
     }
 
     @Test
@@ -181,14 +179,13 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(0);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(0);
+        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isEqualTo(true);
+        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -215,14 +212,13 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(2);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(100_000);
+        assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.NAMESPACE)).isEqualTo("dbA.collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isEqualTo(true);
+        assertThat(struct.getBoolean(SourceInfo.INITIAL_SYNC)).isEqualTo(true);
     }
 
     @Test
@@ -241,46 +237,21 @@ public class SourceInfoTest {
         assertThat(source.offsetStructForEvent("rs", event).getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
-    private String schemaToString(Schema schema) {
-        final StringBuilder s = new StringBuilder()
-                .append(schema.name())
-                .append("\n")
-                .append("type = ")
-                .append(schema.type())
-                .append("\n")
-                .append("optional = ")
-                .append(schema.isOptional())
-                .append("\n")
-                .append("default = ")
-                .append(schema.defaultValue())
-                .append("\n");
-        if (!schema.type().isPrimitive()) {
-            s.append("fields\n");
-            for (Field f: schema.fields()) {
-                s.append(f.name());
-                s.append(" = ");
-                s.append(schemaToString(f.schema()));
-            }
-        }
-        return s.toString();
-    }
-    
     @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mongo.Source")
-                .field("version", Schema.STRING_SCHEMA)
-                .field("connector", Schema.STRING_SCHEMA)
+                .version(1)
+                .field("version", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("connector", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
-                .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
-                .field("db", Schema.STRING_SCHEMA)
-                .field("collection", Schema.STRING_SCHEMA)
                 .field("rs", Schema.STRING_SCHEMA)
+                .field("ns", Schema.STRING_SCHEMA)
+                .field("sec", Schema.INT32_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("h", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("initsync", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .build();
-        assertThat(schemaToString(source.schema())).isEqualTo(schemaToString(schema));
         assertThat(source.schema()).isEqualTo(schema);
     }
 }

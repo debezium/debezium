@@ -27,9 +27,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Configurator;
 import io.debezium.connector.mongodb.Filters;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbTopicSelector;
 import io.debezium.connector.mongodb.RecordMakers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
@@ -67,7 +69,10 @@ public class ExtractNewDocumentStateTest {
     @Before
     public void setup() {
         filters = new Configurator().createFilters();
-        source = new SourceInfo(SERVER_NAME);
+        source = new SourceInfo(new MongoDbConnectorConfig(
+                Configuration.create()
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .build()));
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);

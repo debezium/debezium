@@ -17,6 +17,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 
 /**
  * The configuration properties.
@@ -377,5 +379,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
+    }
+
+    @Override
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
+        switch (version) {
+        case V1:
+            return new LegacyV1MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+        default:
+            return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+        }
     }
 }
