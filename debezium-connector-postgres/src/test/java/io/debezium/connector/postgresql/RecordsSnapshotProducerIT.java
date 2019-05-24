@@ -265,13 +265,13 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     private RecordsSnapshotProducer buildNoStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
         Snapshotter sn = new InitialOnlySnapshotter();
         sn.init(config, null, null);
-        return new RecordsSnapshotProducer(ctx, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), sn);
+        return new RecordsSnapshotProducer(ctx, TestHelper.sourceInfo(), sn);
     }
 
     private RecordsSnapshotProducer buildWithStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
         Snapshotter sn = new AlwaysSnapshotter();
         sn.init(config, null, null);
-        return new RecordsSnapshotProducer(ctx, new SourceInfo(TestHelper.TEST_SERVER, TestHelper.TEST_DATABASE), sn);
+        return new RecordsSnapshotProducer(ctx, TestHelper.sourceInfo(), sn);
     }
 
     private void assertReadRecord(SourceRecord record, Map<String, List<SchemaAndValueField>> expectedValuesByTopicName) {
