@@ -26,6 +26,7 @@ import org.junit.Test;
 import com.mongodb.DBRef;
 import com.mongodb.util.JSONSerializers;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
@@ -52,7 +53,10 @@ public class RecordMakersTest {
     @Before
     public void beforeEach() {
         filters = new Configurator().createFilters();
-        source = new SourceInfo(SERVER_NAME);
+        source = new SourceInfo(new MongoDbConnectorConfig(
+                Configuration.create()
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .build()));
         topicSelector = MongoDbTopicSelector.defaultSelector(PREFIX, "__debezium-heartbeat");
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);

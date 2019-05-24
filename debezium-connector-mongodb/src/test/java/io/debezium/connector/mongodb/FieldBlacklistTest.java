@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import io.debezium.config.Configuration;
 import io.debezium.schema.TopicSelector;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -38,7 +39,10 @@ public class FieldBlacklistTest {
     @Before
     public void setup() {
         build = new Configurator();
-        source = new SourceInfo(SERVER_NAME);
+        source = new SourceInfo(new MongoDbConnectorConfig(
+                Configuration.create()
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .build()));
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
     }
 

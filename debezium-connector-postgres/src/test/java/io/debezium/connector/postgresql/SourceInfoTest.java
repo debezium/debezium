@@ -26,7 +26,7 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo( new PostgresConnectorConfig(
+        source = new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
                 .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
                 .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")

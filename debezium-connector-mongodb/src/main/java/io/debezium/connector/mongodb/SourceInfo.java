@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -22,8 +21,8 @@ import org.bson.types.BSONTimestamp;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.util.Collect;
-import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * Information about the source of information, which includes the partitions and offsets within those partitions. The MongoDB
@@ -79,24 +78,13 @@ public final class SourceInfo extends AbstractSourceInfo {
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null);
 
-    /**
-     * A {@link Schema} definition for a {@link Struct} used to store the {@link #partition(String)} and {@link #lastOffset}
-     * information.
-     */
-    private final Schema SOURCE_SCHEMA = schemaBuilder()
-                                                      .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
-                                                      .version(SCHEMA_VERSION)
-                                                      .field(REPLICA_SET_NAME, Schema.STRING_SCHEMA)
-                                                      .field(NAMESPACE, Schema.STRING_SCHEMA)
-                                                      .field(TIMESTAMP, Schema.INT32_SCHEMA)
-                                                      .field(ORDER, Schema.INT32_SCHEMA)
-                                                      .field(OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-                                                      .field(INITIAL_SYNC, SchemaBuilder.bool().optional().defaultValue(false).build())
-                                                      .build();
-
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
     private final Set<String> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final SourceInfoStructMaker<SourceInfo> structMaker;
+
+    private CollectionId collectionId;
+    private Position position;
 
     @Immutable
     protected static final class Position {
@@ -141,8 +129,9 @@ public final class SourceInfo extends AbstractSourceInfo {
         return partition != null ? (String) partition.get(REPLICA_SET_NAME) : null;
     }
 
-    public SourceInfo(String serverName) {
-        super(Module.version(), serverName);
+    public SourceInfo(MongoDbConnectorConfig connectorConfig) {
+        super(Module.version(), connectorConfig.getLogicalName());
+        structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
     }
 
     /**
@@ -154,12 +143,20 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     @Override
     public Schema schema() {
-        return SOURCE_SCHEMA;
+        return structMaker.schema();
     }
 
     @Override
     protected String connector() {
         return Module.name();
+    }
+
+    CollectionId getCollectionId() {
+        return collectionId;
+    }
+
+    Position getPosition() {
+        return position;
     }
 
     /**
@@ -223,7 +220,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @see #schema()
      */
     public Struct lastOffsetStruct(String replicaSetName, CollectionId collectionId) {
-        return offsetStructFor(replicaSetName, collectionId.namespace(), positionsByReplicaSetName.get(replicaSetName),
+        return offsetStructFor(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName),
                                isInitialSyncOngoing(replicaSetName));
     }
 
@@ -247,7 +244,7 @@ public final class SourceInfo extends AbstractSourceInfo {
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
-        return offsetStructFor(replicaSetName, namespace, position, isInitialSyncOngoing(replicaSetName));
+        return offsetStructFor(replicaSetName, CollectionId.parse(replicaSetName + "." + namespace), position, isInitialSyncOngoing(replicaSetName));
     }
 
     /**
@@ -260,20 +257,11 @@ public final class SourceInfo extends AbstractSourceInfo {
         return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
     }
 
-    private Struct offsetStructFor(String replicaSetName, String namespace, Position position, boolean isInitialSync) {
-        if (position == null) {
-            position = INITIAL_POSITION;
-        }
-        Struct result = super.struct();
-        result.put(REPLICA_SET_NAME, replicaSetName);
-        result.put(NAMESPACE, namespace);
-        result.put(TIMESTAMP, position.getTime());
-        result.put(ORDER, position.getInc());
-        result.put(OPERATION_ID, position.getOperationId());
-        if (isInitialSync) {
-            result.put(INITIAL_SYNC, true);
-        }
-        return result;
+    private Struct offsetStructFor(String replicaSetName, CollectionId collectionId, Position position, boolean isInitialSync) {
+        this.position = (position == null) ? INITIAL_POSITION : position;
+        this.collectionId = collectionId;
+
+        return structMaker.struct(this);
     }
 
     /**

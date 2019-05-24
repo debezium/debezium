@@ -77,6 +77,7 @@ public class SourceInfoTest {
         assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.SCHEMA_NAME_KEY)).isEqualTo("s");
         assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.TABLE_NAME_KEY)).isEqualTo("t");
     }
+
     @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
