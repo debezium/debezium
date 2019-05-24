@@ -6,6 +6,9 @@
 package io.debezium.relational;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -182,8 +185,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
-                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the" +
+                    "specific connectors . Select statements for the individual tables are " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]' or " +
+                    "'snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]', respectively. " +
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
@@ -228,12 +233,25 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return 0;
     }
 
-    public String snapshotSelectOverrides() {
-        return getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-    }
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
 
-    public String snapshotSelectOverrideForTable(String table) {
-        return getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
-    }
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
 
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                TableId.parse(table),
+                getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
+            );
+        }
+
+        return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
 }

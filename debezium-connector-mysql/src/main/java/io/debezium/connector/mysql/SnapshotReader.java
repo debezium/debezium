@@ -14,7 +14,6 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -303,7 +302,7 @@ public class SnapshotReader extends AbstractReader {
                             while (rs.next() && isRunning()) {
                                 TableId id = new TableId(dbName, null, rs.getString(1));
                                 final boolean shouldRecordTableSchema = shouldRecordTableSchema(schema, filters, id);
-                                // Apply only when the whitelist table list is not dynamically reconfigured 
+                                // Apply only when the whitelist table list is not dynamically reconfigured
                                 if ((createTableFilters == filters && shouldRecordTableSchema) || createTableFilters.tableFilter().test(id)) {
                                     createTablesMap.computeIfAbsent(dbName, k -> new ArrayList<>()).add(id);
                                 }
@@ -515,7 +514,7 @@ public class SnapshotReader extends AbstractReader {
                                         }
                                     });
                                     if (numRows.get() <= largeTableCount) {
-                                        statementFactory = getSnapshotStatementFactory();
+                                        statementFactory = this::createStatement;
                                     }
                                     rowCountStr.set(numRows.toString());
                                 } catch (SQLException e) {
@@ -528,7 +527,7 @@ public class SnapshotReader extends AbstractReader {
                             long start = clock.currentTimeInMillis();
                             logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, tableIds.size());
 
-                            Map<TableId, String> selectOverrides = getSnapshotSelectOverridesByTable();
+                            Map<TableId, String> selectOverrides = context.getConnectorConfig().getSnapshotSelectOverridesByTable();
 
                             String selectStatement = selectOverrides.getOrDefault(tableId, "SELECT * FROM " + quote(tableId));
                             logger.info("For table '{}' using select statement: '{}'", tableId, selectStatement);
@@ -904,28 +903,6 @@ public class SnapshotReader extends AbstractReader {
 
     protected void recordRowAsInsert(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
         recordMaker.create(row, ts);
-    }
-
-    /**
-     * Returns any SELECT overrides, if present.
-     */
-    private Map<TableId, String> getSnapshotSelectOverridesByTable() {
-        String tableList = context.getSnapshotSelectOverrides();
-
-        if (tableList == null) {
-            return Collections.emptyMap();
-        }
-
-        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
-
-        for (String table : tableList.split(",")) {
-            snapshotSelectOverridesByTable.put(
-                TableId.parse(table),
-                context.config().getString(MySqlConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
-            );
-        }
-
-        return snapshotSelectOverridesByTable;
     }
 
     protected static interface RecordRecorder {

@@ -947,16 +947,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                              + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
                              + "'ignore' the problematic event will be skipped.");
 
-    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
-            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.MEDIUM)
-            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
-                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
-                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
-                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
-
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
      * have their values truncated to be no longer than the specified number of characters.
@@ -1017,6 +1007,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      DATABASE_WHITELIST, DATABASE_BLACKLIST,
                                                      COLUMN_BLACKLIST,
                                                      SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_LOCKING_MODE,
+                                                     RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                                                      GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
                                                      GTID_SOURCE_FILTER_DML_EVENTS,
                                                      GTID_NEW_CHANNEL_POSITION,
@@ -1089,6 +1080,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
                     COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST,
+                    RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, GTID_NEW_CHANNEL_POSITION, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE);
