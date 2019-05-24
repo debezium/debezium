@@ -27,7 +27,7 @@ class SqlServerEventMetadataProvider implements EventMetadataProvider {
         if (source == null) {
             return null;
         }
-        final Long timestamp = sourceInfo.getInt64(SourceInfo.LOG_TIMESTAMP_KEY);
+        final Long timestamp = sourceInfo.getInt64(SourceInfo.TIMESTAMP_KEY);
         return timestamp == null ? null : Instant.ofEpochMilli(timestamp);
     }
 

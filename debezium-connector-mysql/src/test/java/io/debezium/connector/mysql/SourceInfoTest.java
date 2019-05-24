@@ -26,6 +26,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import io.confluent.connect.avro.AvroData;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
+import io.debezium.relational.TableId;
 
 public class SourceInfoTest {
 
@@ -441,7 +442,7 @@ public class SourceInfoTest {
                 assertThat(rowsToSkip).isEqualTo(row + 1);
             }
             // Get the source struct for this row (always second), which should always reflect this row in this event ...
-            Struct recordSource = source.struct();
+            Struct recordSource = source.struct((TableId) null);
             assertThat(recordSource.getInt64(SourceInfo.BINLOG_POSITION_OFFSET_KEY)).isEqualTo(positionOfEvent);
             assertThat(recordSource.getInt32(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY)).isEqualTo(row);
             assertThat(recordSource.getString(SourceInfo.BINLOG_FILENAME_OFFSET_KEY)).isEqualTo(FILENAME);
@@ -478,6 +479,7 @@ public class SourceInfoTest {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .build()));
+        source.databaseName("mysql");
         source.setOffset(offset);
         return source;
     }
@@ -622,19 +624,19 @@ public class SourceInfoTest {
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setBinlogTimestampSeconds(1_024);
-        assertThat(source.struct().get("ts_ms")).isEqualTo(1_024_000L);
+        assertThat(source.struct("mysql").get("ts_ms")).isEqualTo(1_024_000L);
     }
 
     @Test
     public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.struct("mysql").getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
-        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+        assertThat(source.struct("mysql").getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     protected Document positionWithGtids(String gtids) {

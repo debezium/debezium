@@ -300,7 +300,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
     private void changeSourceToLastSnapshotRecord(SourceRecord currentRecord) {
         final Struct envelope = (Struct) currentRecord.value();
         final Struct source = (Struct) envelope.get("source");
-        if (source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null) {
+        if (source.schema().field(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null && source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null) {
             source.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, true);
         }
     }

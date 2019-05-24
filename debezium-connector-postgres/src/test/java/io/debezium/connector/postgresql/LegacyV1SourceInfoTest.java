@@ -54,7 +54,7 @@ public class LegacyV1SourceInfoTest {
 
     @Test
     public void shouldHaveTimestamp() {
-        assertThat(source.source().getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(123_456_789L);
+        assertThat(source.source().getInt64(SourceInfo.TIMESTAMP_USEC_KEY)).isEqualTo(123_456_789L);
     }
 
     @Test

@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonTimestamp;
@@ -21,7 +20,6 @@ import org.bson.types.BSONTimestamp;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.util.Collect;
 
 /**
@@ -81,7 +79,6 @@ public final class SourceInfo extends AbstractSourceInfo {
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
     private final Set<String> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final SourceInfoStructMaker<SourceInfo> structMaker;
 
     private CollectionId collectionId;
     private Position position;
@@ -130,32 +127,14 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     public SourceInfo(MongoDbConnectorConfig connectorConfig) {
-        super(Module.version(), connectorConfig.getLogicalName());
-        structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
+        super(connectorConfig);
     }
 
-    /**
-     * Get a {@link Schema} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
-     * offset} information.
-     *
-     * @return the source partition and offset {@link Schema}; never null
-     * @see #offsetStructForEvent(String, Document)
-     */
-    @Override
-    public Schema schema() {
-        return structMaker.schema();
-    }
-
-    @Override
-    protected String connector() {
-        return Module.name();
-    }
-
-    CollectionId getCollectionId() {
+    CollectionId collectionId() {
         return collectionId;
     }
 
-    Position getPosition() {
+    Position position() {
         return position;
     }
 
@@ -171,7 +150,7 @@ public final class SourceInfo extends AbstractSourceInfo {
             throw new IllegalArgumentException("Replica set name may not be null");
         }
         return sourcePartitionsByReplicaSetName.computeIfAbsent(replicaSetName, rsName -> {
-            return Collect.hashMapOf(SERVER_ID_KEY, getServerName(), REPLICA_SET_NAME, rsName);
+            return Collect.hashMapOf(SERVER_ID_KEY, serverName(), REPLICA_SET_NAME, rsName);
         });
     }
 
@@ -261,7 +240,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         this.position = (position == null) ? INITIAL_POSITION : position;
         this.collectionId = collectionId;
 
-        return structMaker.struct(this);
+        return structMaker().struct(this);
     }
 
     /**
@@ -382,5 +361,20 @@ public final class SourceInfo extends AbstractSourceInfo {
             return ((Boolean) obj).booleanValue();
         }
         return false;
+    }
+
+    @Override
+    protected long timestamp() {
+        return position().getTime() * 1_000L;
+    }
+
+    @Override
+    protected boolean snapshot() {
+        return isInitialSyncOngoing(collectionId().replicaSetName());
+    }
+
+    @Override
+    protected String database() {
+        return collectionId.dbName();
     }
 }

@@ -1021,7 +1021,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      INCONSISTENT_SCHEMA_HANDLING_MODE,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
                                                      CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER);
+                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER,
+                                                     CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -1085,7 +1086,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, GTID_NEW_CHANNEL_POSITION, BUFFER_SIZE_FOR_BINLOG_READER,
                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
-                    CommonConnectorConfig.TOMBSTONES_ON_DELETE);
+                    CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                     SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,

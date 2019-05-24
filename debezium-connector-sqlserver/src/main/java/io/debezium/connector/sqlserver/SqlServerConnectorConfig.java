@@ -239,7 +239,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             CommonConnectorConfig.MAX_QUEUE_SIZE,
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
+            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION
     );
 
     public static ConfigDef configDef() {
@@ -254,11 +255,11 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
                 RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
+                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION
         );
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE);
 
         return config;
     }

@@ -62,13 +62,13 @@ public class SourceInfoTest {
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
-                .field("ts_ms", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .field("db", Schema.STRING_SCHEMA)
+                .field("schema", Schema.STRING_SCHEMA)
+                .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("lsn", Schema.OPTIONAL_INT64_SCHEMA)
-                .field("schema", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("table", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 

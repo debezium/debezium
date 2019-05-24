@@ -6,7 +6,6 @@
 package io.debezium.connector.mongodb;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -15,9 +14,6 @@ import io.debezium.util.SchemaNameAdjuster;
 
 public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
-    public static final String TIMESTAMP = "ts_ms";
-    public static final String SNAPSHOT = "snapshot";
-    public static final String DATABASE = "db";
     public static final String COLLECTION = "collection";
 
     private final Schema schema;
@@ -26,9 +22,6 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
             .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
-            .field(TIMESTAMP, Schema.INT64_SCHEMA)
-            .field(SNAPSHOT, SchemaBuilder.bool().optional().defaultValue(false).build())
-            .field(DATABASE, Schema.STRING_SCHEMA)
             .field(COLLECTION, Schema.STRING_SCHEMA)
             .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
             .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
@@ -43,16 +36,11 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        final Struct result = super.commonStruct()
-                .put(TIMESTAMP, (long) sourceInfo.getPosition().getTime() * 1_000)
-                .put(DATABASE, sourceInfo.getCollectionId().dbName())
-                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.getCollectionId().replicaSetName())
-                .put(COLLECTION, sourceInfo.getCollectionId().name())
-                .put(SourceInfo.ORDER, sourceInfo.getPosition().getInc())
-                .put(SourceInfo.OPERATION_ID, sourceInfo.getPosition().getOperationId());
-        if (sourceInfo.isInitialSyncOngoing(sourceInfo.getCollectionId().replicaSetName())) {
-            result.put(SNAPSHOT, true);
-        }
+        final Struct result = super.commonStruct(sourceInfo)
+                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.collectionId().replicaSetName())
+                .put(COLLECTION, sourceInfo.collectionId().name())
+                .put(SourceInfo.ORDER, sourceInfo.position().getInc())
+                .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
         return result;
     }
 }

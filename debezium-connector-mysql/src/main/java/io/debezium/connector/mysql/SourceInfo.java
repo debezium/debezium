@@ -106,10 +106,7 @@ final class SourceInfo extends AbstractSourceInfo {
     public static final String BINLOG_POSITION_OFFSET_KEY = "pos";
     public static final String BINLOG_ROW_IN_EVENT_OFFSET_KEY = "row";
     public static final String TIMESTAMP_KEY = "ts_sec";
-    public static final String SNAPSHOT_KEY = "snapshot";
     public static final String THREAD_KEY = "thread";
-    public static final String DB_NAME_KEY = "db";
-    public static final String TABLE_NAME_KEY = "table";
     public static final String QUERY_KEY = "query";
     public static final String DATABASE_WHITELIST_KEY = "database_whitelist";
     public static final String DATABASE_BLACKLIST_KEY = "database_blacklist";
@@ -142,9 +139,10 @@ final class SourceInfo extends AbstractSourceInfo {
     private String tableBlacklist;
     private SourceInfoStructMaker<SourceInfo> structMaker;
     private TableId tableId;
+    private String databaseName;
 
     public SourceInfo(MySqlConnectorConfig connectorConfig) {
-        super(Module.version(), connectorConfig.getLogicalName());
+        super(connectorConfig);
         this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
 
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
@@ -294,11 +292,6 @@ final class SourceInfo extends AbstractSourceInfo {
         return structMaker.schema();
     }
 
-    @Override
-    protected String connector() {
-        return Module.name();
-    }
-
     /**
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
      * complies with the versioned source schema for the MySQL connector.
@@ -308,9 +301,9 @@ final class SourceInfo extends AbstractSourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    @Override
-    public Struct struct() {
-        return struct(null);
+    public Struct struct(String databaseName) {
+        this.databaseName = databaseName;
+        return struct((TableId) null);
     }
 
     /**
@@ -827,5 +820,24 @@ final class SourceInfo extends AbstractSourceInfo {
 
         // The binlog coordinates are the same ...
         return true;
+    }
+
+    @Override
+    protected long timestamp() {
+        return getBinlogTimestampSeconds() * 1_000;
+    }
+
+    @Override
+    protected boolean snapshot() {
+        return isLastSnapshot();
+    }
+
+    @Override
+    protected String database() {
+        return (tableId == null) ? databaseName : tableId.catalog();
+    }
+
+    void databaseName(String databaseName) {
+        this.databaseName = databaseName;
     }
 }

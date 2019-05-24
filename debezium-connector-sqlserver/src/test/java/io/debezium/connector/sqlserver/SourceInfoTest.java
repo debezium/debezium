@@ -68,14 +68,14 @@ public class SourceInfoTest {
 
     @Test
     public void timestampIsPresent() {
-        assertThat(source.struct().getInt64(SourceInfo.LOG_TIMESTAMP_KEY)).isEqualTo(3000);
+        assertThat(source.struct().getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(3000);
     }
 
     @Test
     public void tableIdIsPresent() {
-        assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.DB_NAME_KEY)).isEqualTo("c");
-        assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.SCHEMA_NAME_KEY)).isEqualTo("s");
-        assertThat(source.struct().getString(SqlServerSourceInfoStructMaker.TABLE_NAME_KEY)).isEqualTo("t");
+        assertThat(source.struct().getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("c");
+        assertThat(source.struct().getString(SourceInfo.SCHEMA_NAME_KEY)).isEqualTo("s");
+        assertThat(source.struct().getString(SourceInfo.TABLE_NAME_KEY)).isEqualTo("t");
     }
 
     @Test
@@ -85,13 +85,13 @@ public class SourceInfoTest {
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .field("db", Schema.STRING_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
-                .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("change_lsn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("commit_lsn", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("snapshot", Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .build();
 
         assertThat(source.struct().schema()).isEqualTo(schema);

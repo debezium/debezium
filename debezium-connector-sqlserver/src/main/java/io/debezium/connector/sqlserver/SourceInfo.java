@@ -7,12 +7,10 @@ package io.debezium.connector.sqlserver;
 
 import java.time.Instant;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.relational.TableId;
 
 /**
@@ -25,10 +23,8 @@ import io.debezium.relational.TableId;
 @NotThreadSafe
 public class SourceInfo extends AbstractSourceInfo {
 
-    public static final String LOG_TIMESTAMP_KEY = "ts_ms";
     public static final String CHANGE_LSN_KEY = "change_lsn";
     public static final String COMMIT_LSN_KEY = "commit_lsn";
-    public static final String SNAPSHOT_KEY = "snapshot";
 
     private Lsn changeLsn;
     private Lsn commitLsn;
@@ -36,11 +32,8 @@ public class SourceInfo extends AbstractSourceInfo {
     private Instant sourceTime;
     private TableId tableId;
 
-    private final SourceInfoStructMaker<SourceInfo> structMaker;
-
     protected SourceInfo(SqlServerConnectorConfig connectorConfig) {
-        super(Module.version(), connectorConfig.getLogicalName());
-        this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
+        super(connectorConfig);
     }
 
     /**
@@ -87,16 +80,6 @@ public class SourceInfo extends AbstractSourceInfo {
         this.snapshot = snapshot;
     }
 
-    @Override
-    protected Schema schema() {
-        return structMaker.schema();
-    }
-
-    @Override
-    protected String connector() {
-        return Module.name();
-    }
-
     public TableId getTableId() {
         return tableId;
     }
@@ -111,19 +94,33 @@ public class SourceInfo extends AbstractSourceInfo {
     /**
      * @return the coordinates encoded as a {@code Struct}
      */
-    @Override
     public Struct struct() {
-        return structMaker.struct(this);
+        return structMaker().struct(this);
     }
 
     @Override
     public String toString() {
         return "SourceInfo [" +
-                "serverName=" + getServerName() +
+                "serverName=" + serverName() +
                 ", changeLsn=" + changeLsn +
                 ", commitLsn=" + commitLsn +
                 ", snapshot=" + snapshot +
                 ", sourceTime=" + sourceTime +
                 "]";
+    }
+
+    @Override
+    protected long timestamp() {
+        return sourceTime.toEpochMilli();
+    }
+
+    @Override
+    protected boolean snapshot() {
+        return isSnapshot();
+    }
+
+    @Override
+    protected String database() {
+        return tableId.catalog();
     }
 }

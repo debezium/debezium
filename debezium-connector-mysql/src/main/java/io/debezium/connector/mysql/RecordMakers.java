@@ -354,7 +354,7 @@ public class RecordMakers {
 
     protected Struct schemaChangeRecordValue(String databaseName, String ddlStatements) {
         Struct result = new Struct(schemaChangeValueSchema);
-        result.put(Fields.SOURCE, source.struct());
+        result.put(Fields.SOURCE, source.struct(databaseName));
         result.put(Fields.DATABASE_NAME, databaseName);
         result.put(Fields.DDL_STATEMENTS, ddlStatements);
         return result;

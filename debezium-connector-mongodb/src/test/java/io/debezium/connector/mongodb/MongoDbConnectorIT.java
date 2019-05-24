@@ -362,7 +362,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         if (record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)) {
             assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
             Struct value = (Struct) record.value();
-            assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isTrue();
+            assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
         } else {
             // Only the last record in the initial sync should be marked as not being part of the initial sync ...
             assertThat(foundLast.getAndSet(true)).isFalse();
@@ -372,7 +372,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     protected void verifyNotFromInitialSync(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();
-        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     protected void verifyCreateOperation(SourceRecord record) {

@@ -45,12 +45,12 @@ public class SourceInfoTest {
         assertThat(schema.version()).isNull();
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.DATABASE).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(MongoDbSourceInfoStructMaker.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.TIMESTAMP).schema()).isEqualTo(Schema.INT64_SCHEMA);
+        assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.SNAPSHOT).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
+        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
     }
 
     @Test
@@ -100,14 +100,14 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(2);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(100_000);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
         assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     @Test
@@ -124,14 +124,14 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(0);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(0);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
         assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -156,14 +156,14 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(2);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(100_000);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
         assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isNull();
+        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     @Test
@@ -181,14 +181,14 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(0);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(0);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
         assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isEqualTo(true);
+        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -215,14 +215,14 @@ public class SourceInfoTest {
         assertThat(ts.getInc()).isEqualTo(2);
 
         Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
-        assertThat(struct.getInt64(MongoDbSourceInfoStructMaker.TIMESTAMP)).isEqualTo(100_000);
+        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(100_000);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.DATABASE)).isEqualTo("dbA");
+        assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
         assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(MongoDbSourceInfoStructMaker.SNAPSHOT)).isEqualTo(true);
+        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
     }
 
     @Test
