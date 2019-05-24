@@ -95,7 +95,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final int snapshotFetchSize;
 
-    protected CommonConnectorConfig(Configuration config, String logicalName, Integer defaultSnapshotFetchSize) {
+    protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
