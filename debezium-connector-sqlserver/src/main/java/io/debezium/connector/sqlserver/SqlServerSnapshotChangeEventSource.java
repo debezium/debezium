@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -192,7 +195,12 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
         }
     }
 
-    @Override
+    /**
+     * Generate a valid sqlserver query string for the specified table
+     *
+     * @param tableId the table to generate a query for
+     * @return a valid query string
+     */
     protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         return String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
     }
@@ -201,6 +209,29 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
     protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row) {
         ((SqlServerOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(getClock().currentTimeInMillis()));
         return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
+    }
+
+    /**
+     * Returns any SELECT overrides, if present.
+     */
+    @Override
+    protected Map<TableId, String> getSnapshotSelectOverridesByTable() {
+        String tableList = connectorConfig.snapshotSelectOverrides();
+
+        if (tableList == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
+
+        for (String table : tableList.split(",")) {
+            snapshotSelectOverridesByTable.put(
+                    TableId.parse(table),
+                    connectorConfig.snapshotSelectOverrideForTable(table)
+            );
+        }
+
+        return snapshotSelectOverridesByTable;
     }
 
     /**

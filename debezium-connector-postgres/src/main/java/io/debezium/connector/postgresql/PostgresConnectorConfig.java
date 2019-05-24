@@ -777,17 +777,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                     + "'false' (the default) omits the fields; "
                                                                     + "'true' converts the field into an implementation dependent binary representation.");
 
-    public static final Field SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE = Field.create("snapshot.select.statement.overrides")
-                                                            .withDisplayName("List of tables where the default select statement used during snapshotting should be overridden.")
-                                                            .withType(Type.STRING)
-                                                            .withWidth(Width.LONG)
-                                                            .withImportance(Importance.MEDIUM)
-                                                            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME). Select statements for the individual tables are " +
-                                                                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]'. " +
-                                                                    "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
-                                                                    "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
-
-
     public static final Field SCHEMA_REFRESH_MODE = Field.create("schema.refresh.mode")
             .withDisplayName("Schema refresh mode")
             .withEnum(SchemaRefreshMode.class, SchemaRefreshMode.COLUMNS_DIFF)
@@ -830,7 +819,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                                                     RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS);
 
     private final TemporalPrecisionMode temporalPrecisionMode;
@@ -943,10 +932,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return this.snapshotMode.getSnapshotter(getConfig());
     }
 
+    @Override
     public String snapshotSelectOverrides() {
         return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
     }
 
+    @Override
     public String snapshotSelectOverrideForTable(String table) {
         return getConfig().getString(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table);
     }
