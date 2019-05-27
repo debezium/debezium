@@ -776,6 +776,8 @@ public abstract class AbstractRecordsProducerTest {
         assertNotNull(offset.get(SourceInfo.TIMESTAMP_USEC_KEY));
         assertNotNull(offset.get(SourceInfo.LSN_KEY));
         Object snapshot = offset.get(SourceInfo.SNAPSHOT_KEY);
+
+        // TODO DBZ-1295
 //        Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
 
         if (shouldBeSnapshot) {
