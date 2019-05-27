@@ -477,7 +477,7 @@ public class SourceInfoTest {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .build()));
-        source.databaseName("mysql");
+        source.databaseEvent("mysql");
         source.setOffset(offset);
         return source;
     }
