@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.data.VerifyRecord.assertConnectSchemasAreEqual;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -241,30 +241,6 @@ public class SourceInfoTest {
         assertThat(source.sourceInfoStructForEvent("rs", event).getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
-    private String schemaToString(Schema schema) {
-        final StringBuilder s = new StringBuilder()
-                .append(schema.name())
-                .append("\n")
-                .append("type = ")
-                .append(schema.type())
-                .append("\n")
-                .append("optional = ")
-                .append(schema.isOptional())
-                .append("\n")
-                .append("default = ")
-                .append(schema.defaultValue())
-                .append("\n");
-        if (!schema.type().isPrimitive()) {
-            s.append("fields\n");
-            for (Field f: schema.fields()) {
-                s.append(f.name());
-                s.append(" = ");
-                s.append(schemaToString(f.schema()));
-            }
-        }
-        return s.toString();
-    }
-    
     @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
@@ -275,12 +251,12 @@ public class SourceInfoTest {
                 .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
                 .field("db", Schema.STRING_SCHEMA)
-                .field("collection", Schema.STRING_SCHEMA)
                 .field("rs", Schema.STRING_SCHEMA)
+                .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("h", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
-        assertThat(schemaToString(source.schema())).isEqualTo(schemaToString(schema));
-        assertThat(source.schema()).isEqualTo(schema);
+
+        assertConnectSchemasAreEqual(null, source.schema(), schema);
     }
 }
