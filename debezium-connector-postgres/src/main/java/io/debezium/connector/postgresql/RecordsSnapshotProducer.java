@@ -412,7 +412,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             return;
         }
         Schema keySchema = tableSchema.keySchema();
-        sourceInfo.update(clock().currentTimeInMicros(), tableId);
+        sourceInfo.update(clock().currentTimeAsInstant(), tableId);
         Map<String, ?> partition = sourceInfo.partition();
         Map<String, ?> offset = sourceInfo.offset();
         String topicName = topicSelector().topicNameFor(tableId);

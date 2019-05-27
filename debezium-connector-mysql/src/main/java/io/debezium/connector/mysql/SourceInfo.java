@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -129,7 +130,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private long serverId = 0;
     private long binlogTimestampSeconds = 0;
     private long threadId = -1L;
-    private Map<String, String> sourcePartition;
+    private final Map<String, String> sourcePartition;
     private boolean lastSnapshot = true;
     private boolean nextSnapshot = false;
     private String currentQuery = null;
@@ -137,7 +138,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private String databaseBlacklist;
     private String tableWhitelist;
     private String tableBlacklist;
-    private SourceInfoStructMaker<SourceInfo> structMaker;
+    private final SourceInfoStructMaker<SourceInfo> structMaker;
     private TableId tableId;
     private String databaseName;
 
@@ -823,8 +824,8 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected long timestamp() {
-        return getBinlogTimestampSeconds() * 1_000;
+    protected Instant timestamp() {
+        return Instant.ofEpochSecond(getBinlogTimestampSeconds());
     }
 
     @Override

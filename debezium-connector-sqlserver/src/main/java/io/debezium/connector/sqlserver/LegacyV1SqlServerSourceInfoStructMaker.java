@@ -42,7 +42,7 @@ public class LegacyV1SqlServerSourceInfoStructMaker extends LegacyV1AbstractSour
     public Struct struct(SourceInfo sourceInfo) {
         final Struct ret = super.commonStruct()
                 .put(SERVER_NAME_KEY, serverName)
-                .put(LOG_TIMESTAMP_KEY, sourceInfo.getSourceTime() == null ? null : sourceInfo.getSourceTime().toEpochMilli())
+                .put(LOG_TIMESTAMP_KEY, sourceInfo.timestamp() == null ? null : sourceInfo.timestamp().toEpochMilli())
                 .put(SNAPSHOT_KEY, sourceInfo.isSnapshot());
 
         if (sourceInfo.getChangeLsn() != null && sourceInfo.getChangeLsn().isAvailable()) {

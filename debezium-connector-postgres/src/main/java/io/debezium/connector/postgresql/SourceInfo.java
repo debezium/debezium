@@ -95,12 +95,12 @@ public final class SourceInfo extends AbstractSourceInfo {
     private Long lsn;
     private Long txId;
     private Long xmin;
-    private Long useconds;
+    private Instant timestamp;
     private boolean snapshot = false;
     private Boolean lastSnapshotRecord;
     private String schemaName;
     private String tableName;
-    private SourceInfoStructMaker<SourceInfo> structMaker;
+    private final SourceInfoStructMaker<SourceInfo> structMaker;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -114,7 +114,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         this.lsn = ((Number) lastStoredOffset.get(LSN_KEY)).longValue();
         this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
         this.xmin = (Long) lastStoredOffset.get(XMIN_KEY);
-        this.useconds = (Long) lastStoredOffset.get(TIMESTAMP_USEC_KEY);
+        this.timestamp = Conversions.toInstantFromMicros((Long) lastStoredOffset.get(TIMESTAMP_USEC_KEY));
         this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
         if (this.snapshot) {
             this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
@@ -141,8 +141,8 @@ public final class SourceInfo extends AbstractSourceInfo {
     public Map<String, ?> offset() {
         assert serverName() != null && dbName != null;
         Map<String, Object> result = new HashMap<>();
-        if (useconds != null) {
-            result.put(TIMESTAMP_USEC_KEY, useconds);
+        if (timestamp != null) {
+            result.put(TIMESTAMP_USEC_KEY, Conversions.toEpochMicros(timestamp));
         }
         if (txId != null) {
             result.put(TXID_KEY, txId);
@@ -161,7 +161,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     public OffsetState asOffsetState() {
-        return new OffsetState(lsn, txId, xmin, Conversions.toInstantFromMicros(useconds), isSnapshotInEffect());
+        return new OffsetState(lsn, txId, xmin, timestamp, isSnapshotInEffect());
     }
 
     /**
@@ -169,7 +169,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      *
      * @param lsn the position in the server WAL for a particular event; may be null indicating that this information is not
      * available
-     * @param commitTime the commit time (in microseconds since epoch) of the transaction that generated the event;
+     * @param commitTime the commit time of the transaction that generated the event;
      * may be null indicating that this information is not available
      * @param txId the ID of the transaction that generated the transaction; may be null if this information is not available
      * @param tableId the table that should be included in the source info; may be null
@@ -179,7 +179,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     protected SourceInfo update(Long lsn, Instant commitTime, Long txId, TableId tableId, Long xmin) {
         this.lsn = lsn;
         if (commitTime != null) {
-            this.useconds = Conversions.toEpochMicros(commitTime);
+            this.timestamp = commitTime;
         }
         this.txId = txId;
         this.xmin = xmin;
@@ -192,8 +192,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         return this;
     }
 
-    protected SourceInfo update(Long useconds, TableId tableId) {
-        this.useconds = useconds;
+    protected SourceInfo update(Instant useconds, TableId tableId) {
+        this.timestamp = useconds;
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();
         }
@@ -267,8 +267,8 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected long timestamp() {
-        return useconds / 1_000;
+    protected Instant timestamp() {
+        return timestamp;
     }
 
     @Override
@@ -294,8 +294,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         if (xmin != null) {
             sb.append(", xmin=").append(xmin);
         }
-        if (useconds != null) {
-            sb.append(", useconds=").append(useconds);
+        if (timestamp != null) {
+            sb.append(", useconds=").append(timestamp);
         }
         boolean snapshotInEffect = isSnapshotInEffect();
         sb.append(", snapshot=").append(snapshotInEffect);

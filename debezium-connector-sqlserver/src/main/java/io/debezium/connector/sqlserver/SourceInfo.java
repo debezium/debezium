@@ -65,10 +65,6 @@ public class SourceInfo extends AbstractSourceInfo {
         sourceTime = instant;
     }
 
-    public Instant getSourceTime() {
-        return sourceTime;
-    }
-
     public boolean isSnapshot() {
         return snapshot;
     }
@@ -110,8 +106,8 @@ public class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected long timestamp() {
-        return sourceTime.toEpochMilli();
+    protected Instant timestamp() {
+        return sourceTime;
     }
 
     @Override

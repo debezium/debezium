@@ -47,7 +47,7 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
                 .put(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, version)
                 .put(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, connector)
                 .put(AbstractSourceInfo.SERVER_NAME_KEY, serverName)
-                .put(AbstractSourceInfo.TIMESTAMP_KEY, sourceInfo.timestamp())
+                .put(AbstractSourceInfo.TIMESTAMP_KEY, sourceInfo.timestamp().toEpochMilli())
                 .put(AbstractSourceInfo.SNAPSHOT_KEY, sourceInfo.snapshot() ? true : null)
                 .put(AbstractSourceInfo.DATABASE_NAME_KEY, sourceInfo.database());
     }
