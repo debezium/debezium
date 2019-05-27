@@ -4,11 +4,12 @@ cache:
   - $HOME/.m2/repository
 
 env:
-  - MAVEN_CLI: '"clean install -pl debezium-connector-mysql -am -Passembly"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-postgres -am -Passembly"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-postgres -am -Passembly,wal2json-decoder"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-mongodb -am -Passembly"'
-  - MAVEN_CLI: '"clean install -pl debezium-connector-sqlserver -am -Passembly"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mongodb -am -Passembly"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-sqlserver -am -Passembly"'
 
 sudo: required
 
@@ -17,6 +18,10 @@ jdk:
 
 services:
   - docker
+
+# Do this to avoid log limit problems
+git:
+  quiet: true
 
 # First stop MySQL and PostgreSQL that run by default (see DBZ-163). Then check Docker status. Finally,
 # install Maven 3.3.9, since the Jolokia Maven plugin requires 3.2.1 or later but Travis current runs 3.1.x

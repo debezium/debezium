@@ -25,10 +25,15 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.connector.postgresql.DecoderDifferences;
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -39,6 +44,9 @@ import io.debezium.util.Metronome;
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
 public class ReplicationConnectionIT {
+
+    @Rule
+    public TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
 
     @Before
     public void before() throws Exception {
@@ -113,6 +121,7 @@ public class ReplicationConnectionIT {
     }
 
     @Test
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT, reason = "An update on a table with no primary key throws PSQLException as tables must have a PK")
     public void shouldReceiveAndDecodeIndividualChanges() throws Exception {
         // create a replication connection which should be dropped once it's closed
         try (ReplicationConnection connection = TestHelper.createForReplication("test", true)) {
@@ -241,6 +250,53 @@ public class ReplicationConnectionIT {
                                 "INSERT INTO schema2.table (b, c) VALUES('Value for schema2', now());";
             TestHelper.execute(statements);
             expectedMessagesFromStream(stream, 2);
+        }
+    }
+
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "A pgoutput specific test streaming changes, stopping connector, making downtime changes, and verifying restart picks up changes")
+    public void testHowRelationMessagesAreReceived() throws Exception {
+        TestHelper.create().dropReplicationSlot( "test" );
+
+            try (ReplicationConnection connection = TestHelper.createForReplication("test", false)) {
+                connection.initConnection();
+
+            final String statements =
+                    "CREATE TABLE t0 (pk SERIAL, val INTEGER, PRIMARY KEY (pk));" +
+                            "ALTER TABLE t0 REPLICA IDENTITY FULL;" +
+                            "INSERT INTO t0 VALUES (1,1);" +
+                            "INSERT INTO t0 VALUES (2,1);" +
+                            "INSERT INTO t0 VALUES (3,1);" +
+                            "INSERT INTO t0 VALUES (4,1);" +
+                            "INSERT INTO t0 VALUES (5,1);" +
+                            "ALTER TABLE t0 ALTER COLUMN val TYPE BIGINT;" +
+                            "ALTER TABLE t0 ADD COLUMN val2 INTEGER;" +
+                            "INSERT INTO t0 VALUES (6,1,1);" +
+                            "DROP TABLE t0;" +
+                            "CREATE TABLE t0 (pk SERIAL, val3 BIGINT, PRIMARY KEY (pk));" +
+                            "ALTER TABLE t0 REPLICA IDENTITY FULL;" +
+                            "INSERT INTO t0 VALUES (7,2);" +
+                            "INSERT INTO t0 VALUES (8,2);";
+            TestHelper.execute(statements);
+
+            try(ReplicationStream stream = connection.startStreaming()) {
+                expectedMessagesFromStream(stream, 8);
+                flushLsn(stream);
+            }
+        }
+
+        TestHelper.execute(
+                "INSERT INTO t0 VALUES (9,2);" +
+                        "INSERT INTO t0 VALUES (10,2);" +
+                        "DROP TABLE t0;" +
+                        "CREATE TABLE t0 (pk SERIAL, val3 INT, PRIMARY KEY (pk));" +
+                        "ALTER TABLE t0 REPLICA IDENTITY FULL;" +
+                        "INSERT INTO t0 VALUES (11,1);");
+
+        try (ReplicationConnection connection = TestHelper.createForReplication( "test", true)) {
+            try(ReplicationStream stream = connection.startStreaming()) {
+                expectedMessagesFromStream(stream, 3);
+            }
         }
     }
 

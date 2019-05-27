@@ -16,6 +16,7 @@ import org.postgresql.replication.PGReplicationStream;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 
@@ -110,6 +111,7 @@ public interface ReplicationConnection extends AutoCloseable {
          * Default replication settings
          */
         String DEFAULT_SLOT_NAME = "debezium";
+        String DEFAULT_PUBLICATION_NAME = "dbz_publication";
         boolean DEFAULT_DROP_SLOT_ON_CLOSE = true;
         boolean DEFAULT_EXPORT_SNAPSHOT = false;
 
@@ -121,6 +123,15 @@ public interface ReplicationConnection extends AutoCloseable {
          * @see #DEFAULT_SLOT_NAME
          */
         Builder withSlot(final String slotName);
+
+        /**
+         * Sets the publication name for the PG logical publication
+         *
+         * @param publicationName the name of the publication, may not be null.
+         * @return this instance
+         * @see #DEFAULT_PUBLICATION_NAME
+         */
+        Builder withPublication(final String publicationName);
 
         /**
          * Sets the instance for the PG logical decoding plugin
@@ -149,6 +160,14 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder statusUpdateInterval(final Duration statusUpdateInterval);
 
         Builder withTypeRegistry(TypeRegistry typeRegistry);
+
+        /**
+         * Sets the schema instance
+         *
+         * @param schema the schema, must not be null
+         * @return this instance
+         */
+        Builder withSchema(PostgresSchema schema);
 
         /**
          * Optional parameters to pass to the logical decoder when the stream starts.

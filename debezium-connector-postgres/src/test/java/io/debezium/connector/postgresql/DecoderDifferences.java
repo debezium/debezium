@@ -53,6 +53,10 @@ public class DecoderDifferences {
                 || TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.WAL2JSON_RDS_STREAMING;
     }
 
+    private static boolean pgoutput() {
+        return TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT;
+    }
+
     /**
      * wal2json plugin is not currently able to encode and parse NaN and Inf values
      *
@@ -64,12 +68,12 @@ public class DecoderDifferences {
     }
 
     /**
-     * wal2json plugin does not include toasted column in the update
+     * wal2json plugin nor pgoutput include toasted column in the update
      *
      * @author Jiri Pechanec
      *
      */
     public static boolean areToastedValuesPresentInSchema() {
-        return !wal2Json();
+        return !wal2Json() && !pgoutput();
     }
 }

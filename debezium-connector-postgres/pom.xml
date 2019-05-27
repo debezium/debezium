@@ -322,6 +322,12 @@
             </properties>
         </profile>
         <profile>
+            <id>pgoutput-decoder</id>
+            <properties>
+                <decoder.plugin.name>pgoutput</decoder.plugin.name>
+            </properties>
+        </profile>
+        <profile>
             <id>charset-8bit</id>
             <properties>
                 <postgres.system.lang>${cs_CZ.iso-8859-2}</postgres.system.lang>

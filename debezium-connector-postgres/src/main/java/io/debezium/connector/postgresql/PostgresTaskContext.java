@@ -108,6 +108,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                                     .statusUpdateInterval(config.statusUpdateInterval())
                                     .withTypeRegistry(schema.getTypeRegistry())
                                     .exportSnapshotOnCreate(exportSnapshot)
+                                    .withSchema(schema)
                                     .build();
     }
 

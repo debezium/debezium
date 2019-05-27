@@ -34,6 +34,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
@@ -320,12 +321,12 @@ public class RecordsStreamProducer extends RecordsProducer {
             ReplicationMessage.Operation operation = message.getOperation();
             switch (operation) {
                 case INSERT: {
-                    Object[] row = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    Object[] row = columnValues(message.getNewTupleList(), tableId, message.shouldSchemaBeSynchronized(), message.hasTypeMetadata());
                     generateCreateRecord(tableId, row, consumer);
                     break;
                 }
                 case UPDATE: {
-                    Object[] newRow = columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    Object[] newRow = columnValues(message.getNewTupleList(), tableId, message.shouldSchemaBeSynchronized(), message.hasTypeMetadata());
                     Object[] oldRow = columnValues(message.getOldTupleList(), tableId, false, message.hasTypeMetadata());
                     generateUpdateRecord(tableId, oldRow, newRow, consumer);
                     break;
@@ -508,10 +509,12 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         // based on the schema columns, create the values on the same position as the columns
         List<Column> schemaColumns = table.columns();
+        // based on the replication message without toasted columns for now
+        List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn)).collect(Collectors.toList());
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columns.size() < schemaColumns.size() ? schemaColumns.size() : columns.size()];
+        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
 
-        for (ReplicationMessage.Column column : columns) {
+        for (ReplicationMessage.Column column : columnsWithoutToasted) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             final String columnName = Strings.unquoteIdentifierPart(column.getName());
             final Column tableColumn = table.columnWithName(columnName);

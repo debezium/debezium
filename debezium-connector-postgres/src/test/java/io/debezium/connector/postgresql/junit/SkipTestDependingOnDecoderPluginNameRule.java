@@ -21,13 +21,13 @@ public class SkipTestDependingOnDecoderPluginNameRule extends AnnotationBasedTes
     public Statement apply(Statement base, Description description) {
         SkipWhenDecoderPluginNameIs skipHasName = hasAnnotation(description, SkipWhenDecoderPluginNameIs.class);
         if (skipHasName != null && skipHasName.value().isEqualTo(pluginName)) {
-            String reasonForSkipping = "Decoder plugin name is " + skipHasName.value();
+            String reasonForSkipping = "Decoder plugin name is " + skipHasName.value() + System.lineSeparator() + skipHasName.reason();
             return emptyStatement(reasonForSkipping, description);
         }
 
         SkipWhenDecoderPluginNameIsNot skipNameIsNot = hasAnnotation(description, SkipWhenDecoderPluginNameIsNot.class);
         if (skipNameIsNot != null && skipNameIsNot.value().isNotEqualTo(pluginName)) {
-            String reasonForSkipping = "Decoder plugin name is not " + skipNameIsNot.value();
+            String reasonForSkipping = "Decoder plugin name is not " + skipNameIsNot.value() + System.lineSeparator() + skipNameIsNot.reason();
             return emptyStatement(reasonForSkipping, description);
         }
 

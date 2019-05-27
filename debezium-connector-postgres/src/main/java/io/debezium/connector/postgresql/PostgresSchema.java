@@ -51,6 +51,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private final TypeRegistry typeRegistry;
 
     private final Map<TableId, List<String>> tableIdToToastableColumns;
+    private final Map<Integer, TableId> relationIdToTableId;
     private final boolean readToastableColumns;
 
     /**
@@ -66,6 +67,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         this.filters = new Filters(config);
         this.typeRegistry = typeRegistry;
         this.tableIdToToastableColumns = new HashMap<>();
+        this.relationIdToTableId = new HashMap<>();
         this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
     }
 
@@ -233,5 +235,43 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     public List<String> getToastableColumnsForTableId(TableId tableId) {
         return tableIdToToastableColumns.getOrDefault(tableId, Collections.emptyList());
+    }
+
+    /**
+     * Applies schema changes for the specified table.
+     *
+     * @param relationId the postgres relation unique identifier for the table
+     * @param table externally constructed table, typically from the decoder; must not be null
+     */
+    public void applySchemaChangesForTable(int relationId, Table table) {
+        assert table != null;
+
+        if (isFilteredOut(table.id())) {
+            LOGGER.trace("Skipping schema refresh for table '{}' with relation '{}' as table is filtered", table.id(), relationId);
+            return;
+        }
+
+        relationIdToTableId.put(relationId, table.id());
+        refresh(table);
+    }
+
+    /**
+     * Resolve a {@link Table} based on a supplied table relation unique identifier.
+     * <p>
+     * This implementation relies on a prior call to {@link #applySchemaChangesForTable(int, Table)} to have
+     * applied schema changes from a replication stream with the {@code relationId} for the relationship to exist
+     * and be capable of lookup.
+     *
+     * @param relationId the unique table relation identifier
+     * @return the resolved table or null
+     */
+    public Table tableFor(int relationId) {
+        TableId tableId = relationIdToTableId.get(relationId);
+        if (tableId == null) {
+            LOGGER.debug("Relation '{}' is unknown, cannot resolve to table", relationId);
+            return null;
+        }
+        LOGGER.debug("Relation '{}' resolved to table '{}'", relationId, tableId);
+        return tableFor(tableId);
     }
 }

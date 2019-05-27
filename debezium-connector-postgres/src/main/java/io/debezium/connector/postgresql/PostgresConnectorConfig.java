@@ -23,7 +23,9 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.postgresql.connection.MessageDecoder;
+import io.debezium.connector.postgresql.connection.MessageDecoderConfig;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
 import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
@@ -278,9 +280,20 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     public enum LogicalDecoder implements EnumeratedValue {
+        PGOUTPUT("pgoutput") {
+            @Override
+            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
+                return new PgOutputMessageDecoder(config);
+            }
+
+            @Override
+            public String getPostgresPluginName() {
+                return getValue();
+            }
+        },
         DECODERBUFS("decoderbufs") {
             @Override
-            public MessageDecoder messageDecoder() {
+            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
                 return new PgProtoMessageDecoder();
             }
 
@@ -291,7 +304,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON_STREAMING("wal2json_streaming") {
             @Override
-            public MessageDecoder messageDecoder() {
+            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
                 return new StreamingWal2JsonMessageDecoder();
             }
 
@@ -302,7 +315,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
-            public MessageDecoder messageDecoder() {
+            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
                 return new StreamingWal2JsonMessageDecoder();
             }
 
@@ -318,7 +331,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON("wal2json") {
             @Override
-            public MessageDecoder messageDecoder() {
+            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
                 return new NonStreamingWal2JsonMessageDecoder();
             }
 
@@ -329,7 +342,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         },
         WAL2JSON_RDS("wal2json_rds") {
             @Override
-            public MessageDecoder messageDecoder() {
+            public MessageDecoder messageDecoder(MessageDecoderConfig config) {
                 return new NonStreamingWal2JsonMessageDecoder();
             }
 
@@ -350,7 +363,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             this.decoderName = decoderName;
         }
 
-        public abstract MessageDecoder messageDecoder();
+        public abstract MessageDecoder messageDecoder(MessageDecoderConfig config);
 
         public boolean forceRds() {
             return false;
@@ -453,6 +466,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                 "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                                                                 "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field PUBLICATION_NAME = Field.create("publication.name")
+                                                      .withDisplayName("Publication")
+                                                      .withType(Type.STRING)
+                                                      .withWidth(Width.MEDIUM)
+                                                      .withImportance(Importance.MEDIUM)
+                                                      .withDefault(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME)
+                                                      .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin." +
+                                                                       "Defaults to 'dbz_publication'");
 
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
                                                         .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
@@ -738,7 +759,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, STREAM_PARAMS,
+    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
                                                      CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -799,6 +820,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected boolean dropSlotOnStop() {
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
+    }
+
+    protected String publicationName() {
+        return getConfig().getString(PUBLICATION_NAME);
     }
 
     protected String streamParams() {
@@ -877,7 +902,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "Postgres", SLOT_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
+        Field.group(config, "Postgres", SLOT_NAME, PUBLICATION_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                     DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
