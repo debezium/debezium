@@ -19,9 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values
@@ -41,90 +41,9 @@ import io.debezium.data.Envelope;
  */
 public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    final static String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
-
-    public static enum DeleteHandling implements EnumeratedValue {
-        DROP("drop"),
-        REWRITE("rewrite"),
-        NONE("none");
-
-        private final String value;
-
-        private DeleteHandling(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static DeleteHandling parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (DeleteHandling option : DeleteHandling.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static DeleteHandling parse(String value, String defaultValue) {
-            DeleteHandling mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
     private static final String ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
-    private static final String DELETED_FIELD = "__deleted!";
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-    private static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
-            .withDisplayName("Drop tombstones")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(true)
-            .withDescription("Debezium by default generates a tombstone record to enable Kafka compaction after "
-                    + "a delete record was generated. This record is usually filtered out to avoid duplicates "
-                    + "as a delete record is converted to a tombstone record, too");
 
-    private static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
-            .withDisplayName("Handle delete records")
-            .withEnum(DeleteHandling.class, DeleteHandling.DROP)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("How to handle delete records. Options are: "
-                    + "none - records are passed,"
-                    + "drop - records are removed (the default),"
-                    + "rewrite - __deleted field is added to records.");
-
-    private static final Field OPERATION_HEADER = Field.create("operation.header")
-            .withDisplayName("Adds the debezium operation into the message header")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("Adds the operation {@link FieldName#OPERATION operation} as a header." +
-                    "Its key is '" + DEBEZIUM_OPERATION_HEADER_KEY +"'");
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
 
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
@@ -137,15 +56,15 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     @Override
     public void configure(final Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
-        final Field.Set configFields = Field.setOf(DROP_TOMBSTONES, HANDLE_DELETES);
-        if (!config.validateAndRecord(configFields, logger::error)) {
+        final Field.Set configFields = Field.setOf(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES);
+        if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
-        dropTombstones = config.getBoolean(DROP_TOMBSTONES);
-        handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
+        dropTombstones = config.getBoolean(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
+        handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
 
-        addOperationHeader = config.getBoolean(OPERATION_HEADER);
+        addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
 
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
@@ -156,12 +75,12 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         afterDelegate.configure(delegateConfig);
 
         delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", DELETED_FIELD);
+        delegateConfig.put("static.field", ExtractNewRecordStateConfigDefinition.DELETED_FIELD);
         delegateConfig.put("static.value", "true");
         removedDelegate.configure(delegateConfig);
 
         delegateConfig = new HashMap<>();
-        delegateConfig.put("static.field", DELETED_FIELD);
+        delegateConfig.put("static.field", ExtractNewRecordStateConfigDefinition.DELETED_FIELD);
         delegateConfig.put("static.value", "false");
         updatedDelegate.configure(delegateConfig);
     }
@@ -171,12 +90,12 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         Envelope.Operation operation;
         if (record.value() == null) {
             if (dropTombstones) {
-                logger.trace("Tombstone {} arrived and requested to be dropped", record.key());
+                LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
                 return null;
             }
             operation = Envelope.Operation.DELETE;
             if (addOperationHeader) {
-                record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, operation.toString());
+                record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, operation.toString());
             }
             return record;
         }
@@ -186,16 +105,16 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             operation = Envelope.Operation.forCode(operationString);
 
             if (operationString.isEmpty() || operation == null) {
-                logger.warn("Unknown operation thus unable to add the operation header into the message");
+                LOGGER.warn("Unknown operation thus unable to add the operation header into the message");
             } else {
-                record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, operation.code());
+                record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, operation.code());
             }
         }
 
         if (record.valueSchema() == null ||
                 record.valueSchema().name() == null ||
                 !record.valueSchema().name().endsWith(ENVELOPE_SCHEMA_NAME_SUFFIX)) {
-            logger.warn("Expected Envelope for transformation, passing it unchanged");
+            LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
             return record;
         }
         final R newRecord = afterDelegate.apply(record);
@@ -203,10 +122,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             // Handling delete records
             switch (handleDeletes) {
                 case DROP:
-                    logger.trace("Delete message {} requested to be dropped", record.key());
+                    LOGGER.trace("Delete message {} requested to be dropped", record.key());
                     return null;
                 case REWRITE:
-                    logger.trace("Delete message {} requested to be rewritten", record.key());
+                    LOGGER.trace("Delete message {} requested to be rewritten", record.key());
                     final R oldRecord = beforeDelegate.apply(record);
                     return removedDelegate.apply(oldRecord);
                 default:
@@ -216,7 +135,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             // Handling insert and update records
             switch (handleDeletes) {
                 case REWRITE:
-                    logger.trace("Insert/update message {} requested to be rewritten", record.key());
+                    LOGGER.trace("Insert/update message {} requested to be rewritten", record.key());
                     return updatedDelegate.apply(newRecord);
                 default:
                     return newRecord;
@@ -227,7 +146,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, DROP_TOMBSTONES, HANDLE_DELETES, OPERATION_HEADER);
+        Field.group(config, null, ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES, ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
         return config;
     }
 
