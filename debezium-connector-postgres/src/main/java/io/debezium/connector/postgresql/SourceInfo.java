@@ -79,14 +79,10 @@ import io.debezium.time.Conversions;
 public final class SourceInfo extends AbstractSourceInfo {
 
     public static final String SERVER_PARTITION_KEY = "server";
-    public static final String DB_NAME_KEY = "db";
     public static final String TIMESTAMP_USEC_KEY = "ts_usec";
     public static final String TXID_KEY = "txId";
     public static final String XMIN_KEY = "xmin";
     public static final String LSN_KEY = "lsn";
-    public static final String SCHEMA_NAME_KEY = "schema";
-    public static final String TABLE_NAME_KEY = "table";
-    public static final String SNAPSHOT_KEY = "snapshot";
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
     private final String dbName;

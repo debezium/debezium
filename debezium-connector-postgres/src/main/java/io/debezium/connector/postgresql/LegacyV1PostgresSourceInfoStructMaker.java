@@ -22,7 +22,7 @@ public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourc
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.postgresql.Source")
                 .field(SourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(SourceInfo.DB_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(SourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.TIMESTAMP_USEC_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.TXID_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
@@ -48,7 +48,7 @@ public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourc
 
         Struct result = super.commonStruct();
         result.put(SourceInfo.SERVER_NAME_KEY, serverName);
-        result.put(SourceInfo.DB_NAME_KEY, sourceInfo.database());
+        result.put(SourceInfo.DATABASE_NAME_KEY, sourceInfo.database());
         result.put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.schemaName());
         result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tableName());
         // use the offset information without the snapshot part (see below)
