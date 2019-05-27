@@ -12,7 +12,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 public class MySqlSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
-    public static final String TIMESTAMP_KEY = "ts_ms";
 
     private final Schema schema;
 

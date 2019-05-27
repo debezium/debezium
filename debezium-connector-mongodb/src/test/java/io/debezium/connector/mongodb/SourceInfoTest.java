@@ -46,7 +46,7 @@ public class SourceInfoTest {
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(MongoDbSourceInfoStructMaker.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
@@ -104,7 +104,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
@@ -128,7 +128,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
@@ -160,7 +160,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
@@ -185,7 +185,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
@@ -219,7 +219,7 @@ public class SourceInfoTest {
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("dbA");
-        assertThat(struct.getString(MongoDbSourceInfoStructMaker.COLLECTION)).isEqualTo("collectA");
+        assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);

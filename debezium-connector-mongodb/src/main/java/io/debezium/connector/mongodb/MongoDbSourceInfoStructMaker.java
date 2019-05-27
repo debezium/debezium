@@ -14,15 +14,13 @@ import io.debezium.util.SchemaNameAdjuster;
 
 public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
-    public static final String COLLECTION = "collection";
-
     private final Schema schema;
 
     public MongoDbSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
             .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
-            .field(COLLECTION, Schema.STRING_SCHEMA)
+            .field(SourceInfo.COLLECTION, Schema.STRING_SCHEMA)
             .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
             .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
             .field(SourceInfo.OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
@@ -38,7 +36,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
     public Struct struct(SourceInfo sourceInfo) {
         final Struct result = super.commonStruct(sourceInfo)
                 .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.collectionId().replicaSetName())
-                .put(COLLECTION, sourceInfo.collectionId().name())
+                .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc())
                 .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
         return result;
