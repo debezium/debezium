@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
-import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.data.VerifyRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -18,14 +18,14 @@ import java.util.Arrays;
 import static org.fest.assertions.Assertions.assertThat;
 
 /**
- * Integration test for {@link UnwrapFromMongoDbEnvelope}.
+ * Integration test for {@link ExtractNewDocumentState}.
  * <p>
  * This subset of tests cover the Array Update Operator as in the official documentation
  * {@see https://docs.mongodb.com/v3.6/reference/operator/update-array/#update-operators}
  *
  * @author Renato Mefi
  */
-public class UnwrapFromMongoDbEnvelopeUpdateArrayOperatorTestIT extends AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT {
+public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractNewDocumentStateUpdateOperatorsTestIT {
 
     /**
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/addToSet/#up._S_addToSet">MongoDB operator array update $addToSet</a>

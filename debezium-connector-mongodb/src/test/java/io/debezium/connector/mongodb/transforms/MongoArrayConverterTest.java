@@ -18,7 +18,7 @@ import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope.ArrayEncoding;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 
 /**
  * Unit test for {@code MongoDataConverter} that verifies array types.

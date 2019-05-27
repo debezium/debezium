@@ -31,12 +31,12 @@ import static org.junit.Assert.fail;
  *
  * @author Renato Mefi
  */
-public abstract class AbstractUnwrapFromMongoDbEnvelopeTestIT extends AbstractConnectorTest {
+public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConnectorTest {
 
     protected static final String DB_NAME = "transform_operations";
     private MongoDbTaskContext context;
 
-    protected UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
+    protected ExtractNewDocumentState<SourceRecord> transformation;
 
     protected abstract String getCollectionName();
 
@@ -51,7 +51,7 @@ public abstract class AbstractUnwrapFromMongoDbEnvelopeTestIT extends AbstractCo
         stopConnector();
         initializeConnectorTestFramework();
 
-        transformation = new UnwrapFromMongoDbEnvelope<>();
+        transformation = new ExtractNewDocumentState<>();
         transformation.configure(Collections.emptyMap());
 
         // Use the DB configuration to define the connector's configuration ...

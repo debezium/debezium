@@ -15,7 +15,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.data.Envelope;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -35,18 +34,19 @@ import io.debezium.connector.mongodb.MongoDbTopicSelector;
 import io.debezium.connector.mongodb.RecordMakers;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.connector.mongodb.SourceInfo;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Collect;
 
 /**
- * Unit test for {@link UnwrapFromMongoDbEnvelope}. It uses {@link RecordMakers}
+ * Unit test for {@link ExtractNewDocumentState}. It uses {@link RecordMakers}
  * to assemble source records as the connector would emit them and feeds them to
  * the SMT.
  *
  * @author Gunnar Morling
  */
-public class UnwrapFromMongoDbEnvelopeTest {
+public class ExtractNewDocumentStateTest {
 
     private static final String SERVER_NAME = "serverX";
     private static final String FLATTEN_STRUCT = "flatten.struct";
@@ -61,7 +61,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
     private TopicSelector<CollectionId> topicSelector;
     private List<SourceRecord> produced;
 
-    private UnwrapFromMongoDbEnvelope<SourceRecord> transformation;
+    private ExtractNewDocumentState<SourceRecord> transformation;
 
     @Before
     public void setup() {
@@ -71,7 +71,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
-        transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
+        transformation = new ExtractNewDocumentState<SourceRecord>();
         transformation.configure(Collections.singletonMap("array.encoding", "array"));
     }
 
@@ -110,7 +110,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is insert
-        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
 
@@ -210,7 +210,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is update
-        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.UPDATE.code());
 
@@ -386,7 +386,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(key.get("id")).isEqualTo(objId.toString());
 
         // then assert operation header is delete
-        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
 
@@ -526,7 +526,7 @@ public class UnwrapFromMongoDbEnvelopeTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is delete
-        Iterator<Header> operationHeader = transformed.headers().allWithName(transformation.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
 
@@ -775,5 +775,70 @@ public class UnwrapFromMongoDbEnvelopeTest {
         assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
         assertThat(value.schema().fields()).hasSize(4);
+    }
+
+
+    @Test
+    @FixFor("DBZ-677")
+    public void canUseDeprecatedSmt() throws InterruptedException {
+        transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
+        transformation.configure(Collections.singletonMap("array.encoding", "array"));
+
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // given
+        Document event = new Document().append("o", obj)
+                                       .append("ns", "dbA.c1")
+                                       .append("ts", ts)
+                                       .append("h", Long.valueOf(12345678))
+                                       .append("op", "i");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        transformation.configure(props);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+
+        // then assert operation header is insert
+        Iterator<Header> operationHeader = transformed.headers().allWithName(UnwrapFromMongoDbEnvelope.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
+
+        // acquire key and value Structs
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema().name()).isEqualTo("serverX.dbA.c1");
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("phone")).isEqualTo(123L);
+        assertThat(value.get("active")).isEqualTo(true);
+        assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+        assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build());
+        assertThat(value.schema().fields()).hasSize(5);
     }
 }

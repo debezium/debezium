@@ -7,7 +7,7 @@ package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
 import com.mongodb.MongoClient;
 import com.mongodb.client.model.UpdateOptions;
-import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.data.VerifyRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -21,14 +21,14 @@ import java.util.function.Consumer;
 import static org.fest.assertions.Assertions.assertThat;
 
 /**
- * Integration test for {@link UnwrapFromMongoDbEnvelope}.
+ * Integration test for {@link ExtractNewDocumentState}.
  * <p>
  * This subset of tests cover the Field Update Operator as in the official documentation
  * {@see https://docs.mongodb.com/v3.6/reference/operator/update-field/#field-update-operators}
  *
  * @author Renato Mefi
  */
-public class UnwrapFromMongoDbEnvelopeUpdateFieldOperatorTestIT extends AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT {
+public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractExtractNewDocumentStateUpdateOperatorsTestIT {
 
     /**
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/inc/#up._S_inc">MongoDB operator update $inc</a>
@@ -142,8 +142,8 @@ public class UnwrapFromMongoDbEnvelopeUpdateFieldOperatorTestIT extends Abstract
     /**
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/set/#up._S_set">MongoDB operator update $set</a>
      * For more extensive tests for the $set operator please check:
-     * {@link io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelopeTest}
-     * {@link io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelopeTestIT}
+     * {@link io.debezium.connector.mongodb.transforms.ExtractNewDocumentStateTest}
+     * {@link io.debezium.connector.mongodb.transforms.ExtractNewDocumentStateTestIT}
      */
     @Test
     public void shouldTransformOperationSet() throws InterruptedException {

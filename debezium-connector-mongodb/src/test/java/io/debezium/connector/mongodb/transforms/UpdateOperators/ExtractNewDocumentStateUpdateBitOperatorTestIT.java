@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
-import io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
 import io.debezium.data.VerifyRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -15,14 +15,14 @@ import org.junit.Test;
 import static org.fest.assertions.Assertions.assertThat;
 
 /**
- * Integration test for {@link UnwrapFromMongoDbEnvelope}.
+ * Integration test for {@link ExtractNewDocumentState}.
  * <p>
  * This subset of tests cover the Bitwise Update Operator as in the official documentation
  * {@see https://docs.mongodb.com/v3.6/reference/operator/update/bit/#bit}
  *
  * @author Renato Mefi
  */
-public class UnwrapFromMongoDbEnvelopeUpdateBitOperatorTestIT extends AbstractUnwrapFromMongoDbEnvelopeUpdateOperatorsTestIT {
+public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtractNewDocumentStateUpdateOperatorsTestIT {
 
     /**
      * @see <a href="https://docs.mongodb.com/v3.6/reference/operator/update/bit/#bitwise-and">MongoDB operator update $bit AND</a>
