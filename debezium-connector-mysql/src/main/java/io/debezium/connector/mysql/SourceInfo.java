@@ -293,32 +293,28 @@ final class SourceInfo extends AbstractSourceInfo {
         return structMaker.schema();
     }
 
-    /**
-     * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
-     * complies with the versioned source schema for the MySQL connector.
-     * <p>
-     * This method should always be called after {@link #offsetForRow(int, int)}.
-     *
-     * @return the source partition and offset {@link Struct}; never null
-     * @see #schema()
-     */
-    public Struct struct(String databaseName) {
+    public void databaseEvent(String databaseName) {
         this.databaseName = databaseName;
-        return struct((TableId) null);
+    }
+
+    public void tableEvent(TableId tableId) {
+        this.tableId = tableId;
     }
 
     /**
      * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
      * complies with the versioned source schema for the MySQL connector.
+     *
+     * <p>
+     * Either {@link #databaseEvent(String)} or {@link #tableEvent(TableId)} should be called before this method.
+
      * <p>
      * This method should always be called after {@link #offsetForRow(int, int)}.
      *
-     * @param tableId the table that should be included in the struct; may be null
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public Struct struct(TableId tableId) {
-        this.tableId = tableId;
+    public Struct struct() {
         return structMaker.struct(this);
     }
 
