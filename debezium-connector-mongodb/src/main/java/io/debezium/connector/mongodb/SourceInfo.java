@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -364,8 +365,8 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected long timestamp() {
-        return position().getTime() * 1_000L;
+    protected Instant timestamp() {
+        return Instant.ofEpochSecond(position().getTime());
     }
 
     @Override

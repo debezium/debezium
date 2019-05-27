@@ -5,6 +5,8 @@
  */
 package io.debezium.connector;
 
+import java.time.Instant;
+
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -43,10 +45,11 @@ public abstract class AbstractSourceInfo {
     protected SourceInfoStructMaker<AbstractSourceInfo> structMaker() {
         return (SourceInfoStructMaker<AbstractSourceInfo>) config.getSourceInfoStructMaker(this.getClass());
     }
+
     /**
-     * @return timestamp in milliseconds
+     * @return timestamp of the event
      */
-    protected abstract long timestamp();
+    protected abstract Instant timestamp();
 
     /**
      * @return true if event is from snapshot

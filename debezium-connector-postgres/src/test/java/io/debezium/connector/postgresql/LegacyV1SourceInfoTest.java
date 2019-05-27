@@ -16,6 +16,7 @@ import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
+import io.debezium.time.Conversions;
 
 /**
  * @author Jiri Pechanec
@@ -33,7 +34,7 @@ public class LegacyV1SourceInfoTest {
                 .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
                 .with(PostgresConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
                 .build()));
-        source.update(123_456_789L, new TableId("catalogNameX", "schemaNameX", "tableNameX"));
+        source.update(Conversions.toInstantFromMicros(123_456_789L), new TableId("catalogNameX", "schemaNameX", "tableNameX"));
     }
 
     @Test

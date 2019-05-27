@@ -15,6 +15,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
+import io.debezium.time.Conversions;
 
 /**
  * @author Jiri Pechanec
@@ -31,7 +32,7 @@ public class SourceInfoTest {
                 .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
                 .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
                 .build()));
-        source.update(123_456_789L, new TableId("catalogNameX", "schemaNameX", "tableNameX"));
+        source.update(Conversions.toInstantFromMicros(123_456_789L), new TableId("catalogNameX", "schemaNameX", "tableNameX"));
     }
 
     @Test
