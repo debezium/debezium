@@ -15,8 +15,6 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -479,8 +477,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return null;
         }
     }
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorConfig.class);
 
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
