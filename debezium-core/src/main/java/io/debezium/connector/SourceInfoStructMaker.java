@@ -10,7 +10,7 @@ import org.apache.kafka.connect.data.Struct;
 
 /**
  * Converts the connector SourceInfo into publicly visible source field of the message.
- * It is expected that when the connector SourceInfo changes then a legacy class will be created
+ * It is expected that when the connector SourceInfo schema changes then a legacy class will be created
  * that could be enable in connector config to provide old format of the source.
  *
  * @author Jiri Pechanec

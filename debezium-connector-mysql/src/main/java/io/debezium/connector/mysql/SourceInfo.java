@@ -144,7 +144,7 @@ final class SourceInfo extends AbstractSourceInfo {
 
     public SourceInfo(MySqlConnectorConfig connectorConfig) {
         super(connectorConfig);
-        this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
+        this.structMaker = connectorConfig.getSourceInfoStructMaker();
 
         sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
     }

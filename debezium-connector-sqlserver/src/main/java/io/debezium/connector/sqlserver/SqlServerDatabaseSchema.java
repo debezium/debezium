@@ -33,7 +33,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                 new TableSchemaBuilder(
                         new SqlServerValueConverters(connectorConfig.getDecimalMode()),
                         schemaNameAdjuster,
-                        connectorConfig.getSourceInfoStructMaker(SourceInfo.class).schema()
+                        connectorConfig.getSourceInfoStructMaker().schema()
                 ),
                 false);
     }

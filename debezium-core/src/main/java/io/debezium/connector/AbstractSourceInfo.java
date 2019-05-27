@@ -38,12 +38,11 @@ public abstract class AbstractSourceInfo {
      * {@link #schemaBuilder()} to add all shared fields to their schema.
      */
     public Schema schema() {
-        return config.getSourceInfoStructMaker(this.getClass()).schema();
+        return config.getSourceInfoStructMaker().schema();
     }
 
-    @SuppressWarnings("unchecked")
     protected SourceInfoStructMaker<AbstractSourceInfo> structMaker() {
-        return (SourceInfoStructMaker<AbstractSourceInfo>) config.getSourceInfoStructMaker(this.getClass());
+        return config.getSourceInfoStructMaker();
     }
 
     /**

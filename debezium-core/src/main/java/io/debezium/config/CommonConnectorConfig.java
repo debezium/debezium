@@ -140,7 +140,7 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field SOURCE_STRUCT_MAKER_VERSION = Field.create("source.struct.make.version")
+    public static final Field SOURCE_STRUCT_MAKER_VERSION = Field.create("source.struct.version")
             .withDisplayName("Source struct maker version")
             .withEnum(Version.class, Version.V2)
             .withWidth(Width.MEDIUM)
@@ -213,7 +213,7 @@ public abstract class CommonConnectorConfig {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker(Class<T> sourceInfoClass) {
+    public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker() {
         return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
     }
 
@@ -244,5 +244,8 @@ public abstract class CommonConnectorConfig {
         return 0;
     }
 
-    protected abstract SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version);
+    /**
+     * Returns the connector-specific {@link SourceInfoStructMaker} based on the given configuration.
+     */
+    protected abstract SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version);
 }

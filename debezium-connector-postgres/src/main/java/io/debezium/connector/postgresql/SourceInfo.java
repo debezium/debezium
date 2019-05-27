@@ -107,7 +107,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         this.dbName = connectorConfig.databaseName();
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
-        this.structMaker = connectorConfig.getSourceInfoStructMaker(SourceInfo.class);
+        this.structMaker = connectorConfig.getSourceInfoStructMaker();
     }
 
     protected void load(Map<String, Object> lastStoredOffset) {
@@ -192,8 +192,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         return this;
     }
 
-    protected SourceInfo update(Instant useconds, TableId tableId) {
-        this.timestamp = useconds;
+    protected SourceInfo update(Instant timestamp, TableId tableId) {
+        this.timestamp = timestamp;
         if (tableId != null && tableId.schema() != null) {
             this.schemaName = tableId.schema();
         }
@@ -295,7 +295,7 @@ public final class SourceInfo extends AbstractSourceInfo {
             sb.append(", xmin=").append(xmin);
         }
         if (timestamp != null) {
-            sb.append(", useconds=").append(timestamp);
+            sb.append(", timestamp=").append(timestamp);
         }
         boolean snapshotInEffect = isSnapshotInEffect();
         sb.append(", snapshot=").append(snapshotInEffect);
