@@ -73,6 +73,7 @@ public final class SourceInfo extends AbstractSourceInfo {
     public static final String ORDER = "ord";
     public static final String OPERATION_ID = "h";
     public static final String INITIAL_SYNC = "initsync";
+    public static final String COLLECTION = "collection";
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null);
