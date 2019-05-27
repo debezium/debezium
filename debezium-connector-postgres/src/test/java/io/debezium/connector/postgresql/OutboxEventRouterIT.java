@@ -13,6 +13,7 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -92,21 +93,12 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     }
 
     @Before
-    public void beforeEach() {
+    public void beforeEach() throws InterruptedException {
         outboxEventRouter = new EventRouter<>();
         outboxEventRouter.configure(Collections.emptyMap());
 
         TestHelper.execute(SETUP_OUTBOX_SCHEMA);
         TestHelper.execute(SETUP_OUTOBOX_TABLE);
-
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "outboxsmtit")
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "outboxsmtit\\.outbox");
-        start(PostgresConnector.class, configBuilder.build());
-
-        assertConnectorIsRunning();
     }
 
     @After
@@ -118,6 +110,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
     @Test
     public void shouldConsumeRecordsFromInsert() throws Exception {
+        startConnectorWithInitialSnapshotRecord();
+
         TestHelper.execute(createEventInsert(
                 UUID.fromString("59a42efd-b015-44a9-9dde-cb36d9002425"),
                 "UserCreated",
@@ -145,6 +139,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
     @Test
     public void shouldRespectJsonFormatAsString() throws Exception {
+        startConnectorWithInitialSnapshotRecord();
+
         TestHelper.execute(createEventInsert(
                 UUID.fromString("f9171eb6-19f3-4579-9206-0e179d2ebad7"),
                 "UserCreated",
@@ -167,6 +163,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
     @Test
     public void shouldSupportAllFeatures() throws Exception {
+        startConnectorWithNoSnapshot();
+
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put("table.field.event.schema.version", "version");
@@ -221,7 +219,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         Headers headers = eventRouted.headers();
         assertThat(headers.size()).isEqualTo(2);
         Header headerId = headers.lastWithName("id");
-        assertThat(headerId.schema()).isEqualTo(Uuid.schema());
+        assertThat(headerId.schema()).isEqualTo(Uuid.builder().build());
         assertThat(headerId.value()).isEqualTo("f9171eb6-19f3-4579-9206-0e179d2ebad7");
         Header headerBool = headers.lastWithName("somebooltype");
         assertThat(headerBool.schema()).isEqualTo(SchemaBuilder.BOOLEAN_SCHEMA);
@@ -243,6 +241,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1320")
     public void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
+        startConnectorWithNoSnapshot();
+
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put("table.field.event.schema.version", "version");
@@ -305,6 +305,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1320")
     public void shouldProduceTombstoneEventForNullPayload() throws Exception {
+        startConnectorWithNoSnapshot();
+
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put("table.field.event.schema.version", "version");
@@ -366,6 +368,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-1320")
     public void shouldProduceTombstoneEventForEmptyPayload() throws Exception {
+        startConnectorWithNoSnapshot();
+
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put("route.tombstone.on.empty.payload", "true");
@@ -405,5 +409,40 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         // Validate message body
         assertThat(eventRouted.value()).isNull();
+    }
+
+    private void startConnectorWithInitialSnapshotRecord() throws Exception {
+        TestHelper.execute(createEventInsert(
+                UUID.fromString("70f52ae3-f671-4bac-ae62-1b9be6e73700"),
+                "UserCreated",
+                "User",
+                "10711faf",
+                "{}",
+                ""
+        ));
+
+        Configuration.Builder configBuilder = getConfigurationBuilder(SnapshotMode.INITIAL);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(1);
+
+        List<SourceRecord> recordsFromOutbox = snapshotRecords.recordsForTopic(topicName("outboxsmtit.outbox"));
+        assertThat(recordsFromOutbox.size()).isEqualTo(1);
+    }
+
+    private void startConnectorWithNoSnapshot() {
+        Configuration.Builder configBuilder = getConfigurationBuilder(SnapshotMode.NEVER);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+    }
+
+    private static Configuration.Builder getConfigurationBuilder(SnapshotMode snapshotMode) {
+        return TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, snapshotMode.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "outboxsmtit")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "outboxsmtit\\.outbox");
     }
 }

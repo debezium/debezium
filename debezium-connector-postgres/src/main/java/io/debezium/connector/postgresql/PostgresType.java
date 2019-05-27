@@ -125,6 +125,14 @@ public class PostgresType {
     }
 
     /**
+     * Get the underlying postgres type information object
+     * @return the type information object; may be null
+     */
+    public TypeInfo getTypeInfo() {
+        return typeInfo;
+    }
+
+    /**
      * @param modifier - type modifier coming from decoder
      * @return scale of the type based on the modifier
      */

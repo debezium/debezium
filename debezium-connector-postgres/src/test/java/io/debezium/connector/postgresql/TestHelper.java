@@ -76,12 +76,14 @@ public final class TestHelper {
      */
     public static ReplicationConnection createForReplication(String slotName, boolean dropOnClose) throws SQLException {
         final PostgresConnectorConfig.LogicalDecoder plugin = decoderPlugin();
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
         return ReplicationConnection.builder(defaultJdbcConfig())
                                     .withPlugin(plugin)
                                     .withSlot(slotName)
                                     .withTypeRegistry(getTypeRegistry())
                                     .dropSlotOnClose(dropOnClose)
                                     .statusUpdateInterval(Duration.ofSeconds(10))
+                                    .withSchema(getSchema(config))
                                     .build();
     }
 
@@ -252,6 +254,15 @@ public final class TestHelper {
         }
         catch (Exception e) {
             LOGGER.debug("Error while dropping default replication slot", e);
+        }
+    }
+
+    protected static void dropPublication() {
+        try {
+            execute("DROP PUBLICATION " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+        }
+        catch (Exception e) {
+            LOGGER.debug("Error while dropping default publication", e);
         }
     }
 

@@ -15,7 +15,7 @@ import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.debezium.connector.postgresql.TypeRegistry;
-import io.debezium.connector.postgresql.connection.MessageDecoder;
+import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
@@ -27,7 +27,7 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
  * @author Jiri Pechanec
  *
  */
-public class PgProtoMessageDecoder implements MessageDecoder {
+public class PgProtoMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {

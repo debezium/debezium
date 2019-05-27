@@ -19,6 +19,11 @@ import java.lang.annotation.Target;
 public @interface SkipWhenDecoderPluginNameIs {
     SkipWhenDecoderPluginNameIs.DecoderPluginName value();
 
+    /**
+     * Returns the reason why the test should be skipped.
+     */
+    String reason() default "";
+
     enum DecoderPluginName {
         WAL2JSON {
             @Override
@@ -48,6 +53,12 @@ public @interface SkipWhenDecoderPluginNameIs {
             @Override
             boolean isEqualTo(String pluginName) {
                 return pluginName.equals("decoderbufs");
+            }
+        },
+        PGOUTPUT {
+            @Override
+            boolean isEqualTo(String pluginName) {
+                return pluginName.equals("pgoutput");
             }
         };
 

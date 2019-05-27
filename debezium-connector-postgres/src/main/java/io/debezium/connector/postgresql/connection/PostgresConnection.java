@@ -314,6 +314,29 @@ public class PostgresConnection extends JdbcConnection {
         }
     }
 
+    /**
+     * Drops the debezium publication that was created.
+     *
+     * @param publicationName the publication name, may not be null
+     * @return {@code true} if the publication was dropped, {@code false} otherwise
+     */
+    public boolean dropPublication(String publicationName) {
+        try {
+            LOGGER.debug("Dropping publication '{}'", publicationName);
+            execute("DROP PUBLICATION " + publicationName);
+            return true;
+        }
+        catch (SQLException e) {
+            if (PSQLState.UNDEFINED_OBJECT.getState().equals(e.getSQLState())) {
+                LOGGER.debug("Publication {} has already been dropped", publicationName);
+            }
+            else {
+                LOGGER.error("Unexpected error while attempting to drop publication", e);
+            }
+            return false;
+        }
+    }
+
     @Override
     public synchronized void close() {
         try {

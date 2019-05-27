@@ -36,10 +36,13 @@ import org.awaitility.Awaitility;
 import org.awaitility.Duration;
 import org.awaitility.core.ConditionTimeoutException;
 import org.fest.assertions.Assertions;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -51,6 +54,9 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -84,6 +90,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                                     INSERT_STMT;
     private PostgresConnector connector;
 
+    @Rule
+    public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
+
     @BeforeClass
     public static void beforeClass() throws SQLException {
         TestHelper.dropAllSchemas();
@@ -92,6 +101,13 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Before
     public void before() {
         initializeConnectorTestFramework();
+    }
+
+    @After
+    public void after() {
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
     }
 
     @Test
@@ -399,6 +415,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1021")
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT, reason ="Pgoutput will generate insert statements even for dropped tables, column optionality will default to true however")
     public void shouldIgnoreEventsForDeletedTable() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -427,6 +444,44 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics()).hasSize(1);
+        assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).hasSize(1);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+    }
+
+    @Test
+    @FixFor("DBZ-1021")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason ="Pgoutput will generate insert statements even for dropped tables, column optionality will default to true however")
+    public void shouldNotIgnoreEventsForDeletedTable() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        //check the records from the snapshot
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
+        //now stop the connector
+        stopConnector();
+        assertNoRecordsToConsume();
+
+        //insert some more records and deleted the table
+        TestHelper.execute(INSERT_STMT);
+        TestHelper.execute("DROP TABLE s1.a");
+
+        start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.topics()).hasSize(2);
+        assertThat(actualRecords.recordsForTopic(topicName("s1.a"))).hasSize(1);
         assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).hasSize(1);
 
         stopConnector();

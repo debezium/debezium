@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
-import io.debezium.connector.postgresql.connection.MessageDecoder;
+import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
@@ -78,7 +78,7 @@ import io.debezium.time.Conversions;
  * @author Jiri Pechanec
  *
  */
-public class StreamingWal2JsonMessageDecoder implements MessageDecoder {
+public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StreamingWal2JsonMessageDecoder.class);
 

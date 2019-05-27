@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
@@ -23,8 +24,7 @@ import java.util.function.Consumer;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.DECODERBUFS;
 
-import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
@@ -76,9 +76,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Before
     public void before() throws Exception {
         // ensure the slot is deleted for each test
-        try (PostgresConnection conn = TestHelper.create()) {
-            conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
-        }
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
         String statements =
@@ -88,10 +85,19 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE table_with_interval (id SERIAL PRIMARY KEY, title VARCHAR(512) NOT NULL, time_limit INTERVAL DEFAULT '60 days'::INTERVAL NOT NULL);" +
                 "INSERT INTO test_table(text) VALUES ('insert');";
         TestHelper.execute(statements);
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
-                .build());
+                .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis");
+
+        // todo DBZ-766 are these really needed?
+        if (TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT) {
+            configBuilder = configBuilder.with("database.replication", "database")
+                    .with("database.preferQueryMode", "simple")
+                    .with("assumeMinServerVersion.set", "9.4");
+        }
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(configBuilder.build());
         setupRecordsProducer(config);
     }
 
@@ -143,6 +149,53 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // range types
         consumer.expects(1);
         assertInsert(INSERT_RANGE_TYPES_STMT, 1, schemaAndValuesForRangeTypes());
+    }
+
+    @Test
+    @FixFor("DBZ-766")
+    public void shouldReceiveChangesAfterConnectionRestart() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                 .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
+                 .build());
+
+        setupRecordsProducer(config);
+
+        TestHelper.execute("CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
+
+        consumer = testConsumer(1);
+
+        // Start the producer and wait; the wait is to guarantee that the stream thread is polling
+        // This appears to be a potential race condition problem
+        recordsProducer.start(consumer, blackHole);
+        TimeUnit.SECONDS.sleep(TestHelper.waitTimeForRecords());
+
+        // Insert new row and verify inserted
+        executeAndWait("INSERT INTO t0 (pk,d) VALUES(1,1);");
+        assertRecordInserted("public.t0", PK_FIELD, 1);
+
+        // simulate the connector is stopped
+        recordsProducer.stop();
+
+        setupRecordsProducer(config);
+
+        // Alter schema offline
+        TestHelper.execute("ALTER TABLE t0 ADD COLUMN d2 INTEGER;");
+        TestHelper.execute("ALTER TABLE t0 ALTER COLUMN d SET NOT NULL;");
+
+        consumer = testConsumer(1);
+
+        // Start the producer and wait; the wait is to guarantee the stream thread is polling
+        // This appears to be a potential race condition problem
+        recordsProducer.start(consumer, blackHole);
+        TimeUnit.SECONDS.sleep(TestHelper.waitTimeForRecords());
+
+        // Insert new row and verify inserted
+        executeAndWait("INSERT INTO t0 (pk,d,d2) VALUES (2,1,3);");
+        assertRecordInserted("public.t0", PK_FIELD, 2);
     }
 
     @Test
@@ -367,6 +420,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @SkipWhenDecoderPluginNameIs(value = PGOUTPUT, reason = "An update on a table with no primary key and default replica throws PSQLException as tables must have a PK")
     public void shouldReceiveChangesForUpdates() throws Exception {
         consumer = testConsumer(1);
         recordsProducer.start(consumer, blackHole);
@@ -730,6 +784,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @SkipWhenDecoderPluginNameIs(value = PGOUTPUT, reason = "A delete on a table with no primary key and default replica throws PSQLException as tables must have a PK")
     public void shouldReceiveChangesForDeletesDependingOnReplicaIdentity() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                                                                                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1025,6 +1080,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-911")
+    @SkipWhenDecoderPluginNameIs(value = PGOUTPUT, reason = "Decoder synchronizes all schema columns when processing relation messages")
     public void shouldNotRefreshSchemaOnUnchangedToastedData() throws Exception {
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, PostgresConnectorConfig.SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
@@ -1056,6 +1112,43 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
         assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
+    }
+
+    @Test
+    @FixFor("DBZ-911")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Decoder synchronizes all schema columns when processing relation messages")
+    public void shouldRefreshSchemaOnUnchangedToastedDataWhenSchemaChanged() throws Exception {
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                 .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, PostgresConnectorConfig.SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
+                 .build());
+        setupRecordsProducer(config);
+
+        String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
+
+        // inserting a toasted value should /always/ produce a correct record
+        String statement = "ALTER TABLE test_table ADD COLUMN not_toast integer; INSERT INTO test_table (not_toast, text) values (10, '" + toastedValue + "')";
+        consumer = testConsumer(1);
+        recordsProducer.start(consumer, blackHole);
+        executeAndWait(statement);
+
+        SourceRecord record = consumer.remove();
+
+        // after record should contain the toasted value
+        List<SchemaAndValueField> expectedAfter = Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)
+        );
+        assertRecordSchemaAndValues(expectedAfter, record, Envelope.FieldName.AFTER);
+
+        // now we remove the toast column and update the not_toast column to see that our unchanged toast data
+        // does trigger a table schema refresh.  the after schema should be reflect the changes
+        statement = "ALTER TABLE test_table DROP COLUMN text; update test_table set not_toast = 5 where not_toast = 10";
+
+        consumer.expects(1);
+        executeAndWait(statement);
+        Table tbl = recordsProducer.schema().tableFor(TableId.parse("public.test_table"));
+
+        assertEquals(Arrays.asList("pk", "not_toast"), tbl.retrieveColumnNames());
     }
 
     @Test
@@ -1194,7 +1287,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test()
     @FixFor("DBZ-1130")
-    @SkipWhenDecoderPluginNameIsNot(WAL2JSON)
+    @SkipWhenDecoderPluginNameIsNot(value = WAL2JSON, reason = "WAL2JSON specific: Pass 'add-tables' stream parameter and verify it acts as a whitelist")
     public void testPassingStreamParams() throws Exception {
         // Verify that passing stream parameters works by using the WAL2JSON add-tables parameter which acts as a
         // whitelist.
@@ -1221,7 +1314,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test()
     @FixFor("DBZ-1130")
-    @SkipWhenDecoderPluginNameIsNot(WAL2JSON)
+    @SkipWhenDecoderPluginNameIsNot(value = WAL2JSON, reason = "WAL2JSON specific: Pass multiple stream parameters and values verifying they work")
     public void testPassingStreamMultipleParams() throws Exception {
         // Verify that passing multiple stream parameters and multiple parameter values works.
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
@@ -1276,7 +1369,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test()
     @FixFor("DBZ-1181")
-    @SkipWhenDecoderPluginNameIs(DECODERBUFS)
+    @SkipWhenDecoderPluginNameIs(value = DECODERBUFS, reason = "")
     public void testEmptyChangesProducesHeartbeat() throws Exception {
         // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
         // received from Postgres

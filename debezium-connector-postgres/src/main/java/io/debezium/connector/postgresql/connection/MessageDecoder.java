@@ -68,4 +68,16 @@ public interface MessageDecoder {
     // TODO DBZ-508 Remove once we only support LD plug-ins always sending the metadata
     default void setContainsMetadata(boolean flag) {
     }
+
+    /**
+     * A callback into the decoder allowing it to decide whether the supplied message should be processed
+     * by the decoder or whether it can be skipped.
+     *
+     * @param buffer the replication stream buffer
+     * @param lastReceivedLsn the last LSN reported by the replication stream
+     * @param startLsn the starting LSN reported by the streaming producer
+     * @param skipFirstFlushRecord whether first flush record should be skipped
+     * @return {@code true} if the incoming message should be skipped, {@code false} otherwise
+     */
+    boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord);
 }

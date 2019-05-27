@@ -7,10 +7,24 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.util.List;
+
+import org.postgresql.geometric.PGbox;
+import org.postgresql.geometric.PGcircle;
+import org.postgresql.geometric.PGline;
+import org.postgresql.geometric.PGlseg;
+import org.postgresql.geometric.PGpath;
+import org.postgresql.geometric.PGpoint;
+import org.postgresql.geometric.PGpolygon;
+import org.postgresql.util.PGInterval;
+import org.postgresql.util.PGmoney;
 
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
+import io.debezium.data.SpecialValueDecimal;
 
 /**
  * An abstract representation of a replication message that is sent by a PostgreSQL logical decoding plugin and
@@ -44,11 +58,42 @@ public interface ReplicationMessage {
         ColumnTypeMetadata getTypeMetadata();
         Object getValue(final PgConnectionSupplier connection, boolean includeUnknownDatatypes);
         boolean isOptional();
+
+        default boolean isToastedColumn() {
+            return false;
+        }
     }
 
     public interface ColumnTypeMetadata {
         int getLength();
         int getScale();
+    }
+
+    public interface ColumnValue<T> {
+        T getRawValue();
+        boolean isNull();
+        String asString();
+        Boolean asBoolean();
+        Integer asInteger();
+        Long asLong();
+        Float asFloat();
+        Double asDouble();
+        SpecialValueDecimal asDecimal();
+        LocalDate asLocalDate();
+        long asTimestampWithTimeZone();
+        long asTimestampWithoutTimeZone();
+        LocalTime asLocalTime();
+        OffsetTime asOffsetTime();
+        byte[] asByteArray();
+        PGbox asBox();
+        PGcircle asCircle();
+        PGInterval asInterval();
+        PGline asLine();
+        PGlseg asLseg();
+        PGmoney asMoney();
+        PGpath asPath();
+        PGpoint asPoint();
+        PGpolygon asPolygon();
     }
 
     /**
@@ -90,4 +135,11 @@ public interface ReplicationMessage {
      * @return true if this is the last message in the batch of messages with same LSN
      */
     boolean isLastEventForLsn();
+
+    /**
+     * @return true if the stream producer should synchronize the schema when processing messages, false otherwise
+     */
+    default boolean shouldSchemaBeSynchronized() {
+        return true;
+    }
 }
