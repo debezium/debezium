@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import io.debezium.data.Envelope;
-import io.debezium.transforms.ExtractNewRecordState.DeleteHandling;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
@@ -31,6 +29,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.data.Envelope;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -93,10 +94,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         }
     }
 
-    final static String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
-
-    private static final String DELETED_FIELD = "__deleted";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewDocumentState.class);
 
     private static final Field ARRAY_ENCODING = Field.create("array.encoding")
@@ -125,35 +122,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDefault("_")
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
-
-    private static final Field OPERATION_HEADER = Field.create("operation.header")
-            .withDisplayName("Adds a message header representing the applied operation")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("Adds the operation {@link FieldName#OPERATION operation} as a header." +
-                    "Its key is '" + DEBEZIUM_OPERATION_HEADER_KEY + "'");
-
-    private static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
-            .withDisplayName("Handle delete records")
-            .withEnum(DeleteHandling.class, DeleteHandling.DROP)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("How to handle delete records. Options are: "
-                    + "none - records are passed,"
-                    + "drop - records are removed,"
-                    + "rewrite - __deleted field is added to records.");
-
-    private static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
-            .withDisplayName("Drop tombstones")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(true)
-            .withDescription("Debezium by default generates a tombstone record to enable Kafka compaction after "
-                    + "a delete record was generated. This record is usually filtered out to avoid duplicates "
-                    + "as a delete record is converted to a tombstone record, too");
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
@@ -185,13 +153,13 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 return null;
             }
             if (addOperationHeader) {
-                record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, Envelope.Operation.DELETE.code());
+                record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, Envelope.Operation.DELETE.code());
             }
             return newRecord(record, keyDocument, valueDocument);
         }
 
         if (addOperationHeader) {
-            record.headers().addString(DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) record.value()).get("op").toString());
+            record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) record.value()).get("op").toString());
         }
 
         // insert
@@ -216,7 +184,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         }
 
         if (handleDeletes.equals(DeleteHandling.REWRITE)) {
-            valueDocument.append(DELETED_FIELD, new BsonBoolean(isDeletion));
+            valueDocument.append(ExtractNewRecordStateConfigDefinition.DELETED_FIELD, new BsonBoolean(isDeletion));
         }
 
 
@@ -352,7 +320,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     @Override
     public void configure(final Map<String, ?> map) {
         final Configuration config = Configuration.from(map);
-        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER, OPERATION_HEADER, HANDLE_DELETES, DROP_TOMBSTONES);
+        final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
+                ExtractNewRecordStateConfigDefinition.OPERATION_HEADER,
+                ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
+                ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -360,13 +331,13 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         converter = new MongoDataConverter(ArrayEncoding.parse(config.getString(ARRAY_ENCODING)));
 
-        addOperationHeader = config.getBoolean(OPERATION_HEADER);
+        addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);
 
-        dropTombstones = config.getBoolean(DROP_TOMBSTONES);
-        handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
+        dropTombstones = config.getBoolean(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
+        handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
 
         final Map<String, String> afterExtractorConfig = new HashMap<>();
         afterExtractorConfig.put("field", "after");

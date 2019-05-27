@@ -37,6 +37,7 @@ import io.debezium.connector.mongodb.SourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.TopicSelector;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
 
 /**
@@ -110,7 +111,7 @@ public class ExtractNewDocumentStateTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is insert
-        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
 
@@ -210,7 +211,7 @@ public class ExtractNewDocumentStateTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is update
-        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.UPDATE.code());
 
@@ -386,7 +387,7 @@ public class ExtractNewDocumentStateTest {
         assertThat(key.get("id")).isEqualTo(objId.toString());
 
         // then assert operation header is delete
-        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
 
@@ -526,7 +527,7 @@ public class ExtractNewDocumentStateTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is delete
-        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewDocumentState.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
 
@@ -812,7 +813,7 @@ public class ExtractNewDocumentStateTest {
         SourceRecord transformed = transformation.apply(record);
 
         // then assert operation header is insert
-        Iterator<Header> operationHeader = transformed.headers().allWithName(UnwrapFromMongoDbEnvelope.DEBEZIUM_OPERATION_HEADER_KEY);
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
         assertThat((operationHeader).hasNext()).isTrue();
         assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
 

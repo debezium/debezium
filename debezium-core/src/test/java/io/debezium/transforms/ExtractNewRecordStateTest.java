@@ -179,7 +179,7 @@ public class ExtractNewRecordStateTest {
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("false");
             assertThat(unwrapped.headers()).hasSize(1);
-            String headerValue = getSourceRecordHeaderByKey(unwrapped, ExtractNewRecordState.DEBEZIUM_OPERATION_HEADER_KEY);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
             assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
         }
     }
