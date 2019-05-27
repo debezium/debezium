@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.TableId;
 
 public class OracleOffsetContext implements OffsetContext {
 
@@ -30,10 +31,10 @@ public class OracleOffsetContext implements OffsetContext {
      */
     private boolean snapshotCompleted;
 
-    private OracleOffsetContext(String serverName, long scn, LcrPosition lcrPosition, boolean snapshot, boolean snapshotCompleted) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, serverName);
+    private OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, LcrPosition lcrPosition, boolean snapshot, boolean snapshotCompleted) {
+        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
-        sourceInfo = new SourceInfo(serverName);
+        sourceInfo = new SourceInfo(connectorConfig);
         sourceInfo.setScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
@@ -49,14 +50,14 @@ public class OracleOffsetContext implements OffsetContext {
 
     public static class Builder {
 
-        private String logicalName;
+        private OracleConnectorConfig connectorConfig;
         private long scn;
         private LcrPosition lcrPosition;
         private boolean snapshot;
         private boolean snapshotCompleted;
 
-        public Builder logicalName(String logicalName) {
-            this.logicalName = logicalName;
+        public Builder logicalName(OracleConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
             return this;
         }
 
@@ -81,7 +82,7 @@ public class OracleOffsetContext implements OffsetContext {
         }
 
         OracleOffsetContext build() {
-            return new OracleOffsetContext(logicalName, scn, lcrPosition, snapshot, snapshotCompleted);
+            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted);
         }
     }
 
@@ -147,6 +148,10 @@ public class OracleOffsetContext implements OffsetContext {
         sourceInfo.setSourceTime(instant);
     }
 
+    public void setTableId(TableId tableId) {
+        sourceInfo.setTableId(tableId);
+    }
+
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
@@ -184,15 +189,15 @@ public class OracleOffsetContext implements OffsetContext {
 
     public static class Loader implements OffsetContext.Loader {
 
-        private final String logicalName;
+        private final OracleConnectorConfig connectorConfig;
 
-        public Loader(String logicalName) {
-            this.logicalName = logicalName;
+        public Loader(OracleConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
         }
 
         @Override
         public Map<String, ?> getPartition() {
-            return Collections.singletonMap(SERVER_PARTITION_KEY, logicalName);
+            return Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         }
 
         @Override
@@ -202,7 +207,7 @@ public class OracleOffsetContext implements OffsetContext {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            return new OracleOffsetContext(logicalName, scn, lcrPosition, snapshot, snapshotCompleted);
+            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted);
         }
     }
 }

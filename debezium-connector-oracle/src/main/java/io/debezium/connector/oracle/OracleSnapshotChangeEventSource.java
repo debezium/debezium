@@ -121,7 +121,7 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
         while(areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
 
         ctx.offset = OracleOffsetContext.create()
-                .logicalName(connectorConfig.getLogicalName())
+                .logicalName(connectorConfig)
                 .scn(currentScn)
                 .build();
     }
@@ -231,9 +231,10 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
     }
 
     @Override
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, Object[] row) {
+    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row) {
         // TODO can this be done in a better way than doing it as a side-effect here?
         ((OracleOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(clock.currentTimeInMillis()));
+        ((OracleOffsetContext) snapshotContext.offset).setTableId(tableId);
         return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, clock);
     }
 

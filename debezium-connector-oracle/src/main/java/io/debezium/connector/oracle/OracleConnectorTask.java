@@ -70,7 +70,7 @@ public class OracleConnectorTask extends BaseSourceTask {
         this.schema = new OracleDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, jdbcConnection);
         this.schema.initializeStorage();
 
-        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig.getLogicalName()));
+        OffsetContext previousOffset = getPreviousOffset(new OracleOffsetContext.Loader(connectorConfig));
         if (previousOffset != null) {
             schema.recover(previousOffset);
         }

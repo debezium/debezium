@@ -14,6 +14,8 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -340,5 +342,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     !t.schema().toLowerCase().equals("wmsys") &&
                     !t.schema().toLowerCase().equals("xdb");
         }
+    }
+
+    @Override
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
+        return new OracleSourceInfoStructMaker(Module.name(), Module.version(), this);
     }
 }

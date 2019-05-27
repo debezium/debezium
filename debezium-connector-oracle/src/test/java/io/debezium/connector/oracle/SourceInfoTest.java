@@ -8,6 +8,9 @@ package io.debezium.connector.oracle;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.relational.TableId;
+
 import java.time.Instant;
 
 import static org.fest.assertions.Assertions.assertThat;
@@ -18,8 +21,15 @@ public class SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo("serverX");
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                Configuration.create()
+                    .with(OracleConnectorConfig.SERVER_NAME, "serverX")
+                    .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
+                    .build()
+        );
+        source = new SourceInfo(connectorConfig);
         source.setSourceTime(Instant.now());
+        source.setTableId(new TableId("c", "s", "t"));
     }
 
     @Test

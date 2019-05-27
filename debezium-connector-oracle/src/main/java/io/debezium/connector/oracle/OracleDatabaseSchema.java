@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,8 +32,12 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, OracleConnection connection) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), null,
-            new TableSchemaBuilder(new OracleValueConverters(connection), schemaNameAdjuster, SourceInfo.SCHEMA),
-            connectorConfig.getTablenameCaseInsensitive());  
+            new TableSchemaBuilder(
+                    new OracleValueConverters(connection),
+                    schemaNameAdjuster,
+                    connectorConfig.getSourceInfoStructMaker().schema()),
+                    connectorConfig.getTablenameCaseInsensitive()
+            );
     }
 
     @Override

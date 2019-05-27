@@ -7,70 +7,36 @@ package io.debezium.connector.oracle;
 
 import java.time.Instant;
 
-import io.debezium.annotation.NotThreadSafe;
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.relational.TableId;
 
 @NotThreadSafe
 public class SourceInfo extends AbstractSourceInfo {
 
-    public static final String SERVER_NAME_KEY = "name";
     public static final String TXID_KEY = "txId";
-    public static final String TIMESTAMP_KEY = "ts_ms";
     public static final String SCN_KEY = "scn";
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
 
-    public static final Schema SCHEMA = schemaBuilder()
-            .name("io.debezium.connector.oracle.Source")
-            .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-            .field(TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-            .field(TXID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-            .field(SCN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-            .field(LCR_POSITION_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-            .field(SNAPSHOT_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
-            .build();
-
-    private final String serverName;
     private long scn;
     private LcrPosition lcrPosition;
     private String transactionId;
     private Instant sourceTime;
     private boolean snapshot;
+    private TableId tableId;
 
-    protected SourceInfo(String serverName) {
-        super(Module.version());
-        this.serverName = serverName;
+    protected SourceInfo(OracleConnectorConfig connectorConfig) {
+        super(connectorConfig);
     }
 
-    @Override
-    protected Schema schema() {
-        return SCHEMA;
-    }
-
-    @Override
-    protected String connector() {
-        return Module.name();
-    }
-
-    @Override
+    /**
+     * @return the coordinates encoded as a {@code Struct}
+     */
     public Struct struct() {
-        final Struct r =  super.struct()
-                            .put(SERVER_NAME_KEY, serverName)
-                            .put(TIMESTAMP_KEY, sourceTime.toEpochMilli())
-                            .put(TXID_KEY, transactionId)
-                            .put(SCN_KEY, scn)
-                            .put(SNAPSHOT_KEY, snapshot);
-        if (lcrPosition != null) {
-            r.put(LCR_POSITION_KEY, lcrPosition.toString());
-        }
-        return r;
-    }
-
-    public String getServerName() {
-        return serverName;
+        return structMaker().struct(this);
     }
 
     public long getScn() {
@@ -111,5 +77,28 @@ public class SourceInfo extends AbstractSourceInfo {
 
     public boolean isSnapshot() {
         return snapshot;
+    }
+
+    public TableId getTableId() {
+        return tableId;
+    }
+
+    public void setTableId(TableId tableId) {
+        this.tableId = tableId;
+    }
+
+    @Override
+    protected Instant timestamp() {
+        return sourceTime;
+    }
+
+    @Override
+    protected boolean snapshot() {
+        return isSnapshot();
+    }
+
+    @Override
+    protected String database() {
+        return tableId.catalog();
     }
 }
