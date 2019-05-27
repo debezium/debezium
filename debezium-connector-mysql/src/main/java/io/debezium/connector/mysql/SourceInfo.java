@@ -833,8 +833,4 @@ final class SourceInfo extends AbstractSourceInfo {
     protected String database() {
         return (tableId == null) ? databaseName : tableId.catalog();
     }
-
-    void databaseName(String databaseName) {
-        this.databaseName = databaseName;
-    }
 }
