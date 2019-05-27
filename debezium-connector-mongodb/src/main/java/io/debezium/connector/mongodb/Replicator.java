@@ -200,7 +200,7 @@ public class Replicator {
         primaryClient.execute("get oplog position", primary -> {
             MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
             Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
-            source.offsetStructForEvent(replicaSet.replicaSetName(), last);
+            source.sourceInfoStructForEvent(replicaSet.replicaSetName(), last);
         });
     }
 

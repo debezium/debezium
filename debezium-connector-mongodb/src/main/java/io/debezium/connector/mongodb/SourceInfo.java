@@ -200,8 +200,8 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public Struct lastOffsetStruct(String replicaSetName, CollectionId collectionId) {
-        return offsetStructFor(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName),
+    public Struct lastSourceInfoStruct(String replicaSetName, CollectionId collectionId) {
+        return sourceInfoStructFor(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName),
                                isInitialSyncOngoing(replicaSetName));
     }
 
@@ -215,7 +215,7 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public Struct offsetStructForEvent(String replicaSetName, Document oplogEvent) {
+    public Struct sourceInfoStructForEvent(String replicaSetName, Document oplogEvent) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (oplogEvent != null) {
@@ -225,7 +225,7 @@ public final class SourceInfo extends AbstractSourceInfo {
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
-        return offsetStructFor(replicaSetName, CollectionId.parse(replicaSetName + "." + namespace), position, isInitialSyncOngoing(replicaSetName));
+        return sourceInfoStructFor(replicaSetName, CollectionId.parse(replicaSetName + "." + namespace), position, isInitialSyncOngoing(replicaSetName));
     }
 
     /**
@@ -238,7 +238,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
     }
 
-    private Struct offsetStructFor(String replicaSetName, CollectionId collectionId, Position position, boolean isInitialSync) {
+    private Struct sourceInfoStructFor(String replicaSetName, CollectionId collectionId, Position position, boolean isInitialSync) {
         this.position = (position == null) ? INITIAL_POSITION : position;
         this.collectionId = collectionId;
 

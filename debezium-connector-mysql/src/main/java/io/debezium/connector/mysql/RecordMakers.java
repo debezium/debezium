@@ -225,7 +225,8 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct(id);
+                    source.tableEvent(id);
+                    Struct origin = source.struct();
                     SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.read(value, origin, ts));
                     consumer.accept(record);
@@ -244,7 +245,8 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct(id);
+                    source.tableEvent(id);
+                    Struct origin = source.struct();
                     SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.create(value, origin, ts));
                     consumer.accept(record);
@@ -267,7 +269,8 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct(id);
+                    source.tableEvent(id);
+                    Struct origin = source.struct();
                     if (key != null && !Objects.equals(key, oldKey)) {
                         // The key has changed, so we need to deal with both the new key and old key.
                         // Consumers may push the events into a system that won't allow both records to exist at the same time,
@@ -311,7 +314,8 @@ public class RecordMakers {
                     Schema keySchema = tableSchema.keySchema();
                     Map<String, ?> partition = source.partition();
                     Map<String, Object> offset = source.offsetForRow(rowNumber, numberOfRows);
-                    Struct origin = source.struct(id);
+                    source.tableEvent(id);
+                    Struct origin = source.struct();
                     // Send a delete message ...
                     SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                             keySchema, key, envelope.schema(), envelope.delete(value, origin, ts));
@@ -353,8 +357,9 @@ public class RecordMakers {
     }
 
     protected Struct schemaChangeRecordValue(String databaseName, String ddlStatements) {
+        source.databaseEvent(databaseName);
         Struct result = new Struct(schemaChangeValueSchema);
-        result.put(Fields.SOURCE, source.struct(databaseName));
+        result.put(Fields.SOURCE, source.struct());
         result.put(Fields.DATABASE_NAME, databaseName);
         result.put(Fields.DDL_STATEMENTS, ddlStatements);
         return result;

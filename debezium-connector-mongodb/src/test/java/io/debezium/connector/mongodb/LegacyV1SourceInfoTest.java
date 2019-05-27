@@ -74,7 +74,7 @@ public class LegacyV1SourceInfoTest {
                                        .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
-        source.offsetStructForEvent(REPLICA_SET_NAME, event);
+        source.sourceInfoStructForEvent(REPLICA_SET_NAME, event);
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(true);
 
         Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
@@ -100,7 +100,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        Struct struct = source.lastSourceInfoStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
@@ -123,7 +123,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        Struct struct = source.lastSourceInfoStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
@@ -142,7 +142,7 @@ public class LegacyV1SourceInfoTest {
                                        .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
-        source.offsetStructForEvent(REPLICA_SET_NAME, event);
+        source.sourceInfoStructForEvent(REPLICA_SET_NAME, event);
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(true);
 
         Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
@@ -154,7 +154,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        Struct struct = source.lastSourceInfoStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
@@ -178,7 +178,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(0);
         assertThat(ts.getInc()).isEqualTo(0);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        Struct struct = source.lastSourceInfoStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(0);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(0);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isNull();
@@ -199,7 +199,7 @@ public class LegacyV1SourceInfoTest {
                                        .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
-        source.offsetStructForEvent(REPLICA_SET_NAME, event);
+        source.sourceInfoStructForEvent(REPLICA_SET_NAME, event);
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(true);
 
         Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
@@ -211,7 +211,7 @@ public class LegacyV1SourceInfoTest {
         assertThat(ts.getTime()).isEqualTo(100);
         assertThat(ts.getInc()).isEqualTo(2);
 
-        Struct struct = source.lastOffsetStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
+        Struct struct = source.lastSourceInfoStruct(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "dbA", "collectA"));
         assertThat(struct.getInt32(SourceInfo.TIMESTAMP)).isEqualTo(100);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo(2);
         assertThat(struct.getInt64(SourceInfo.OPERATION_ID)).isEqualTo(1987654321L);
@@ -226,7 +226,7 @@ public class LegacyV1SourceInfoTest {
         final Document event = new Document().append("ts", new BsonTimestamp(100, 2))
                 .append("h", Long.valueOf(1987654321))
                 .append("ns", "dbA.collectA");
-        assertThat(source.offsetStructForEvent("rs", event).getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.sourceInfoStructForEvent("rs", event).getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
@@ -234,7 +234,7 @@ public class LegacyV1SourceInfoTest {
         final Document event = new Document().append("ts", new BsonTimestamp(100, 2))
                 .append("h", Long.valueOf(1987654321))
                 .append("ns", "dbA.collectA");
-        assertThat(source.offsetStructForEvent("rs", event).getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+        assertThat(source.sourceInfoStructForEvent("rs", event).getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     @Test
