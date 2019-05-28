@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.LegacyV1AbstractSourceInfoStructMaker;
 
 public class LegacyV1MySqlSourceInfoStructMaker extends LegacyV1AbstractSourceInfoStructMaker<SourceInfo> {
@@ -20,6 +21,7 @@ public class LegacyV1MySqlSourceInfoStructMaker extends LegacyV1AbstractSourceIn
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name("io.debezium.connector.mysql.Source")
+                .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.SERVER_ID_KEY, Schema.INT64_SCHEMA)
                 .field(SourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .field(SourceInfo.GTID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
@@ -42,6 +44,7 @@ public class LegacyV1MySqlSourceInfoStructMaker extends LegacyV1AbstractSourceIn
     @Override
     public Struct struct(SourceInfo sourceInfo) {
         Struct result = commonStruct();
+        result.put(SourceInfo.SERVER_NAME_KEY, serverName);
         result.put(SourceInfo.SERVER_ID_KEY, sourceInfo.getServerId());
         if (sourceInfo.getCurrentGtid() != null) {
             // Don't put the GTID Set into the struct; only the current GTID is fine ...
