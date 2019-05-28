@@ -66,13 +66,21 @@ public class DdlChanges implements DdlParserListener {
      */
     public void groupStatementStringsByDatabase(DatabaseStatementStringConsumer consumer) {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
-            StringBuilder statements = new StringBuilder();
+            final StringBuilder statements = new StringBuilder();
+            final Set<String> tables = new HashSet<>();
             eventList.forEach(event->{
                 statements.append(event.statement());
                 statements.append(terminator);
+                addTable(tables, event);
             });
-            consumer.consume(dbName, statements.toString());
+            consumer.consume(dbName, tables, statements.toString());
         });
+    }
+
+    private void addTable(final Set<String> tables, Event event) {
+        if (event instanceof TableEvent) {
+            tables.add(((TableEvent) event).tableId().table());
+        }
     }
 
     /**
@@ -83,8 +91,12 @@ public class DdlChanges implements DdlParserListener {
     public void groupStatementsByDatabase(DatabaseStatementConsumer consumer) {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
             List<String> statements = new ArrayList<>();
-            eventList.forEach(event->statements.add(event.statement()));
-            consumer.consume(dbName, statements);
+            final Set<String> tables = new HashSet<>();
+            eventList.forEach(event-> {
+                statements.add(event.statement());
+                addTable(tables, event);
+            });
+            consumer.consume(dbName, tables, statements);
         });
     }
 
@@ -160,11 +172,11 @@ public class DdlChanges implements DdlParserListener {
     }
 
     public static interface DatabaseStatementConsumer {
-        void consume(String databaseName, List<String> ddlStatements);
+        void consume(String databaseName, Set<String> tableList, List<String> ddlStatements);
     }
 
     public static interface DatabaseStatementStringConsumer {
-        void consume(String databaseName, String ddlStatements);
+        void consume(String databaseName, Set<String> tableList, String ddlStatements);
     }
 
     /**

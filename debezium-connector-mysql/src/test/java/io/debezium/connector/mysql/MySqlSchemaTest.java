@@ -11,6 +11,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.Set;
 
 import org.junit.After;
 import org.junit.Before;
@@ -219,8 +220,8 @@ public class MySqlSchemaTest {
         }
     }
 
-    protected void printStatements(String dbName, String ddlStatements) {
-        Testing.print("Running DDL for '" + dbName + "': " + ddlStatements);
+    protected void printStatements(String dbName, Set<String> tables, String ddlStatements) {
+        Testing.print("Running DDL for '" + dbName + "': " + ddlStatements + " changing tables '" + tables + "'");
     }
 
     protected String readFile(String classpathResource) {

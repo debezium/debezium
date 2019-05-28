@@ -626,21 +626,21 @@ public class LegacyV1SourceInfoTest {
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setBinlogTimestampSeconds(1_024);
-        source.databaseEvent(null);
+        source.databaseEvent(null, null);
         assertThat(source.struct().get("ts_sec")).isEqualTo(1_024L);
     }
 
     @Test
     public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
-        source.databaseEvent(null);
+        source.databaseEvent(null, null);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
-        source.databaseEvent(null);
+        source.databaseEvent(null, null);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 

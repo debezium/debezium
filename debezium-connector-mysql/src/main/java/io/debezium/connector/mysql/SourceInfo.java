@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.data.Schema;
@@ -141,6 +142,7 @@ final class SourceInfo extends AbstractSourceInfo {
     private final SourceInfoStructMaker<SourceInfo> structMaker;
     private TableId tableId;
     private String databaseName;
+    private String tables;
 
     public SourceInfo(MySqlConnectorConfig connectorConfig) {
         super(connectorConfig);
@@ -293,8 +295,10 @@ final class SourceInfo extends AbstractSourceInfo {
         return structMaker.schema();
     }
 
-    public void databaseEvent(String databaseName) {
+    public void databaseEvent(String databaseName, Set<String> tables) {
         this.databaseName = databaseName;
+        this.tableId = null;
+        this.tables = (tables == null || tables.isEmpty()) ? null : String.join(",", tables);
     }
 
     public void tableEvent(TableId tableId) {
@@ -832,5 +836,9 @@ final class SourceInfo extends AbstractSourceInfo {
     @Override
     protected String database() {
         return (tableId == null) ? databaseName : tableId.catalog();
+    }
+
+    String tables() {
+        return tables;
     }
 }
