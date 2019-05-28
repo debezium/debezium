@@ -5,10 +5,13 @@
  */
 package io.debezium.connector.oracle;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.VerifyRecord;
 import io.debezium.relational.TableId;
 
 import java.time.Instant;
@@ -40,5 +43,25 @@ public class SourceInfoTest {
     @Test
     public void connectorIsPresent() {
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+    }
+
+    @Test
+    public void schemaIsCorrect() {
+        final Schema schema = SchemaBuilder.struct()
+                .name("io.debezium.connector.oracle.Source")
+                .field("version", Schema.STRING_SCHEMA)
+                .field("connector", Schema.STRING_SCHEMA)
+                .field("name", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA)
+                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("db", Schema.STRING_SCHEMA)
+                .field("schema", Schema.STRING_SCHEMA)
+                .field("table", Schema.STRING_SCHEMA)
+                .field("txId", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("scn", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("lcr_position", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+
+        VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);
     }
 }
