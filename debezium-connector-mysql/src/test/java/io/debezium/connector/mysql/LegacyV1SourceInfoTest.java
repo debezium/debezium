@@ -15,7 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import org.apache.avro.Schema;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.GenericAssert;
 import org.junit.Before;
@@ -24,6 +25,7 @@ import org.junit.Test;
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
 
@@ -491,7 +493,7 @@ public class LegacyV1SourceInfoTest {
     @Test
     public void shouldValidateSourceInfoSchema() {
         org.apache.kafka.connect.data.Schema kafkaSchema = source.schema();
-        Schema avroSchema = avroData.fromConnectSchema(kafkaSchema);
+        org.apache.avro.Schema avroSchema = avroData.fromConnectSchema(kafkaSchema);
         assertTrue(avroSchema != null);
     }
 
@@ -640,6 +642,28 @@ public class LegacyV1SourceInfoTest {
         sourceWith(offset(100, 5, true));
         source.databaseEvent(null);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+    }
+
+    @Test
+    public void schemaIsCorrect() {
+        final Schema schema = SchemaBuilder.struct()
+                .name("io.debezium.connector.mysql.Source")
+                .field("version", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("connector", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("name", Schema.STRING_SCHEMA)
+                .field("server_id", Schema.INT64_SCHEMA)
+                .field("ts_sec", Schema.INT64_SCHEMA)
+                .field("gtid", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("file", Schema.STRING_SCHEMA)
+                .field("pos", Schema.INT64_SCHEMA)
+                .field("row", Schema.INT32_SCHEMA)
+                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("thread", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("db", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("table", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("query", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);
     }
 
     protected Document positionWithGtids(String gtids) {
