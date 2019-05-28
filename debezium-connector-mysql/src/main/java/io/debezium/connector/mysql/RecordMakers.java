@@ -131,15 +131,16 @@ public class RecordMakers {
      * Produce a schema change record for the given DDL statements.
      *
      * @param databaseName the name of the database that is affected by the DDL statements; may not be null
+     * @param tables the list of tables affected by the DDL statements
      * @param ddlStatements the DDL statements; may not be null
      * @param consumer the consumer for all produced records; may not be null
      * @return the number of records produced; will be 0 or more
      */
-    public int schemaChanges(String databaseName, String ddlStatements, BlockingConsumer<SourceRecord> consumer) {
+    public int schemaChanges(String databaseName, Set<String> tables, String ddlStatements, BlockingConsumer<SourceRecord> consumer) {
         String topicName = topicSelector.getPrimaryTopic();
         Integer partition = 0;
         Struct key = schemaChangeRecordKey(databaseName);
-        Struct value = schemaChangeRecordValue(databaseName, ddlStatements);
+        Struct value = schemaChangeRecordValue(databaseName, tables, ddlStatements);
         SourceRecord record = new SourceRecord(source.partition(), source.offset(),
                 topicName, partition, schemaChangeKeySchema, key, schemaChangeValueSchema, value);
         try {
@@ -356,8 +357,8 @@ public class RecordMakers {
         return result;
     }
 
-    protected Struct schemaChangeRecordValue(String databaseName, String ddlStatements) {
-        source.databaseEvent(databaseName);
+    protected Struct schemaChangeRecordValue(String databaseName, Set<String> tables, String ddlStatements) {
+        source.databaseEvent(databaseName, tables);
         Struct result = new Struct(schemaChangeValueSchema);
         result.put(Fields.SOURCE, source.struct());
         result.put(Fields.DATABASE_NAME, databaseName);

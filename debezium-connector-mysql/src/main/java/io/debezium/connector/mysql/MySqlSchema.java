@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -327,19 +328,20 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                         // They also apply to more databases than 'databaseName', so we need to apply the DDL statements in
                         // the same order they were read for each _affected_ database, grouped together if multiple apply
                         // to the same _affected_ database...
-                        ddlChanges.groupStatementStringsByDatabase((dbName, ddl) -> {
+                        ddlChanges.groupStatementStringsByDatabase((dbName, tables, ddl) -> {
                             if (filters.databaseFilter().test(dbName) || dbName == null || "".equals(dbName)) {
                                 if (dbName == null) {
                                     dbName = "";
                                 }
-                                statementConsumer.consume(dbName, ddlStatements);
+                                statementConsumer.consume(dbName, tables, ddl);
                             }
                         });
                     } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
                         if (databaseName == null) {
                             databaseName = "";
                         }
-                        statementConsumer.consume(databaseName, ddlStatements);
+                        final Set<String> tables = changes.stream().map(TableId::table).collect(Collectors.toSet());
+                        statementConsumer.consume(databaseName, tables, ddlStatements);
                     }
                 }
 

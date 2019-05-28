@@ -18,6 +18,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -214,6 +216,21 @@ public class BinlogReaderIT {
 
         // There should be no schema changes ...
         assertThat(schemaChanges.recordCount()).isEqualTo(expectedSchemaChangeCount);
+        final List<String> expectedAffectedTables = Arrays.asList(
+                null, // CREATE DATABASE
+                "Products", // CREATE TABLE
+                "Products", // ALTER TABLE
+                "products_on_hand", // CREATE TABLE
+                "customers", // CREATE TABLE
+                "orders", // CREATE TABLE
+                "dbz_342_timetest" // CREATE TABLE
+            );
+        final List<String> affectedTables = new ArrayList<>();
+        schemaChanges.forEach(record -> {
+            affectedTables.add(((Struct) record.value()).getStruct("source").getString("table"));
+            assertThat(((Struct) record.value()).getStruct("source").get("db")).isEqualTo(DATABASE.getDatabaseName());
+        });
+        assertThat(affectedTables).isEqualTo(expectedAffectedTables);
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
