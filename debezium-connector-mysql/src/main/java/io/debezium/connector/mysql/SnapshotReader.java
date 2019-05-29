@@ -28,10 +28,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
+import io.debezium.data.Envelope;
 import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
@@ -601,7 +604,7 @@ public class SnapshotReader extends AbstractReader {
                     source.markLastSnapshot(context.config());
                     long stop = clock.currentTimeInMillis();
                     try {
-                        bufferedRecordQueue.close(this::replaceOffset);
+                        bufferedRecordQueue.close(this::replaceOffsetAndSource);
                         if (logger.isInfoEnabled()) {
                             logger.info("Step {}: scanned {} rows in {} tables in {}",
                                         step, totalRowCount, tableIds.size(), Strings.duration(stop - startScan));
@@ -867,17 +870,22 @@ public class SnapshotReader extends AbstractReader {
     }
 
     /**
-     * Utility method to replace the offset in the given record with the latest. This is used on the last record produced
+     * Utility method to replace the offset and the source in the given record with the latest. This is used on the last record produced
      * during the snapshot.
      *
      * @param record the record
      * @return the updated record
      */
-    protected SourceRecord replaceOffset(SourceRecord record) {
+    protected SourceRecord replaceOffsetAndSource(SourceRecord record) {
         if (record == null) {
             return null;
         }
         Map<String, ?> newOffset = context.source().offset();
+        final Struct envelope = (Struct) record.value();
+        final Struct source = (Struct) envelope.get(Envelope.FieldName.SOURCE);
+        if (SnapshotRecord.fromSource(source) == SnapshotRecord.TRUE) {
+            SnapshotRecord.LAST.toSource(source);
+        }
         return new SourceRecord(record.sourcePartition(),
                 newOffset,
                 record.topic(),

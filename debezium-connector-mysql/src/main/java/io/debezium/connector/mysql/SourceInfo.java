@@ -21,6 +21,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
@@ -842,8 +843,11 @@ final class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected boolean snapshot() {
-        return isLastSnapshot();
+    protected SnapshotRecord snapshot() {
+        if (isSnapshotInEffect()) {
+            return SnapshotRecord.TRUE;
+        }
+        return SnapshotRecord.FALSE;
     }
 
     @Override
