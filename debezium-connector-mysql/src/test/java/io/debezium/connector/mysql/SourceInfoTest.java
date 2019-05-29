@@ -479,7 +479,7 @@ public class SourceInfoTest {
         source = new SourceInfo(new MySqlConnectorConfig(Configuration.create()
                 .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .build()));
-        source.databaseEvent("mysql", null);
+        source.databaseEvent("mysql");
         source.setOffset(offset);
         return source;
     }
@@ -624,21 +624,21 @@ public class SourceInfoTest {
     public void shouldHaveTimestamp() {
         sourceWith(offset(100, 5, true));
         source.setBinlogTimestampSeconds(1_024);
-        source.databaseEvent("mysql", null);
+        source.databaseEvent("mysql");
         assertThat(source.struct().get("ts_ms")).isEqualTo(1_024_000L);
     }
 
     @Test
     public void versionIsPresent() {
         sourceWith(offset(100, 5, true));
-        source.databaseEvent("mysql", null);
+        source.databaseEvent("mysql");
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         sourceWith(offset(100, 5, true));
-        source.databaseEvent("mysql", null);
+        source.databaseEvent("mysql");
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 

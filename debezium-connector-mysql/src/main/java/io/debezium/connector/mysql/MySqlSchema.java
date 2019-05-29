@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -340,8 +339,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                         if (databaseName == null) {
                             databaseName = "";
                         }
-                        final Set<String> tables = changes.stream().map(TableId::table).collect(Collectors.toSet());
-                        statementConsumer.consume(databaseName, tables, ddlStatements);
+                        statementConsumer.consume(databaseName, changes, ddlStatements);
                     }
                 }
 

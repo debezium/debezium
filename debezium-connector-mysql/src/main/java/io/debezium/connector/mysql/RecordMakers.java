@@ -136,7 +136,7 @@ public class RecordMakers {
      * @param consumer the consumer for all produced records; may not be null
      * @return the number of records produced; will be 0 or more
      */
-    public int schemaChanges(String databaseName, Set<String> tables, String ddlStatements, BlockingConsumer<SourceRecord> consumer) {
+    public int schemaChanges(String databaseName, Set<TableId> tables, String ddlStatements, BlockingConsumer<SourceRecord> consumer) {
         String topicName = topicSelector.getPrimaryTopic();
         Integer partition = 0;
         Struct key = schemaChangeRecordKey(databaseName);
@@ -357,8 +357,9 @@ public class RecordMakers {
         return result;
     }
 
-    protected Struct schemaChangeRecordValue(String databaseName, Set<String> tables, String ddlStatements) {
-        source.databaseEvent(databaseName, tables);
+    protected Struct schemaChangeRecordValue(String databaseName, Set<TableId> tables, String ddlStatements) {
+        source.databaseEvent(databaseName);
+        source.tableEvent(tables);
         Struct result = new Struct(schemaChangeValueSchema);
         result.put(Fields.SOURCE, source.struct());
         result.put(Fields.DATABASE_NAME, databaseName);

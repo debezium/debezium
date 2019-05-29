@@ -220,7 +220,7 @@ public class MySqlSchemaTest {
         }
     }
 
-    protected void printStatements(String dbName, Set<String> tables, String ddlStatements) {
+    protected void printStatements(String dbName, Set<TableId> tables, String ddlStatements) {
         Testing.print("Running DDL for '" + dbName + "': " + ddlStatements + " changing tables '" + tables + "'");
     }
 
