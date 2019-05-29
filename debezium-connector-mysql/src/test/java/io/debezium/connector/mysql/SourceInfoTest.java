@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
@@ -650,7 +651,7 @@ public class SourceInfoTest {
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("table", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("server_id", Schema.INT64_SCHEMA)

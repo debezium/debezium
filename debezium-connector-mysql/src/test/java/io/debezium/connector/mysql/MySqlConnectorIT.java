@@ -341,8 +341,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecord secondToLast = allRecords.get(allRecords.size() - 2);
         assertThat(secondToLast.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isTrue();
         assertThat(last.sourceOffset().containsKey(SourceInfo.SNAPSHOT_KEY)).isFalse(); // not snapshot
-        assertThat(((Struct) secondToLast.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
-        assertThat(((Struct) last.value()).getStruct(Envelope.FieldName.SOURCE).getBoolean(SourceInfo.SNAPSHOT_KEY)).isTrue();
+        assertThat(((Struct) secondToLast.value()).getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
+        assertThat(((Struct) last.value()).getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Stopping the connector does not lose events recorded when connector is not running

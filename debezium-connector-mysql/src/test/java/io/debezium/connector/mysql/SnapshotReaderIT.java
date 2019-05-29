@@ -206,7 +206,6 @@ public class SnapshotReaderIT {
                 VerifyRecord.hasNoSourceQuery(record);
                 store.add(record);
                 schemaChanges.add(record);
-                System.out.println(record);
             });
         }
         // The last poll should always return null ...
