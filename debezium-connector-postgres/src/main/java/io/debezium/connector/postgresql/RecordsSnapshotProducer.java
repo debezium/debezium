@@ -30,6 +30,7 @@ import org.postgresql.util.PGmoney;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.Snapshotter;
@@ -302,6 +303,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         final Struct source = (Struct) envelope.get("source");
         if (source.schema().field(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null && source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY) != null) {
             source.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, true);
+        }
+        if (SnapshotRecord.fromSource(source) == SnapshotRecord.TRUE) {
+            SnapshotRecord.LAST.toSource(source);
         }
     }
 

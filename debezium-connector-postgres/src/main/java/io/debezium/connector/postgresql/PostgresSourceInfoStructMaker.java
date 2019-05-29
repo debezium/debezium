@@ -43,10 +43,9 @@ public class PostgresSourceInfoStructMaker extends AbstractSourceInfoStructMaker
         result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tableName());
         // use the offset information without the snapshot part and usec part
         sourceInfo.offset().forEach((k, v) -> {
-            if (SourceInfo.TIMESTAMP_USEC_KEY.equals(k)) {
-                return;
-            }
-            else if (SourceInfo.LAST_SNAPSHOT_RECORD_KEY.equals(k)) {
+            if (SourceInfo.TIMESTAMP_USEC_KEY.equals(k) ||
+                    SourceInfo.LAST_SNAPSHOT_RECORD_KEY.equals(k) ||
+                    SourceInfo.SNAPSHOT_KEY.equals(k)) {
                 return;
             }
             else {

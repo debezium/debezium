@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
@@ -268,8 +269,14 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected boolean snapshot() {
-        return snapshot;
+    protected SnapshotRecord snapshot() {
+        if (snapshot) {
+            if (lastSnapshotRecord) {
+                return SnapshotRecord.LAST;
+            }
+            return SnapshotRecord.TRUE;
+        }
+        return SnapshotRecord.FALSE;
     }
 
     public boolean hasLastKnownPosition() {
