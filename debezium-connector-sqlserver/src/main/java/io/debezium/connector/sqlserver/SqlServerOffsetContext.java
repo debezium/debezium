@@ -151,4 +151,9 @@ public class SqlServerOffsetContext implements OffsetContext {
                 ", snapshotCompleted=" + snapshotCompleted +
                 "]";
     }
+
+    @Override
+    public void markLastSnapshotRecord() {
+        sourceInfo.setLastSnapshotRecord(true);
+    }
 }

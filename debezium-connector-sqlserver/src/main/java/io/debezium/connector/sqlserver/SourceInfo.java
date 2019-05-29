@@ -11,6 +11,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.relational.TableId;
 
 /**
@@ -29,6 +30,7 @@ public class SourceInfo extends AbstractSourceInfo {
     private Lsn changeLsn;
     private Lsn commitLsn;
     private boolean snapshot;
+    private boolean lastSnapshotRecord;
     private Instant sourceTime;
     private TableId tableId;
 
@@ -111,12 +113,22 @@ public class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected boolean snapshot() {
-        return isSnapshot();
+    protected SnapshotRecord snapshot() {
+        if (isSnapshot()) {
+            if (lastSnapshotRecord) {
+                return SnapshotRecord.LAST;
+            }
+            return SnapshotRecord.TRUE;
+        }
+        return SnapshotRecord.FALSE;
     }
 
     @Override
     protected String database() {
         return tableId.catalog();
+    }
+
+    public void setLastSnapshotRecord(boolean lastSnapshotRecord) {
+        this.lastSnapshotRecord = lastSnapshotRecord;
     }
 }

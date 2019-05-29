@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -286,7 +287,10 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotContext.offset.preSnapshotStart();
 
-        for (TableId tableId : snapshotContext.capturedTables) {
+        for (Iterator<TableId> tableIdIterator = snapshotContext.capturedTables.iterator(); tableIdIterator.hasNext();) {
+            final TableId tableId = tableIdIterator.next();
+            snapshotContext.lastTable = !tableIdIterator.hasNext();
+
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while snapshotting table " + tableId);
             }
@@ -320,28 +324,35 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             final int numColumns = table.columns().size();
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
+            snapshotContext.lastRecordInTable = false;
 
-            while (rs.next()) {
-                if (!sourceContext.isRunning()) {
-                    throw new InterruptedException("Interrupted while snapshotting table " + table.id());
+            if (rs.next()) {
+                while (!snapshotContext.lastRecordInTable) {
+                    if (!sourceContext.isRunning()) {
+                        throw new InterruptedException("Interrupted while snapshotting table " + table.id());
+                    }
+
+                    rows++;
+                    final Object[] row = new Object[numColumns];
+                    for (int i = 0; i < numColumns; i++) {
+                        row[i] = getColumnValue(rs, i + 1, columns[i]);
+                    }
+
+                    snapshotContext.lastRecordInTable = !rs.next();
+                    if (logTimer.expired()) {
+                        long stop = clock.currentTimeInMillis();
+                        LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
+                                Strings.duration(stop - exportStart));
+                        snapshotProgressListener.rowsScanned(table.id(), rows);
+                        logTimer = getTableScanLogTimer();
+                    }
+
+                    if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
+                        snapshotContext.offset.markLastSnapshotRecord();
+                    }
+                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row),
+                            snapshotReceiver);
                 }
-
-                rows++;
-                final Object[] row = new Object[numColumns];
-                for (int i = 0; i < numColumns; i++) {
-                    row[i] = getColumnValue(rs, i + 1, columns[i]);
-                }
-
-                if (logTimer.expired()) {
-                    long stop = clock.currentTimeInMillis();
-                    LOGGER.info("\t Exported {} records for table '{}' after {}", rows, table.id(),
-                            Strings.duration(stop - exportStart));
-                    snapshotProgressListener.rowsScanned(table.id(), rows);
-                    logTimer = getTableScanLogTimer();
-                }
-
-                dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row),
-                        snapshotReceiver);
             }
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
@@ -436,6 +447,8 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
         public Set<TableId> capturedTables;
         public OffsetContext offset;
+        public boolean lastTable;
+        public boolean lastRecordInTable;
 
         public SnapshotContext(String catalogName) throws SQLException {
             this.catalogName = catalogName;
