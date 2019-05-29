@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 /**
  * @author Randall Hauch
@@ -50,7 +51,7 @@ public class SourceInfoTest {
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.OPERATION_ID).schema()).isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
-        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(SchemaBuilder.bool().optional().defaultValue(false).build());
+        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA);
     }
 
     @Test
@@ -107,7 +108,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     @Test
@@ -131,7 +132,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isNull();
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -163,7 +164,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isNull();
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isNull();
     }
 
     @Test
@@ -188,7 +189,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
     }
@@ -222,7 +223,7 @@ public class SourceInfoTest {
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("collectA");
         assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
-        assertThat(struct.getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
     }
 
     @Test
@@ -249,7 +250,7 @@ public class SourceInfoTest {
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("rs", Schema.STRING_SCHEMA)
                 .field("collection", Schema.STRING_SCHEMA)

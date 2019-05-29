@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -38,8 +39,10 @@ import com.mongodb.client.model.Filters;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
+import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BufferedBlockingConsumer;
 import io.debezium.util.Clock;
@@ -585,6 +588,11 @@ public class Replicator {
             this.buffered.close(record -> {
                 if (record == null) {
                     return null;
+                }
+                final Struct envelope = (Struct) record.value();
+                final Struct source = (Struct) envelope.get(Envelope.FieldName.SOURCE);
+                if (SnapshotRecord.fromSource(source) == SnapshotRecord.TRUE) {
+                    SnapshotRecord.LAST.toSource(source);
                 }
                 return new SourceRecord(record.sourcePartition(),
                         newOffset,

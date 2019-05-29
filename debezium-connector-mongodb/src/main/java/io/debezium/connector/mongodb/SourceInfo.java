@@ -21,6 +21,7 @@ import org.bson.types.BSONTimestamp;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.util.Collect;
 
 /**
@@ -371,8 +372,8 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected boolean snapshot() {
-        return isInitialSyncOngoing(collectionId().replicaSetName());
+    protected SnapshotRecord snapshot() {
+        return isInitialSyncOngoing(collectionId().replicaSetName()) ? SnapshotRecord.TRUE : SnapshotRecord.FALSE;
     }
 
     @Override
