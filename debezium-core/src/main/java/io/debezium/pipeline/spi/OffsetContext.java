@@ -39,6 +39,11 @@ public interface OffsetContext {
     boolean isSnapshotRunning();
 
     /**
+     * mark current record as the last one in the snapshot
+     */
+    void markLastSnapshotRecord();
+
+    /**
      * Signals that a snapshot will begin, which should reflect in an updated offset state.
      */
     void preSnapshotStart();

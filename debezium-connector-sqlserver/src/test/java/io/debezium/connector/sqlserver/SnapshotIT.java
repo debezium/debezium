@@ -26,6 +26,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -143,8 +144,30 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         // Ignore initial records
-        consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+        final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+        final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
+        table1.subList(0, INITIAL_RECORDS_PER_TABLE - 1).forEach(record -> {
+            assertThat(((Struct) record.value()).getStruct("source").getString("snapshot")).isEqualTo("true");
+        });
+        assertThat(((Struct) table1.get(INITIAL_RECORDS_PER_TABLE - 1).value()).getStruct("source").getString("snapshot")).isEqualTo("last");
+        testStreaming();
+    }
 
+    @Test
+    public void takeSnapshotWithOldStructAndStartStreaming() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Ignore initial records
+        final SourceRecords records = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+        final List<SourceRecord> table1 = records.recordsForTopic("server1.dbo.table1");
+        table1.forEach(record -> {
+            assertThat(((Struct) record.value()).getStruct("source").getBoolean("snapshot")).isTrue();
+        });
         testStreaming();
     }
 

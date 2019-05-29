@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.relational.TableId;
 
 public class SourceInfoTest {
@@ -63,7 +64,7 @@ public class SourceInfoTest {
 
     @Test
     public void snapshotIsPresent() {
-        assertThat(source.struct().getBoolean(SourceInfo.SNAPSHOT_KEY)).isEqualTo(Boolean.TRUE);
+        assertThat(source.struct().getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
     }
 
     @Test
@@ -86,7 +87,7 @@ public class SourceInfoTest {
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
