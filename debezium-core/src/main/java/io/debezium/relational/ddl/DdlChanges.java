@@ -67,7 +67,7 @@ public class DdlChanges implements DdlParserListener {
     public void groupStatementStringsByDatabase(DatabaseStatementStringConsumer consumer) {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
             final StringBuilder statements = new StringBuilder();
-            final Set<String> tables = new HashSet<>();
+            final Set<TableId> tables = new HashSet<>();
             eventList.forEach(event->{
                 statements.append(event.statement());
                 statements.append(terminator);
@@ -77,9 +77,9 @@ public class DdlChanges implements DdlParserListener {
         });
     }
 
-    private void addTable(final Set<String> tables, Event event) {
+    private void addTable(final Set<TableId> tables, Event event) {
         if (event instanceof TableEvent) {
-            tables.add(((TableEvent) event).tableId().table());
+            tables.add(((TableEvent) event).tableId());
         }
     }
 
@@ -91,7 +91,7 @@ public class DdlChanges implements DdlParserListener {
     public void groupStatementsByDatabase(DatabaseStatementConsumer consumer) {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
             List<String> statements = new ArrayList<>();
-            final Set<String> tables = new HashSet<>();
+            final Set<TableId> tables = new HashSet<>();
             eventList.forEach(event-> {
                 statements.add(event.statement());
                 addTable(tables, event);
@@ -172,11 +172,11 @@ public class DdlChanges implements DdlParserListener {
     }
 
     public static interface DatabaseStatementConsumer {
-        void consume(String databaseName, Set<String> tableList, List<String> ddlStatements);
+        void consume(String databaseName, Set<TableId> tableList, List<String> ddlStatements);
     }
 
     public static interface DatabaseStatementStringConsumer {
-        void consume(String databaseName, Set<String> tableList, String ddlStatements);
+        void consume(String databaseName, Set<TableId> tableList, String ddlStatements);
     }
 
     /**

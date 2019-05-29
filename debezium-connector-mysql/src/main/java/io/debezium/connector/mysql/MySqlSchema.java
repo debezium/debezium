@@ -340,8 +340,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                         if (databaseName == null) {
                             databaseName = "";
                         }
-                        final Set<String> tables = changes.stream().map(TableId::table).collect(Collectors.toSet());
-                        statementConsumer.consume(databaseName, tables, ddlStatements);
+                        statementConsumer.consume(databaseName, changes, ddlStatements);
                     }
                 }
 

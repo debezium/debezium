@@ -49,11 +49,8 @@ public class MySqlSourceInfoStructMaker extends AbstractSourceInfoStructMaker<So
         if (sourceInfo.getThreadId() >= 0) {
             result.put(SourceInfo.THREAD_KEY, sourceInfo.getThreadId());
         }
-        if (sourceInfo.getTableId() != null) {
-            result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table());
-        }
-        else if (sourceInfo.tables() != null) {
-            result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tables());
+        if (sourceInfo.table() != null) {
+            result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table());
         }
         if (sourceInfo.getQuery() != null) {
             result.put(SourceInfo.QUERY_KEY, sourceInfo.getQuery());

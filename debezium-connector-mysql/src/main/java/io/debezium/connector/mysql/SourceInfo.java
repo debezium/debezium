@@ -6,10 +6,13 @@
 package io.debezium.connector.mysql;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -140,15 +143,15 @@ final class SourceInfo extends AbstractSourceInfo {
     private String tableWhitelist;
     private String tableBlacklist;
     private final SourceInfoStructMaker<SourceInfo> structMaker;
-    private TableId tableId;
+    private Set<TableId> tableIds;
     private String databaseName;
-    private String tables;
 
     public SourceInfo(MySqlConnectorConfig connectorConfig) {
         super(connectorConfig);
-        this.structMaker = connectorConfig.getSourceInfoStructMaker();
 
-        sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
+        this.structMaker = connectorConfig.getSourceInfoStructMaker();
+        this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
+        this.tableIds = new HashSet<>();
     }
 
     /**
@@ -295,14 +298,16 @@ final class SourceInfo extends AbstractSourceInfo {
         return structMaker.schema();
     }
 
-    public void databaseEvent(String databaseName, Set<String> tables) {
+    public void databaseEvent(String databaseName) {
         this.databaseName = databaseName;
-        this.tableId = null;
-        this.tables = (tables == null || tables.isEmpty()) ? null : String.join(",", tables);
+    }
+
+    public void tableEvent(Set<TableId> tableIds) {
+        this.tableIds = new HashSet<>(tableIds);
     }
 
     public void tableEvent(TableId tableId) {
-        this.tableId = tableId;
+        this.tableIds = Collections.singleton(tableId);
     }
 
     /**
@@ -623,8 +628,16 @@ final class SourceInfo extends AbstractSourceInfo {
         return threadId;
     }
 
-    TableId getTableId() {
-        return tableId;
+    /**
+     * Returns a string representation of the table(s) affected by the current
+     * event. Will only represent more than a single table for events in the
+     * user-facing schema history topic for certain types of DDL. Will be {@code null}
+     * for DDL events not applying to tables (CREATE DATABASE etc.).
+     */
+    String table() {
+        return tableIds.isEmpty() ? null : tableIds.stream()
+                .map(TableId::table)
+                .collect(Collectors.joining(","));
     }
 
     String getCurrentGtid() {
@@ -835,10 +848,6 @@ final class SourceInfo extends AbstractSourceInfo {
 
     @Override
     protected String database() {
-        return (tableId == null) ? databaseName : tableId.catalog();
-    }
-
-    String tables() {
-        return tables;
+        return tableIds.isEmpty() ? databaseName : tableIds.iterator().next().catalog();
     }
 }

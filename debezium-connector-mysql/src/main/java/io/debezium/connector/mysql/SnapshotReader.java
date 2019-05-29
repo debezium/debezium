@@ -888,7 +888,7 @@ public class SnapshotReader extends AbstractReader {
                 record.value());
     }
 
-    protected void enqueueSchemaChanges(String dbName, Set<String> tables, String ddlStatement) {
+    protected void enqueueSchemaChanges(String dbName, Set<TableId> tables, String ddlStatement) {
         if (!context.includeSchemaChangeRecords() || ddlStatement.length() == 0) {
             return;
         }

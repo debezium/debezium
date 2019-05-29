@@ -61,9 +61,11 @@ public class LegacyV1MySqlSourceInfoStructMaker extends LegacyV1AbstractSourceIn
         if (sourceInfo.getThreadId() >= 0) {
             result.put(SourceInfo.THREAD_KEY, sourceInfo.getThreadId());
         }
-        if (sourceInfo.getTableId() != null) {
-            result.put(SourceInfo.DATABASE_NAME_KEY, sourceInfo.getTableId().catalog());
-            result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table());
+        if (sourceInfo.database() != null) {
+            result.put(SourceInfo.DATABASE_NAME_KEY, sourceInfo.database());
+        }
+        if (sourceInfo.table() != null) {
+            result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table());
         }
         if (sourceInfo.getQuery() != null) {
             result.put(SourceInfo.QUERY_KEY, sourceInfo.getQuery());
