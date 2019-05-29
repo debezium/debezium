@@ -48,6 +48,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.SchemaUtil;
@@ -777,29 +778,30 @@ public abstract class AbstractRecordsProducerTest {
         assertNotNull(offset.get(SourceInfo.LSN_KEY));
         Object snapshot = offset.get(SourceInfo.SNAPSHOT_KEY);
 
-        // TODO DBZ-1295
-//        Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
+        Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
 
         if (shouldBeSnapshot) {
             assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
-//            assertEquals("Last snapshot record marker mismatch", shouldBeLastSnapshotRecord, lastSnapshotRecord);
+            assertEquals("Last snapshot record marker mismatch", shouldBeLastSnapshotRecord, lastSnapshotRecord);
         }
         else {
             assertNull("Snapshot marker not expected, but found", snapshot);
-//            assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
+            assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
         }
         final Struct envelope = (Struct) record.value();
         if (envelope != null) {
             final Struct source = (Struct) envelope.get("source");
-            final Boolean sourceSnapshot = source.getBoolean(SourceInfo.SNAPSHOT_KEY);
-//            final Boolean sourceLastSnapshotRecord = source.getBoolean(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
+            final SnapshotRecord sourceSnapshot = SnapshotRecord.fromSource(source);
             if (shouldBeSnapshot) {
-                assertTrue("Snapshot marker expected in source but not found", sourceSnapshot);
-//                assertEquals("Last snapshot record marker in source mismatch", shouldBeLastSnapshotRecord, sourceLastSnapshotRecord);
+                if (shouldBeLastSnapshotRecord) {
+                    assertEquals("Expected snapshot last record", SnapshotRecord.LAST, sourceSnapshot);
+                }
+                else {
+                    assertEquals("Expected snapshot intermediary record", SnapshotRecord.TRUE, sourceSnapshot);
+                }
             }
             else {
                 assertNull("Source snapshot marker not expected, but found", sourceSnapshot);
-//                assertNull("Source last snapshot marker not expected, but found", sourceLastSnapshotRecord);
             }
         }
     }

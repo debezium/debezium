@@ -51,9 +51,9 @@ public abstract class AbstractSourceInfo {
     protected abstract Instant timestamp();
 
     /**
-     * @return true if event is from snapshot
+     * @return status whether the record is from snapshot or streaming phase
      */
-    protected abstract boolean snapshot();
+    protected abstract SnapshotRecord snapshot();
 
     /**
      * @return name of the database
