@@ -10,8 +10,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
@@ -21,7 +19,6 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 /**
@@ -73,15 +70,16 @@ public class MultiTableStatementIT extends AbstractConnectorTest {
             assertThat(source.getString("db")).isEqualTo(DATABASE.getDatabaseName());
             tableNames.add(source.getString("table"));
         });
-        assertThat(tableNames.subList(0, 5)).isEqualTo(Arrays.asList(
+        assertThat(tableNames.subList(0, 5)).containsExactly(
                 null,
                 "t1",
                 "t2",
                 "t3",
                 "t4"
-        ));
-        assertThat(new HashSet<String>(Arrays.asList(tableNames.get(5).split(","))))
-            .isEqualTo(Collect.unmodifiableSet("t1", "t2", "t3", "t4"));
+        );
+        String[] dropTableNames = tableNames.get(5).split(",");
+        assertThat(dropTableNames).containsOnly("t1", "t2", "t3", "t4");
+
         stopConnector();
     }
 }
