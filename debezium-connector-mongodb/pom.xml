@@ -264,7 +264,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
                                     </descriptorRefs>
                                 </configuration>
                             </execution>
