@@ -585,6 +585,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                    + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only,"
                                                                    + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
 
+    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
+            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+
     public static final Field SERVER_ID = Field.create("database.server.id")
                                                .withDisplayName("Cluster ID")
                                                .withType(Type.LONG)
@@ -998,7 +1001,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, SERVER_ID, SERVER_ID_OFFSET,
-                                                     RelationalDatabaseConnectorConfig.SERVER_NAME,
+                                                     SERVER_NAME,
                                                      CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE,
                                                      CommonConnectorConfig.MAX_BATCH_SIZE,
@@ -1045,7 +1048,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     public MySqlConnectorConfig(Configuration config) {
         super(
                 config,
-                config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
+                config.getString(SERVER_NAME),
                 null, // TODO whitelist handling is still done locally here
                 null,
                 DEFAULT_SNAPSHOT_FETCH_SIZE
@@ -1074,7 +1077,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
-        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
+        Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
                     SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
