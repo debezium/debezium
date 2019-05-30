@@ -113,6 +113,9 @@
 
         <!-- No modules options by default -->
         <modules.argline />
+
+        <!-- Assembly configuration -->
+        <assembly.descriptor>connector-distribution</assembly.descriptor>
     </properties>
 
     <modules>
