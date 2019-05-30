@@ -192,6 +192,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
+    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
+            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database name")
             .withType(Type.STRING)
@@ -226,7 +229,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(
-            RelationalDatabaseConnectorConfig.SERVER_NAME,
+            SERVER_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
@@ -247,7 +250,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "SQL Server", RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
+        Field.group(config, "SQL Server", SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
@@ -271,7 +274,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final ColumnNameFilter columnFilter;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(config, config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
+        super(config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
