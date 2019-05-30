@@ -1283,6 +1283,15 @@ public class MySqlAntlrDdlParserTest {
         assertThat(listener.total()).isEqualTo(0);
     }
 
+    @FixFor("DBZ-1300")
+    @Test
+    public void shouldParseGrantStatementWithoutSpecifiedHostName() {
+        String ddl = "GRANT ALL PRIVILEGES ON `add-new-user`.* TO `add_new_user`";
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(0); // no tables
+        assertThat(listener.total()).isEqualTo(0);
+    }
+
     @Test
     public void shouldParseSetOfOneVariableStatementWithoutTerminator() {
         String ddl = "set character_set_client=utf8";
