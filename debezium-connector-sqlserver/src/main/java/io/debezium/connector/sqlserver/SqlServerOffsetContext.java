@@ -12,6 +12,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.util.Collect;
@@ -39,7 +40,7 @@ public class SqlServerOffsetContext implements OffsetContext {
             postSnapshotCompletion();
         }
         else {
-            sourceInfo.setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
     }
 
@@ -104,7 +105,7 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     @Override
     public void preSnapshotStart() {
-        sourceInfo.setSnapshot(true);
+        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
         snapshotCompleted = false;
     }
 
@@ -115,7 +116,7 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     @Override
     public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(false);
+        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
     public static class Loader implements OffsetContext.Loader {
@@ -154,6 +155,6 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     @Override
     public void markLastSnapshotRecord() {
-        sourceInfo.setLastSnapshotRecord(true);
+        sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }
 }

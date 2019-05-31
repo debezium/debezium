@@ -16,6 +16,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotRecord;
 
 public class LegacyV1SourceInfoTest {
 
@@ -32,7 +33,7 @@ public class LegacyV1SourceInfoTest {
         source = new SourceInfo(connectorConfig);
         source.setChangeLsn(Lsn.valueOf(new byte [] { 0x01 }));
         source.setCommitLsn(Lsn.valueOf(new byte [] { 0x02 }));
-        source.setSnapshot(true);
+        source.setSnapshot(SnapshotRecord.TRUE);
         source.setSourceTime(Instant.ofEpochMilli(3000));
     }
 
