@@ -141,7 +141,7 @@ public class ReplicationConnectionIT {
     public void shouldNotReceiveSameChangesIfFlushed() throws Exception {
         // don't drop the replication slot once this is finished
         String slotName = "test";
-        startInsertStop(slotName, this::flushLSN);
+        startInsertStop(slotName, this::flushLsn);
 
         // create a new replication connection with the same slot and check that we don't get back the same changes that we've
         // flushed
@@ -155,7 +155,7 @@ public class ReplicationConnectionIT {
     @Test
     public void shouldReceiveMissedChangesWhileDown() throws Exception {
         String slotName = "test";
-        startInsertStop(slotName, this::flushLSN);
+        startInsertStop(slotName, this::flushLsn);
 
         // run some more SQL while the slot is stopped
         // this deletes 2 entries so each of them will have a message
@@ -244,10 +244,11 @@ public class ReplicationConnectionIT {
         }
     }
 
-    private void flushLSN(ReplicationStream stream) {
+    private void flushLsn(ReplicationStream stream) {
         try {
-            stream.flushLastReceivedLsn();
-        } catch (SQLException e) {
+            stream.flushLsn(stream.lastReceivedLsn());
+        }
+        catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -288,7 +289,7 @@ public class ReplicationConnectionIT {
             while (!Thread.interrupted()) {
                 for(;;) {
                     List<ReplicationMessage> message = new ArrayList<>();
-                    stream.readPending(x -> message.add(x));
+                    stream.read(x -> message.add(x));
                     if (message.isEmpty()) {
                         break;
                     }
