@@ -10,8 +10,7 @@ import java.time.Instant;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.relational.TableId;
 
 /**
@@ -22,15 +21,13 @@ import io.debezium.relational.TableId;
  *
  */
 @NotThreadSafe
-public class SourceInfo extends AbstractSourceInfo {
+public class SourceInfo extends BaseSourceInfo {
 
     public static final String CHANGE_LSN_KEY = "change_lsn";
     public static final String COMMIT_LSN_KEY = "commit_lsn";
 
     private Lsn changeLsn;
     private Lsn commitLsn;
-    private boolean snapshot;
-    private boolean lastSnapshotRecord;
     private Instant sourceTime;
     private TableId tableId;
 
@@ -67,17 +64,6 @@ public class SourceInfo extends AbstractSourceInfo {
         sourceTime = instant;
     }
 
-    public boolean isSnapshot() {
-        return snapshot;
-    }
-
-    /**
-     * @param snapshot - true if the source of even is snapshot phase, not the database log
-     */
-    public void setSnapshot(boolean snapshot) {
-        this.snapshot = snapshot;
-    }
-
     public TableId getTableId() {
         return tableId;
     }
@@ -102,7 +88,7 @@ public class SourceInfo extends AbstractSourceInfo {
                 "serverName=" + serverName() +
                 ", changeLsn=" + changeLsn +
                 ", commitLsn=" + commitLsn +
-                ", snapshot=" + snapshot +
+                ", snapshot=" + snapshotRecord +
                 ", sourceTime=" + sourceTime +
                 "]";
     }
@@ -113,22 +99,7 @@ public class SourceInfo extends AbstractSourceInfo {
     }
 
     @Override
-    protected SnapshotRecord snapshot() {
-        if (isSnapshot()) {
-            if (lastSnapshotRecord) {
-                return SnapshotRecord.LAST;
-            }
-            return SnapshotRecord.TRUE;
-        }
-        return SnapshotRecord.FALSE;
-    }
-
-    @Override
     protected String database() {
         return tableId.catalog();
-    }
-
-    public void setLastSnapshotRecord(boolean lastSnapshotRecord) {
-        this.lastSnapshotRecord = lastSnapshotRecord;
     }
 }
