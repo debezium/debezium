@@ -106,9 +106,18 @@ JIRA_CLOSE_RELEASE = """
 
 
 def modifyFile(filename, modClosure) {
+    echo "========================================================================"
+    echo "Modifying file $filename"
+    echo "========================================================================"
+    def originalFile = readFile(filename)
+    echo "Content to be modified:\n$originalFile"
+    echo "========================================================================"
+    def updatedFile = modClosure.call(originalFile)
+    echo "Content after modification:\n$updatedFile"
+    echo "========================================================================"
     writeFile(
         file: filename,
-        text: modClosure.call(readFile(filename))
+        text: updatedFile
     )
 }
 
@@ -261,10 +270,12 @@ node('Slave') {
     }
 
     stage ('Check Contributors') {
-        dir (DEBEZIUM_DIR) {
-            def rc = sh(script: "jenkins-jobs/scripts/check-contributors.sh", returnStatus: true)
-            if (rc != 0) {
-                error "Error, not all contributors have been added to COPYRIGHT.txt.  See log for details."
+        if (!DRY_RUN) {
+            dir (DEBEZIUM_DIR) {
+                def rc = sh(script: "jenkins-jobs/scripts/check-contributors.sh", returnStatus: true)
+                if (rc != 0) {
+                    error "Error, not all contributors have been added to COPYRIGHT.txt.  See log for details."
+                }
             }
         }
     }
@@ -330,27 +341,33 @@ node('Slave') {
     }
 
     stage ('Verify images') {
-        def sums = []
+        def sums = [:]
         for (i = 0; i < CONNECTORS.size(); i++) {
             def connector = CONNECTORS[i]
             dir ("$LOCAL_MAVEN_REPO/io/debezium/debezium-connector-$connector/$RELEASE_VERSION") {
                 def md5sum = sh (script: "md5sum -b debezium-connector-${connector}-${RELEASE_VERSION}-plugin.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
-                sums << "${connector.toUpperCase()}_MD5=$md5sum"
+                sums["${connector.toUpperCase()}"] = md5sum
             }
         }
+        echo "MD5 sums calculated: ${sums}"
         dir ("$IMAGES_DIR/connect/$IMAGE_TAG") {
+            echo "Modifying main Dockerfile"
             modifyFile('Dockerfile') {
-                it
-                    .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
-                    .replaceFirst('MAVEN_REPO_CORE="[^"]+"', "MAVEN_REPO_CORE=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
-                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]+"', "MAVEN_REPO_INCUBATOR=\"$STAGING_REPO/$INCUBATOR_STAGING_REPO_ID/\"")
-                    .replaceFirst('MD5SUMS="[^"]+"', "MD5SUMS=\"${sums.join(' ')}\"")
+                def ret = it
+                    .replaceFirst('DEBEZIUM_VERSION="\\S+"', "DEBEZIUM_VERSION=\"$RELEASE_VERSION\"")
+                    .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$STAGING_REPO_ID/\"")
+                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]*"', "MAVEN_REPO_INCUBATOR=\"$STAGING_REPO/$INCUBATOR_STAGING_REPO_ID/\"")
+                for (entry in sums) {
+                    ret = ret.replaceFirst("${entry.key}_MD5=\\S+", "${entry.key}_MD5=${entry.value}")
+                }
+                return ret
             }
             modifyFile('Dockerfile.local') {
                 it
                     .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
             }
         }
+        echo "Modifying snapshot Dockerfile"
         dir ("$IMAGES_DIR/connect/snapshot") {
             modifyFile('Dockerfile') {
                 it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
@@ -358,7 +375,7 @@ node('Slave') {
         }
         dir ("$IMAGES_DIR") {
             modifyFile('build-all.sh') {
-                it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$IMAGE_TAG")
+                it.replaceFirst('DEBEZIUM_VERSION=\"\\S+\"', "DEBEZIUM_VERSION=\"$IMAGE_TAG\"")
             }
         }
         dir(IMAGES_DIR) {
@@ -403,16 +420,15 @@ node('Slave') {
                 error 'Tutorial watcher did not reported messages'
             }
         }
-
         dir ("$IMAGES_DIR/connect/$IMAGE_TAG") {
             modifyFile('Dockerfile') {
                 it
-                    .replaceFirst('MAVEN_REPO_CORE="[^"]+"', "MAVEN_REPO_CORE=\"$MAVEN_CENTRAL\"")
-                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]+"', "MAVEN_REPO_INCUBATOR=\"$MAVEN_CENTRAL\"")
+                    .replaceFirst('MAVEN_REPO_CENTRAL="[^"]+"', "MAVEN_REPO_CENTRAL=\"\"")
+                    .replaceFirst('MAVEN_REPO_INCUBATOR="[^"]+"', "MAVEN_REPO_INCUBATOR=\"\"")
             }
             modifyFile('Dockerfile.local') {
                 it
-                    .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
+                    .replaceFirst('DEBEZIUM_VERSION=\"\\S+\"', "DEBEZIUM_VERSION=\"$RELEASE_VERSION\"")
             }
         }
     }
