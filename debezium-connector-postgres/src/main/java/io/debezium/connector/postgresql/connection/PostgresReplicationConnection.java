@@ -269,16 +269,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 deserializeMessages(read, processor);
             }
 
-            @Override
-            public void readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-                ByteBuffer read = stream.readPending();
-                // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
-                if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
-                    return;
-                }
-                deserializeMessages(read, processor);
-            }
-
             private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 lastReceivedLsn = stream.getLastReceiveLSN();
                 messageDecoder.processMessage(buffer, processor, typeRegistry);
@@ -288,16 +278,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             public void close() throws SQLException {
                 processWarnings(true);
                 stream.close();
-            }
-
-            @Override
-            public void flushLastReceivedLsn() throws SQLException {
-                if (lastReceivedLsn == null) {
-                    // nothing to flush yet, since we haven't read anything...
-                    return;
-                }
-
-                doFlushLsn(lastReceivedLsn);
             }
 
             @Override
