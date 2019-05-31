@@ -60,6 +60,7 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final char STATEMENT_DELIMITER = ';';
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
+    private static final String DEFAULT_CHARSET_NAME = null; // JDBC does not expose character sets
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private final Map<String, PreparedStatement> statementCache = new BoundedConcurrentHashMap<>(STATEMENT_CACHE_CAPACITY, 16, Eviction.LIRS, new EvictionListener<String, PreparedStatement>() {
 
@@ -912,7 +913,7 @@ public class JdbcConnection implements AutoCloseable {
                 String catalogName = rs.getString(1);
                 String schemaName = rs.getString(2);
                 String tableName = rs.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                TableId tableId = new TableId(catalogName(catalogName, databaseCatalog), schemaName, tableName);
                 tableIds.add(tableId);
             }
         }
@@ -994,7 +995,7 @@ public class JdbcConnection implements AutoCloseable {
                 final String catalogName = rs.getString(1);
                 final String schemaName = rs.getString(2);
                 final String tableName = rs.getString(3);
-                viewIds.add(new TableId(catalogName, schemaName, tableName));
+                viewIds.add(new TableId(catalogName(catalogName, databaseCatalog), schemaName, tableName));
             }
         }
 
@@ -1004,7 +1005,7 @@ public class JdbcConnection implements AutoCloseable {
                 String catalogName = columnMetadata.getString(1);
                 String schemaName = columnMetadata.getString(2);
                 String tableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                TableId tableId = new TableId(catalogName(catalogName, databaseCatalog), schemaName, tableName);
 
                 // exclude views and non-whitelisted tables
                 if (viewIds.contains(tableId) ||
@@ -1014,8 +1015,7 @@ public class JdbcConnection implements AutoCloseable {
 
                 // add all whitelisted columns
                 readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> {
-                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>())
-                        .add(column.create());
+                    columnsByTable.computeIfAbsent(tableId, t -> new ArrayList<>()).add(column.create());
                 });
             }
         }
@@ -1026,10 +1026,7 @@ public class JdbcConnection implements AutoCloseable {
             List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
 
             // Then define the table ...
-            List<Column> columns = tableEntry.getValue();
-            Collections.sort(columns);
-            String defaultCharsetName = null; // JDBC does not expose character sets
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName);
+            tables.overwriteTable(tableEntry.getKey(), sortColumns(tableEntry.getValue()), pkColumnNames, DEFAULT_CHARSET_NAME);
         }
 
         if (removeTablesNotFoundInJdbc) {
@@ -1037,6 +1034,43 @@ public class JdbcConnection implements AutoCloseable {
             tableIdsBefore.removeAll(columnsByTable.keySet());
             tableIdsBefore.forEach(tables::removeTable);
         }
+    }
+
+    private String catalogName(String catalogName, String databaseCatalog) {
+        return (catalogName == null && !Strings.isNullOrEmpty(databaseCatalog)) ? databaseCatalog : catalogName;
+    }
+
+    /**
+     * Creates definition for table, given the table identifier and column filter.
+     *
+     * @param tables the set of table definitions to be modified; may not be null
+     * @param tableId the identifier for a database table; may not be null
+     * @param columnFilter used to determine which columns should be included as fields in its table's definition; may
+     *            be null if all columns for all tables are to be included
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public void readTable(Tables tables, TableId tableId, ColumnNameFilter columnFilter) throws SQLException {
+        // Read the metadata for the table columns ...
+        DatabaseMetaData metadata = connection().getMetaData();
+
+        List<Column> columns = new ArrayList<>();
+        try (ResultSet columnMetadata = metadata.getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
+            while (columnMetadata.next()) {
+                // add all whitelisted columns
+                readTableColumn(columnMetadata, tableId, columnFilter).ifPresent(column -> columns.add(column.create()));
+            }
+        }
+
+        // First get the primary key information ...
+        List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableId);
+
+        // Then define the table ...
+        tables.overwriteTable(tableId, sortColumns(columns), pkColumnNames, DEFAULT_CHARSET_NAME);
+    }
+
+    private List<Column> sortColumns(List<Column> columns) {
+        Collections.sort(columns);
+        return columns;
     }
 
     /**
