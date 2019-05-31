@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.relational.TableId;
 
@@ -53,7 +54,7 @@ public class SourceInfoTest {
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", SchemaBuilder.bool().optional().defaultValue(false).build())
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)

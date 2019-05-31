@@ -111,7 +111,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
 
         SourceRecord record2 = testTableRecords.get(1);
         VerifyRecord.isValidRead(record2, "ID", 2);
@@ -125,7 +125,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         source = (Struct) ((Struct) record2.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
     }
 
     @Test
@@ -154,7 +154,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(1);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
         assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
@@ -190,7 +190,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(record3.sourceOffset().containsKey(SNAPSHOT_COMPLETED_KEY)).isFalse();
 
         source = (Struct) ((Struct) record3.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(false);
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("false");
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
         assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
@@ -226,7 +226,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("ID")).isEqualTo(1);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
-        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
         assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
         assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");
         assertThat(source.get(SourceInfo.DEBEZIUM_VERSION_KEY)).isNotNull();
@@ -280,7 +280,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertThat(record3.sourceOffset().containsKey(SourceInfo.SCN_KEY)).isFalse();
 
             source = (Struct) ((Struct) record3.value()).get("source");
-            assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(false);
+            assertThat(source.get(SourceInfo.SNAPSHOT_KEY)).isEqualTo("false");
             assertThat(source.get(SourceInfo.SCN_KEY)).isNotNull();
             assertThat(source.get(SourceInfo.LCR_POSITION_KEY)).isNotNull();
             assertThat(source.get(SourceInfo.SERVER_NAME_KEY)).isEqualTo("server1");

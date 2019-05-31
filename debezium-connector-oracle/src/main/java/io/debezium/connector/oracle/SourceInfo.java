@@ -10,11 +10,11 @@ import java.time.Instant;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.relational.TableId;
 
 @NotThreadSafe
-public class SourceInfo extends AbstractSourceInfo {
+public class SourceInfo extends BaseSourceInfo {
 
     public static final String TXID_KEY = "txId";
     public static final String SCN_KEY = "scn";
@@ -25,7 +25,6 @@ public class SourceInfo extends AbstractSourceInfo {
     private LcrPosition lcrPosition;
     private String transactionId;
     private Instant sourceTime;
-    private boolean snapshot;
     private TableId tableId;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
@@ -71,14 +70,6 @@ public class SourceInfo extends AbstractSourceInfo {
         this.sourceTime = sourceTime;
     }
 
-    public void setSnapshot(boolean snapshot) {
-        this.snapshot = snapshot;
-    }
-
-    public boolean isSnapshot() {
-        return snapshot;
-    }
-
     public TableId getTableId() {
         return tableId;
     }
@@ -90,11 +81,6 @@ public class SourceInfo extends AbstractSourceInfo {
     @Override
     protected Instant timestamp() {
         return sourceTime;
-    }
-
-    @Override
-    protected boolean snapshot() {
-        return isSnapshot();
     }
 
     @Override

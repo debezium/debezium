@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 
@@ -44,7 +45,7 @@ public class OracleOffsetContext implements OffsetContext {
             postSnapshotCompletion();
         }
         else {
-            sourceInfo.setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
     }
 
@@ -159,7 +160,7 @@ public class OracleOffsetContext implements OffsetContext {
 
     @Override
     public void preSnapshotStart() {
-        sourceInfo.setSnapshot(true);
+        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
         snapshotCompleted = false;
     }
 
@@ -170,7 +171,7 @@ public class OracleOffsetContext implements OffsetContext {
 
     @Override
     public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(false);
+        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
     @Override
@@ -185,6 +186,11 @@ public class OracleOffsetContext implements OffsetContext {
         sb.append("]");
 
         return sb.toString();
+    }
+
+    @Override
+    public void markLastSnapshotRecord() {
+        sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }
 
     public static class Loader implements OffsetContext.Loader {
