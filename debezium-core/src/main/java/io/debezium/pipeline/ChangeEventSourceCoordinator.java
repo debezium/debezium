@@ -28,6 +28,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
+import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.util.Threads;
 
 /**
@@ -47,6 +48,7 @@ public class ChangeEventSourceCoordinator {
     private final ChangeEventSourceFactory changeEventSourceFactory;
     private final ExecutorService executor;
     private final EventDispatcher<?> eventDispatcher;
+    private final RelationalDatabaseSchema schema;
 
     private volatile boolean running;
     private volatile StreamingChangeEventSource streamingSource;
@@ -54,12 +56,13 @@ public class ChangeEventSourceCoordinator {
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher) {
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, RelationalDatabaseSchema schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.executor = Threads.newSingleThreadExecutor(connectorType, logicalName, "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;
+        this.schema = schema;
     }
 
     public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
@@ -78,6 +81,8 @@ public class ChangeEventSourceCoordinator {
                 SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
                 eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
+
+                schema.assureNonEmptySchema();
 
                 if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());

@@ -282,6 +282,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                     r -> consumer.accept(new ChangeEvent(r, sourceInfo.lsn())
                 )
             );
+
+            taskContext.schema().assureNonEmptySchema();
         }
         catch (SQLException e) {
             rollbackTransaction(jdbcConnection);

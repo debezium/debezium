@@ -365,6 +365,10 @@ public class Replicator {
             return false;
         }
 
+        if (collections.isEmpty()) {
+            logger.warn("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration");
+        }
+
         if (logger.isInfoEnabled()) {
             logger.info("Initial sync of {} collections with a total of {} documents completed in {}",
                         collections.size(), numDocumentsCopied.get(), Strings.duration(syncDuration));

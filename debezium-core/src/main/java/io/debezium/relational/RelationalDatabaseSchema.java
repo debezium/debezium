@@ -10,6 +10,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.apache.kafka.connect.data.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -25,6 +27,7 @@ import io.debezium.schema.TopicSelector;
  * @author Gunnar Morling
  */
 public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId> {
+    private final static Logger LOG = LoggerFactory.getLogger(RelationalDatabaseSchema.class);
 
     private final TopicSelector<TableId> topicSelector;
     private final TableSchemaBuilder schemaBuilder;
@@ -71,6 +74,12 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     public Set<TableId> tableIds() {
         // TODO that filtering should really be done once upon insertion
         return tables.subset(tableFilter).tableIds();
+    }
+
+    public void assureNonEmptySchema() {
+        if (tableIds().isEmpty()) {
+            LOG.warn("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration");
+        }
     }
 
     /**
