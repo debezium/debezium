@@ -173,4 +173,49 @@ public class MongoDataConverterTest {
               + "}"
         );
     }
+
+    @Test
+    @FixFor("DBZ-1315")
+    public void shouldProcessUnsupportedValue(){
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : ObjectId(\"518cc94bc27cfa20d9693e5d\"),\n" +
+                "    \"name\" : undefined,\n" +
+                "    \"address\" : {\n" +
+                "        \"building\" : undefined,\n" +
+                "        \"floor\" : 10\n" +
+                "    }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withundefined");
+        converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.addFieldSchema(entry, builder);
+        }
+        Schema finalSchema = builder.build();
+        Struct struct = new Struct(finalSchema);
+
+        for (Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.convertRecord(entry, finalSchema, struct);
+        }
+
+        assertThat(finalSchema).isEqualTo(
+                SchemaBuilder.struct().name("withundefined")
+                        .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("address", SchemaBuilder.struct().name("withundefined.address").optional()
+                                .field("floor", Schema.OPTIONAL_INT32_SCHEMA)
+                                .build()
+                        )
+                        .build()
+        );
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{"
+                        + "_id=518cc94bc27cfa20d9693e5d,"
+                        + "address=Struct{"
+                        + "floor=10"
+                        + "}"
+                        + "}"
+        );
+
+    }
 }

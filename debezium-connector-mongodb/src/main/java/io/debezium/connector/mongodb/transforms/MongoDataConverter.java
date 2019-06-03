@@ -217,7 +217,7 @@ public class MongoDataConverter {
             break;
 
         default:
-            break;
+            return;
         }
         struct.put(key, keyvalueforStruct.getValue().isNull() ? null : colValue);
     }
