@@ -193,7 +193,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database name")

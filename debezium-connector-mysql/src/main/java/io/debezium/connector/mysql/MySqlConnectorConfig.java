@@ -586,7 +586,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                    + "but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(Field::isRequired, CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
+            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
     public static final Field SERVER_ID = Field.create("database.server.id")
                                                .withDisplayName("Cluster ID")

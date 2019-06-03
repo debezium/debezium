@@ -115,6 +115,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
             .withDescription("Unique name that identifies the database server and all "
                     + "recorded offsets, and that is used as a prefix for all schemas and topics. "
                     + "Each distinct installation should have a separate namespace and be monitored by "
