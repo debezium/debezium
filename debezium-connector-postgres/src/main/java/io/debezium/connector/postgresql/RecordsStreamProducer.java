@@ -116,6 +116,7 @@ public class RecordsStreamProducer extends RecordsProducer {
             replicationStream.get().startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, taskContext.config().getLogicalName(), CONTEXT_NAME + "-keep-alive"));
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(true);
+            taskContext.schema().assureNonEmptySchema();
 
             this.lastCompletelyProcessedLsn = sourceInfo.lsn();
 

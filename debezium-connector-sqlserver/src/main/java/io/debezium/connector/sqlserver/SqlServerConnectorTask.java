@@ -126,7 +126,8 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 SqlServerConnector.class,
                 connectorConfig.getLogicalName(),
                 new SqlServerChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema),
-                dispatcher
+                dispatcher,
+                schema
         );
 
         coordinator.start(taskContext, this.queue, new SqlServerEventMetadataProvider());

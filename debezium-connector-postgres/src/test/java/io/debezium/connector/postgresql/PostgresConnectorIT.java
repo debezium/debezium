@@ -55,6 +55,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Strings;
 
 /**
@@ -841,6 +842,26 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                          .exceptionally(throwable -> {
                              throw new RuntimeException(throwable);
                          }).get();
+    }
+
+    @Test
+    @FixFor("DBZ-1242")
+    public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "my_products");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration")).isTrue());
     }
 
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {

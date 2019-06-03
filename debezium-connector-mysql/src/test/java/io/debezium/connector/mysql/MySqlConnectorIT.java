@@ -38,6 +38,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -1732,6 +1733,44 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Config result = connector.validate(config.asMap());
 
         assertConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
+    }
+
+    @Test
+    @FixFor("DBZ-1242")
+    public void testEmptySchemaLogWarningWithDatabaseWhitelist() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "my_database")
+                .build();
+
+        start(MySqlConnector.class, config);
+
+        consumeRecordsByTopic(12);
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration")).isTrue());
+    }
+
+    @Test
+    @FixFor("DBZ-1242")
+    public void testEmptySchemaWarningWithTableWhitelist() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("my_products"))
+                .build();
+
+        start(MySqlConnector.class, config);
+        assertConnectorIsRunning();
+
+        consumeRecordsByTopic(12);
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration")).isTrue());
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {

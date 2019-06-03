@@ -294,6 +294,8 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doStart() {
+        context.dbSchema().assureNonEmptySchema();
+
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
         eventHandlers.put(EventType.HEARTBEAT, this::handleServerHeartbeat);

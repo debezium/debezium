@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -38,6 +39,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -356,6 +358,44 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Stop the connector
         // ---------------------------------------------------------------------------------------------------------------
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1242")
+    public void testEmptySchemaWarningAfterApplyingCollectionFilters() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        // Use the DB configuration to define the connector's configuration...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.dbz865.my_products")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        primary().execute("create", mongo->{
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("dbz865_my@collection");
+            coll.drop();
+
+            Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
+            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            coll.insertOne(doc, insertOptions);
+        });
+
+        // Start the connector...
+        start(MongoDbConnector.class, config);
+
+        // Consume all records
+        consumeRecordsByTopic(12);
+
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration")).isTrue());
     }
 
     protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
