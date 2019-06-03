@@ -19,6 +19,7 @@ June 3rd, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseN
 ### Fixes since 0.10.0.Alpha1
 
 * DDL that contains `user` are unparsable by antlr [DBZ-1300](https://issues.jboss.org/browse/DBZ-1300)
+* Only validate history topic name for affected connectors [DBZ-1283](https://issues.jboss.org/browse/DBZ-1283)
 
 
 ### Other changes since 0.10.0.Alpha1
