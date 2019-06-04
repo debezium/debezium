@@ -34,11 +34,10 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        final Struct result = super.commonStruct(sourceInfo)
-                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.collectionId().replicaSetName())
+        return super.commonStruct(sourceInfo)
+                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.replicaSetName())
                 .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc())
                 .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
-        return result;
     }
 }

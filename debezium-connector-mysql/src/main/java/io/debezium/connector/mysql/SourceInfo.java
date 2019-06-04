@@ -14,15 +14,12 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.document.Document;
 import io.debezium.relational.TableId;
@@ -143,14 +140,12 @@ final class SourceInfo extends AbstractSourceInfo {
     private String databaseBlacklist;
     private String tableWhitelist;
     private String tableBlacklist;
-    private final SourceInfoStructMaker<SourceInfo> structMaker;
     private Set<TableId> tableIds;
     private String databaseName;
 
     public SourceInfo(MySqlConnectorConfig connectorConfig) {
         super(connectorConfig);
 
-        this.structMaker = connectorConfig.getSourceInfoStructMaker();
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         this.tableIds = new HashSet<>();
     }
@@ -288,17 +283,6 @@ final class SourceInfo extends AbstractSourceInfo {
         return map;
     }
 
-    /**
-     * Get a {@link Schema} representation of the source {@link #partition()} and {@link #offset()} information.
-     *
-     * @return the source partition and offset {@link Schema}; never null
-     * @see #struct()
-     */
-    @Override
-    public Schema schema() {
-        return structMaker.schema();
-    }
-
     public void databaseEvent(String databaseName) {
         this.databaseName = databaseName;
     }
@@ -309,23 +293,6 @@ final class SourceInfo extends AbstractSourceInfo {
 
     public void tableEvent(TableId tableId) {
         this.tableIds = Collections.singleton(tableId);
-    }
-
-    /**
-     * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
-     * complies with the versioned source schema for the MySQL connector.
-     *
-     * <p>
-     * Either {@link #databaseEvent(String)} or {@link #tableEvent(TableId)} should be called before this method.
-
-     * <p>
-     * This method should always be called after {@link #offsetForRow(int, int)}.
-     *
-     * @return the source partition and offset {@link Struct}; never null
-     * @see #schema()
-     */
-    public Struct struct() {
-        return structMaker.struct(this);
     }
 
     /**

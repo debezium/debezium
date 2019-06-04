@@ -424,7 +424,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         String topicName = topicSelector().topicNameFor(tableId);
         Envelope envelope = tableSchema.getEnvelopeSchema();
         currentRecord.set(new SourceRecord(partition, offset, topicName, null, keySchema, key, envelope.schema(),
-                                           envelope.read(value, sourceInfo.source(), clock().currentTimeInMillis())));
+                                           envelope.read(value, sourceInfo.struct(), clock().currentTimeInMillis())));
     }
 
     private void sendCurrentRecord(BlockingConsumer<ChangeEvent> consumer) throws InterruptedException {

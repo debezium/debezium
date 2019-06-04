@@ -8,6 +8,7 @@ package io.debezium.connector;
 import java.time.Instant;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 
@@ -17,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig;
  * @author Jiri Pechanec
  */
 public abstract class AbstractSourceInfo {
+
     public static final String DEBEZIUM_VERSION_KEY = "version";
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
     public static final String SERVER_NAME_KEY = "name";
@@ -65,5 +67,12 @@ public abstract class AbstractSourceInfo {
      */
     protected String serverName() {
         return config.getLogicalName();
+    }
+
+    /**
+     * Returns the {@code source} struct representing this source info.
+     */
+    public Struct struct() {
+        return structMaker().struct(this);
     }
 }

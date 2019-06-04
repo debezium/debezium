@@ -11,12 +11,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Struct;
-
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.relational.TableId;
@@ -97,14 +94,11 @@ public final class SourceInfo extends AbstractSourceInfo {
     private Boolean lastSnapshotRecord;
     private String schemaName;
     private String tableName;
-    private final SourceInfoStructMaker<SourceInfo> structMaker;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
         this.dbName = connectorConfig.databaseName();
         this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-
-        this.structMaker = connectorConfig.getSourceInfoStructMaker();
     }
 
     protected void load(Map<String, Object> lastStoredOffset) {
@@ -203,19 +197,6 @@ public final class SourceInfo extends AbstractSourceInfo {
     protected SourceInfo markLastSnapshotRecord() {
         this.lastSnapshotRecord = true;
         return this;
-    }
-
-    /**
-     * Get a {@link Struct} representation of the source {@link #partition()} and {@link #offset()} information. The Struct
-     * complies with the {@link PostgresSourceInfoStructMaker#schema()} for the Postgres connector.
-     * <p>
-     * This method should always be called after {@link #update(Long, Instant, Long, TableId, Long)}.
-     *
-     * @return the source partition and offset {@link Struct}; never null
-     * @see #schema()
-     */
-    protected Struct source() {
-        return structMaker.struct(this);
     }
 
     /**
