@@ -156,7 +156,8 @@ public class RecordMakers {
          *             the blocking consumer
          */
         public int recordObject(CollectionId id, Document object, long timestamp) throws InterruptedException {
-            final Struct sourceValue = source.lastSourceInfoStruct(replicaSetName, id);
+            source.collectionEvent(replicaSetName, id);
+            final Struct sourceValue = source.struct();
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             String objId = idObjToJson(object);
             assert objId != null;
@@ -172,7 +173,8 @@ public class RecordMakers {
          *             the blocking consumer
          */
         public int recordEvent(Document oplogEvent, long timestamp) throws InterruptedException {
-            final Struct sourceValue = source.sourceInfoStructForEvent(replicaSetName, oplogEvent);
+            source.opLogEvent(replicaSetName, oplogEvent);
+            final Struct sourceValue = source.struct();
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             Document patchObj = oplogEvent.get("o", Document.class);
             // Updates have an 'o2' field, since the updated object in 'o' might not have the ObjectID ...

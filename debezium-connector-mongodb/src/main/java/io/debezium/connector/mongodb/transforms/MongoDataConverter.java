@@ -19,8 +19,6 @@ import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 
@@ -32,7 +30,6 @@ import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEnc
  */
 public class MongoDataConverter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MongoDataConverter.class);
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
 
     private final ArrayEncoding arrayEncoding;

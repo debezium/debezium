@@ -43,12 +43,12 @@ public class LegacyV1MongoDbSourceInfoStructMaker extends LegacyV1AbstractSource
     public Struct struct(SourceInfo sourceInfo) {
         final Struct result = super.commonStruct()
                 .put(SourceInfo.SERVER_NAME_KEY, serverName)
-                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.collectionId().replicaSetName())
+                .put(SourceInfo.REPLICA_SET_NAME, sourceInfo.replicaSetName())
                 .put(SourceInfo.NAMESPACE, sourceInfo.collectionId().namespace())
                 .put(SourceInfo.TIMESTAMP, sourceInfo.position().getTime())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc())
                 .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
-        if (sourceInfo.isInitialSyncOngoing(sourceInfo.collectionId().replicaSetName())) {
+        if (sourceInfo.isInitialSyncOngoing(sourceInfo.replicaSetName())) {
             result.put(SourceInfo.INITIAL_SYNC, true);
         }
         return result;

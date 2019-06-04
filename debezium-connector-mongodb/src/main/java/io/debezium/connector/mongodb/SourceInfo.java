@@ -83,8 +83,15 @@ public final class SourceInfo extends AbstractSourceInfo {
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
     private final Set<String> initialSyncReplicaSets = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    private String replicaSetName;
+
+    /**
+     * Id of collection the current event applies to. May be {@code null} after noop events,
+     * after which the recorded offset may be retrieved but not the source struct.
+     */
     private CollectionId collectionId;
     private Position position;
+
 
     @Immutable
     protected static final class Position {
@@ -201,9 +208,8 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public Struct lastSourceInfoStruct(String replicaSetName, CollectionId collectionId) {
-        return sourceInfoStructFor(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName),
-                               isInitialSyncOngoing(replicaSetName));
+    public void collectionEvent(String replicaSetName, CollectionId collectionId) {
+        onEvent(replicaSetName, collectionId, positionsByReplicaSetName.get(replicaSetName));
     }
 
     /**
@@ -213,10 +219,9 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
      *            the oplog
-     * @return the source partition and offset {@link Struct}; never null
      * @see #schema()
      */
-    public Struct sourceInfoStructForEvent(String replicaSetName, Document oplogEvent) {
+    public void opLogEvent(String replicaSetName, Document oplogEvent) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (oplogEvent != null) {
@@ -226,7 +231,8 @@ public final class SourceInfo extends AbstractSourceInfo {
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
-        return sourceInfoStructFor(replicaSetName, CollectionId.parse(replicaSetName + "." + namespace), position, isInitialSyncOngoing(replicaSetName));
+
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName + "." + namespace), position);
     }
 
     /**
@@ -239,11 +245,10 @@ public final class SourceInfo extends AbstractSourceInfo {
         return oplogEvent != null ? oplogEvent.get("ts", BsonTimestamp.class) : null;
     }
 
-    private Struct sourceInfoStructFor(String replicaSetName, CollectionId collectionId, Position position, boolean isInitialSync) {
+    private void onEvent(String replicaSetName, CollectionId collectionId, Position position) {
+        this.replicaSetName = replicaSetName;
         this.position = (position == null) ? INITIAL_POSITION : position;
         this.collectionId = collectionId;
-
-        return structMaker().struct(this);
     }
 
     /**
@@ -373,11 +378,15 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     @Override
     protected SnapshotRecord snapshot() {
-        return isInitialSyncOngoing(collectionId().replicaSetName()) ? SnapshotRecord.TRUE : SnapshotRecord.FALSE;
+        return isInitialSyncOngoing(replicaSetName) ? SnapshotRecord.TRUE : SnapshotRecord.FALSE;
     }
 
     @Override
     protected String database() {
-        return collectionId.dbName();
+        return collectionId != null ? collectionId.dbName() : null;
+    }
+
+    String replicaSetName() {
+        return replicaSetName;
     }
 }

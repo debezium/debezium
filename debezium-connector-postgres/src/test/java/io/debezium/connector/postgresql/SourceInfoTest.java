@@ -39,12 +39,12 @@ public class SourceInfoTest {
 
     @Test
     public void versionIsPresent() {
-        assertThat(source.source().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
+        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
-        assertThat(source.source().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
+        assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     @Test
@@ -55,7 +55,7 @@ public class SourceInfoTest {
 
     @Test
     public void shouldHaveTimestamp() {
-        assertThat(source.source().getInt64("ts_ms")).isEqualTo(123_456L);
+        assertThat(source.struct().getInt64("ts_ms")).isEqualTo(123_456L);
     }
 
     @Test
@@ -75,6 +75,6 @@ public class SourceInfoTest {
                 .field("xmin", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
-        VerifyRecord.assertConnectSchemasAreEqual(null, source.source().schema(), schema);
+        VerifyRecord.assertConnectSchemasAreEqual(null, source.struct().schema(), schema);
     }
 }
