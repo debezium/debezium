@@ -366,7 +366,7 @@ public class Replicator {
         }
 
         if (collections.isEmpty()) {
-            logger.warn("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration");
+            logger.warn("After applying blacklist/whitelist filters there are no tables to monitor, please check your configuration");
         }
 
         if (logger.isInfoEnabled()) {
