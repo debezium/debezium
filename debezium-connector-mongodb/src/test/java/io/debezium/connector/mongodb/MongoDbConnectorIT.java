@@ -308,8 +308,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-865")
+    @FixFor("DBZ-865 and DBZ-1242")
     public void shouldConsumeEventsFromCollectionWithReplacedTopicName() throws InterruptedException, IOException {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor();
 
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
@@ -356,7 +358,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Stop the connector
         // ---------------------------------------------------------------------------------------------------------------
-        stopConnector();
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isFalse());
     }
 
     @Test
@@ -394,7 +396,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Consume all records
         consumeRecordsByTopic(12);
 
-        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage("After applying blacklist/whitelist filters there is no tables to monitor, please check your configuration")).isTrue());
+        stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isTrue());
     }
 
     protected void verifyFromInitialSync(SourceRecord record, AtomicBoolean foundLast) {
