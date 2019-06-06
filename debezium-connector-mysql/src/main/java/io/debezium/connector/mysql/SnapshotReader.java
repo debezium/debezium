@@ -161,7 +161,8 @@ public class SnapshotReader extends AbstractReader {
 
         try {
             return MySqlValueConverters.stringToDuration(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
+        }
+        catch (UnsupportedEncodingException e) {
             logger.error("Could not read MySQL TIME value as UTF-8");
             throw new RuntimeException(e);
         }
@@ -179,7 +180,8 @@ public class SnapshotReader extends AbstractReader {
 
         try {
             return MySqlValueConverters.stringToLocalDate(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
+        }
+        catch (UnsupportedEncodingException e) {
             logger.error("Could not read MySQL TIME value as UTF-8");
             throw new RuntimeException(e);
         }
@@ -196,10 +198,11 @@ public class SnapshotReader extends AbstractReader {
         }
 
         try {
-            return MySqlValueConverters.isValidTimestamp((new String(b.getBytes(1, (int) (b.length())), "UTF-8"))) ?
-                    rs.getTimestamp(fieldNo, Calendar.getInstance()) :
-                    null;
-        } catch (UnsupportedEncodingException e) {
+            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8"))) ?
+                    null :
+                    rs.getTimestamp(fieldNo, Calendar.getInstance());
+        }
+        catch (UnsupportedEncodingException e) {
             logger.error("Could not read MySQL TIME value as UTF-8");
             throw new RuntimeException(e);
         }

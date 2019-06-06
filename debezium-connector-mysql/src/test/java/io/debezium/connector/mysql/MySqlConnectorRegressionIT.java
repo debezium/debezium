@@ -331,7 +331,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         });
 
         final Struct rec1 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(0).value()).getStruct("after");
-        final Struct rec2 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(1).value()).getStruct("after");;
+        final Struct rec2 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(1).value()).getStruct("after");
         assertThat(rec1.get("c1")).isNull();
         assertThat(rec1.get("c2")).isEqualTo(0L);
         assertThat(rec1.get("c3")).isNull();
@@ -790,7 +790,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
             }
         });
         final Struct rec1 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(0).value()).getStruct("after");
-        final Struct rec2 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(1).value()).getStruct("after");;
+        final Struct rec2 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(1).value()).getStruct("after");
         assertThat(rec1.get("c1")).isNull();
         assertThat(rec1.get("c2")).isEqualTo(0L);
         assertThat(rec1.get("c3")).isNull();

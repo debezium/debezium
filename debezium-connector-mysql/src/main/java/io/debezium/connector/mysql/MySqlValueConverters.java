@@ -817,7 +817,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         return LocalDate.of(year, month, day);
     }
 
-    public static boolean isValidTimestamp(String timestampString) {
+    public static boolean containsZeroValuesInDatePart(String timestampString) {
         final Matcher matcher = TIMESTAMP_FIELD_PATTERN.matcher(timestampString);
         if (!matcher.matches()) {
             throw new RuntimeException("Unexpected format for DATE column: " + timestampString);
@@ -827,6 +827,6 @@ public class MySqlValueConverters extends JdbcValueConverters {
         final int month = Integer.parseInt(matcher.group(2));
         final int day = Integer.parseInt(matcher.group(3));
 
-        return !(year == 0 || month == 0 || day == 0);
+        return year == 0 || month == 0 || day == 0;
     }
 }
