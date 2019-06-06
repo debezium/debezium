@@ -678,7 +678,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-771")
+    @FixFor({"DBZ-771", "DBZ-1321"})
     public void columnTypeChangeResetsDefaultValue() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
@@ -703,11 +703,14 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
                 connection.execute("alter table DBZ_771_CUSTOMERS change customer_type customer_type int;");
                 connection.execute("insert into DBZ_771_CUSTOMERS (id, customer_type) values (2, 456);");
+
+                connection.execute("alter table DBZ_771_CUSTOMERS modify customer_type int null;");
+                connection.execute("alter table DBZ_771_CUSTOMERS modify customer_type int not null;");
             }
         }
 
         // consume the records for the two executed statements
-        records = consumeRecordsByTopic(2);
+        records = consumeRecordsByTopic(4);
 
         record = records.recordsForTopic(DATABASE.topicForTable("DBZ_771_CUSTOMERS")).get(0);
         validate(record);
