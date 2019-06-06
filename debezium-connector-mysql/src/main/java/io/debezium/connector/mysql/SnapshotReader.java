@@ -131,14 +131,17 @@ public class SnapshotReader extends AbstractReader {
     }
 
     protected Object readField(ResultSet rs, int fieldNo, Column actualColumn) throws SQLException {
-        if(actualColumn.jdbcType() == Types.TIME) {
+        if (actualColumn.jdbcType() == Types.TIME) {
             return readTimeField(rs, fieldNo);
+        }
+        else if (actualColumn.jdbcType() == Types.DATE) {
+            return readDateField(rs, fieldNo);
         }
         // This is for DATETIME columns (a logical date + time without time zone)
         // by reading them with a calendar based on the default time zone, we make sure that the value
         // is constructed correctly using the database's (or connection's) time zone
         else if (actualColumn.jdbcType() == Types.TIMESTAMP) {
-            return rs.getTimestamp(fieldNo, Calendar.getInstance());
+            return readTimestampField(rs, fieldNo);
         }
         else {
             return rs.getObject(fieldNo);
@@ -158,7 +161,48 @@ public class SnapshotReader extends AbstractReader {
 
         try {
             return MySqlValueConverters.stringToDuration(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
+        }
+        catch (UnsupportedEncodingException e) {
+            logger.error("Could not read MySQL TIME value as UTF-8");
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * In non-string mode the date field can contain zero in any of the date part which we need to handle as all-zero
+     *
+     */
+    private Object readDateField(ResultSet rs, int fieldNo) throws SQLException {
+        Blob b = rs.getBlob(fieldNo);
+        if (b == null) {
+            return null; // Don't continue parsing date field if it is null
+        }
+
+        try {
+            return MySqlValueConverters.stringToLocalDate(new String(b.getBytes(1, (int) (b.length())), "UTF-8"));
+        }
+        catch (UnsupportedEncodingException e) {
+            logger.error("Could not read MySQL TIME value as UTF-8");
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * In non-string mode the time field can contain zero in any of the date part which we need to handle as all-zero
+     *
+     */
+    private Object readTimestampField(ResultSet rs, int fieldNo) throws SQLException {
+        Blob b = rs.getBlob(fieldNo);
+        if (b == null) {
+            return null; // Don't continue parsing timestamp field if it is null
+        }
+
+        try {
+            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8"))) ?
+                    null :
+                    rs.getTimestamp(fieldNo, Calendar.getInstance());
+        }
+        catch (UnsupportedEncodingException e) {
             logger.error("Could not read MySQL TIME value as UTF-8");
             throw new RuntimeException(e);
         }
