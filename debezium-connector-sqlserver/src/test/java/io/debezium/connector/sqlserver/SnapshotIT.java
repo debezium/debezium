@@ -201,10 +201,11 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset()).hasSize(2);
+            assertThat(record1.sourceOffset()).hasSize(3);
 
             Assert.assertTrue(record1.sourceOffset().containsKey("change_lsn"));
             Assert.assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
+            Assert.assertTrue(record1.sourceOffset().containsKey("order"));
             assertNull(value1.get("before"));
         }
     }
