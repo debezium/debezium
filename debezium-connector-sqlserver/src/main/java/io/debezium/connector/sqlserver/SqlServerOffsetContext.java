@@ -21,13 +21,15 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
+    private static final String OPERATION_ORDER_KEY = "order";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
     private final Map<String, String> partition;
     private boolean snapshotCompleted;
+    private int operationOrder;
 
-    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, int operationOrder) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
@@ -42,6 +44,11 @@ public class SqlServerOffsetContext implements OffsetContext {
         else {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
+        this.operationOrder = operationOrder;
+    }
+
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
+        this(connectorConfig, position, snapshot, snapshotCompleted, 1);
     }
 
     @Override
@@ -62,7 +69,8 @@ public class SqlServerOffsetContext implements OffsetContext {
             return Collect.hashMapOf(
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
                     SourceInfo.CHANGE_LSN_KEY,
-                        sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString()
+                        sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
+                    OPERATION_ORDER_KEY, operationOrder
             );
         }
     }
@@ -81,7 +89,17 @@ public class SqlServerOffsetContext implements OffsetContext {
         return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn());
     }
 
-    public void setChangePosition(TxLogPosition position) {
+    public int getOperationOrder() {
+        return operationOrder;
+    }
+
+    public void setChangePosition(TxLogPosition position, int eventCount) {
+        if (getChangePosition().equals(position)) {
+            operationOrder += eventCount;
+        }
+        else {
+            operationOrder = eventCount;
+        }
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
     }
@@ -139,7 +157,11 @@ public class SqlServerOffsetContext implements OffsetContext {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted);
+            Long operationOrder = ((Long) offset.get(OPERATION_ORDER_KEY));
+            if (operationOrder == null) {
+                operationOrder = Long.valueOf(0);
+            }
+            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, operationOrder.intValue());
         }
     }
 

@@ -91,7 +91,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final AtomicReference<ChangeTable[]> tablesSlot = new AtomicReference<ChangeTable[]>(getCdcTablesToQuery());
 
             final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
-            LOGGER.info("Last position recorded in offsets is {}", lastProcessedPositionOnStart);
+            final int lastProcessedOrderOnStart = offsetContext.getOperationOrder();
+            LOGGER.info("Last position recorded in offsets is {}[{}]", lastProcessedPositionOnStart, lastProcessedOrderOnStart);
 
             TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
 
@@ -136,6 +137,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 try {
                     connection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
 
+                        int operationOrderInInitialtx = 1;
                         final int tableCount = resultSets.length;
                         final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
                         final ChangeTable[] tables = tablesSlot.get();
@@ -165,8 +167,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
-                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) <= 0) {
+                            // After restart for changes that were executed before the last committed offset
+                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) < 0) {
                                 LOGGER.info("Skipping change {} as its position is smaller than the last recorded position {}", tableWithSmallestLsn, lastProcessedPositionOnStart);
+                                tableWithSmallestLsn.next();
+                                continue;
+                            }
+                            // After restart for change that was the last committed and operations in it before the last committed offset
+                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) == 0 && operationOrderInInitialtx <= lastProcessedOrderOnStart) {
+                                LOGGER.info("Skipping change {} as its order in the transaction {} is smaller than or equal to the last recorded operation {}[{}]", tableWithSmallestLsn, operationOrderInInitialtx, lastProcessedPositionOnStart, lastProcessedOrderOnStart);
+                                operationOrderInInitialtx++;
                                 tableWithSmallestLsn.next();
                                 continue;
                             }
@@ -189,14 +199,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             // UPDATE consists of two consecutive events, first event contains
                             // the row before it was updated and the second the row after
                             // it was updated
+                            int eventCount = 1;
                             if (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) {
                                 if (!tableWithSmallestLsn.next() || tableWithSmallestLsn.getOperation() != SqlServerChangeRecordEmitter.OP_UPDATE_AFTER) {
                                     throw new IllegalStateException("The update before event at " + tableWithSmallestLsn.getChangePosition() + " for table " + tableId + " was not followed by after event.\n Please report this as a bug together with a events around given LSN.");
                                 }
+                                eventCount = 2;
                             }
                             final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableWithSmallestLsn.getData() : null;
 
-                            offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition());
+                            offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
                             offsetContext.setSourceTime(connection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn()));
                             offsetContext.setTableId(tableWithSmallestLsn.getChangeTable().getSourceTableId());
 
