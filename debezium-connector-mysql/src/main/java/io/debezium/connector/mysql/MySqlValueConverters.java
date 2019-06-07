@@ -33,6 +33,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
@@ -44,6 +46,7 @@ import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
+import io.debezium.relational.Table;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Year;
 import io.debezium.util.Strings;
@@ -64,6 +67,8 @@ import io.debezium.util.Strings;
  */
 @Immutable
 public class MySqlValueConverters extends JdbcValueConverters {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlValueConverters.class);
 
     /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
@@ -801,7 +806,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
         }
     }
 
-    public static LocalDate stringToLocalDate(String dateString) {
+    public static LocalDate stringToLocalDate(String dateString, Column column, Table table) {
         final Matcher matcher = DATE_FIELD_PATTERN.matcher(dateString);
         if (!matcher.matches()) {
             throw new RuntimeException("Unexpected format for DATE column: " + dateString);
@@ -812,12 +817,13 @@ public class MySqlValueConverters extends JdbcValueConverters {
         final int day = Integer.parseInt(matcher.group(3));
 
         if (year == 0 || month == 0 || day == 0) {
+            LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value", dateString, column.name(), table.id());
             return null;
         }
         return LocalDate.of(year, month, day);
     }
 
-    public static boolean containsZeroValuesInDatePart(String timestampString) {
+    public static boolean containsZeroValuesInDatePart(String timestampString, Column column, Table table) {
         final Matcher matcher = TIMESTAMP_FIELD_PATTERN.matcher(timestampString);
         if (!matcher.matches()) {
             throw new RuntimeException("Unexpected format for DATE column: " + timestampString);
@@ -827,6 +833,10 @@ public class MySqlValueConverters extends JdbcValueConverters {
         final int month = Integer.parseInt(matcher.group(2));
         final int day = Integer.parseInt(matcher.group(3));
 
-        return year == 0 || month == 0 || day == 0;
+        if (year == 0 || month == 0 || day == 0) {
+            LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value", timestampString, column.name(), table.id());
+            return true;
+        }
+        return false;
     }
 }
