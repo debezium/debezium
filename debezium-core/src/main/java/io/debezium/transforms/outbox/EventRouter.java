@@ -56,6 +56,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     private String fieldSchemaVersion;
 
     private String routeByField;
+    private boolean routeTombstoneOnEmptyPayload;
 
     private List<AdditionalField> additionalFields;
 
@@ -127,13 +128,23 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             }
         }));
 
+        boolean isDeleteEvent = payload == "" || payload == null;
+
+        Struct updatedValue = (isDeleteEvent && routeTombstoneOnEmptyPayload)
+                ? null
+                : value;
+
+        Schema updatedSchema = (isDeleteEvent && routeTombstoneOnEmptyPayload)
+                ? null
+                : valueSchema;
+
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField).toLowerCase(),
                 null,
                 Schema.STRING_SCHEMA,
                 defineRecordKey(eventStruct, payloadId),
-                valueSchema,
-                value,
+                updatedSchema,
+                updatedValue,
                 timestamp,
                 headers
         );
@@ -191,8 +202,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
         fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
         fieldSchemaVersion = config.getString(EventRouterConfigDefinition.FIELD_SCHEMA_VERSION);
-
         routeByField = config.getString(EventRouterConfigDefinition.ROUTE_BY_FIELD);
+        routeTombstoneOnEmptyPayload = config.getBoolean(EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD);
 
         final Map<String, String> regexRouterConfig = new HashMap<>();
         regexRouterConfig.put("regex", config.getString(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX));
