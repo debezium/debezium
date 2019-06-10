@@ -209,6 +209,14 @@ public class EventRouterConfigDefinition {
                     " '${routedByValue}' is available which is the value of The column configured" +
                     " via 'route.by.field'");
 
+    static final Field ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD = Field.create("route.tombstone.on.empty.payload")
+            .withDisplayName("Empty payloads cause a tombstone message")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.HIGH)
+            .withDescription("Whether or not an empty payload should cause a tombstone event.");
+
     static final Field OPERATION_INVALID_BEHAVIOR = Field.create("debezium.op.invalid.behavior")
             .withDisplayName("Behavior when the route fails to apply")
             .withEnum(InvalidOperationBehavior.class, InvalidOperationBehavior.SKIP_AND_WARN)
@@ -230,6 +238,7 @@ public class EventRouterConfigDefinition {
             ROUTE_BY_FIELD,
             ROUTE_TOPIC_REGEX,
             ROUTE_TOPIC_REPLACEMENT,
+            ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
             OPERATION_INVALID_BEHAVIOR
     };
 
@@ -251,7 +260,7 @@ public class EventRouterConfigDefinition {
         Field.group(
                 config,
                 "Router",
-                ROUTE_BY_FIELD, ROUTE_TOPIC_REGEX, ROUTE_TOPIC_REPLACEMENT
+                ROUTE_BY_FIELD, ROUTE_TOPIC_REGEX, ROUTE_TOPIC_REPLACEMENT, ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD
         );
         Field.group(
                 config,

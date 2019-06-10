@@ -6,6 +6,7 @@
 package io.debezium.transforms.outbox;
 
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -526,6 +527,103 @@ public class EventRouterTest {
         router.configure(config);
     }
 
+    @Test
+    public void canMarkAnEventAsDeleted() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
+                "is_deleted:envelope:deleted"
+        );
+        config.put(
+                EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD.name(),
+                "true"
+        );
+        router.configure(config);
+
+        final Map<String, Schema> extraFields = new HashMap<>();
+        extraFields.put("deleted", Schema.OPTIONAL_BOOLEAN_SCHEMA);
+
+        final Map<String, Object> extraValues = new HashMap<>();
+        extraValues.put("is_deleted", true);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{}",
+                extraFields,
+                extraValues);
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        Struct value = (Struct) eventRouted.value();
+        assertThat(value).isNotNull();
+        assertThat(value.get("deleted")).isEqualTo(true);
+
+        final SourceRecord eventRecordTombstone = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "",
+                extraFields,
+                extraValues);
+        final SourceRecord eventRoutedTombstone = router.apply(eventRecordTombstone);
+
+        Struct tombstone = (Struct) eventRoutedTombstone.value();
+        assertThat(tombstone).isNull();
+        VerifyRecord.isValidTombstone(eventRoutedTombstone);
+    }
+
+    @Test
+    public void noTombstoneIfNotConfigured() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
+                "is_deleted:envelope:deleted"
+        );
+        router.configure(config);
+
+        final Map<String, Schema> extraFields = new HashMap<>();
+        extraFields.put("deleted", Schema.OPTIONAL_BOOLEAN_SCHEMA);
+
+        final Map<String, Object> extraValues = new HashMap<>();
+        extraValues.put("is_deleted", true);
+
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "{}",
+                extraFields,
+                extraValues);
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        Struct value = (Struct) eventRouted.value();
+        assertThat(value).isNotNull();
+        assertThat(value.get("deleted")).isEqualTo(true);
+
+        final SourceRecord eventRecordTombstone = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                "",
+                extraFields,
+                extraValues);
+        final SourceRecord eventRoutedTombstone = router.apply(eventRecordTombstone);
+
+        Struct tombstone = (Struct) eventRoutedTombstone.value();
+        assertThat(eventRoutedTombstone.key()).isNotNull();
+        assertThat(eventRoutedTombstone.keySchema()).isNotNull();
+        assertThat(tombstone).isNotNull();
+        assertThat(tombstone.get("deleted")).isEqualTo(true);
+        assertThat(eventRoutedTombstone.valueSchema()).isNotNull();
+    }
+
     private SourceRecord createEventRecord() {
         return createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
@@ -568,7 +666,8 @@ public class EventRouterTest {
                 .field("aggregatetype", SchemaBuilder.string())
                 .field("aggregateid", SchemaBuilder.string())
                 .field("type", SchemaBuilder.string())
-                .field("payload", SchemaBuilder.string());
+                .field("payload", SchemaBuilder.string())
+                .field("is_deleted", SchemaBuilder.bool().optional());
 
         extraFields.forEach(schemaBuilder::field);
 
