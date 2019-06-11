@@ -91,8 +91,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final AtomicReference<ChangeTable[]> tablesSlot = new AtomicReference<ChangeTable[]>(getCdcTablesToQuery());
 
             final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
-            final int lastProcessedOrderOnStart = offsetContext.getOperationOrder();
-            LOGGER.info("Last position recorded in offsets is {}[{}]", lastProcessedPositionOnStart, lastProcessedOrderOnStart);
+            final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
+            LOGGER.info("Last position recorded in offsets is {}[{}]", lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart);
 
             TxLogPosition lastProcessedPosition = lastProcessedPositionOnStart;
 
@@ -137,7 +137,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 try {
                     connection.getChangesForTables(tablesSlot.get(), fromLsn, currentMaxLsn, resultSets -> {
 
-                        int operationOrderInInitialtx = 1;
+                        long eventSerialNoInInitialTx = 1;
                         final int tableCount = resultSets.length;
                         final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
                         final ChangeTable[] tables = tablesSlot.get();
@@ -174,9 +174,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 continue;
                             }
                             // After restart for change that was the last committed and operations in it before the last committed offset
-                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) == 0 && operationOrderInInitialtx <= lastProcessedOrderOnStart) {
-                                LOGGER.info("Skipping change {} as its order in the transaction {} is smaller than or equal to the last recorded operation {}[{}]", tableWithSmallestLsn, operationOrderInInitialtx, lastProcessedPositionOnStart, lastProcessedOrderOnStart);
-                                operationOrderInInitialtx++;
+                            if (tableWithSmallestLsn.getChangePosition().compareTo(lastProcessedPositionOnStart) == 0 && eventSerialNoInInitialTx <= lastProcessedEventSerialNoOnStart) {
+                                LOGGER.info("Skipping change {} as its order in the transaction {} is smaller than or equal to the last recorded operation {}[{}]", tableWithSmallestLsn, eventSerialNoInInitialTx, lastProcessedPositionOnStart, lastProcessedEventSerialNoOnStart);
+                                eventSerialNoInInitialTx++;
                                 tableWithSmallestLsn.next();
                                 continue;
                             }

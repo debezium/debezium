@@ -205,7 +205,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
             Assert.assertTrue(record1.sourceOffset().containsKey("change_lsn"));
             Assert.assertTrue(record1.sourceOffset().containsKey("commit_lsn"));
-            Assert.assertTrue(record1.sourceOffset().containsKey("order"));
+            Assert.assertTrue(record1.sourceOffset().containsKey("event_serial_no"));
             assertNull(value1.get("before"));
         }
     }

@@ -21,15 +21,19 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
-    private static final String OPERATION_ORDER_KEY = "order";
+    private static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
     private final Map<String, String> partition;
     private boolean snapshotCompleted;
-    private int operationOrder;
 
-    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, int operationOrder) {
+    /**
+     * The index of the current event within the current transaction.
+     */
+    private long eventSerialNo;
+
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
@@ -44,7 +48,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         else {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
-        this.operationOrder = operationOrder;
+        this.eventSerialNo = eventSerialNo;
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
@@ -70,7 +74,7 @@ public class SqlServerOffsetContext implements OffsetContext {
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
                     SourceInfo.CHANGE_LSN_KEY,
                         sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
-                    OPERATION_ORDER_KEY, operationOrder
+                    EVENT_SERIAL_NO_KEY, eventSerialNo
             );
         }
     }
@@ -89,16 +93,16 @@ public class SqlServerOffsetContext implements OffsetContext {
         return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn());
     }
 
-    public int getOperationOrder() {
-        return operationOrder;
+    public long getEventSerialNo() {
+        return eventSerialNo;
     }
 
     public void setChangePosition(TxLogPosition position, int eventCount) {
         if (getChangePosition().equals(position)) {
-            operationOrder += eventCount;
+            eventSerialNo += eventCount;
         }
         else {
-            operationOrder = eventCount;
+            eventSerialNo = eventCount;
         }
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
@@ -157,11 +161,13 @@ public class SqlServerOffsetContext implements OffsetContext {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            Long operationOrder = ((Long) offset.get(OPERATION_ORDER_KEY));
-            if (operationOrder == null) {
-                operationOrder = Long.valueOf(0);
+            // only introduced in 0.10.Beta1, so it might be not present when upgrading from earlier versions
+            Long eventSerialNo = ((Long) offset.get(EVENT_SERIAL_NO_KEY));
+            if (eventSerialNo == null) {
+                eventSerialNo = Long.valueOf(0);
             }
-            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, operationOrder.intValue());
+
+            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo);
         }
     }
 
@@ -172,6 +178,7 @@ public class SqlServerOffsetContext implements OffsetContext {
                 ", sourceInfo=" + sourceInfo +
                 ", partition=" + partition +
                 ", snapshotCompleted=" + snapshotCompleted +
+                ", eventSerialNo=" + eventSerialNo +
                 "]";
     }
 
