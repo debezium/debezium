@@ -781,7 +781,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         connection.query("select count(1) from sys.dm_exec_sessions where program_name = 'Debezium App DBZ-964'", rs -> {
             rs.next();
-            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getInt(1)).isGreaterThanOrEqualTo(1);
         });
     }
 

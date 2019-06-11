@@ -18,16 +18,18 @@ import io.debezium.util.Clock;
 public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFactory {
 
     private final SqlServerConnectorConfig configuration;
-    private final SqlServerConnection jdbcConnection;
+    private final SqlServerConnection dataConnection;
+    private final SqlServerConnection metadataConnection;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
 
-    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, SqlServerConnection jdbcConnection,
+    public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, SqlServerConnection dataConnection, SqlServerConnection metadataConnection,
             ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, SqlServerDatabaseSchema schema) {
         this.configuration = configuration;
-        this.jdbcConnection = jdbcConnection;
+        this.dataConnection = dataConnection;
+        this.metadataConnection = metadataConnection;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -36,7 +38,7 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
 
     @Override
     public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
-        return new SqlServerSnapshotChangeEventSource(configuration, (SqlServerOffsetContext) offsetContext, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
+        return new SqlServerSnapshotChangeEventSource(configuration, (SqlServerOffsetContext) offsetContext, dataConnection, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
@@ -44,7 +46,8 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         return new SqlServerStreamingChangeEventSource(
                 configuration,
                 (SqlServerOffsetContext) offsetContext,
-                jdbcConnection,
+                dataConnection,
+                metadataConnection,
                 dispatcher,
                 errorHandler,
                 clock,
