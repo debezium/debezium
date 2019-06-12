@@ -146,6 +146,56 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void deleteWithoutTombstone() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')"
+            );
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')"
+            );
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+
+        connection.execute("DELETE FROM tableB");
+        final SourceRecords deleteRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        final List<SourceRecord> deleteTableA = deleteRecords.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> deleteTableB = deleteRecords.recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(deleteTableA).isNullOrEmpty();
+        Assertions.assertThat(deleteTableB).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final SourceRecord deleteRecord = deleteTableB.get(i);
+            final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
+                    new SchemaAndValueField("id", Schema.INT32_SCHEMA, i + ID_START),
+                    new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
+
+            final Struct deleteKey = (Struct) deleteRecord.key();
+            final Struct deleteValue = (Struct) deleteRecord.value();
+            assertRecord((Struct) deleteValue.get("before"), expectedDeleteRow);
+            assertNull(deleteValue.get("after"));
+        }
+
+        stopConnector();
+    }
+
+    @Test
     public void update() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
