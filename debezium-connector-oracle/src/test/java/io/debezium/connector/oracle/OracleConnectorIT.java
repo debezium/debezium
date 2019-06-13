@@ -456,6 +456,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-835")
     public void deleteWithoutTombstone() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
