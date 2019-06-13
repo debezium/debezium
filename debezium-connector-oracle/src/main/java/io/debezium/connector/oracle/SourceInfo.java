@@ -7,8 +7,6 @@ package io.debezium.connector.oracle;
 
 import java.time.Instant;
 
-import org.apache.kafka.connect.data.Struct;
-
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.relational.TableId;
@@ -29,13 +27,6 @@ public class SourceInfo extends BaseSourceInfo {
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
-    }
-
-    /**
-     * @return the coordinates encoded as a {@code Struct}
-     */
-    public Struct struct() {
-        return structMaker().struct(this);
     }
 
     public long getScn() {
