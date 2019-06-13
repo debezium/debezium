@@ -55,10 +55,10 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    public void shouldGetExceptionOnParseAlterStatementsWithoutCreate() {
+    public void shouldNotGetExceptionOnParseAlterStatementsWithoutCreate() {
         String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
         parser.parse(ddl, tables);
-        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(1);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(0);
     }
 
@@ -322,13 +322,14 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(readFile("ddl/mysql-test-statements.ddl"), tables);
         Testing.print(tables);
         assertThat(tables.size()).isEqualTo(6);
-        int numberOfAlteredTablesWhichDoesNotExists = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
+        int numberOfIndexesOnNonExistingTables = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
+        int numberOfAlteredTablesWhichDoesNotExists = 10;
         // legacy parser was signaling all created index
         // antlr is parsing only those, which will make any model changes
         int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 5;
         int numberOfAlterViewStatements = 6;
         int numberOfDroppedViews = 7;
-        assertThat(listener.total()).isEqualTo(58 - numberOfAlteredTablesWhichDoesNotExists
+        assertThat(listener.total()).isEqualTo(58 - numberOfAlteredTablesWhichDoesNotExists - numberOfIndexesOnNonExistingTables
                 - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel + numberOfAlterViewStatements + numberOfDroppedViews);
         listener.forEach(this::printEvent);
     }
@@ -337,10 +338,11 @@ public class MySqlAntlrDdlParserTest {
     public void shouldParseSomeLinesFromCreateStatements() {
         parser.parse(readLines(189, "ddl/mysql-test-create.ddl"), tables);
         assertThat(tables.size()).isEqualTo(39);
-        int numberOfAlteredTablesWhichDoesNotExists = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
+        int numberOfIndexesOnNonExistingTables = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
+        int numberOfAlteredTablesWhichDoesNotExists = 2;
         int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 43;
         assertThat(listener.total()).isEqualTo(120 - numberOfAlteredTablesWhichDoesNotExists
-                - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel);
+                - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel - numberOfIndexesOnNonExistingTables);
     }
 
     @Test
@@ -369,7 +371,7 @@ public class MySqlAntlrDdlParserTest {
         listener.forEach(this::printEvent);
         assertThat(tables.size()).isEqualTo(1);
 
-        int numberOfAlteredTablesWhichDoesNotExists = ((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size();
+        int numberOfAlteredTablesWhichDoesNotExists = 1;
         assertThat(listener.total()).isEqualTo(2 - numberOfAlteredTablesWhichDoesNotExists);
     }
 
