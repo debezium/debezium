@@ -129,7 +129,7 @@ final class TableEditorImpl implements TableEditor {
     public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
         for (String pkColumnName : pkColumnNames) {
             if (!hasColumnWithName(pkColumnName)) {
-                throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "'");
+                throw new IllegalArgumentException("The primary key cannot reference a non-existant column'" + pkColumnName + "' in table '" + tableId() + "'");
             }
         }
         this.pkColumnNames.clear();

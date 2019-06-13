@@ -52,8 +52,8 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
-        if (!parser.getTableFilter().isIncluded(tableId)) {
-            LOG.debug("Ignoring ALTER TABLE statement for non-whitelisted table {}", tableId);
+        if (parser.databaseTables().forTable(tableId) == null) {
+            LOG.debug("Ignoring ALTER TABLE statement for non-recorded table {}", tableId);
             return;
         }
         tableEditor = parser.databaseTables().editTable(tableId);
@@ -72,6 +72,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             parser.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());
         }, tableEditor);
         super.exitAlterTable(ctx);
+        tableEditor = null;
     }
 
     @Override
