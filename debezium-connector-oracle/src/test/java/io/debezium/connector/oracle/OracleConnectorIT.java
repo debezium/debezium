@@ -456,6 +456,48 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void deleteWithoutTombstone() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        Thread.sleep(1000);
+
+        int expectedRecordCount = 0;
+        connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("COMMIT");
+        expectedRecordCount += 1;
+
+        connection.execute("DELETE debezium.customer WHERE id = 1");
+        connection.execute("COMMIT");
+        expectedRecordCount += 1; // deletion, no tombstone
+
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
+        connection.execute("COMMIT");
+        expectedRecordCount += 1;
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+
+        // delete
+        VerifyRecord.isValidDelete(testTableRecords.get(1), "ID", 1);
+        final Struct before = ((Struct) testTableRecords.get(1).value()).getStruct("before");
+        assertThat(before.get("ID")).isEqualTo(1);
+        assertThat(before.get("NAME")).isEqualTo("Billie-Bob");
+        assertThat(before.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
+        assertThat(before.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
+
+        VerifyRecord.isValidInsert(testTableRecords.get(2), "ID", 2);
+    }
+
+    @Test
     public void shouldReadChangeStreamForTableCreatedWhileStreaming() throws Exception {
         TestHelper.dropTable(connection, "debezium.customer2");
 
