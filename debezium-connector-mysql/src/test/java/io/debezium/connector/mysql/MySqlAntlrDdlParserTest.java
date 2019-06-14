@@ -1610,6 +1610,20 @@ public class MySqlAntlrDdlParserTest {
         listener.forEach(this::printEvent);
     }
 
+    @Test
+    @FixFor("DBZ-1329")
+    public void shouldParseAlterTableWithIndex() {
+        final String ddl = "USE db;"
+                  + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));"
+                  + "ALTER TABLE db.t1 RENAME INDEX myidx to myidx2;";
+        parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
+        parser.parse(ddl, tables);
+        assertThat(tables.size()).isEqualTo(1);
+        final Table table = tables.forTable(new TableId(null, "db", "t1"));
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(2);
+    }
+
     @FixFor("DBZ-437")
     @Test
     public void shouldParseStringSameAsKeyword() {
