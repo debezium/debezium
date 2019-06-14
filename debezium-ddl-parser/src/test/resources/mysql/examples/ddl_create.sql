@@ -100,3 +100,11 @@ create or replace definer = current_user sql security invoker view my_view4(c1, 
 	as select * from  (t1 as tt1, t2 as tt2) inner join t1 on t1.col1 = tt1.col1;
 
 #end
+#begin
+-- Create function
+-- delimiter //
+CREATE FUNCTION `func1`() RETURNS varchar(5) CHARSET utf8 COLLATE utf8_unicode_ci
+BEGIN
+	RETURN '12345';
+END; -- //-- delimiter ;
+#end

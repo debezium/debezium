@@ -1987,7 +1987,8 @@ dataType
        | NCHAR | NVARCHAR
       ) 
       lengthOneDimension? BINARY? 
-      ((CHARACTER SET | CHARSET) charsetName)?                                #stringDataType
+      ((CHARACTER SET | CHARSET) charsetName)?
+      (COLLATE collationName)?                                                #stringDataType
     | NATIONAL typeName=(VARCHAR | CHARACTER)
         lengthOneDimension? BINARY?                                           #nationalStringDataType
     | NCHAR typeName=VARCHAR
