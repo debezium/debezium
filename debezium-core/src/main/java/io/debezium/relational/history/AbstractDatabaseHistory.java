@@ -30,6 +30,7 @@ import io.debezium.text.ParsingException;
 public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
     protected Configuration config;
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
