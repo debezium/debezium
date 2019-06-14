@@ -89,9 +89,9 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -144,13 +144,13 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"address\" : {"
-                +         "\"street\" : \"Claude Debussylaan\","
-                +         "\"city\" : \"Amsterdam\""
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"address\": {"
+                +         "\"street\": \"Claude Debussylaan\","
+                +         "\"city\": \"Amsterdam\""
                 +     "},"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -203,9 +203,9 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -258,13 +258,13 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"address\" : {"
-                +         "\"street\" : \"Claude Debussylaan\","
-                +         "\"city\" : \"Amsterdam\""
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"address\": {"
+                +         "\"street\": \"Claude Debussylaan\","
+                +         "\"city\": \"Amsterdam\""
                 +     "},"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -317,9 +317,9 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -372,13 +372,13 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"address\" : {"
-                +         "\"street\" : \"Claude Debussylaan\","
-                +         "\"city\" : \"Amsterdam\""
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"address\": {"
+                +         "\"street\": \"Claude Debussylaan\","
+                +         "\"city\": \"Amsterdam\""
                 +     "},"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -440,20 +440,20 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"addresses\" : ["
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"addresses\": ["
                 +         "{"
-                +             "\"street\" : \"Claude Debussylaan\","
-                +             "\"city\" : \"Amsterdam\""
-                +         "}, "
+                +             "\"street\": \"Claude Debussylaan\","
+                +             "\"city\": \"Amsterdam\""
+                +         "},"
                 +         "{"
-                +             "\"street\" : \"Fragkokklisias\","
-                +             "\"city\" : \"Athens\""
+                +             "\"street\": \"Fragkokklisias\","
+                +             "\"city\": \"Athens\""
                 +         "}"
                 +     "],"
-                +     "\"active\" : true,"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"active\": true,"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -488,26 +488,26 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                +     "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +     "\"addresses\" : ["
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"phone\": {\"$numberLong\": \"123\"},"
+                +     "\"addresses\": ["
                 +         "["
                 +             "{"
-                +                 "\"number\" : {\"$numberLong\" : \"34\"},"
-                +                 "\"street\" : \"Claude Debussylaan\","
-                +                 "\"city\" : \"Amsterdam\""
+                +                 "\"number\": {\"$numberLong\": \"34\"},"
+                +                 "\"street\": \"Claude Debussylaan\","
+                +                 "\"city\": \"Amsterdam\""
                 +             "}"
-                +         "], "
+                +         "],"
                 +         "["
                 +             "{"
-                +                 "\"number\" : {\"$numberLong\" : \"7\"},"
-                +                 "\"street\" : \"Fragkokklisias\","
-                +                 "\"city\" : \"Athens\""
+                +                 "\"number\": {\"$numberLong\": \"7\"},"
+                +                 "\"street\": \"Fragkokklisias\","
+                +                 "\"city\": \"Athens\""
                 +             "}"
                 +         "]"
                 +     "],"
-                +     "\"active\" : true,"
-                +     "\"scores\" : [1.2, 3.4, 5.6]"
+                +     "\"active\": true,"
+                +     "\"scores\": [1.2,3.4,5.6]"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -531,8 +531,8 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"phone\" : {\"$numberLong\" : \"123\"}"
+                +     "\"$set\": {"
+                +         "\"phone\": {\"$numberLong\": \"123\"}"
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -557,8 +557,8 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\" : {"
-                +         "\"phone\" : \"\""
+                +     "\"$unset\": {"
+                +         "\"phone\": \"\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -587,11 +587,11 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +         "\"address\" : {"
-                +             "\"street\" : \"Claude Debussylaan\","
-                +             "\"city\" : \"Amsterdam\""
+                +     "\"$set\": {"
+                +         "\"phone\": {\"$numberLong\": \"123\"},"
+                +         "\"address\": {"
+                +             "\"street\": \"Claude Debussylaan\","
+                +             "\"city\": \"Amsterdam\""
                 +         "}"
                 +     "}"
                 + "}";
@@ -626,16 +626,16 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +         "\"addresses\" : ["
+                +     "\"$set\": {"
+                +         "\"phone\": {\"$numberLong\": \"123\"},"
+                +         "\"addresses\": ["
                 +             "{"
-                +                 "\"street\" : \"Claude Debussylaan\","
-                +                 "\"city\" : \"Amsterdam\""
-                +             "}, "
+                +                 "\"street\": \"Claude Debussylaan\","
+                +                 "\"city\": \"Amsterdam\""
+                +             "},"
                 +             "{"
-                +                 "\"street\" : \"Fragkokklisias\","
-                +                 "\"city\" : \"Athens\""
+                +                 "\"street\": \"Fragkokklisias\","
+                +                 "\"city\": \"Athens\""
                 +             "}"
                 +         "]"
                 +     "}"
@@ -671,21 +671,21 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"phone\" : {\"$numberLong\" : \"123\"},"
-                +         "\"addresses\" : ["
+                +     "\"$set\": {"
+                +         "\"phone\": {\"$numberLong\": \"123\"},"
+                +         "\"addresses\": ["
                 +             "["
                 +                 "{"
-                +                     "\"number\" : {\"$numberLong\" : \"34\"},"
-                +                     "\"street\" : \"Claude Debussylaan\","
-                +                     "\"city\" : \"Amsterdam\""
+                +                     "\"number\": {\"$numberLong\": \"34\"},"
+                +                     "\"street\": \"Claude Debussylaan\","
+                +                     "\"city\": \"Amsterdam\""
                 +                 "}"
-                +             "], "
+                +             "],"
                 +             "["
                 +                 "{"
-                +                     "\"number\" : {\"$numberLong\" : \"7\"},"
-                +                     "\"street\" : \"Fragkokklisias\","
-                +                     "\"city\" : \"Athens\""
+                +                     "\"number\": {\"$numberLong\": \"7\"},"
+                +                     "\"street\": \"Fragkokklisias\","
+                +                     "\"city\": \"Athens\""
                 +                 "}"
                 +             "]"
                 +         "]"
@@ -715,9 +715,9 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"address.street\" : \"Claude Debussylaan\","
-                +         "\"address.city\" : \"Amsterdam\""
+                +     "\"$set\": {"
+                +         "\"address.street\": \"Claude Debussylaan\","
+                +         "\"address.city\": \"Amsterdam\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -756,10 +756,10 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"name\" : \"Sally\","
-                +         "\"addresses.0.street\" : \"Claude Debussylaan\","
-                +         "\"addresses.0.city\" : \"Amsterdam\""
+                +     "\"$set\": {"
+                +         "\"name\": \"Sally\","
+                +         "\"addresses.0.street\": \"Claude Debussylaan\","
+                +         "\"addresses.0.city\": \"Amsterdam\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -839,10 +839,10 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"name\" : \"Sally\","
-                +         "\"addresses.0.second.0.street\" : \"Claude Debussylaan\","
-                +         "\"addresses.0.second.0.city\" : \"Amsterdam\""
+                +     "\"$set\": {"
+                +         "\"name\": \"Sally\","
+                +         "\"addresses.0.second.0.street\": \"Claude Debussylaan\","
+                +         "\"addresses.0.second.0.city\": \"Amsterdam\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -881,8 +881,8 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"name\" : \"Sally\""
+                +     "\"$set\": {"
+                +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -922,8 +922,8 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$set\" : {"
-                +         "\"name\" : \"Sally\""
+                +     "\"$set\": {"
+                +         "\"name\": \"Sally\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -950,9 +950,9 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\" : {"
-                +         "\"address.street\" : \"\","
-                +         "\"address.city\" : \"\""
+                +     "\"$unset\": {"
+                +         "\"address.street\": \"\","
+                +         "\"address.city\": \"\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -991,10 +991,10 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\" : {"
-                +         "\"name\" : \"\","
-                +         "\"addresses.0.street\" : \"\","
-                +         "\"addresses.0.city\" : \"\""
+                +     "\"$unset\": {"
+                +         "\"name\": \"\","
+                +         "\"addresses.0.street\": \"\","
+                +         "\"addresses.0.city\": \"\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -1074,10 +1074,10 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\" : {"
-                +         "\"name\" : \"\","
-                +         "\"addresses.0.second.0.street\" : \"\","
-                +         "\"addresses.0.second.0.city\" : \"\""
+                +     "\"$unset\": {"
+                +         "\"name\": \"\","
+                +         "\"addresses.0.second.0.street\": \"\","
+                +         "\"addresses.0.second.0.city\": \"\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);
@@ -1116,8 +1116,8 @@ public class FieldBlacklistTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\" : {"
-                +         "\"name\" : \"\""
+                +     "\"$unset\": {"
+                +         "\"name\": \"\""
                 +     "}"
                 + "}";
         Struct value = getValue(produced);

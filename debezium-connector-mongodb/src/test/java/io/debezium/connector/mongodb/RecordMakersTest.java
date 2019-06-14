@@ -315,9 +315,9 @@ public class RecordMakersTest {
         assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(FieldName.AFTER)).isEqualTo("{"
-                    + "\"_id\" : {\"$oid\" : \"" + objId + "\"},"
-                    + "\"name\" : \"Sally\","
-                    + "\"ref\" : {\"$ref\" : \"othercollection\",\"$id\" : 15}"
+                    + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                    + "\"name\": \"Sally\","
+                    + "\"ref\": {\"$ref\": \"othercollection\",\"$id\": 15}"
                 + "}"
         );
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
