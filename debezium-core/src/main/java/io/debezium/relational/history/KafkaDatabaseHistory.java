@@ -127,7 +127,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private Configuration producerConfig;
     private volatile KafkaProducer<String, String> producer;
     private int maxRecoveryAttempts;
-    private int pollIntervalMs = -1;
+    private Duration pollInterval;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator) {
@@ -136,7 +136,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.topicName = config.getString(TOPIC);
-        this.pollIntervalMs = config.getInteger(RECOVERY_POLL_INTERVAL_MS);
+        this.pollInterval = Duration.ofMillis(config.getInteger(RECOVERY_POLL_INTERVAL_MS));
         this.maxRecoveryAttempts = config.getInteger(RECOVERY_POLL_ATTEMPTS);
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
@@ -227,7 +227,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
                 logger.debug("End offset of database history topic is {}", endOffset);
 
-                ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollIntervalMs);
+                ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval);
                 int numRecordsProcessed = 0;
 
                 for (ConsumerRecord<String, String> record : recoveredRecords) {
