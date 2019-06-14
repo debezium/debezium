@@ -1655,6 +1655,7 @@ setStatement
     | setPasswordStatement                                          #setPassword
     | setTransactionStatement                                       #setTransaction
     | setAutocommitStatement                                        #setAutocommit
+    | SET fullId ('=' | ':=') expression                            #setNewValueInsideTrigger
     ;
 
 showStatement
