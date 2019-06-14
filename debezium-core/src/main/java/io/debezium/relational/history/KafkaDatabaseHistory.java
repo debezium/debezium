@@ -63,6 +63,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
      */
     private static final String DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME = "default.replication.factor";
 
+    /**
+     * The default replication factor for the history topic which is used in case
+     * the value couldn't be retrieved from the broker.
+     */
+    private static final short DEFAULT_TOPIC_REPLICATION_FACTOR = 1;
+
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
                                            .withDisplayName("Database history topic name")
                                            .withType(Type.STRING)
@@ -338,7 +344,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
 
             // Find default replication factor
-            final short replicationFactor = getTopicReplicationFactor(admin);
+            final short replicationFactor = getDefaultTopicReplicationFactor(admin);
 
             // Create topic
             final NewTopic topic = new NewTopic(topicName, (short) 1, replicationFactor);
@@ -352,7 +358,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
     }
 
-    private short getTopicReplicationFactor(AdminClient admin) throws Exception {
+    private short getDefaultTopicReplicationFactor(AdminClient admin) throws Exception {
         try {
             Config brokerConfig = getKafkaBrokerConfig(admin);
             String defaultReplicationFactorValue = brokerConfig.get(DEFAULT_TOPIC_REPLICATION_FACTOR_PROP_NAME).value();
@@ -363,19 +369,20 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             }
         }
         catch (ExecutionException ex) {
-            // ignore UnsupportedVersionException
-            logger.trace("Exception while getting the default replication factor", ex);
+            // ignore UnsupportedVersionException, e.g. due to older broker version
             if (!(ex.getCause() instanceof UnsupportedVersionException)) {
                 throw ex;
             }
-
         }
 
         // Otherwise warn that no property was obtained and default it to 1 - users can increase this later if desired
         logger.warn(
-                "Unable to obtain the default replication factor from the brokers at {} - Setting value to 1 instead",
-                producerConfig.getString(BOOTSTRAP_SERVERS));
-        return 1;
+                "Unable to obtain the default replication factor from the brokers at {}. Setting value to {} instead.",
+                producerConfig.getString(BOOTSTRAP_SERVERS),
+                DEFAULT_TOPIC_REPLICATION_FACTOR
+        );
+
+        return DEFAULT_TOPIC_REPLICATION_FACTOR;
     }
 
     private Config getKafkaBrokerConfig(AdminClient admin) throws Exception {
