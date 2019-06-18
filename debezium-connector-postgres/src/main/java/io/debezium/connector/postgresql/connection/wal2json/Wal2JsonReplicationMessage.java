@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 
@@ -190,9 +189,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         if (type.isArrayType()) {
             try {
                 final String dataString = rawValue.asString();
-                PgArray arrayData = new PgArray(connection.get(), type.getOid(), dataString);
-                Object deserializedArray = arrayData.getArray();
-                return Arrays.asList((Object[]) deserializedArray);
+                return new PgArray(connection.get(), type.getOid(), dataString);
             }
             catch (SQLException e) {
                 LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", fullType, columnName, e);

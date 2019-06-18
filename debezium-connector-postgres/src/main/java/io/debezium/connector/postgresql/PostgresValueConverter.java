@@ -23,6 +23,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -36,7 +37,9 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGpoint;
+import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.HStoreConverter;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGobject;
@@ -786,11 +789,23 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     protected Object convertArray(Column column, Field fieldDefn, ValueConverter elementConverter, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), (r) -> {
-            // RecordStreamProducer and RecordsSnapshotProducer should ensure this arrives as a list
             if (data instanceof List) {
                 r.deliver(((List<?>) data).stream()
                         .map(elementConverter::convert)
                         .collect(Collectors.toList()));
+            }
+            else if (data instanceof PgArray) {
+                try {
+                    final Object[] values = (Object[]) ((PgArray) data).getArray();
+                    final List<Object> converted = new ArrayList<>(values.length);
+                    for (Object value: values) {
+                        converted.add(elementConverter.convert(value));
+                    }
+                    r.deliver(converted);
+                }
+                catch (SQLException e) {
+                    throw new ConnectException("Failed to read value of array " + column.name());
+                }
             }
         });
     }
@@ -841,6 +856,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
-        return super.convertBinary(column, fieldDefn, (data instanceof PGobject)?((PGobject) data).getValue():data);
+        if (data instanceof PgArray) {
+                data = ((PgArray) data).toString();
+        }
+        return super.convertBinary(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
     }
 }
