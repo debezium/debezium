@@ -253,6 +253,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.hstoreOid()){
                     return hstoreSchema();
                 }
+                else if (oidValue == typeRegistry.hstoreArrayOid()) {
+                    return SchemaBuilder.array(hstoreSchema().optional().build());
+                }
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
                     return SchemaBuilder.array(Geography.builder().optional().build());
                 }
@@ -388,7 +391,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return data -> convertHStore(column, fieldDefn, data, hStoreMode);
                 }
-                else if (oidValue == typeRegistry.geometryArrayOid() || oidValue == typeRegistry.geographyArrayOid() || oidValue == typeRegistry.citextArrayOid()) {
+                else if (oidValue == typeRegistry.geometryArrayOid() ||
+                        oidValue == typeRegistry.geographyArrayOid() ||
+                        oidValue == typeRegistry.citextArrayOid() ||
+                        oidValue == typeRegistry.hstoreArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
                 }
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
@@ -478,6 +484,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             else if (data instanceof byte[]) {
                 r.deliver(HStoreConverter.fromString(asHstoreString((byte[]) data)));
             }
+            else if (data instanceof PGobject) {
+                r.deliver(HStoreConverter.fromString(data.toString()));
+            }
         });
     }
 
@@ -500,8 +509,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
             else if (data instanceof byte[]) {
                 r.deliver(changePlainStringRepresentationToJsonStringRepresentation(asHstoreString((byte[]) data)));
             }
+            else if (data instanceof PGobject) {
+                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(data.toString()));
+            }
             else if (data instanceof java.util.HashMap) {
-                    r.deliver(convertMapToJsonStringRepresentation((Map<String, String>) data));
+                r.deliver(convertMapToJsonStringRepresentation((Map<String, String>) data));
             }
         });
     }

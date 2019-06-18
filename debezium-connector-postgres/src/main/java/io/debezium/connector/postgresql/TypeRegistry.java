@@ -28,6 +28,7 @@ public class TypeRegistry {
     public static final String TYPE_NAME_GEOMETRY = "geometry";
     public static final String TYPE_NAME_CITEXT = "citext";
     public static final String TYPE_NAME_HSTORE = "hstore";
+    public static final String TYPE_NAME_HSTORE_ARRAY = "_hstore";
     public static final String TYPE_NAME_GEOGRAPHY_ARRAY = "_geography";
     public static final String TYPE_NAME_GEOMETRY_ARRAY = "_geometry";
     public static final String TYPE_NAME_CITEXT_ARRAY = "_citext";
@@ -68,6 +69,7 @@ public class TypeRegistry {
         private int geographyOid = Integer.MIN_VALUE;
         private int citextOid = Integer.MIN_VALUE;
         private int hstoreOid = Integer.MIN_VALUE;
+        private int hstoreArrayOid = Integer.MIN_VALUE;
         private int geometryArrayOid = Integer.MIN_VALUE;
         private int geographyArrayOid = Integer.MIN_VALUE;
         private int citextArrayOid = Integer.MIN_VALUE;
@@ -98,6 +100,9 @@ public class TypeRegistry {
             else if (TYPE_NAME_HSTORE.equals(type.getName())){
                 hstoreOid = type.getOid();
             }
+            else if (TYPE_NAME_HSTORE_ARRAY.equals(type.getName())) {
+                hstoreArrayOid = type.getOid();
+            }
             else if (TYPE_NAME_GEOMETRY_ARRAY.equals(type.getName())) {
                 geometryArrayOid = type.getOid();
             }
@@ -123,7 +128,8 @@ public class TypeRegistry {
          * @return initialized type registry
          */
         public TypeRegistry build() {
-            return new TypeRegistry(nameToType, oidToType, geometryOid, geographyOid, citextOid, geometryArrayOid, geographyArrayOid, citextArrayOid, hstoreOid);
+            return new TypeRegistry(nameToType, oidToType, geometryOid, geographyOid, citextOid, geometryArrayOid,
+                    geographyArrayOid, citextArrayOid, hstoreOid, hstoreArrayOid);
         }
     }
 
@@ -137,13 +143,14 @@ public class TypeRegistry {
     private final int geographyOid;
     private final int citextOid;
     private final int hstoreOid;
+    private final int hstoreArrayOid;
     private final int geometryArrayOid;
     private final int geographyArrayOid;
     private final int citextArrayOid;
 
     private TypeRegistry(Map<String, PostgresType> nameToType, Map<Integer, PostgresType> oidToType,
             int geometryOid, int geographyOid, int citextOid, int geometryArrayOid, int geographyArrayOid, int citextArrayOid,
-                         int hstoreOid) {
+                         int hstoreOid, int hstoreArrayOid) {
 
         this.nameToType = Collections.unmodifiableMap(nameToType);
         this.oidToType = Collections.unmodifiableMap(oidToType);
@@ -151,6 +158,7 @@ public class TypeRegistry {
         this.geographyOid = geographyOid;
         this.citextOid = citextOid;
         this.hstoreOid = hstoreOid;
+        this.hstoreArrayOid = hstoreArrayOid;
         this.geometryArrayOid = geometryArrayOid;
         this.geographyArrayOid = geographyArrayOid;
         this.citextArrayOid = citextArrayOid;
@@ -234,6 +242,14 @@ public class TypeRegistry {
     public int hstoreOid(){
         return hstoreOid;
     }
+
+    /**
+    *
+    * @return OID for array of {@code HSTORE} type of this PostgreSQL instance
+    */
+   public int hstoreArrayOid() {
+       return hstoreArrayOid;
+   }
 
     /**
      *

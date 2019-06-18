@@ -272,7 +272,10 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 if(type.getOid() == typeRegistry.hstoreOid()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
-                if (type.getOid() == typeRegistry.geometryArrayOid() || type.getOid() == typeRegistry.geographyArrayOid() || type.getOid() == typeRegistry.citextArrayOid() ) {
+                if (type.getOid() == typeRegistry.geometryArrayOid() ||
+                        type.getOid() == typeRegistry.geographyArrayOid() ||
+                        type.getOid() == typeRegistry.citextArrayOid() ||
+                        type.getOid() == typeRegistry.hstoreArrayOid()) {
                     return getArray(datumMessage, connection, columnType);
                 }
                 // unknown data type is sent by decoder as binary value
