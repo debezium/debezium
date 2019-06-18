@@ -6,14 +6,12 @@
 
 package io.debezium.connector.postgresql;
 
-import java.sql.Array;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -357,13 +355,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
             logger.trace("Type is: {}", type);
 
             if (type.isArrayType()) {
-                Array array = rs.getArray(colIdx);
-
-                if (array == null) {
-                    return null;
-                }
-
-                return Arrays.asList((Object[]) array.getArray());
+                return rs.getArray(colIdx);
             }
 
             switch (type.getOid()) {
