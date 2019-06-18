@@ -30,7 +30,7 @@ CREATE TABLE array_table (pk SERIAL, int_array INT[], bigint_array BIGINT[], tex
 CREATE TABLE array_table_with_nulls (pk SERIAL, int_array INT[], bigint_array BIGINT[], text_array TEXT[], char_array CHAR(10)[], varchar_array VARCHAR(10)[], date_array DATE[], numeric_array NUMERIC(10, 2)[], varnumeric_array NUMERIC[3], citext_array CITEXT[], inet_array INET[], cidr_array CIDR[], macaddr_array MACADDR[], tsrange_array TSRANGE[], tstzrange_array TSTZRANGE[], daterange_array DATERANGE[], int4range_array INT4RANGE[], numerange_array NUMRANGE[], int8range_array INT8RANGE[], PRIMARY KEY(pk));
 CREATE TABLE custom_table (pk serial, lt ltree, i isbn NOT NULL, n TEXT, lt_array ltree[], PRIMARY KEY(pk));
 CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));
-CREATE TABLE hstore_table_mul (pk serial, hs hstore, PRIMARY KEY(pk));
+CREATE TABLE hstore_table_mul (pk serial, hs hstore, hsarr hstore[], PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_null (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_special (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE not_null_table (pk serial, val numeric(20,8), created_at timestamp not null, created_at_tz timestamptz not null, ctime time not null, ctime_tz timetz not null, cdate date not null, cmoney money not null, cbits bit(3) not null, PRIMARY KEY(pk));

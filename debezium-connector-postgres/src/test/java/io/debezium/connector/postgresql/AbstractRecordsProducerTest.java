@@ -161,7 +161,10 @@ public abstract class AbstractRecordsProducerTest {
 
     protected static final String INSERT_HSTORE_TYPE_STMT = "INSERT INTO hstore_table (hs) VALUES ('\"key\" => \"val\"'::hstore)";
 
-    protected static final String INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT = "INSERT INTO hstore_table_mul (hs) VALUES ('\"key1\" => \"val1\",\"key2\" => \"val2\",\"key3\" => \"val3\"')";
+    protected static final String INSERT_HSTORE_TYPE_WITH_MULTIPLE_VALUES_STMT = "INSERT INTO hstore_table_mul (hs, hsarr) VALUES (" +
+            "'\"key1\" => \"val1\",\"key2\" => \"val2\",\"key3\" => \"val3\"', " +
+            "array['\"key4\" => \"val4\",\"key5\" => NULL'::hstore, '\"key6\" => \"val6\"']" +
+            ")";
 
     protected static final String INSERT_HSTORE_TYPE_WITH_NULL_VALUES_STMT = "INSERT INTO hstore_table_with_null (hs) VALUES ('\"key1\" => \"val1\",\"key2\" => NULL')";
 
@@ -287,8 +290,19 @@ public abstract class AbstractRecordsProducerTest {
         expected.put("key1", "val1");
         expected.put("key2", "val2");
         expected.put("key3", "val3");
-        return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
-        }
+
+        Map<String, String> expectedArray1 = new HashMap<>();
+        expectedArray1.put("key4", "val4");
+        expectedArray1.put("key5", null);
+
+        Map<String, String> expectedArray2 = new HashMap<>();
+        expectedArray2.put("key6", "val6");
+
+        return Arrays.asList(
+                new SchemaAndValueField("hs", hstoreMapSchema(), expected),
+                new SchemaAndValueField("hsarr", SchemaBuilder.array(hstoreMapSchema()).optional().build(), Arrays.asList(expectedArray1, expectedArray2))
+        );
+    }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues(){
         final Map<String, String> expected = new HashMap<>();
@@ -320,7 +334,15 @@ public abstract class AbstractRecordsProducerTest {
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues(){
         final String expected = "{\"key1\":\"val1\",\"key2\":\"val2\",\"key3\":\"val3\"}";
-        return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
+        final List<String> expectedArray = Arrays.asList(
+                "{\"key5\":null,\"key4\":\"val4\"}",
+                "{\"key6\":\"val6\"}"
+        );
+
+        return Arrays.asList(
+                new SchemaAndValueField("hs", Json.builder().optional().build(), expected),
+                new SchemaAndValueField("hsarr", SchemaBuilder.array(Json.builder().optional().build()).optional().build(), expectedArray)
+        );
     }
 
     protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues(){
