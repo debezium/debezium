@@ -225,7 +225,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
             }
         }
         catch (SQLException e) {
-            LOGGER.error("Exception while closing JDBC timestamp connection", e);
+            LOGGER.error("Exception while closing JDBC metadata connection", e);
         }
 
         if (schema != null) {
