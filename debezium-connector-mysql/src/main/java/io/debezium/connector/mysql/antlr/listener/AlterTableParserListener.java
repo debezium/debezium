@@ -53,7 +53,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
         if (parser.databaseTables().forTable(tableId) == null) {
-            LOG.debug("Ignoring ALTER TABLE statement for non-recorded table {}", tableId);
+            LOG.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
             return;
         }
         tableEditor = parser.databaseTables().editTable(tableId);
