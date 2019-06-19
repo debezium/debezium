@@ -63,9 +63,19 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerStreamingChangeEventSource.class);
 
+    /**
+     * Connection used for reading CDC tables.
+     */
     private final SqlServerConnection dataConnection;
-    // A separate connection for retrieving timestamp is needed. Otherwise adaptive buffering will not work
+
+    /**
+     * A separate connection for retrieving timestamps; without it, adaptive
+     * buffering will not work.
+     *
+     * @see https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
+     */
     private final SqlServerConnection metadataConnection;
+
     private final EventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
