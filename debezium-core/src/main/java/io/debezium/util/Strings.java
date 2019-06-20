@@ -989,6 +989,37 @@ public final class Strings {
         return bytes;
     }
 
+    /**
+     * Whether the given string begins with the given prefix, ignoring casing.
+     * Copied from https://github.com/spring-projects/spring-framework/blob/master/spring-core/src/main/java/org/springframework/util/StringUtils.java.
+     */
+    public static boolean startsWithIgnoreCase(String str, String prefix) {
+        return (str != null && prefix != null && str.length() >= prefix.length() &&
+                str.regionMatches(true, 0, prefix, 0, prefix.length()));
+    }
+
+    /**
+     * Returns the first {@code length} characters of the given string.
+     *
+     * @param str    The string to get the begin from
+     * @param length The length of the string to return
+     * @return {@code null}, if the given string is {@code null}, the first first
+     *         {@code length} characters of that string otherwise. If the string is
+     *         shorter than the given number of characters, the string itself will
+     *         be returned.
+     */
+    public static String getBegin(String str, int length) {
+        if (str == null) {
+            return null;
+        }
+        else if (str.length() < length) {
+            return str;
+        }
+        else {
+            return str.substring(0, length);
+        }
+    }
+
     private static Character deriveQuotingChar(String identifierPart) {
         char first = identifierPart.charAt(0);
         char last = identifierPart.charAt(identifierPart.length() - 1);
