@@ -347,7 +347,7 @@ public class RecordMakers {
                 final int expectedColumnsCount = schema.tableFor(tableSchema.id()).columns().size();
                 if (expectedColumnsCount != row.length) {
                     logger.error("Invalid number of columns, expected '{}' arrived '{}'", expectedColumnsCount, row.length);
-                    throw new ConnectException("The binlog change does not contain expected number of columns, internal schema representation is probably out of sync with real database schema, or binlog contains changes recorded with binlog_row_image other than FULL or the table in question is NDB table");
+                    throw new ConnectException("The binlog event does not contain expected number of columns; the internal schema representation is probably out of sync with the real database schema, or the binlog contains events recorded with binlog_row_image other than FULL or the table in question is an NDB table");
                 }
             }
         };

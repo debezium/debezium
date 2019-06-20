@@ -687,11 +687,14 @@ public class BinlogReader extends AbstractReader {
             handleTransactionCompletion(event);
             return;
         }
-        if (sql.toUpperCase().startsWith("XA ")) {
+
+        String upperCasedStatementBegin = Strings.getBegin(sql, 7).toUpperCase();
+
+        if (upperCasedStatementBegin.startsWith("XA ")) {
             // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
-        if (sql.toUpperCase().startsWith("INSERT ") || sql.toUpperCase().startsWith("UPDATE ") || sql.toUpperCase().startsWith("DELETE")) {
+        if (upperCasedStatementBegin.equals("INSERT ") || upperCasedStatementBegin.equals("UPDATE ") || upperCasedStatementBegin.equals("DELETE ")) {
             throw new ConnectException("Received DML '" + sql + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
         }
         if (context.ddlFilter().test(sql)) {

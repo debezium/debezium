@@ -345,6 +345,25 @@ public class StringsTest {
         assertThat(Strings.asDuration("24:00:01")).isEqualTo(Duration.parse("PT24H1S"));
     }
 
+    @Test
+    public void startsWithIgnoreCase() {
+        assertThat(Strings.startsWithIgnoreCase("INSERT INTO", "insert")).isTrue();
+        assertThat(Strings.startsWithIgnoreCase("INSERT INTO", "INSERT")).isTrue();
+        assertThat(Strings.startsWithIgnoreCase("insert INTO", "INSERT")).isTrue();
+        assertThat(Strings.startsWithIgnoreCase("INSERT INTO", "update")).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-1340")
+    public void getBegin() {
+        assertThat(Strings.getBegin(null, 10)).isNull();
+        assertThat(Strings.getBegin("", 10)).isEqualTo("");
+        assertThat(Strings.getBegin("INSERT ", 7)).isEqualTo("INSERT ");
+        assertThat(Strings.getBegin("INSERT INTO", 7)).isEqualTo("INSERT ");
+        assertThat(Strings.getBegin("UPDATE mytable", 7)).isEqualTo("UPDATE ");
+        assertThat(Strings.getBegin("delete from ", 7).toUpperCase()).isEqualTo("DELETE ");
+    }
+
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
