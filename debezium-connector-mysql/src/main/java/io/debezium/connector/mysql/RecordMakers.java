@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -240,6 +241,7 @@ public class RecordMakers {
             public int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
+                validateColumnCount(tableSchema, row);
                 Object key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
                 if (value != null || key != null) {
@@ -262,6 +264,7 @@ public class RecordMakers {
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
+                validateColumnCount(tableSchema, after);
                 Object key = tableSchema.keyFromColumnData(after);
                 Struct valueAfter = tableSchema.valueFromColumnData(after);
                 if (valueAfter != null || key != null) {
@@ -309,6 +312,7 @@ public class RecordMakers {
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
+                validateColumnCount(tableSchema, row);
                 Object key = tableSchema.keyFromColumnData(row);
                 Struct value = tableSchema.valueFromColumnData(row);
                 if (value != null || key != null) {
@@ -339,6 +343,13 @@ public class RecordMakers {
                 return "RecordMaker.Converter(" + id + ")";
             }
 
+            private void validateColumnCount(TableSchema tableSchema, Object[] row) {
+                final int expectedColumnsCount = schema.tableFor(tableSchema.id()).columns().size();
+                if (expectedColumnsCount != row.length) {
+                    logger.error("Invalid number of columns, expected '{}' arrived '{}'", expectedColumnsCount, row.length);
+                    throw new ConnectException("The binlog change does not contain expected number of columns, internal schema representation is probably out of sync with real database schema, or binlog contains changes recorded with binlog_row_image other than FULL or the table in question is NDB table");
+                }
+            }
         };
 
         convertersByTableNumber.put(tableNumber, converter);

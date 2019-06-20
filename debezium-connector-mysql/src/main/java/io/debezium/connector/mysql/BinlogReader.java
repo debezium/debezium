@@ -691,6 +691,9 @@ public class BinlogReader extends AbstractReader {
             // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
+        if (sql.toUpperCase().startsWith("INSERT ") || sql.toUpperCase().startsWith("UPDATE ") || sql.toUpperCase().startsWith("DELETE")) {
+            throw new ConnectException("Received DML '" + sql + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
+        }
         if (context.ddlFilter().test(sql)) {
             logger.debug("DDL '{}' was filtered out of processing", sql);
             return;
