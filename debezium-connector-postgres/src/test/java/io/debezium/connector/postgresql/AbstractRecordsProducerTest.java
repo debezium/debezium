@@ -360,6 +360,12 @@ public abstract class AbstractRecordsProducerTest {
         return Arrays.asList(new SchemaAndValueField("m", Schema.OPTIONAL_STRING_SCHEMA, expected));
     }
 
+    protected List<SchemaAndValueField> schemaAndValueForMaterializedViewBaseType() {
+        return Arrays.asList(new SchemaAndValueField("i", Schema.OPTIONAL_INT32_SCHEMA, 1),
+                             new SchemaAndValueField("s", Schema.OPTIONAL_STRING_SCHEMA, "1")
+                );
+    }
+
     protected List<SchemaAndValueField> schemasAndValuesForStringTypes() {
        return Arrays.asList(new SchemaAndValueField("vc", Schema.OPTIONAL_STRING_SCHEMA, "\u017E\u0161"),
                             new SchemaAndValueField("vcv", Schema.OPTIONAL_STRING_SCHEMA, "bb"),
