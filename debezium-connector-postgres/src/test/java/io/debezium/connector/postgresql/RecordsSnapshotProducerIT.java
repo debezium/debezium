@@ -567,4 +567,26 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
+
+    @Test
+    public void shouldNotSnapshotMaterializedViews() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE mv_real_table (pk SERIAL, i integer, s VARCHAR(50), PRIMARY KEY(pk));");
+        TestHelper.execute("CREATE MATERIALIZED VIEW mv (pk, s) AS SELECT mrv.pk, mrv.s FROM mv_real_table mrv WITH DATA;");
+
+        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
+        snapshotProducer = buildNoStreamProducer(context, config);
+
+        final TestConsumer consumer = testConsumer(1, "public");
+
+        // insert data
+        TestHelper.execute("INSERT INTO mv_real_table (i,s) VALUES (1,'1');");
+        TestHelper.execute("REFRESH MATERIALIZED VIEW mv WITH DATA;");
+
+        snapshotProducer.start(consumer, e -> {});
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.mv_real_table", schemaAndValueForMaterializedViewBaseType());
+        consumer.process(record ->assertReadRecord(record, expectedValueByTopicName));
+    }
 }
