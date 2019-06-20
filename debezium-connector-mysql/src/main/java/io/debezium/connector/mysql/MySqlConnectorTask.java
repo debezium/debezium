@@ -211,7 +211,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 }
                 if (!rowBinlogEnabled) {
                     throw new ConnectException(
-                            "The MySQL server does not appear to be using a row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
+                            "The MySQL server does not appear to be using a full row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
 
 
@@ -585,6 +585,19 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         }
 
         logger.debug("binlog_format={}", mode.get());
-        return "ROW".equalsIgnoreCase(mode.get());
+
+        AtomicReference<String> rowImage = new AtomicReference<String>("");
+        try {
+            connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_row_image'", rs -> {
+                if (rs.next()) {
+                    rowImage.set(rs.getString(2));
+                }
+            });
+        } catch (SQLException e) {
+            throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG row image mode: ", e);
+        }
+
+        logger.debug("binlog_row_image={}", rowImage.get());
+        return "ROW".equalsIgnoreCase(mode.get()) && "FULL".equalsIgnoreCase(rowImage.get());
     }
 }
