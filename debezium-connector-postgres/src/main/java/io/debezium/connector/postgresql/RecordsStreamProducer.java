@@ -48,6 +48,11 @@ import io.debezium.util.Threads;
  * A {@link RecordsProducer} which creates {@link SourceRecord records} from a
  * Postgres streaming replication connection and {@link ReplicationMessage
  * messages}.
+ * <p>
+ * See the <a href=
+ * "https://jdbc.postgresql.org/documentation/head/replication.html">Physical
+ * and Logical replication API</a> to learn more about the underlying Postgres
+ * APIs.
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
