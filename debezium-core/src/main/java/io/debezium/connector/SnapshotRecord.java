@@ -14,9 +14,18 @@ import org.apache.kafka.connect.data.Struct;
  *
  */
 public enum SnapshotRecord {
-    TRUE, // record is from snapshot is not the last one
-    LAST, // record is from snapshot is the last record generated in snapshot phase
-    FALSE; // record is from streaming phase
+    /**
+     * Record is from snapshot is not the last one.
+     */
+    TRUE,
+    /**
+     * Record is from snapshot is the last record generated in snapshot phase.
+     */
+    LAST,
+    /**
+     * Record is from streaming phase.
+     */
+    FALSE;
 
     public static SnapshotRecord fromSource(Struct source) {
         if (source.schema().field(AbstractSourceInfo.SNAPSHOT_KEY) != null && io.debezium.data.Enum.LOGICAL_NAME.equals(source.schema().field(AbstractSourceInfo.SNAPSHOT_KEY).schema().name())) {
