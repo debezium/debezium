@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -394,7 +395,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         snapshotProducer = buildNoStreamProducer(context, config);
 
-        TestConsumer consumer = testConsumer(31);
+        TestConsumer consumer = testConsumer(1 + 2 * 30); // Every record comes once from partitioned table and from partition
 
         // add 1 record to `first_table`. To reproduce the bug we must process at
         // least one row before processing the partitioned table.
@@ -422,7 +423,11 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         consumer.process(record -> {
             Struct key = (Struct) record.key();
-            ids.add(key.getInt32("pk"));
+            if (key != null) {
+                final Integer id = key.getInt32("pk");
+                Assertions.assertThat(ids).excludes(id);
+                ids.add(id);
+            }
             topicCounts.put(record.topic(), topicCounts.get(record.topic()) + 1);
         });
 
@@ -431,7 +436,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         // verify each topic contains exactly the number of input records
         assertEquals(1, topicCounts.get("test_server.public.first_table").intValue());
-        assertEquals(0, topicCounts.get("test_server.public.partitioned").intValue());
+        assertEquals(30, topicCounts.get("test_server.public.partitioned").intValue());
         assertEquals(10, topicCounts.get("test_server.public.partitioned_1_100").intValue());
         assertEquals(20, topicCounts.get("test_server.public.partitioned_101_200").intValue());
 
@@ -442,6 +447,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertSourceInfo(record);
         }
     }
+
     @Test
     @FixFor("DBZ-1162")
     public void shouldGenerateSnapshotsForHstores() throws Exception {
