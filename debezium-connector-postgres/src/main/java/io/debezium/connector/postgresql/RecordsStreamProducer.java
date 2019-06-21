@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -40,7 +41,9 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
@@ -68,6 +71,9 @@ public class RecordsStreamProducer extends RecordsProducer {
     private PgConnection typeResolverConnection = null;
     private Long lastCompletelyProcessedLsn;
 
+    private final AtomicLong lastCommittedLsn = new AtomicLong(-1);
+    private final Metronome pauseNoMessage;
+
     private final Heartbeat heartbeat;
 
     @FunctionalInterface
@@ -94,6 +100,7 @@ public class RecordsStreamProducer extends RecordsProducer {
 
         heartbeat = Heartbeat.create(taskContext.config().getConfig(), taskContext.topicSelector().getHeartbeatTopic(),
                 taskContext.config().getLogicalName());
+        pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
     }
 
     @Override
@@ -142,9 +149,13 @@ public class RecordsStreamProducer extends RecordsProducer {
         // run while we haven't been requested to stop
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                flushLatestCommittedLsn(stream);
                 // this will block until a message is available
-                stream.read(x -> process(x, stream.lastReceivedLsn(), consumer));
-            } catch (SQLException e) {
+                if (!stream.readPending(x -> process(x, stream.lastReceivedLsn(), consumer))) {
+                    pauseNoMessage.pause();
+                }
+            }
+            catch (SQLException e) {
                 Throwable cause = e.getCause();
                 if (cause != null && (cause instanceof IOException)) {
                     //TODO author=Horia Chiorean date=08/11/2016 description=this is because we can't safely close the stream atm
@@ -154,7 +165,12 @@ public class RecordsStreamProducer extends RecordsProducer {
                 }
                 failureConsumer.accept(e);
                 throw new ConnectException(e);
-            } catch (Throwable e) {
+            }
+            catch (InterruptedException e) {
+                logger.info("Interrupted from sleep, producer termination requested");
+                Thread.currentThread().interrupt();
+            }
+            catch (Throwable e) {
                 logger.error("unexpected exception while streaming logical changes", e);
                 failureConsumer.accept(e);
                 throw new ConnectException(e);
@@ -162,25 +178,25 @@ public class RecordsStreamProducer extends RecordsProducer {
         }
     }
 
+    private void flushLatestCommittedLsn(ReplicationStream stream) throws SQLException {
+        final long newLsn = lastCommittedLsn.getAndSet(-1);
+        if (newLsn != -1) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Flushing LSN to server: {}", LogSequenceNumber.valueOf(newLsn));
+            }
+            // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
+            stream.flushLsn(newLsn);
+        }
+    }
+
     @Override
     protected synchronized void commit(long lsn)  {
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            ReplicationStream replicationStream = this.replicationStream.get();
-
-            if (replicationStream != null) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Flushing LSN to server: {}", LogSequenceNumber.valueOf(lsn));
-                }
-                // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
-                replicationStream.flushLsn(lsn);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Flushing of LSN '{}' requested", LogSequenceNumber.valueOf(lsn));
             }
-            else {
-                logger.debug("Streaming has already stopped, ignoring commit callback...");
-            }
-        }
-        catch (SQLException e) {
-            throw new ConnectException(e);
+            lastCommittedLsn.set(lsn);
         }
         finally {
             previousContext.restore();
@@ -200,6 +216,12 @@ public class RecordsStreamProducer extends RecordsProducer {
             ReplicationStream stream = this.replicationStream.get();
             // if we have a stream, ensure that it has been stopped
             if (stream != null) {
+                try {
+                    flushLatestCommittedLsn(stream);
+                }
+                catch (SQLException e) {
+                    logger.error("Failed to execute the final LSN flush", e);
+                }
                 stream.stopKeepAlive();
             }
 

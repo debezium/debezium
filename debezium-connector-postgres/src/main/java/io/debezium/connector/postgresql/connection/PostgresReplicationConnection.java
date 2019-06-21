@@ -269,6 +269,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 deserializeMessages(read, processor);
             }
 
+            @Override
+            public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                ByteBuffer read = stream.readPending();
+                // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
+                if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
+                    return false;
+                }
+                deserializeMessages(read, processor);
+                return true;
+            }
+
             private void deserializeMessages(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 lastReceivedLsn = stream.getLastReceiveLSN();
                 messageDecoder.processMessage(buffer, processor, typeRegistry);

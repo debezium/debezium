@@ -34,6 +34,18 @@ public interface ReplicationStream extends AutoCloseable {
     void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
 
     /**
+     * Attempts to read a replication message from a replication connection, returning that message if it's available or returning
+     * {@code null} if nothing is available. Once a message has been received, the value of the {@link #lastReceivedLsn() last received LSN}
+     * will also be updated accordingly.
+     *
+     * @param processor - a callback to which the arrived message is passed
+     * @return {@code true} if a message was received and processed
+     * @throws SQLException if anything unexpected fails
+     * @see PGReplicationStream#readPending()
+     */
+    boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
+
+    /**
      * Sends a message to the server informing it about that latest position in the WAL that has successfully been
      * processed. Due to the internal buffering the messages sent to Kafka (and thus committed offsets) will usually
      * lag behind the latest received LSN, which is why this method must only be called after the accompanying event
