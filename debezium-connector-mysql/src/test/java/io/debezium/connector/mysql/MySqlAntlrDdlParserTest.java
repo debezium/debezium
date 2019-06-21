@@ -55,6 +55,20 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1348")
+    public void shouldParseInternalColumnId() {
+        String ddl = "CREATE TABLE USER (INTERNAL BOOLEAN DEFAULT FALSE) ENGINE=InnoDB DEFAULT CHARSET=latin1" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        final Table table = tables.forTable(null, null, "USER");
+
+        final Column f1 = table.columnWithName("INTERNAL");
+        assertThat(f1).isNotNull();
+    }
+
+    @Test
     public void shouldNotGetExceptionOnParseAlterStatementsWithoutCreate() {
         String ddl = "ALTER TABLE foo ADD COLUMN c bigint;" + System.lineSeparator();
         parser.parse(ddl, tables);
