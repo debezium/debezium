@@ -789,22 +789,25 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
             }
         });
-        final Struct rec1 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(0).value()).getStruct("after");
-        final Struct rec2 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(1).value()).getStruct("after");
-        assertThat(rec1.get("c1")).isNull();
-        assertThat(rec1.get("c2")).isEqualTo(0L);
-        assertThat(rec1.get("c3")).isNull();
-        assertThat(rec1.get("c4")).isEqualTo("1970-01-01T00:00:00Z");
-        assertThat(rec1.get("nnc1")).isEqualTo(0);
-        assertThat(rec1.get("nnc2")).isEqualTo(0L);
-        assertThat(rec1.get("nnc3")).isEqualTo(0L);
-        assertThat(rec2.get("c1")).isNull();
-        assertThat(rec2.get("c2")).isEqualTo(60_000_000L); // 1 minute
-        assertThat(rec2.get("c3")).isNull();
-        assertThat(rec2.get("c4")).isEqualTo("1970-01-01T00:00:00Z");
-        assertThat(rec2.get("nnc1")).isEqualTo(0);
-        assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
-        assertThat(rec2.get("nnc3")).isEqualTo(0L);
+
+        try (MySQLConnection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            final Struct rec1 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(0).value()).getStruct("after");
+            final Struct rec2 = ((Struct) records.recordsForTopic(DATABASE.topicForTable("dbz_1318_zerovaluetest")).get(1).value()).getStruct("after");
+            assertThat(rec1.get("c1")).isNull();
+            assertThat(rec1.get("c2")).isEqualTo(0L);
+            assertThat(rec1.get("c3")).isNull();
+            assertThat(rec1.get("c4")).isEqualTo(conn.databaseAsserts().currentDateTimeDefaultOptional("1970-01-01T00:00:00Z"));
+            assertThat(rec1.get("nnc1")).isEqualTo(0);
+            assertThat(rec1.get("nnc2")).isEqualTo(0L);
+            assertThat(rec1.get("nnc3")).isEqualTo(0L);
+            assertThat(rec2.get("c1")).isNull();
+            assertThat(rec2.get("c2")).isEqualTo(60_000_000L); // 1 minute
+            assertThat(rec2.get("c3")).isNull();
+            assertThat(rec2.get("c4")).isEqualTo(conn.databaseAsserts().currentDateTimeDefaultOptional("1970-01-01T00:00:00Z"));
+            assertThat(rec2.get("nnc1")).isEqualTo(0);
+            assertThat(rec2.get("nnc2")).isEqualTo(60_000_000L); // 1 minute
+            assertThat(rec2.get("nnc3")).isEqualTo(0L);
+        }
     }
 
     @Test
