@@ -55,6 +55,29 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1349")
+    public void shouldSupportUtfMb3Charset() {
+        String ddl = " CREATE TABLE `engine_cost` (\n" +
+                "  `engine_name` varchar(64) NOT NULL,\n" +
+                "  `device_type` int(11) NOT NULL,\n" +
+                "  `cost_name` varchar(64) NOT NULL,\n" +
+                "  `cost_value` float DEFAULT NULL,\n" +
+                "  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" + 
+                "  `comment` varchar(1024) DEFAULT NULL,\n" +
+                "  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'io_block_read_cost' then 1.0 when _utf8mb3'memory_block_read_cost' then 0.25 else NULL end)) VIRTUAL,\n" + 
+                "  PRIMARY KEY (`cost_name`,`engine_name`,`device_type`)\n" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        final Table table = tables.forTable(null, null, "engine_cost");
+
+        final Column f1 = table.columnWithName("default_value");
+        assertThat(f1).isNotNull();
+    }
+
+    @Test
     @FixFor("DBZ-1348")
     public void shouldParseInternalColumnId() {
         String ddl = "CREATE TABLE USER (INTERNAL BOOLEAN DEFAULT FALSE) ENGINE=InnoDB DEFAULT CHARSET=latin1" + System.lineSeparator();
