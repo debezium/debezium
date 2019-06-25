@@ -246,7 +246,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         final PGReplicationStream stream = s;
-        final long lsnLong = lsn.asLong();
+
+        // the LSN where the replication streams starts from
+        final long startingLsn = lsn.asLong();
 
         return new ReplicationStream() {
 
@@ -263,7 +265,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.read();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
-                if (lsnLong >= stream.getLastReceiveLSN().asLong()) {
+                if (startingLsn >= stream.getLastReceiveLSN().asLong()) {
                     return;
                 }
                 deserializeMessages(read, processor);
@@ -273,7 +275,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.readPending();
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
-                if (read == null ||  lsnLong >= stream.getLastReceiveLSN().asLong()) {
+                if (read == null || startingLsn >= stream.getLastReceiveLSN().asLong()) {
                     return false;
                 }
                 deserializeMessages(read, processor);
