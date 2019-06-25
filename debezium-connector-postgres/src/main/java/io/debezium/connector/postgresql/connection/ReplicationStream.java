@@ -34,8 +34,8 @@ public interface ReplicationStream extends AutoCloseable {
     void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
 
     /**
-     * Attempts to read a replication message from a replication connection, returning that message if it's available or returning
-     * {@code null} if nothing is available. Once a message has been received, the value of the {@link #lastReceivedLsn() last received LSN}
+     * Attempts to read a replication message from a replication connection, processing that message if it's available or returning
+     * {@code false} if nothing is available. Once a message has been received, the value of the {@link #lastReceivedLsn() last received LSN}
      * will also be updated accordingly.
      *
      * @param processor - a callback to which the arrived message is passed

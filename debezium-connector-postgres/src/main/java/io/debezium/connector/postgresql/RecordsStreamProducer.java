@@ -71,6 +71,14 @@ public class RecordsStreamProducer extends RecordsProducer {
     private PgConnection typeResolverConnection = null;
     private Long lastCompletelyProcessedLsn;
 
+    /**
+     * Serves as a message box between Kafka Connect main loop thread and stream producer thread.
+     * Kafka Connect thread sends the message with the value of LSN of the last transaction that was
+     * fully sent to Kafka and appropriate offsets committed.
+     * <p>
+     * Stream producer thread receives the LSN that is certain that was delivered to Kafka topic
+     * and flushes the LSN to PostgreSQL database server so the associated WAL segment can be released.
+     */
     private final AtomicLong lastCommittedLsn = new AtomicLong(-1);
     private final Metronome pauseNoMessage;
 
