@@ -563,6 +563,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-1345")
     public void shouldNotSnapshotMaterializedViews() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.execute("CREATE TABLE mv_real_table (pk SERIAL, i integer, s VARCHAR(50), PRIMARY KEY(pk));");
