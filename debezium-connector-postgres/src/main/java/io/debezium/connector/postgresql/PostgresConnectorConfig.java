@@ -36,7 +36,6 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.TableId;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -278,64 +277,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-    /**
-     * The set of configuration options for how events are placed on Kafka topics
-     */
-    public enum TopicSelectionStrategy implements EnumeratedValue {
-        /**
-         * Create a topic for each distinct DB table
-         */
-        TOPIC_PER_TABLE("topic_per_table") {
-
-            @Override
-            public String getTopicName(TableId tableId, String prefix, String delimiter) {
-                return String.join(delimiter, prefix, tableId.schema(), tableId.table());
-            }
-        },
-
-        /**
-         * Create a topic for an entire DB schema
-         */
-        TOPIC_PER_SCHEMA("topic_per_schema") {
-
-            @Override
-            public String getTopicName(TableId tableId, String prefix, String delimiter) {
-                return String.join(delimiter, prefix, tableId.schema());
-            }
-        };
-
-        private String value;
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public abstract String getTopicName(TableId tableId, String prefix, String delimiter);
-
-        TopicSelectionStrategy(String value) {
-            this.value = value;
-        }
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static TopicSelectionStrategy parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (TopicSelectionStrategy option : TopicSelectionStrategy.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-    }
-
     public enum LogicalDecoder implements EnumeratedValue {
         DECODERBUFS("decoderbufs") {
             @Override
@@ -570,15 +511,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                    + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
                                                                    + "and not as a delimiter.");
 
-    public static final Field TOPIC_SELECTION_STRATEGY = Field.create("topic.selection.strategy")
-                                                              .withDisplayName("Topic selection strategy")
-                                                              .withEnum(TopicSelectionStrategy.class, TopicSelectionStrategy.TOPIC_PER_TABLE)
-                                                              .withWidth(Width.MEDIUM)
-                                                              .withImportance(Importance.LOW)
-                                                              .withDescription("How events received from the DB should be placed on topics. Options include"
-                                                      + "'table' (the default) each DB table will have a separate Kafka topic; "
-                                                      + "'schema' there will be one Kafka topic per DB schema; events from multiple topics belonging to the same schema will be placed on the same topic");
-
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
                                               .withDisplayName("SSL mode")
                                               .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
@@ -806,7 +738,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, STREAM_PARAMS,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
-                                                     TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.MAX_BATCH_SIZE,
+                                                     CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                                                      Heartbeat.HEARTBEAT_INTERVAL,
@@ -891,13 +823,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().subset(DATABASE_CONFIG_PREFIX, true);
     }
 
-    protected TopicSelectionStrategy topicSelectionStrategy() {
-        //TODO author=Horia Chiorean date=04/11/2016 description=implement this fully once the changes for MySQL are merged
-        //String value = config.getString(PostgresConnectorConfig.TOPIC_SELECTION_STRATEGY);
-        //return PostgresConnectorConfig.TopicSelectionStrategy.parse(value);
-        return PostgresConnectorConfig.TopicSelectionStrategy.TOPIC_PER_TABLE;
-    }
-
     protected Map<String, ConfigValue> validate() {
         return getConfig().validate(ALL_FIELDS);
     }
@@ -957,7 +882,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
-        Field.group(config, "Connector", TOPIC_SELECTION_STRATEGY, CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
+        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE, SCHEMA_REFRESH_MODE);
 
