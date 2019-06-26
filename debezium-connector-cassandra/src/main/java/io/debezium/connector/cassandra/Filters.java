@@ -1,0 +1,26 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.cassandra;
+
+/**
+ * A utility class that contains various kinds of filters.
+ * Currently only field-level filter is implemented (i.e. blacklist).
+ * Keyspace/table-level filters are not implemented.
+ */
+public class Filters {
+    private final FieldFilterSelector fieldFilterSelector;
+
+    public Filters(String[] fieldBlacklist) {
+        fieldFilterSelector = new FieldFilterSelector(fieldBlacklist);
+    }
+
+    /**
+     * Get the field filter for a given table.
+     */
+    public FieldFilterSelector.FieldFilter getFieldFilter(KeyspaceTable table) {
+        return fieldFilterSelector.selectFieldFilter(table);
+    }
+}

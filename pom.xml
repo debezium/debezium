@@ -24,6 +24,7 @@
     <properties>
         <!-- Databases -->
         <version.oracle.driver>12.1.0.2</version.oracle.driver>
+        <version.cassandra.driver>3.5.0</version.cassandra.driver>
 
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
@@ -35,6 +36,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-oracle</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cassandra</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -84,5 +90,12 @@
                 <module>debezium-connector-oracle</module>
             </modules>
         </profile>
+        <profile>
+            <id>cassandra</id>
+            <modules>
+                <module>debezium-connector-cassandra</module>
+            </modules>
+        </profile>
     </profiles>
+
 </project>

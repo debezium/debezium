@@ -1,0 +1,320 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.cassandra;
+
+import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.querybuilder.BuiltStatement;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Select;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import org.apache.avro.Schema;
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
+
+/**
+ * This reader is responsible for initial bootstrapping of a table,
+ * which entails converting each row into a change event and enqueueing
+ * that event to the {@link BlockingEventQueue}.
+ *
+ * IMPORTANT: Currently, only when a snapshot is completed will the OffsetWriter
+ * record the table in the offset.properties file (with filename "" and position
+ * -1). This means if the SnapshotProcessor is terminated midway, upon restart
+ * it will skip all the tables that are already recorded in offset.properties
+ */
+public class SnapshotProcessor extends AbstractProcessor {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotProcessor.class);
+
+    private static final String NAME = "Snapshot Processor";
+    private static final String CASSANDRA_NOW_UNIXTIMESTAMP = "UNIXTIMESTAMPOF(NOW())";
+    private static final String EXECUTION_TIME_ALIAS = "execution_time";
+
+    private final CassandraClient cassandraClient;
+    private final BlockingEventQueue<Event> queue;
+    private final OffsetWriter offsetWriter;
+    private final SchemaHolder schemaHolder;
+    private final RecordMaker recordMaker;
+    private final Duration pollInterval;
+    private final CassandraConnectorConfig.SnapshotMode snapshotMode;
+
+    private final Set<String> startedTableNames = new HashSet<>();
+    private final SnapshotProcessorMetrics metrics = new SnapshotProcessorMetrics();
+
+    public SnapshotProcessor(CassandraConnectorContext context, AtomicBoolean taskState) {
+        super(NAME, taskState);
+        cassandraClient = context.getCassandraClient();
+        queue = context.getQueue();
+        offsetWriter = context.getOffsetWriter();
+        schemaHolder = context.getSchemaHolder();
+        recordMaker = new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(), new Filters(context.getCassandraConnectorConfig().fieldBlacklist()));
+        pollInterval = context.getCassandraConnectorConfig().snapshotPollIntervalMs();
+        snapshotMode = context.getCassandraConnectorConfig().snapshotMode();
+    }
+
+    @Override
+    public void initialize() {
+        metrics.registerMetrics();
+    }
+
+    @Override
+    public void destroy() {
+        metrics.unregisterMetrics();
+    }
+
+    @Override
+    public void doStart() throws InterruptedException {
+        boolean initial = true;
+        while (isTaskRunning()) {
+            if (snapshotMode == CassandraConnectorConfig.SnapshotMode.ALWAYS
+             || (snapshotMode == CassandraConnectorConfig.SnapshotMode.INITIAL && initial)) {
+                snapshot();
+                initial = false;
+            }
+            Thread.sleep(pollInterval.toMillis());
+        }
+    }
+
+    @Override
+    public void doStop() { }
+
+    /**
+     * Fetch for all new tables that have not yet been snapshotted, and then iterate through the
+     * tables to snapshot each one of them.
+     */
+    synchronized void snapshot() {
+        try {
+            Set<TableMetadata> tables = getTablesToSnapshot();
+            if (!tables.isEmpty()) {
+                String[] tableArr = tables.stream().map(SnapshotProcessor::tableName).toArray(String[]::new);
+                LOGGER.info("Found {} tables to snapshot: {}", tables.size(), tableArr);
+                long startTime = System.currentTimeMillis();
+                metrics.setTableCount(tables.size());
+                metrics.startSnapshot();
+                for (TableMetadata table : tables) {
+                    String tableName = tableName(table);
+                    LOGGER.info("Snapshotting table {}", tableName);
+                    startedTableNames.add(tableName);
+                    takeTableSnapshot(table);
+                    metrics.completeTable();
+                }
+                metrics.stopSnapshot();
+                long endTime = System.currentTimeMillis();
+                long durationInSeconds = Duration.ofMillis(endTime - startTime).getSeconds();
+                LOGGER.info("Snapshot completely queued in {} seconds for tables: {}", durationInSeconds, tableArr);
+            } else {
+                LOGGER.info("No tables to snapshot");
+            }
+        } catch (IOException e) {
+            throw new CassandraConnectorTaskException(e);
+        }
+    }
+
+    /**
+     * Return a set of {@link TableMetadata} for tables that have not been snapshotted but have CDC enabled.
+     */
+    private Set<TableMetadata> getTablesToSnapshot() {
+        return schemaHolder.getCdcEnabledTableMetadataSet().stream()
+                .filter(tm -> !offsetWriter.isOffsetProcessed(tableName(tm), OffsetPosition.defaultOffsetPosition().serialize(), true))
+                .filter(tm -> !startedTableNames.contains(tableName(tm)))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Runs a SELECT query on a given table and process each row in the result set
+     * by converting the row into a record and enqueue it to {@link ChangeRecord}
+     */
+    private void takeTableSnapshot(TableMetadata tableMetadata) throws IOException {
+        BuiltStatement statement = generateSnapshotStatement(tableMetadata);
+        LOGGER.info("Executing snapshot query '{}'", statement.getQueryString());
+        ResultSet resultSet = cassandraClient.execute(statement);
+        processResultSet(tableMetadata, resultSet);
+    }
+
+    /**
+     * Build the SELECT query statement for execution. For every non-primary-key column, the TTL, WRITETIME, and execution
+     * time are also queried.
+     *
+     * For example, a table t with columns a, b, and c, where A is the partition key, B is the clustering key, and C is a
+     * regular column, looks like the following:
+     * <pre>
+     *     {@code SELECT now() as execution_time, a, b, c, TTL(c) as c_ttl, WRITETIME(c) as c_writetime FROM t;}
+     * </pre>
+     */
+    private static BuiltStatement generateSnapshotStatement(TableMetadata tableMetadata) {
+        List<String> allCols = tableMetadata.getColumns().stream().map(ColumnMetadata::getName).collect(Collectors.toList());
+        Set<String> primaryCols = tableMetadata.getPrimaryKey().stream().map(ColumnMetadata::getName).collect(Collectors.toSet());
+
+        Select.Selection selection = QueryBuilder.select().raw(CASSANDRA_NOW_UNIXTIMESTAMP).as(EXECUTION_TIME_ALIAS);
+        for (String col : allCols) {
+            selection.column(withQuotes(col));
+
+            if (!primaryCols.contains(col)) {
+                selection.ttl(withQuotes(col)).as(ttlAlias(col));
+                selection.writeTime(withQuotes(col)).as(writetimeAlias(col));
+            }
+        }
+        return selection.from(tableMetadata.getKeyspace().getName(), tableMetadata.getName());
+    }
+
+    /**
+     * Process the result set from the query. Each row is converted into a {@link ChangeRecord}
+     * and enqueued to the {@link BlockingEventQueue}.
+     */
+    private void processResultSet(TableMetadata tableMetadata, ResultSet resultSet) throws IOException {
+        String tableName = tableName(tableMetadata);
+        KeyspaceTable keyspaceTable = new KeyspaceTable(tableMetadata);
+        SchemaHolder.KeyValueSchema keyValueSchema = schemaHolder.getOrUpdateKeyValueSchema(keyspaceTable);
+        Schema keySchema = keyValueSchema.keySchema();
+        Schema valueSchema = keyValueSchema.valueSchema();
+
+        Set<String> partitionKeyNames = tableMetadata.getPartitionKey().stream().map(ColumnMetadata::getName).collect(Collectors.toSet());
+        Set<String> clusteringKeyNames = tableMetadata.getClusteringColumns().stream().map(ColumnMetadata::getName).collect(Collectors.toSet());
+
+        Iterator<Row> rowIter = resultSet.iterator();
+        long rowNum = 0L;
+        // mark snapshot complete immediately if table is empty
+        if (!rowIter.hasNext()) {
+            offsetWriter.markOffset(tableName, OffsetPosition.defaultOffsetPosition().serialize(), true);
+            offsetWriter.flush();
+        }
+
+        while (rowIter.hasNext()) {
+            if (isTaskRunning()) {
+                Row row = rowIter.next();
+                WriteTimeHolder writeTimeHolder = new WriteTimeHolder();
+                RowData after = extractRowData(row, tableMetadata.getColumns(), partitionKeyNames, clusteringKeyNames, writeTimeHolder);
+                SourceInfo source = new SourceInfo(DatabaseDescriptor.getClusterName(), OffsetPosition.defaultOffsetPosition(), keyspaceTable, true, writeTimeHolder.get());
+                // only mark offset if there are no more rows left
+                boolean markOffset = !rowIter.hasNext();
+                recordMaker.insert(source, after, keySchema, valueSchema, markOffset, queue::enqueue);
+                rowNum++;
+                if (rowNum % 10_000 == 0) {
+                    LOGGER.info("Queued {} snapshot records from table {}", rowNum, tableName);
+                    metrics.setRowsScanned(tableName, rowNum);
+                }
+            } else {
+                LOGGER.warn("Terminated snapshot processing while table {} is in progress", tableName);
+                metrics.setRowsScanned(tableName, rowNum);
+                return;
+            }
+        }
+        metrics.setRowsScanned(tableName, rowNum);
+    }
+
+    /**
+     * This function extracts the relevant row data from {@link Row} and updates the maximum writetime for each row.
+     */
+    private static RowData extractRowData(Row row, List<ColumnMetadata> columns, Set<String> partitionKeyNames, Set<String> clusteringKeyNames, WriteTimeHolder writeTimeHolder) {
+        RowData rowData = new RowData();
+
+        Object executionTime = readExecutionTime(row);
+        for (ColumnMetadata columnMetadata : columns) {
+            String name = columnMetadata.getName();
+            Object value = readCol(row, name, columnMetadata);
+            Object deletionTs = null;
+            CellData.ColumnType type = getType(name, partitionKeyNames, clusteringKeyNames);
+
+            if (type == CellData.ColumnType.REGULAR && value != null) {
+                Object ttl = readColTtl(row, name);
+                if (ttl != null && executionTime != null) {
+                    deletionTs = calculateDeletionTs(executionTime, ttl);
+                }
+
+                Object writeTime = readColWritetime(row, name);
+                if (writeTime != null) {
+                    writeTimeHolder.setIfMax((long) writeTime);
+                }
+            }
+
+            CellData cellData = new CellData(name, value, deletionTs, type);
+            rowData.addCell(cellData);
+        }
+
+        return rowData;
+    }
+
+    private static CellData.ColumnType getType(String name, Set<String> partitionKeyNames, Set<String> clusteringKeyNames) {
+        if (partitionKeyNames.contains(name)) {
+            return CellData.ColumnType.PARTITION;
+        } else if (clusteringKeyNames.contains(name)) {
+            return CellData.ColumnType.CLUSTERING;
+        } else {
+            return CellData.ColumnType.REGULAR;
+        }
+    }
+
+    private static Object readExecutionTime(Row row) {
+        return CassandraTypeDeserializer.deserialize(DataType.bigint(), row.getBytesUnsafe(EXECUTION_TIME_ALIAS));
+    }
+
+    private static Object readCol(Row row, String col, ColumnMetadata cm) {
+        return CassandraTypeDeserializer.deserialize(cm.getType(), row.getBytesUnsafe(col));
+    }
+
+    private static Object readColWritetime(Row row, String col) {
+        return CassandraTypeDeserializer.deserialize(DataType.bigint(), row.getBytesUnsafe(writetimeAlias(col)));
+    }
+
+    private static Object readColTtl(Row row, String col) {
+        return CassandraTypeDeserializer.deserialize(DataType.cint(), row.getBytesUnsafe(ttlAlias(col)));
+    }
+
+    /**
+     * it is not possible to query deletion time via cql, so instead calculate it from execution time (in milliseconds) + ttl (in seconds)
+     */
+    private static long calculateDeletionTs(Object executionTime, Object ttl) {
+        return TimeUnit.MICROSECONDS.convert((long) executionTime, TimeUnit.MILLISECONDS) + TimeUnit.MICROSECONDS.convert((int) ttl, TimeUnit.SECONDS);
+    }
+
+    private static String writetimeAlias(String colName) {
+        return colName + "_writetime";
+    }
+
+    private static String ttlAlias(String colName) {
+        return colName + "_ttl";
+    }
+
+    private static String withQuotes(String s) {
+        return "\"" + s + "\"";
+    }
+
+    private static String tableName(TableMetadata tm) {
+        return tm.getKeyspace().getName() + "." + tm.getName();
+    }
+
+    /**
+     * A mutable structure which is used to hold the maximum writetime value of a given row.
+     */
+    private static class WriteTimeHolder {
+        private long maxTs = -1;
+
+        void setIfMax(long ts) {
+            if (ts > maxTs) {
+                maxTs = ts;
+            }
+        }
+
+        long get() {
+            return maxTs;
+        }
+    }
+}
