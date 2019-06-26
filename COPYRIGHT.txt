@@ -37,6 +37,7 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Felix Eckhardt
 Gagan Agrawal
+Guillaume Rosauro
 Gunnar Morling
 Grzegorz Kołakowski
 Hans-Peter Grahsl
