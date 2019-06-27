@@ -32,6 +32,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
+import org.awaitility.core.ConditionTimeoutException;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -695,12 +698,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
 
                 // Wait max 2 seconds for LSN change
-                for (int retry = 0; retry < 20; retry++) {
-                    final String confirmedflushLsn = getConfirmedFlushLsn(connection);
-                    if (flushLsn.add(confirmedflushLsn)) {
-                        break;
-                    }
-                    TimeUnit.MILLISECONDS.sleep(100);
+                try {
+                    Awaitility.await().atMost(Duration.TWO_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                }
+                catch (ConditionTimeoutException e) {
+                    // We do not require all flushes to succeed in time
                 }
             }
         }
