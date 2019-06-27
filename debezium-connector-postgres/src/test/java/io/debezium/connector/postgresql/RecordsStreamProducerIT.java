@@ -1072,7 +1072,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // inserting a toasted value should /always/ produce a correct record
         String statement =
                 "ALTER TABLE test_table ADD COLUMN not_toast integer;"
-              +  "ALTER TABLE test_table ADD COLUMN mandatory_text TEXT NOT NULL DEFAULT '" + toastedValue3 + "';"
+              + "ALTER TABLE test_table ADD COLUMN mandatory_text TEXT NOT NULL DEFAULT '';"
+              + "ALTER TABLE test_table ALTER COLUMN mandatory_text SET STORAGE EXTENDED;"
+              + "ALTER TABLE test_table ALTER COLUMN mandatory_text SET DEFAULT '" + toastedValue3 + "';"
               + "INSERT INTO test_table (not_toast, text, mandatory_text) values (10, '" + toastedValue1 + "', '" + toastedValue1 + "');"
               + "INSERT INTO test_table (not_toast, text, mandatory_text) values (10, '" + toastedValue2 + "', '" + toastedValue2 + "');";
         consumer = testConsumer(2);
