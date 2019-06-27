@@ -58,7 +58,10 @@ public class KafkaDatabaseHistoryTest {
                                   .deleteDataPriorToStartup(true)
                                   .deleteDataUponShutdown(true)
                                   .addBrokers(1)
-                                  .withKafkaConfiguration(Collect.propertiesOf("auto.create.topics.enable", "false"))
+                                  .withKafkaConfiguration(Collect.propertiesOf(
+                                          "auto.create.topics.enable", "false",
+                                          "zookeeper.session.timeout.ms", "20000"
+                                  ))
                                   .startup();
         history = new KafkaDatabaseHistory();
     }
