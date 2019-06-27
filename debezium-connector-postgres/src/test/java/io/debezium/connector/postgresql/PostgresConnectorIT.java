@@ -694,8 +694,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertThat(actualRecords.topics().size()).isEqualTo(1);
                 assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
 
-                TimeUnit.MILLISECONDS.sleep(20);
-                flushLsn.add(getConfirmedFlushLsn(connection));
+                // Wait max 2 seconds for LSN change
+                for (int retry = 0; retry < 20; retry++) {
+                    final String confirmedflushLsn = getConfirmedFlushLsn(connection);
+                    if (flushLsn.add(confirmedflushLsn)) {
+                        break;
+                    }
+                    TimeUnit.MILLISECONDS.sleep(100);
+                }
             }
         }
         // Theoretically the LSN should change for each record but in reality there can be
