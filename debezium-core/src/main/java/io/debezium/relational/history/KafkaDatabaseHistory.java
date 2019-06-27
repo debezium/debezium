@@ -227,7 +227,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
                 logger.debug("End offset of database history topic is {}", endOffset);
 
-                ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval);
+                // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
+                ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval.toMillis());
                 int numRecordsProcessed = 0;
 
                 for (ConsumerRecord<String, String> record : recoveredRecords) {
