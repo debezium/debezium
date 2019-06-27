@@ -11,7 +11,7 @@ import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.utils.SystemTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -346,47 +346,5 @@ public class KafkaServer {
     @Override
     public String toString() {
         return "KafkaServer{" + getConnection() + "}";
-    }
-
-    protected static class SystemTime implements org.apache.kafka.common.utils.Time {
-        @Override
-        public long milliseconds() {
-            return System.currentTimeMillis();
-        }
-
-        @Override
-        public long nanoseconds() {
-            return System.nanoTime();
-        }
-    
-        @Override
-        public long hiResClockMs() {
-            return nanoseconds();
-        }
-    
-        @Override
-        public void sleep(long ms) {
-            try {
-                Thread.sleep(ms);
-            } catch (InterruptedException e) {
-                // Ignore
-            }
-        }
-
-        public void waitObject(Object obj, Supplier<Boolean> condition, long deadlineMs) throws InterruptedException {
-            // Copied from org.apache.kafka.common.utils.SystemTime.waitObject(Object, Supplier<Boolean>, long)
-            synchronized (obj) {
-                while (true) {
-                    if (condition.get()) {
-                        return;
-                    }
-                    long currentTimeMs = milliseconds();
-                    if (currentTimeMs >= deadlineMs) {
-                        throw new TimeoutException("Condition not satisfied before deadline");
-                    }
-                    obj.wait(deadlineMs - currentTimeMs);
-                }
-            }
-        }
     }
 }
