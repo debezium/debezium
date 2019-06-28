@@ -137,7 +137,9 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
     @Override
     public TypeMetadataImpl getTypeMetadata() {
-        initMetadata();
+        if (typeMetadata == null) {
+            initMetadata();
+        }
         return typeMetadata;
     }
 }
