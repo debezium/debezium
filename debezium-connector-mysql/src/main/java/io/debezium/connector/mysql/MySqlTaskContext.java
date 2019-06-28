@@ -12,7 +12,6 @@ import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.MySqlConnectorConfig.GtidNewChannelPosition;
@@ -86,7 +85,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.dbSchema = new MySqlSchema(connectorConfig, this.gtidSourceFilter, this.tableIdCaseInsensitive, topicSelector, filters);
 
         // Set up the record processor ...
-        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE), restartOffset);
+        this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, connectorConfig.isEmitTombstoneOnDelete(), restartOffset);
 
         // Set up the DDL filter
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);

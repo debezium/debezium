@@ -7,7 +7,6 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collections;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.heartbeat.Heartbeat;
@@ -21,7 +20,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     private final Filters filters;
     private final SourceInfo source;
     private final TopicSelector<CollectionId> topicSelector;
-    private final boolean emitTombstoneOnDelete;
     private final String serverName;
     private final ConnectionContext connectionContext;
     private final MongoDbConnectorConfig connectorConfig;
@@ -36,7 +34,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
         this.filters = new Filters(config);
         this.source = new SourceInfo(new MongoDbConnectorConfig(config));
         this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX));
-        this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.connectionContext = new ConnectionContext(config);
         this.connectorConfig = new MongoDbConnectorConfig(config);
@@ -52,10 +49,6 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     public SourceInfo source() {
         return source;
-    }
-
-    public boolean isEmitTombstoneOnDelete() {
-        return emitTombstoneOnDelete;
     }
 
     public String serverName() {
