@@ -22,6 +22,8 @@
     </scm>
 
     <properties>
+        <!-- Dependencies -->
+        <version.dropwizard>4.0.1</version.dropwizard>
         <!-- Databases -->
         <version.oracle.driver>12.1.0.2</version.oracle.driver>
         <version.cassandra.driver>3.5.0</version.cassandra.driver>
@@ -78,6 +80,7 @@
     </dependencyManagement>
 
     <modules>
+        <module>debezium-connector-cassandra</module>
     </modules>
 
     <build>
@@ -88,12 +91,6 @@
             <id>oracle</id>
             <modules>
                 <module>debezium-connector-oracle</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>cassandra</id>
-            <modules>
-                <module>debezium-connector-cassandra</module>
             </modules>
         </profile>
     </profiles>

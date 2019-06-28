@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.concurrent.ThreadSafe;
-import java.util.concurrent.ConcurrentHashMap;
+import io.debezium.annotation.ThreadSafe;
 
 /**
  * Responsible for selecting the Kafka topic that the record will get send to.
