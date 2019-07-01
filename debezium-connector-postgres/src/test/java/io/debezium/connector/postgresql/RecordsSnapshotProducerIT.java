@@ -75,6 +75,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 TestHelper.getSchema(config),
                 selector
         );
+        // Testing.Print.enable();
     }
 
     @After
@@ -171,6 +172,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.clear();
 
         // then insert some more data and check that we get it back
+        waitForStreamingToStart(snapshotProducer);
         TestHelper.execute(insertStmt);
         consumer.expects(2);
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
@@ -209,6 +211,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.clear();
 
         // now insert two more records and check that we only get those back from the stream
+        waitForStreamingToStart(snapshotProducer);
         TestHelper.execute(insertStmt);
         consumer.expects(2);
 

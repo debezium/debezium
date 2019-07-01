@@ -430,4 +430,9 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         //send the last generated record
         consumer.accept(new ChangeEvent(record, sourceInfo.lsn()));
     }
+
+    // test-only
+    boolean isStreamingRunning() {
+        return streamProducer.isPresent() && streamProducer.get().isStreamingRunning();
+    }
 }

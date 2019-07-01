@@ -382,6 +382,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     @Override
     public synchronized void close() {
         try {
+            LOGGER.debug("Closing replication connection");
             super.close();
         }
         catch (Throwable e) {

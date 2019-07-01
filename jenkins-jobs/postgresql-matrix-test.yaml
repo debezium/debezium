@@ -60,7 +60,7 @@
     builders:
       - maven-target:
           maven-version: (Default)
-          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=$POSTGRES_VERSION -Ddecoder.plugin.name=$DECODER_PLUGIN $MAVEN_ARGS
+          goals: clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=$POSTGRES_VERSION -Ddecoder.plugin.name=$DECODER_PLUGIN -Dtest.argline='-Ddebezium.test.records.waittime=5' $MAVEN_ARGS
     publishers:
       - junit:
           results: "**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml"

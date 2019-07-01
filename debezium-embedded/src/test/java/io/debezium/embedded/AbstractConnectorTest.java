@@ -57,6 +57,7 @@ import io.debezium.embedded.EmbeddedEngine.ConnectorCallback;
 import io.debezium.embedded.EmbeddedEngine.EmbeddedConfig;
 import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.TestLogger;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -90,6 +91,9 @@ public abstract class AbstractConnectorTest implements Testing {
     private JsonConverter valueJsonConverter = new JsonConverter();
     private JsonDeserializer keyJsonDeserializer = new JsonDeserializer();
     private JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
+
+    @Rule
+    public TestRule logTestName = new TestLogger(logger);
 
     @Before
     public final void initializeConnectorTestFramework() {

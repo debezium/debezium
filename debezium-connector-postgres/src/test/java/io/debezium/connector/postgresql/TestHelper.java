@@ -18,6 +18,10 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.awaitility.Awaitility;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -37,6 +41,7 @@ public final class TestHelper {
     protected static final String TEST_DATABASE = "test_database";
     protected static final String PK_FIELD = "pk";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     /**
      * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.
@@ -239,5 +244,28 @@ public final class TestHelper {
                 .with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
                 .with(PostgresConnectorConfig.DATABASE_NAME, TEST_DATABASE)
                 .build()));
+    }
+
+    protected static void dropDefaultReplicationSlot() {
+        try {
+            execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
+        }
+        catch (Exception e) {
+            LOGGER.debug("Error while dropping default replication slot", e);
+        }
+    }
+
+    protected static void waitForDefaultReplicationSlotBeActive() {
+        try (PostgresConnection connection = create()) {
+            Awaitility.await().atMost(org.awaitility.Duration.FIVE_SECONDS).until(() ->
+                connection.prepareQueryAndMap(
+                    "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ? and active = true", statement -> {
+                        statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
+                        statement.setString(2, "postgres");
+                        statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
+                    },
+                    rs -> rs.next()
+               ));
+        }
     }
 }

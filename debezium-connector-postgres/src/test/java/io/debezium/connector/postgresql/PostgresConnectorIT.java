@@ -32,6 +32,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
+import org.awaitility.core.ConditionTimeoutException;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -57,6 +60,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Strings;
+import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link io.debezium.embedded.EmbeddedEngine}
@@ -414,6 +418,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics()).hasSize(1);
         assertThat(actualRecords.recordsForTopic(topicName("s2.a"))).hasSize(1);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -448,6 +455,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -469,10 +479,15 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // so the given statements will be executed multiple times, resulting in multiple
         // records; here we're interested just in the first insert for s2.a
         assertValueField(actualRecords.allRecordsInOrder().get(6), "after/bb", "hello; world");
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
     public void shouldProduceEventsWhenSnapshotsAreNeverAllowed() throws InterruptedException {
+        Testing.Print.enable();
+        TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                                          .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
@@ -480,6 +495,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                          .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
@@ -491,6 +508,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void shouldNotProduceEventsWithInitialOnlySnapshot() throws InterruptedException {
+        Testing.Print.enable();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
                                          .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
@@ -533,6 +551,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
 
         assertRecordsFromSnapshot(4, 1, 2, 1, 2);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -575,6 +596,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 3, 3);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
     }
 
     @Test
@@ -694,8 +718,13 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 assertThat(actualRecords.topics().size()).isEqualTo(1);
                 assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
 
-                TimeUnit.MILLISECONDS.sleep(20);
-                flushLsn.add(getConfirmedFlushLsn(connection));
+                // Wait max 2 seconds for LSN change
+                try {
+                    Awaitility.await().atMost(Duration.TWO_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                }
+                catch (ConditionTimeoutException e) {
+                    // We do not require all flushes to succeed in time
+                }
             }
         }
         // Theoretically the LSN should change for each record but in reality there can be
@@ -760,7 +789,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
         return connection.prepareQueryAndMap(
                 "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
-                    statement.setString(1, "debezium");
+                    statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
                     statement.setString(2, "postgres");
                     statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
                 },

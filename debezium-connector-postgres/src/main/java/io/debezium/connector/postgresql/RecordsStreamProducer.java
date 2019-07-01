@@ -682,4 +682,9 @@ public class RecordsStreamProducer extends RecordsProducer {
         combinedTable.setPrimaryKeyNames(pkCandidates);
         return combinedTable.create();
     }
+
+    // test-only
+    boolean isStreamingRunning() {
+        return replicationStream.get() != null;
+    }
 }

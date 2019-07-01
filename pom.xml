@@ -85,6 +85,7 @@
         <version.fest>1.4</version.fest>
         <version.jmh>1.21</version.jmh>
         <version.mockito>2.13.0</version.mockito>
+        <version.awaitility>3.1.6</version.awaitility>
 
         <!-- Maven Plugins -->
         <version.resources.plugin>2.7</version.resources.plugin>
@@ -113,6 +114,9 @@
 
         <!-- No modules options by default -->
         <modules.argline />
+
+        <!-- No test options by default -->
+        <test.argline />
 
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
@@ -328,6 +332,11 @@
                 <artifactId>mockito-core</artifactId>
                 <version>${version.mockito}</version>
             </dependency>
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${version.awaitility}</version>
+            </dependency>
 
             <!-- Debezium artifacts -->
             <dependency>
@@ -458,7 +467,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
-                        <argLine>${debug.argline} ${modules.argline}</argLine>
+			    <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
