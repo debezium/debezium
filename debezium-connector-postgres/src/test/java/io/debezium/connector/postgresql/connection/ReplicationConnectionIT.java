@@ -302,7 +302,7 @@ public class ReplicationConnectionIT {
         });
 
         try {
-            if (!latch.tryAcquire(expectedMessages, 10, TimeUnit.SECONDS)) {
+            if (!latch.tryAcquire(expectedMessages, 20, TimeUnit.SECONDS)) {
                 result.cancel(true);
                 fail("expected " + expectedMessages + " messages, but read only " + actualMessages.size());
             }
