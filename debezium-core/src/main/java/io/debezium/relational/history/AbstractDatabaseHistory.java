@@ -35,6 +35,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
     private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
+    private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
 
     protected AbstractDatabaseHistory() {
     }
@@ -50,8 +51,9 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     }
 
     @Override
-    public void start() {
-        // do nothing
+    public void start(DatabaseHistoryListener listener) {
+        this.listener = listener;
+        listener.started();
     }
 
     @Override
@@ -64,14 +66,18 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     @Override
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes)
             throws DatabaseHistoryException {
-            storeRecord(new HistoryRecord(source, position, databaseName, schemaName, ddl, changes));
+            final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes);
+            storeRecord(record);
+            listener.onChangeApplied(record);
     }
 
     @Override
     public final void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
         logger.debug("Recovering DDL history for source partition {} and offset {}", source, position);
+        listener.recoveryStarted();
         HistoryRecord stopPoint = new HistoryRecord(source, position, null, null, null, null);
         recoverRecords(recovered -> {
+            listener.onChangeFromHistory(recovered);
             if (comparator.isAtOrBefore(recovered, stopPoint)) {
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
@@ -87,6 +93,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                             schema.removeTable(entry.getId());
                         }
                     }
+                    listener.onChangeApplied(recovered);
                 }
                 else if (ddl != null && ddlParser != null) {
                     if (recovered.databaseName() != null) {
@@ -103,6 +110,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                     try {
                         logger.debug("Applying: {}", ddl);
                         ddlParser.parse(ddl, schema);
+                        listener.onChangeApplied(recovered);
                     } catch (final ParsingException e) {
                         if (skipUnparseableDDL) {
                             logger.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
@@ -115,6 +123,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 logger.debug("Skipping: {}", recovered.ddl());
             }
         });
+        listener.recoveryStopped();
     }
 
     protected abstract void storeRecord(HistoryRecord record) throws DatabaseHistoryException;
@@ -123,7 +132,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
 
     @Override
     public void stop() {
-        // do nothing
+        listener.stopped();
     }
 
     @Override

@@ -9,9 +9,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.function.Supplier;
 
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.schema.DataCollectionId;
@@ -60,20 +57,18 @@ public class CdcSourceTaskContext {
         return clock;
     }
 
-    /**
-     * Create a JMX metric name for the given metric.
-     * @param contextName the name of the context
-     * @return the JMX metric name
-     * @throws MalformedObjectNameException if the name is invalid
-     */
-    public ObjectName metricName(String contextName) throws MalformedObjectNameException {
-        return new ObjectName("debezium." + connectorType.toLowerCase() + ":type=connector-metrics,context=" + contextName + ",server=" + connectorName);
-    }
-
     public String[] capturedDataCollections() {
         return collectionsSupplier.get()
                 .stream()
                 .map(DataCollectionId::toString)
                 .toArray(String[]::new);
+    }
+
+    public String getConnectorType() {
+        return connectorType;
+    }
+
+    public String getConnectorName() {
+        return connectorName;
     }
 }

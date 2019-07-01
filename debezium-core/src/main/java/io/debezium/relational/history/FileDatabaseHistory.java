@@ -64,7 +64,8 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public void start() {
+    public void start(DatabaseHistoryListener listener) {
+        super.start(listener);
         lock.write(() -> {
             if (running.compareAndSet(false, true)) {
                 Path path = this.path;
@@ -126,6 +127,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     @Override
     public void stop() {
         running.set(false);
+        super.stop();
     }
 
     @Override

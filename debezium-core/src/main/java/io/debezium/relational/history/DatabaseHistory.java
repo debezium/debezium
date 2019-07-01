@@ -84,7 +84,7 @@ public interface DatabaseHistory {
     /**
      * Start the history.
      */
-    void start();
+    void start(DatabaseHistoryListener listener);
 
     /**
      * Record a change to the schema of the named database, and store it in the schema storage.

@@ -35,6 +35,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.schema.TopicSelector;
 import io.debezium.text.MultipleParsingExceptions;
@@ -73,6 +74,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     private final HistoryRecordComparator historyComparator;
     private final boolean skipUnparseableDDL;
     private final boolean storeOnlyMonitoredTablesDdl;
+    private final MySqlConnectorConfig connectorConfig;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -99,6 +101,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 tableIdCaseInsensitive
         );
 
+        connectorConfig = configuration;
         Configuration config = configuration.getConfig();
 
         this.filters = tableFilters;
@@ -157,7 +160,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      * Start by acquiring resources needed to persist the database history
      */
     public synchronized void start() {
-        this.dbHistory.start();
+        this.dbHistory.start(new DatabaseHistoryMetrics(connectorConfig));
     }
 
     /**

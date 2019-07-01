@@ -33,7 +33,7 @@ public class FileDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
         history.configure(Configuration.create()
                                        .with(FileDatabaseHistory.FILE_PATH, TEST_FILE_PATH.toAbsolutePath().toString())
                                        .build(), null);
-        history.start();
+        history.start(DatabaseHistoryListener.NOOP);
         return history;
     }
     

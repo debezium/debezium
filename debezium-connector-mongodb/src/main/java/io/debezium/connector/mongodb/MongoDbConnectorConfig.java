@@ -391,4 +391,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
     }
+
+    @Override
+    public String getConnectorType() {
+        return Module.connectorName();
+    }
 }

@@ -25,4 +25,8 @@ public class Module {
     public static String name() {
         return "mysql";
     }
+
+    public static String connectorName() {
+        return "MySQL";
+    }
 }

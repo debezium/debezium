@@ -174,8 +174,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public synchronized void start() {
-        super.start();
+    public synchronized void start(DatabaseHistoryListener listener) {
+        super.start(listener);
         if (this.producer == null) {
             this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
         }

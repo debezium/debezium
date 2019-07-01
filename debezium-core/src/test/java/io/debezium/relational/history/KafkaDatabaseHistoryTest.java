@@ -110,10 +110,10 @@ public class KafkaDatabaseHistoryTest {
                                             .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
                                             .build();
         history.configure(config, null);
-        history.start();
+        history.start(DatabaseHistoryListener.NOOP);
 
         // Should be able to call start more than once ...
-        history.start();
+        history.start(DatabaseHistoryListener.NOOP);
 
         history.initializeStorage();
 
@@ -286,7 +286,7 @@ public class KafkaDatabaseHistoryTest {
                 .build();
 
         history.configure(config, null);
-        history.start();
+        history.start(DatabaseHistoryListener.NOOP);
 
         // dummytopic should not exist yet
         assertFalse(history.exists());

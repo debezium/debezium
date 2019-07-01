@@ -57,7 +57,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
     }
 
     public MySqlTaskContext(Configuration config, Filters filters, Boolean tableIdCaseInsensitive, Map<String, ?> restartOffset) {
-        super("MySQL", config.getString(MySqlConnectorConfig.SERVER_NAME), Collections::emptyList);
+        super(Module.connectorName(), config.getString(MySqlConnectorConfig.SERVER_NAME), Collections::emptyList);
 
         this.config = config;
         this.connectorConfig = new MySqlConnectorConfig(config);

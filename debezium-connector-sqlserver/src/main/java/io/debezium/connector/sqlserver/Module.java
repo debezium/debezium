@@ -25,4 +25,8 @@ public final class Module {
     public static String name() {
         return "sqlserver";
     }
+
+    public static String connectorName() {
+        return "SQL_Server";
+    }
 }

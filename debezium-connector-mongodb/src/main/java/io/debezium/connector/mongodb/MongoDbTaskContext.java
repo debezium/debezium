@@ -28,7 +28,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
      * @param config the configuration
      */
     public MongoDbTaskContext(Configuration config) {
-        super("MongoDB", config.getString(MongoDbConnectorConfig.LOGICAL_NAME), Collections::emptySet);
+        super(Module.connectorName(), config.getString(MongoDbConnectorConfig.LOGICAL_NAME), Collections::emptySet);
 
         final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);

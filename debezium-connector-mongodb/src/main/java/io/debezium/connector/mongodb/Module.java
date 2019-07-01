@@ -25,4 +25,8 @@ public final class Module {
     public static String name() {
         return "mongodb";
     }
+
+    public static String connectorName() {
+        return "MongoDB";
+    }
 }

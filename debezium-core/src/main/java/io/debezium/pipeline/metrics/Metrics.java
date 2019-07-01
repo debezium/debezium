@@ -5,15 +5,9 @@
  */
 package io.debezium.pipeline.metrics;
 
-import java.lang.management.ManagementFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
-import javax.management.JMException;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-
 import org.apache.kafka.connect.data.Struct;
-import org.slf4j.Logger;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -30,7 +24,7 @@ import io.debezium.util.Clock;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public abstract class Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
+public abstract class Metrics extends io.debezium.metrics.Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
 
     protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
@@ -38,52 +32,16 @@ public abstract class Metrics implements DataChangeEventListener, ChangeEventSou
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
     private volatile String lastEvent;
 
-    private final String contextName;
     protected final Clock clock;
-    protected final CdcSourceTaskContext taskContext;
     private final ChangeEventQueueMetrics changeEventQueueMetrics;
-    private volatile ObjectName name;
+    protected final CdcSourceTaskContext taskContext;
 
     protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
-        this.contextName = contextName;
+        super(taskContext, contextName);
         this.taskContext = taskContext;
         this.clock = taskContext.getClock();
         this.changeEventQueueMetrics = changeEventQueueMetrics;
         this.metadataProvider = metadataProvider;
-    }
-
-    /**
-     * Registers a metrics MBean into the platform MBean server.
-     * The method is intentionally synchronized to prevent preemption between registration and unregistration.
-     */
-    public synchronized <T extends CdcSourceTaskContext> void register(Logger logger) {
-        try {
-            name = taskContext.metricName(this.contextName);
-            final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-            mBeanServer.registerMBean(this, name);
-        }
-        catch (JMException e) {
-            logger.warn("Error while register the MBean '{}': {}", name, e.getMessage());
-        }
-    }
-
-    /**
-     * Unregisters a metrics MBean from the platform MBean server.
-     * The method is intentionally synchronized to prevent preemption between registration and unregistration.
-     */
-    public final void unregister(Logger logger) {
-        if (this.name != null) {
-            try {
-                final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-                mBeanServer.unregisterMBean(name);
-            }
-            catch (JMException e) {
-                logger.error("Unable to unregister the MBean '{}'", name);
-            }
-            finally {
-                this.name = null;
-            }
-        }
     }
 
     @Override
