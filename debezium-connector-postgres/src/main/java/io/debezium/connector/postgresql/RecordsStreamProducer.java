@@ -683,6 +683,7 @@ public class RecordsStreamProducer extends RecordsProducer {
         return combinedTable.create();
     }
 
+    // test-only
     boolean isStreamingRunning() {
         return replicationStream.get() != null;
     }

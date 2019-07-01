@@ -431,6 +431,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
         consumer.accept(new ChangeEvent(record, sourceInfo.lsn()));
     }
 
+    // test-only
     boolean isStreamingRunning() {
         return streamProducer.isPresent() && streamProducer.get().isStreamingRunning();
     }
