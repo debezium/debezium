@@ -107,6 +107,7 @@ public class BinlogReader extends AbstractReader {
     private com.github.shyiko.mysql.binlog.GtidSet gtidSet;
     private Heartbeat heartbeat;
     private MySqlJdbcContext connectionContext;
+    private final float heartbeatIntervalFactor = 0.8f;
 
     public static class BinlogPosition {
         final String filename;
@@ -208,7 +209,12 @@ public class BinlogReader extends AbstractReader {
             }
         }
         client.setKeepAlive(context.config().getBoolean(MySqlConnectorConfig.KEEP_ALIVE));
-        client.setKeepAliveInterval(context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS));
+        final long keepAliveInterval = context.config().getLong(MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
+        client.setKeepAliveInterval(keepAliveInterval);
+        //Considering heartbeatInterval should be less than keepAliveInterval, we use the heartbeatIntervalFactor
+        //multiply by keepAliveInterval and set the result value to heartbeatInterval.The default value of heartbeatIntervalFactor
+        //is 0.8, and we believe the left time (0.2 * keepAliveInterval) is enough to process the packet received from the MySQL server.
+        client.setHeartbeatInterval((long)(keepAliveInterval*heartbeatIntervalFactor));
         client.registerEventListener(context.bufferSizeForBinlogReader() == 0
                 ? this::handleEvent
                 : (new EventBuffer(context.bufferSizeForBinlogReader(), this))::add);
