@@ -25,4 +25,8 @@ public final class Module {
     public static String name() {
         return "oracle";
     }
+
+    public static String connectorName() {
+        return "Oracle";
+    }
 }

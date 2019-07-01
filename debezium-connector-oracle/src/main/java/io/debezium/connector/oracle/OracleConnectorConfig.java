@@ -351,4 +351,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return new OracleSourceInfoStructMaker(Module.name(), Module.version(), this);
     }
+
+    @Override
+    public String getConnectorType() {
+        return Module.connectorName();
+    }
 }
