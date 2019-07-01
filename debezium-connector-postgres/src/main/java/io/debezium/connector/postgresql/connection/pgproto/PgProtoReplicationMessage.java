@@ -140,6 +140,11 @@ class PgProtoReplicationMessage implements ReplicationMessage {
      * @return the value; may be null
      */
     public Object getValue(PgProto.DatumMessage datumMessage, PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+        if (datumMessage.hasDatumMissing()) {
+            LOGGER.trace("No value received for unchanged TOASTed column {}", datumMessage.getColumnName());
+            return null;
+        }
+
         int columnType = (int) datumMessage.getColumnType();
         switch (columnType) {
             case PgOid.BOOL:
