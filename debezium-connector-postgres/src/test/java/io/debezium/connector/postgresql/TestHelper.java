@@ -234,7 +234,7 @@ public final class TestHelper {
         return Boolean.parseBoolean(System.getProperty(TEST_PROPERTY_PREFIX + "ssl.failonconnect", "true"));
     }
 
-    protected static int waitTimeForRecords() {
+    public static int waitTimeForRecords() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "20"));
     }
 
