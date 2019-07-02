@@ -27,7 +27,7 @@ import io.debezium.schema.DataCollectionId;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public class StreamingChangeEventSourceMetrics extends Metrics implements StreamingChangeEventSourceMetricsMXBean, DataChangeEventListener {
+public class StreamingChangeEventSourceMetrics extends PipelineMetrics implements StreamingChangeEventSourceMetricsMXBean, DataChangeEventListener {
 
     private final AtomicBoolean connected = new AtomicBoolean();
     private final AtomicReference<Duration> lagBehindSource = new AtomicReference<>();

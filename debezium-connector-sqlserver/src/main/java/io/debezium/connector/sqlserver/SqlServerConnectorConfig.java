@@ -341,4 +341,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             }
         };
     }
+
+    @Override
+    public String getContextName() {
+        return Module.contextName();
+    }
 }

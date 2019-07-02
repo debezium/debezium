@@ -15,6 +15,7 @@ import io.debezium.config.Field;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
@@ -69,7 +70,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                                               .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
-        databaseHistory.configure(dbHistoryConfig, historyComparator); // validates
+        databaseHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(this)); // validates
 
         return databaseHistory;
     }

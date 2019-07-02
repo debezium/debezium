@@ -35,6 +35,7 @@ import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlChanges.DatabaseStatementStringConsumer;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.schema.TopicSelector;
 import io.debezium.text.MultipleParsingExceptions;
@@ -129,7 +130,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 return SourceInfo.isPositionAtOrBefore(recorded, desired, gtidFilter);
             }
         };
-        this.dbHistory.configure(dbHistoryConfig, historyComparator); // validates
+        this.dbHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(configuration)); // validates
 
     }
 

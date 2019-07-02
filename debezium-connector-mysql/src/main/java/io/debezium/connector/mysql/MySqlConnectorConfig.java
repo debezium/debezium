@@ -1191,4 +1191,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             return new MySqlSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
     }
+
+    @Override
+    public String getContextName() {
+        return Module.contextName();
+    }
 }

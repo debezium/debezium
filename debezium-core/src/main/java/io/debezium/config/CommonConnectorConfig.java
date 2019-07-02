@@ -200,6 +200,8 @@ public abstract class CommonConnectorConfig {
         return logicalName;
     }
 
+    public abstract String getContextName();
+
     public String getHeartbeatTopicsPrefix() {
         return heartbeatTopicsPrefix;
     }

@@ -63,7 +63,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     @Override
     public synchronized void start(Configuration config) {
         final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
-        PreviousContext prevLoggingContext = LoggingContext.forConnector("MySQL", serverName, "task");
+        PreviousContext prevLoggingContext = LoggingContext.forConnector(Module.contextName(), serverName, "task");
 
         try {
             // Get the offsets for our partition ...
