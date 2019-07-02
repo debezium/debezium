@@ -160,6 +160,10 @@ public class RecordsStreamProducer extends RecordsProducer {
                 flushLatestCommittedLsn(stream);
                 // this will block until a message is available
                 if (!stream.readPending(x -> process(x, stream.lastReceivedLsn(), consumer))) {
+                    if (lastCompletelyProcessedLsn != null) {
+                        heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
+                                r -> consumer.accept(new ChangeEvent(r, lastCompletelyProcessedLsn)));
+                    }
                     pauseNoMessage.pause();
                 }
             }
@@ -283,8 +287,6 @@ public class RecordsStreamProducer extends RecordsProducer {
         if (message == null) {
             logger.trace("Received empty message");
             lastCompletelyProcessedLsn = lsn;
-            heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
-                    r -> consumer.accept(new ChangeEvent(r, lsn)));
             return;
         }
         if (message.isLastEventForLsn()) {
@@ -327,11 +329,6 @@ public class RecordsStreamProducer extends RecordsProducer {
                    logger.warn("unknown message operation: {}", operation);
                 }
             }
-        }
-
-        if (message.isLastEventForLsn()) {
-            heartbeat.heartbeat(sourceInfo.partition(), sourceInfo.offset(),
-                    r -> consumer.accept(new ChangeEvent(r, lsn)));
         }
     }
 
