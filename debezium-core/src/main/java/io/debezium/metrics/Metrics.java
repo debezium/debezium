@@ -34,7 +34,7 @@ public abstract class Metrics {
     }
 
     protected Metrics(CommonConnectorConfig connectorConfig, String contextName) {
-        this.name = metricName(connectorConfig.getConnectorType(), connectorConfig.getLogicalName(), contextName);
+        this.name = metricName(connectorConfig.getContextName(), connectorConfig.getLogicalName(), contextName);
     }
 
     /**

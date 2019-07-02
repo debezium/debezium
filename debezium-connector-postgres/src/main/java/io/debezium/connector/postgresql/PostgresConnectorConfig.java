@@ -910,7 +910,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     @Override
-    public String getConnectorType() {
-        return Module.connectorName();
+    public String getContextName() {
+        return Module.contextName();
     }
 }

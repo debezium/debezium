@@ -343,7 +343,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    public String getConnectorType() {
-        return Module.connectorName();
+    public String getContextName() {
+        return Module.contextName();
     }
 }
