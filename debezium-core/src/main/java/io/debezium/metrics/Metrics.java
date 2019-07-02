@@ -29,7 +29,7 @@ public abstract class Metrics {
 
     private final ObjectName name;
     
-    protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName) {
+    protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
         this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
     }
 
@@ -41,7 +41,7 @@ public abstract class Metrics {
      * Registers a metrics MBean into the platform MBean server.
      * The method is intentionally synchronized to prevent preemption between registration and unregistration.
      */
-    public synchronized <T extends CdcSourceTaskContext> void register(Logger logger) {
+    public synchronized void register(Logger logger) {
         try {
             final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
             mBeanServer.registerMBean(this, name);

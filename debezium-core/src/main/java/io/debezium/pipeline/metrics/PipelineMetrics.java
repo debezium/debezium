@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.metrics.Metrics;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -24,7 +25,7 @@ import io.debezium.util.Clock;
  * @author Randall Hauch, Jiri Pechanec
  */
 @ThreadSafe
-public abstract class Metrics extends io.debezium.metrics.Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
+public abstract class PipelineMetrics extends Metrics implements DataChangeEventListener, ChangeEventSourceMetricsMXBean {
 
     protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
@@ -36,7 +37,7 @@ public abstract class Metrics extends io.debezium.metrics.Metrics implements Dat
     private final ChangeEventQueueMetrics changeEventQueueMetrics;
     protected final CdcSourceTaskContext taskContext;
 
-    protected <T extends CdcSourceTaskContext> Metrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+    protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
         super(taskContext, contextName);
         this.taskContext = taskContext;
         this.clock = taskContext.getClock();

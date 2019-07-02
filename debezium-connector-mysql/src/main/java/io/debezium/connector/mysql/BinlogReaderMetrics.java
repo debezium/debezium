@@ -14,13 +14,13 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
-import io.debezium.pipeline.metrics.Metrics;
+import io.debezium.pipeline.metrics.PipelineMetrics;
 import io.debezium.util.Collect;
 
 /**
  * @author Randall Hauch
  */
-class BinlogReaderMetrics extends Metrics implements BinlogReaderMetricsMXBean {
+class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetricsMXBean {
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;

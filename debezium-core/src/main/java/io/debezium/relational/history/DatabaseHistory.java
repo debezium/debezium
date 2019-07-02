@@ -78,13 +78,14 @@ public interface DatabaseHistory {
      * @param comparator the function that should be used to compare history records during
      *            {@link #recover(Map, Map, Tables, DdlParser) recovery}; may be null if the
      *            {@link HistoryRecordComparator#INSTANCE default comparator} is to be used
+     * @param listener TODO
      */
-    void configure(Configuration config, HistoryRecordComparator comparator);
+    void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener);
 
     /**
      * Start the history.
      */
-    void start(DatabaseHistoryListener listener);
+    void start();
 
     /**
      * Record a change to the schema of the named database, and store it in the schema storage.
@@ -116,7 +117,7 @@ public interface DatabaseHistory {
     void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser);
 
     /**
-     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator)}.
+     * Stop recording history and release any resources acquired since {@link #configure(Configuration, HistoryRecordComparator, DatabaseHistoryListener)}.
      */
     void stop();
 

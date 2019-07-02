@@ -27,7 +27,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
 
     private static final String CONTEXT_NAME = "schema-history";
 
-    private static final int MILLISECONDS_BETWEEN_LOG_MESSAGES = 2_000;
+    private static final Duration PAUSE_BETWEEN_LOG_MESSAGES = Duration.ofSeconds(2);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHistoryMetrics.class);
 
@@ -119,7 +119,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     public void onChangeFromHistory(HistoryRecord record) {
         lastRecoveredChange = record;
         changesRecovered.incrementAndGet();
-        if (getMilliSecondsSinceLastRecoveredChange() >= MILLISECONDS_BETWEEN_LOG_MESSAGES) {
+        if (getMilliSecondsSinceLastRecoveredChange() >= PAUSE_BETWEEN_LOG_MESSAGES.toMillis()) {
             LOGGER.info("Database history recovery in progress, recovered {} records", changesRecovered);
         }
         lastChangeRecoveredTimestamp = Instant.now();
@@ -129,7 +129,7 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     public void onChangeApplied(HistoryRecord record) {
         lastAppliedChange = record;
         totalChangesApplied.incrementAndGet();
-        if (getMilliSecondsSinceLastAppliedChange() >= MILLISECONDS_BETWEEN_LOG_MESSAGES) {
+        if (getMilliSecondsSinceLastAppliedChange() >= PAUSE_BETWEEN_LOG_MESSAGES.toMillis()) {
             LOGGER.info("Already applied {} database changes", totalChangesApplied);
         }
         lastChangeAppliedTimestamp = Instant.now();

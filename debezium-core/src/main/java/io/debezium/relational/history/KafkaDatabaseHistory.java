@@ -130,8 +130,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private Duration pollInterval;
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator) {
-        super.configure(config, comparator);
+    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener) {
+        super.configure(config, comparator, listener);
         if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
@@ -174,8 +174,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public synchronized void start(DatabaseHistoryListener listener) {
-        super.start(listener);
+    public synchronized void start() {
+        super.start();
         if (this.producer == null) {
             this.producer = new KafkaProducer<>(this.producerConfig.asProperties());
         }

@@ -10,7 +10,6 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.relational.history.DatabaseHistoryMetrics;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
@@ -35,7 +34,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);
 
         this.databaseHistory = config.getDatabaseHistory();
-        this.databaseHistory.start(new DatabaseHistoryMetrics(config));
+        this.databaseHistory.start();
     }
 
     @Override
