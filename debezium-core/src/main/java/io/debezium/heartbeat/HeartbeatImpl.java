@@ -55,7 +55,7 @@ class HeartbeatImpl implements Heartbeat {
                                                     .build();
     private static Schema VALUE_SCHEMA = SchemaBuilder.struct()
                                                     .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
-                                                    .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                                                    .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                                                     .build();
 
     private final String topicName;
