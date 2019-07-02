@@ -307,85 +307,85 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.create().dropReplicationSlot(slotName);
         try {
             final PostgresConnectorConfig config = new PostgresConnectorConfig( TestHelper.defaultConfig()
-                    .with( PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, Boolean.FALSE )
-                    .with( PostgresConnectorConfig.SCHEMA_WHITELIST, "changepk" )
-                    .with( PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE )
-                    .with( PostgresConnectorConfig.SLOT_NAME, slotName )
-                    .build() );
+                    .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, Boolean.FALSE)
+                    .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "changepk")
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                    .with(PostgresConnectorConfig.SLOT_NAME, slotName)
+                    .build());
 
             final String newPkField = "newpk";
-            final String topicName = topicName( "changepk.test_table" );
+            final String topicName = topicName("changepk.test_table");
 
             TestHelper.execute(
                     "CREATE SCHEMA IF NOT EXISTS changepk;",
                     "DROP TABLE IF EXISTS changepk.test_table;",
                     "CREATE TABLE changepk.test_table (pk SERIAL, text TEXT, PRIMARY KEY(pk));",
-                    "INSERT INTO changepk.test_table(text) VALUES ('insert');" );
+                    "INSERT INTO changepk.test_table(text) VALUES ('insert');");
 
-            start( PostgresConnector.class, config.getConfig() );
+            start(PostgresConnector.class, config.getConfig());
 
             assertConnectorIsRunning();
 
             // wait for snapshot completion
-            SourceRecords records = consumeRecordsByTopic( 1 );
+            SourceRecords records = consumeRecordsByTopic(1);
 
             TestHelper.execute(
                     "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
-                            + "ALTER TABLE changepk.test_table RENAME COLUMN pk TO newpk;"
-                            + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk);"
-                            + "INSERT INTO changepk.test_table VALUES(2, 'newpkcol')" );
-            records = consumeRecordsByTopic( 1 );
+                  + "ALTER TABLE changepk.test_table RENAME COLUMN pk TO newpk;"
+                  + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk);"
+                  + "INSERT INTO changepk.test_table VALUES(2, 'newpkcol')");
+            records = consumeRecordsByTopic(1);
 
-            SourceRecord insertRecord = records.recordsForTopic( topicName ).get( 0 );
-            assertEquals( topicName, insertRecord.topic() );
-            VerifyRecord.isValidInsert( insertRecord, "newpk", 2 );
+            SourceRecord insertRecord = records.recordsForTopic(topicName).get(0);
+            assertEquals(topicName, insertRecord.topic());
+            VerifyRecord.isValidInsert(insertRecord, "newpk", 2);
 
             TestHelper.execute(
                     "ALTER TABLE changepk.test_table ADD COLUMN pk2 SERIAL;"
-                            + "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
-                            + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk2);"
-                            + "INSERT INTO changepk.test_table VALUES(3, 'newpkcol', 8)" );
-            records = consumeRecordsByTopic( 1 );
+                  + "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
+                  + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk2);"
+                  + "INSERT INTO changepk.test_table VALUES(3, 'newpkcol', 8)");
+            records = consumeRecordsByTopic(1);
 
-            insertRecord = records.recordsForTopic( topicName ).get( 0 );
-            assertEquals( topicName, insertRecord.topic() );
-            VerifyRecord.isValidInsert( insertRecord, newPkField, 3 );
-            VerifyRecord.isValidInsert( insertRecord, "pk2", 8 );
+            insertRecord = records.recordsForTopic(topicName).get(0);
+            assertEquals(topicName, insertRecord.topic());
+            VerifyRecord.isValidInsert(insertRecord, newPkField, 3);
+            VerifyRecord.isValidInsert(insertRecord, "pk2", 8);
 
             stopConnector();
 
             // De-synchronize JDBC PK info and decoded event schema
-            TestHelper.execute( "INSERT INTO changepk.test_table VALUES(4, 'newpkcol', 20)" );
+            TestHelper.execute("INSERT INTO changepk.test_table VALUES(4, 'newpkcol', 20)");
             TestHelper.execute(
                     "ALTER TABLE changepk.test_table DROP CONSTRAINT test_table_pkey;"
-                            + "ALTER TABLE changepk.test_table DROP COLUMN pk2;"
-                            + "ALTER TABLE changepk.test_table ADD COLUMN pk3 SERIAL;"
-                            + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk3);"
-                            + "INSERT INTO changepk.test_table VALUES(5, 'dropandaddpkcol',10)" );
+                  + "ALTER TABLE changepk.test_table DROP COLUMN pk2;"
+                  + "ALTER TABLE changepk.test_table ADD COLUMN pk3 SERIAL;"
+                  + "ALTER TABLE changepk.test_table ADD PRIMARY KEY(newpk,pk3);"
+                  + "INSERT INTO changepk.test_table VALUES(5, 'dropandaddpkcol',10)");
 
-            start( PostgresConnector.class, config.getConfig() );
+            start(PostgresConnector.class, config.getConfig());
 
-            records = consumeRecordsByTopic( 2 );
+            records = consumeRecordsByTopic(2);
 
-            insertRecord = records.recordsForTopic( topicName ).get( 0 );
-            assertEquals( topicName, insertRecord.topic() );
-            VerifyRecord.isValidInsert( insertRecord, newPkField, 4 );
+            insertRecord = records.recordsForTopic(topicName).get(0);
+            assertEquals(topicName, insertRecord.topic());
+            VerifyRecord.isValidInsert(insertRecord, newPkField, 4);
             Struct key = (Struct) insertRecord.key();
             // The problematic record PK info is temporarily desynced
-            assertThat( key.schema().field( "pk2" ) ).isNull();
-            assertThat( key.schema().field( "pk3" ) ).isNull();
+            assertThat(key.schema().field("pk2")).isNull();
+            assertThat(key.schema().field("pk3")).isNull();
 
-            insertRecord = records.recordsForTopic( topicName ).get( 1 );
-            assertEquals( topicName, insertRecord.topic() );
-            VerifyRecord.isValidInsert( insertRecord, newPkField, 5 );
-            VerifyRecord.isValidInsert( insertRecord, "pk3", 10 );
+            insertRecord = records.recordsForTopic(topicName).get(1);
+            assertEquals(topicName, insertRecord.topic());
+            VerifyRecord.isValidInsert(insertRecord, newPkField, 5);
+            VerifyRecord.isValidInsert(insertRecord, "pk3", 10);
             key = (Struct) insertRecord.key();
-            assertThat( key.schema().field( "pk2" ) ).isNull();
+            assertThat(key.schema().field( "pk2")).isNull();
 
             stopConnector();
             TestHelper.create().dropReplicationSlot( slotName );
 
-            TestHelper.execute( "DROP SCHEMA IF EXISTS changepk CASCADE;" );
+            TestHelper.execute("DROP SCHEMA IF EXISTS changepk CASCADE;");
         }
         catch (Throwable t) {
             // Ideally we want tests to cleanup after themselves in the event of a failure.
@@ -584,7 +584,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         };
         start(PostgresConnector.class, configBuilder.build(), completionCallback, stopOnPKPredicate(2));
         // wait until we know we've raised the exception at startup AND the engine has been shutdown
-        if (!latch.await(20, TimeUnit.SECONDS)) {
+        if (!latch.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)) {
             fail("did not reach stop condition in time");
         }
         // wait until we know we've raised the exception at startup AND the engine has been shutdown
@@ -897,7 +897,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords(100 * (TestHelper.waitTimeForRecords() * 5), TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isTrue());
     }
