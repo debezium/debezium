@@ -830,7 +830,7 @@ public abstract class AbstractRecordsProducerTest {
             assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
         }
         final Struct envelope = (Struct) record.value();
-        if (envelope != null) {
+        if (envelope != null && envelope.schema().name().endsWith(".Envelope")) {
             final Struct source = (Struct) envelope.get("source");
             final SnapshotRecord sourceSnapshot = SnapshotRecord.fromSource(source);
             if (shouldBeSnapshot) {

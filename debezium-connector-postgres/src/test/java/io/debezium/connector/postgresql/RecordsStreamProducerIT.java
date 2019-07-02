@@ -13,6 +13,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -52,6 +53,7 @@ import io.debezium.junit.ShouldFailWhen;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
+import io.debezium.util.Testing;
 
 /**
  * Integration test for the {@link RecordsStreamProducer} class. This also tests indirectly the PG plugin functionality for
@@ -993,8 +995,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
         // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
         // received from Postgres
+        Testing.Print.enable();
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.b")
                 .build());
         setupRecordsProducer(config);
@@ -1005,21 +1009,18 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                            "INSERT INTO s1.a (aa) VALUES (11);" +
                            "INSERT INTO s1.b (bb) VALUES (22);";
 
-        // expecting two heartbeat records and one actual change record
-        consumer = testConsumer(DecoderDifferences.singleHeartbeatPerTransaction() ? 2 : 3);
+        // streaming from database is non-blocking so we should receive many heartbeats
+        final int expectedHeartbeats = 5;
+        consumer = testConsumer(1 + expectedHeartbeats);
+        consumer.setIgnoreExtraRecords(true);
         recordsProducer.start(consumer, blackHole);
         executeAndWait(statement);
 
-        if (!DecoderDifferences.singleHeartbeatPerTransaction()) {
-            // expecting no change record for s1.a but a heartbeat
+        // change record for s1.b and heartbeats
+        assertRecordInserted("s1.b", PK_FIELD, 1);
+        for (int i = 0; i < expectedHeartbeats; i++) {
             assertHeartBeatRecordInserted();
         }
-
-        // and then a change record for s1.b and a heartbeat
-        assertRecordInserted("s1.b", PK_FIELD, 1);
-        assertHeartBeatRecordInserted();
-
-        assertThat(consumer.isEmpty()).isTrue();
     }
 
     @Test
@@ -1433,6 +1434,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         Struct key = (Struct) heartbeat.key();
         assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER);
+
+        Struct value = (Struct) heartbeat.value();
+        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
     }
 
     private void setupRecordsProducer(PostgresConnectorConfig config) {
