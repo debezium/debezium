@@ -75,7 +75,7 @@
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
 
         <!-- Connectors -->
-        <version.com.google.protobuf>2.6.1</version.com.google.protobuf>
+        <version.com.google.protobuf>3.4.0</version.com.google.protobuf>
 
         <!-- ANTLR -->
         <antlr.version>4.7</antlr.version>
@@ -110,13 +110,13 @@
         <skipITs>false</skipITs>
 
         <!-- No debug options by default -->
-        <debug.argline />
+        <debug.argline/>
 
         <!-- No modules options by default -->
-        <modules.argline />
+        <modules.argline/>
 
         <!-- No test options by default -->
-        <test.argline />
+        <test.argline/>
 
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
