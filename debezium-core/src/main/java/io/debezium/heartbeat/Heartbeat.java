@@ -27,6 +27,11 @@ import io.debezium.function.BlockingConsumer;
  */
 public interface Heartbeat {
 
+    @FunctionalInterface
+    public static interface OffsetProducer {
+        Map<String, ?> offset();
+    }
+
     public static final Field HEARTBEAT_INTERVAL = Field.create("heartbeat.interval.ms")
             .withDisplayName("Conector heartbeat interval (milli-seconds)")
             .withType(Type.INT)
@@ -61,6 +66,11 @@ public interface Heartbeat {
         public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException {
         }
+
+        @Override
+        public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer,
+                BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        }
     };
 
     /**
@@ -73,6 +83,17 @@ public interface Heartbeat {
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
     // too
     void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+
+    /**
+     * Generates a heartbeat record if defined time has elapsed
+     *
+     * @param partition partition for the heartbeat record
+     * @param offsetProducer lazily calculated offset for the heartbeat record
+     * @param consumer - a code to place record among others to be sent into Connect
+     */
+    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
+    // too
+    void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
 
     /**
      * Generates a heartbeat record unconditionaly
