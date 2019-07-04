@@ -32,7 +32,7 @@ public interface DataChangeEventListener {
     /**
      * Invoked for events that cannot be processed.
      */
-    void onEventInError(String event);
+    void onErroneousEvent(String event);
 
     static DataChangeEventListener NO_OP = new DataChangeEventListener() {
         @Override
@@ -40,7 +40,7 @@ public interface DataChangeEventListener {
         }
 
         @Override
-        public void onEventInError(String event) {
+        public void onErroneousEvent(String event) {
         }
 
         @Override
