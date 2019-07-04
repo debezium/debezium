@@ -85,7 +85,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         // TODO handle as per inconsistent schema info option
         if (dataCollectionSchema == null) {
-            eventListener.onEventInError("source = " + dataCollectionId);
+            eventListener.onErroneousEvent("source = " + dataCollectionId);
             throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
         }
 
@@ -122,7 +122,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             // TODO handle as per inconsistent schema info option
             if (dataCollectionSchema == null) {
-                eventListener.onEventInError("source = " + dataCollectionId);
+                eventListener.onErroneousEvent("source = " + dataCollectionId);
                 throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
             }
 

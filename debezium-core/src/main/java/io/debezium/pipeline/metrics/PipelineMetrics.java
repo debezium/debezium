@@ -64,7 +64,7 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     }
 
     @Override
-    public void onEventInError(String event) {
+    public void onErroneousEvent(String event) {
         numberOfEventsInError.incrementAndGet();
         updateCommonEventMetrics();
     }

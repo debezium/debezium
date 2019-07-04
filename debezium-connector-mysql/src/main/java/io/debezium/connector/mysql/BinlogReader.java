@@ -565,7 +565,7 @@ public class BinlogReader extends AbstractReader {
      */
     protected void handleServerIncident(Event event) {
         if (event.getData() instanceof EventDataDeserializationExceptionData) {
-            metrics.onEventInError("source = " + event.toString());
+            metrics.onErroneousEvent("source = " + event.toString());
             EventDataDeserializationExceptionData data = event.getData();
 
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
@@ -757,7 +757,7 @@ public class BinlogReader extends AbstractReader {
      */
     private void informAboutUnknownTableIfRequired(Event event, TableId tableId, String typeToLog) {
         if (tableId != null && context.dbSchema().isTableMonitored(tableId)) {
-            metrics.onEventInError("source = " + tableId + ", event " + event);
+            metrics.onErroneousEvent("source = " + tableId + ", event " + event);
             EventHeaderV4 eventHeader = event.getHeader();
 
             if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
