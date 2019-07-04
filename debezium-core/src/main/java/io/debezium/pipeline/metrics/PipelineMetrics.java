@@ -30,7 +30,7 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     protected final EventMetadataProvider metadataProvider;
     protected final AtomicLong totalNumberOfEventsSeen = new AtomicLong();
     private final AtomicLong numberOfEventsFiltered = new AtomicLong();
-    protected final AtomicLong numberOfEventsInError = new AtomicLong();
+    protected final AtomicLong numberOfErroneousEvents = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
     private volatile String lastEvent;
 
@@ -65,7 +65,7 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
 
     @Override
     public void onErroneousEvent(String event) {
-        numberOfEventsInError.incrementAndGet();
+        numberOfErroneousEvents.incrementAndGet();
         updateCommonEventMetrics();
     }
 
@@ -90,8 +90,8 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     }
 
     @Override
-    public long getNumberOfEventsInError() {
-        return numberOfEventsInError.get();
+    public long getNumberOfErroneousEvents() {
+        return numberOfErroneousEvents.get();
     }
 
     @Override
@@ -99,7 +99,7 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
         totalNumberOfEventsSeen.set(0);
         lastEventTimestamp.set(-1);
         numberOfEventsFiltered.set(0);
-        numberOfEventsInError.set(0);
+        numberOfErroneousEvents.set(0);
         lastEvent = null;
     }
 
