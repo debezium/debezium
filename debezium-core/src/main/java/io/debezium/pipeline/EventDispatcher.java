@@ -84,7 +84,8 @@ public class EventDispatcher<T extends DataCollectionId> {
         DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
         // TODO handle as per inconsistent schema info option
-        if(dataCollectionSchema == null) {
+        if (dataCollectionSchema == null) {
+            eventListener.onEventInError("source = " + dataCollectionId);
             throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
         }
 
@@ -112,7 +113,7 @@ public class EventDispatcher<T extends DataCollectionId> {
      */
     public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
 
-        if(!filter.isIncluded(dataCollectionId)) {
+        if (!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Filtered data change event for {}", dataCollectionId);
             eventListener.onFilteredEvent("source = " + dataCollectionId);
         }
@@ -120,7 +121,8 @@ public class EventDispatcher<T extends DataCollectionId> {
             DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
             // TODO handle as per inconsistent schema info option
-            if(dataCollectionSchema == null) {
+            if (dataCollectionSchema == null) {
+                eventListener.onEventInError("source = " + dataCollectionId);
                 throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
             }
 
