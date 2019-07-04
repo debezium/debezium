@@ -12,6 +12,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import io.debezium.util.Strings;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
@@ -84,8 +86,9 @@ public class PostgresConnector extends SourceConnector {
         ConfigValue databaseValue = results.get(PostgresConnectorConfig.DATABASE_NAME.name());
         ConfigValue userValue = results.get(PostgresConnectorConfig.USER.name());
         ConfigValue passwordValue = results.get(PostgresConnectorConfig.PASSWORD.name());
+        final String passwordStringValue = config.getConfig().getString(PostgresConnectorConfig.PASSWORD);
 
-        if ( passwordValue.value() == null || ((String) passwordValue.value()).isEmpty() ) {
+        if (Strings.isNullOrEmpty(passwordStringValue)) {
             logger.warn("The connection password is empty");
         }
 
