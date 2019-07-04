@@ -137,12 +137,18 @@ public class PostgresConnection extends JdbcConnection {
      * @throws SQLException
      */
     public SlotState getReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
-        ServerInfo.ReplicationSlot slot = fetchReplicationSlotInfo(slotName, pluginName);
-        if (slot.equals(ServerInfo.ReplicationSlot.INVALID)) {
-            return null;
+        ServerInfo.ReplicationSlot slot;
+        try {
+            slot = readReplicationSlotInfo(slotName, pluginName);
+            if (slot.equals(ServerInfo.ReplicationSlot.INVALID)) {
+                return null;
+            }
+            else {
+                return slot.asSlotState();
+            }
         }
-        else {
-            return slot.asSlotState();
+        catch (InterruptedException e) {
+            throw new ConnectException("Interrupted while waiting for valid replication slot info", e);
         }
     }
 
