@@ -80,8 +80,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 // we need to create the slot before we start streaming if it doesn't exist
                 // otherwise we can't stream back changes happening while the snapshot is taking place
                 if (!snapWrapper.doesSlotExist()) {
-                    replConn.createReplicationSlot();
-                    slotCreatedInfo = replConn.getSlotCreationResult().orElse(null);
+                    slotCreatedInfo = replConn.createReplicationSlot().orElse(null);
                 }
                 else {
                     slotCreatedInfo = null;
@@ -200,7 +199,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                         connection.database(), connection.username());
 
             String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo);
-            logger.info("openining transaction with statement {}", transactionStatement);
+            logger.info("opening transaction with statement {}", transactionStatement);
             connection.executeWithoutCommitting(transactionStatement);
 
             //next refresh the schema which will load all the tables taking the filters into account
@@ -220,7 +219,8 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 // Let the user know
                 if (!snapshotter.exportSnapshot()) {
                     logger.warn("Step 2: skipping locking each table, this may result in inconsistent schema!");
-                } else {
+                }
+                else {
                     logger.info("Step 2: skipping locking each table in an exported snapshot");
                 }
             }

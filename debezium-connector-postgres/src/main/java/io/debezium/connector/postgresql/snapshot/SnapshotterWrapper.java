@@ -17,11 +17,10 @@ import io.debezium.connector.postgresql.spi.Snapshotter;
 public class SnapshotterWrapper {
 
     private final Snapshotter snapshotter;
-    private final OffsetState offsetState;
     private final SlotState slotState;
+
     public SnapshotterWrapper(Snapshotter snapshotter, PostgresConnectorConfig config, OffsetState offsetState, SlotState slotState) {
         this.snapshotter = snapshotter;
-        this.offsetState = offsetState;
         this.slotState = slotState;
         this.snapshotter.init(config, offsetState, slotState);
     }

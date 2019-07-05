@@ -5,15 +5,17 @@
  */
 package io.debezium.connector.postgresql.snapshot;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.connector.postgresql.spi.SlotState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.spi.OffsetState;
+import io.debezium.connector.postgresql.spi.SlotState;
+
 public class InitialSnapshotter extends QueryingSnapshotter {
-    private OffsetState sourceInfo;
+
     private final static Logger LOGGER = LoggerFactory.getLogger(InitialSnapshotter.class);
+    private OffsetState sourceInfo;
 
     @Override
     public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
@@ -35,7 +37,8 @@ public class InitialSnapshotter extends QueryingSnapshotter {
         else if (sourceInfo.snapshotInEffect()) {
             LOGGER.info("Found previous incomplete snapshot");
             return true;
-        } else {
+        }
+        else {
             LOGGER.info(
                     "Previous snapshot has completed successfully, streaming logical changes from last known position");
             return false;
