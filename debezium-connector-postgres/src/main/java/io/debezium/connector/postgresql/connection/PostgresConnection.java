@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import io.debezium.connector.postgresql.spi.SlotState;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.core.TypeInfo;
@@ -30,9 +29,11 @@ import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.TableId;
@@ -136,7 +137,7 @@ public class PostgresConnection extends JdbcConnection {
      * @return the {@link SlotState} or null, if no slot state is found
      * @throws SQLException
      */
-    public SlotState getReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
+    public SlotState getReplicationSlotState(String slotName, String pluginName) throws SQLException {
         ServerInfo.ReplicationSlot slot;
         try {
             slot = readReplicationSlotInfo(slotName, pluginName);
@@ -148,6 +149,7 @@ public class PostgresConnection extends JdbcConnection {
             }
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new ConnectException("Interrupted while waiting for valid replication slot info", e);
         }
     }
@@ -160,7 +162,7 @@ public class PostgresConnection extends JdbcConnection {
      *         the slot is not valid
      * @throws SQLException is thrown by the underlying JDBC
      */
-    protected ServerInfo.ReplicationSlot fetchReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
+    private ServerInfo.ReplicationSlot fetchReplicationSlotInfo(String slotName, String pluginName) throws SQLException {
         final String database = database();
         final ServerInfo.ReplicationSlot slot = queryForSlot(slotName, database, pluginName,
                 rs -> {
@@ -191,7 +193,7 @@ public class PostgresConnection extends JdbcConnection {
      * Fetches a replication slot, repeating the query until either the slot is created or until
      * the max number of attempts has been reached
      *
-     * To fetch the slot without teh retries, use the {@link PostgresConnection#fetchReplicationSlotInfo} call
+     * To fetch the slot without the retries, use the {@link PostgresConnection#fetchReplicationSlotInfo} call
      * @param slotName the slot name
      * @param pluginName the name of the plugin
      * @return the {@link ServerInfo.ReplicationSlot} object or a {@link ServerInfo.ReplicationSlot#INVALID} if
@@ -199,7 +201,8 @@ public class PostgresConnection extends JdbcConnection {
      * @throws SQLException is thrown by the underyling jdbc driver
      * @throws InterruptedException is thrown if we don't return an answer within the set number of retries
      */
-    protected ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException, InterruptedException {
+    @VisibleForTesting
+    ServerInfo.ReplicationSlot readReplicationSlotInfo(String slotName, String pluginName) throws SQLException, InterruptedException {
         final String database = database();
         final Metronome metronome = Metronome.parker(PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS, Clock.SYSTEM);
 
