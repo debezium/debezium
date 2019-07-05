@@ -238,7 +238,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     @Override
-    public void createReplicationSlot() throws SQLException {
+    public Optional<SlotCreationResult> createReplicationSlot() throws SQLException {
         // note that some of these options are only supported in pg10 or newer, additionally
         // the options are not yet exported by the jdbc api wrapper, therefore, we just do this ourselves
         // but eventually this should be moved back to the jdbc API
@@ -272,12 +272,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (isPg10) {
                 this.slotCreationInfo = parseSlotCreation(stmt.getResultSet());
             }
-        }
-    }
 
-    @Override
-    public Optional<SlotCreationResult> getSlotCreationResult() {
-        return Optional.ofNullable(slotCreationInfo);
+            return Optional.ofNullable(slotCreationInfo);
+        }
     }
 
     protected PgConnection pgConnection() throws SQLException {

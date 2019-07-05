@@ -30,6 +30,7 @@ import io.debezium.relational.TableId;
  */
 @Incubating
 public interface Snapshotter {
+
     void init(PostgresConnectorConfig config, OffsetState sourceInfo,
               SlotState slotState);
 

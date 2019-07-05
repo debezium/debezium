@@ -63,7 +63,7 @@ public interface ReplicationConnection extends AutoCloseable {
      *
      * @throws SQLException if anything fails
      */
-    void createReplicationSlot() throws SQLException;
+    Optional<SlotCreationResult> createReplicationSlot() throws SQLException;
 
     /**
      *  Forces the connection to be created, is called by startStreaming, but can be called manually
@@ -72,11 +72,6 @@ public interface ReplicationConnection extends AutoCloseable {
      *  Can be called multiple times
      */
     void initConnection() throws SQLException, InterruptedException;
-
-    /**
-     * Returns the results of creating the slot, which may contain a snapshot id
-     */
-    Optional<SlotCreationResult> getSlotCreationResult();
 
     /**
      * Checks whether this connection is open or not
