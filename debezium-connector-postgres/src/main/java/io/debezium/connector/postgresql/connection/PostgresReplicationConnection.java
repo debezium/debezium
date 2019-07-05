@@ -102,7 +102,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    protected void initReplicationSlot() throws SQLException, InterruptedException {
+    private void initReplicationSlot() throws SQLException, InterruptedException {
         final String postgresPluginName = plugin.getPostgresPluginName();
         ServerInfo.ReplicationSlot slotInfo;
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
