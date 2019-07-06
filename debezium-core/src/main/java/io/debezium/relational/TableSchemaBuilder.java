@@ -366,7 +366,7 @@ public class TableSchemaBuilder {
                 fieldBuilder.defaultValue(column.defaultValue());
             }
 
-            builder.field(column.name(), fieldBuilder.build());
+            builder.field(santizeColumnName(column), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
                              fieldBuilder.type(),
@@ -388,5 +388,35 @@ public class TableSchemaBuilder {
      */
     protected ValueConverter createValueConverterFor(Column column, Field fieldDefn) {
         return valueConverterProvider.converter(column, fieldDefn);
+    }
+
+    /**
+     * Sanitize column names that are illegal in Avro
+     * Must conform to https://avro.apache.org/docs/1.7.7/spec.html#Names
+     *  Legal characters are [a-zA-Z_] for the first character and [a-zA-Z0-9_] thereafter.
+     *
+     * @param column the column object containing the name to be sanitized
+     *
+     * @return the sanitized name.
+     */
+    protected String santizeColumnName(Column column) {
+        Character replacementCharacter = '_';
+        Character numberPrefix = '_';
+        StringBuilder sanitizedNameBuilder = new StringBuilder(column.name().length() + 1);
+        for(int i = 0; i < column.name().length(); i++) {
+            char c = column.name().charAt(i);
+            if ( i == 0 && Character.isDigit(c)) {
+                sanitizedNameBuilder.append(numberPrefix);
+                sanitizedNameBuilder.append(c);
+
+            }
+            else if ( ! ( c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')  || (c >= '0' && c <= '9') ) ) {
+                sanitizedNameBuilder.append(replacementCharacter);
+            }
+            else {
+                sanitizedNameBuilder.append(c);
+            }
+        }
+        return sanitizedNameBuilder.toString();
     }
 }
