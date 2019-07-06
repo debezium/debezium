@@ -28,7 +28,7 @@ public class TableSchemaBuilderTest {
 
     private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
-    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null };
+    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null, "c7value", "c8value" };
     private Table table;
     private Column c1;
     private Column c2;
@@ -36,6 +36,9 @@ public class TableSchemaBuilderTest {
     private Column c4;
     private Column c5;
     private Column c6;
+    private Column c7;
+    private Column c8;
+
     private TableSchema schema;
     private SchemaNameAdjuster adjuster;
 
@@ -73,6 +76,14 @@ public class TableSchemaBuilderTest {
                                        .type("SMALLINT").jdbcType(Types.SMALLINT)
                                        .optional(false)
                                        .length(1)
+                                       .create(),
+                                Column.editor().name("7C7") // test invalid Avro name (starts with digit)
+                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                       .optional(false)
+                                       .create(),
+                                 Column.editor().name("C-8") // test invalid Avro name ( contains dash )
+                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                       .optional(false)
                                        .create())
                      .setPrimaryKeyNames("C1", "C2")
                      .create();
@@ -82,6 +93,8 @@ public class TableSchemaBuilderTest {
         c4 = table.columnWithName("C4");
         c5 = table.columnWithName("C5");
         c6 = table.columnWithName("C6");
+        c7 = table.columnWithName("7C7");
+        c8 = table.columnWithName("C-8");
     }
 
     @Test
@@ -92,6 +105,8 @@ public class TableSchemaBuilderTest {
         assertThat(c4).isNotNull();
         assertThat(c5).isNotNull();
         assertThat(c6).isNotNull();
+        assertThat(c7).isNotNull();
+        assertThat(c8).isNotNull();
     }
 
     @Test(expected = NullPointerException.class)
@@ -182,6 +197,8 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
         assertThat(values.field("C6").index()).isEqualTo(5);
         assertThat(values.field("C6").schema()).isEqualTo(SchemaBuilder.int16().build());
+        assertThat(values.field("_7C7").index()).isEqualTo(6); // Column starting with digit is prefixed with _
+        assertThat(values.field("C_8").index()).isEqualTo(7); // Column C-8 has - replaced with _
 
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();
