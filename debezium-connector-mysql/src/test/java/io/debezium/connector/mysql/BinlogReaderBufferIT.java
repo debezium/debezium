@@ -182,11 +182,11 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             }
         }
 
-        // 2 INSERTS + SAVEPOINT
-        records = consumeRecordsByTopic(2 + 1);
-        assertThat(records.topics().size()).isEqualTo(1 + 1);
+        // 2 INSERTS, SAVEPOINT is filtered
+        records = consumeRecordsByTopic(2);
+        assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("customers"))).hasSize(2);
-        assertThat(records.allRecordsInOrder()).hasSize(3);
+        assertThat(records.allRecordsInOrder()).hasSize(2);
         Testing.print("*** Done with savepoint TX");
     }
 
@@ -327,20 +327,23 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             // Bug DBZ-533
             int recordCount;
             int customerEventsCount;
+            int topicCount;
             if (MySQLConnection.forTestDatabase("emptydb").getMySqlVersion() == MySqlVersion.MYSQL_5) {
                 // MySQL 5 contains events when the TX was effectively rolled-back
-                // INSERT + SAVEPOINT + INSERT + ROLLBACK
-                recordCount = 4;
+                // INSERT + INSERT + ROLLBACK, SAVEPOINT filtered
+                recordCount = 3;
                 customerEventsCount = 2;
+                topicCount = 2;
             }
             else {
                 // MySQL 8 does not propagate rolled back changes
-                // INSERT + SAVEPOINT
-                recordCount = 2;
+                // INSERT, SAVEPOINT filtered
+                recordCount = 1;
                 customerEventsCount = 1;
+                topicCount = 1;
             }
             records = consumeRecordsByTopic(recordCount);
-            assertThat(records.topics().size()).isEqualTo(1 + 1);
+            assertThat(records.topics().size()).isEqualTo(topicCount);
             assertThat(records.recordsForTopic(DATABASE.topicForTable("customers"))).hasSize(customerEventsCount);
             assertThat(records.allRecordsInOrder()).hasSize(recordCount);
             Testing.print("*** Done with savepoint TX");
