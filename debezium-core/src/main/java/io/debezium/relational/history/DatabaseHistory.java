@@ -63,7 +63,8 @@ public interface DatabaseHistory {
                                                     // Filter out RDS heartbeat statements, see DBZ-469
                                                     "INSERT INTO mysql.rds_heartbeat2\\(.*\\) values \\(.*\\) ON DUPLICATE KEY UPDATE value = .*," +
                                                     "FLUSH RELAY LOGS.*," +
-                                                    "flush relay logs.*"
+                                                    "flush relay logs.*," +
+                                                    "SAVEPOINT .*"
                                                  )
                                                 .withWidth(Width.LONG)
                                                 .withImportance(Importance.LOW)

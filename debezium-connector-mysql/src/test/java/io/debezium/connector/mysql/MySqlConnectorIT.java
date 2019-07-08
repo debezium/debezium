@@ -9,8 +9,10 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -1213,6 +1215,46 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(updates.size()).isEqualTo(2);
         assertDelete(updates.get(0), "order_number", 10101);
         assertDelete(updates.get(1), "order_number", 10002);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-794")
+    public void shouldEmitNoSavepoints() throws Exception {
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                final Connection jdbc = connection.connection();
+                connection.setAutoCommit(false);
+                final Statement statement = jdbc.createStatement();
+                // connection.executeWithoutCommitting("SavePoint mysavep2");
+                statement.executeUpdate("DELETE FROM orders WHERE order_number = 10001");
+                statement.executeUpdate("SavePoint sp2");
+                statement.executeUpdate("DELETE FROM orders WHERE order_number = 10002");
+                jdbc.commit();
+            }
+        }
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName())).isNullOrEmpty();
+        final List<SourceRecord> deletes = records.recordsForTopic(DATABASE.topicForTable("orders"));
+
+        assertDelete(deletes.get(0), "order_number", 10001);
+        assertDelete(deletes.get(1), "order_number", 10002);
 
         stopConnector();
     }
