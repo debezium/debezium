@@ -39,6 +39,8 @@ Of course, wildcards also work:
 
 These commands will automatically manage the PostgreSQL Docker container.
 
+If you want to run the test suite against an Amazon RDS PostgreSQL environment, see [PostgreSQL on Amazon RDS](https://github.com/debezium/debezium/blob/master/debezium-connector-postgres/RDS.md) for details.
+
 ### Debugging tests
 
 If you want to debug integration tests by stepping through them in your IDE, using the `mvn install` command will be problematic since it will not wait for your IDE's breakpoints. There are ways of doing this, but it is typically far easier to simply start the Docker container and leave it running so that it is available when you run the integration test(s). The following command:
