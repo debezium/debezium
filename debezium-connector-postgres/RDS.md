@@ -13,7 +13,7 @@ By default this new security group does not allow remote connections from your l
     * Type: PostgreSQL
     * Protocol: TCP
     * Port Range: 5432
-    * Source: Anywhere
+    * Source: 0.0.0.0/0 (for allowing access from any IP address), or a specific IP, host (range)
     * Description: Anything (optional)
 6. Save rules
 
