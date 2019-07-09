@@ -897,7 +897,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
-        waitForAvailableRecords(100 * (TestHelper.waitTimeForRecords() * 5), TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(10 * (TestHelper.waitTimeForRecords() * 5), TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isTrue());
     }
