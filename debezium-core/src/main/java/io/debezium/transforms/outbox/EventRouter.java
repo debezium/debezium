@@ -5,11 +5,13 @@
  */
 package io.debezium.transforms.outbox;
 
-import io.debezium.annotation.Incubating;
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.data.Envelope;
-import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
+import static io.debezium.transforms.outbox.EventRouterConfigDefinition.parseAdditionalFieldsConfig;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
@@ -23,12 +25,11 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static io.debezium.transforms.outbox.EventRouterConfigDefinition.parseAdditionalFieldsConfig;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import io.debezium.annotation.Incubating;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.data.Envelope;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 
 /**
  * Debezium Outbox Transform Event Router
@@ -128,15 +129,18 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             }
         }));
 
-        boolean isDeleteEvent = payload == "" || payload == null;
+        boolean isDeleteEvent = payload == null || payload.toString().trim().isEmpty();
 
-        Struct updatedValue = (isDeleteEvent && routeTombstoneOnEmptyPayload)
-                ? null
-                : value;
-
-        Schema updatedSchema = (isDeleteEvent && routeTombstoneOnEmptyPayload)
-                ? null
-                : valueSchema;
+        Struct updatedValue;
+        Schema updatedSchema;
+        if (isDeleteEvent && routeTombstoneOnEmptyPayload) {
+            updatedValue = null;
+            updatedSchema = null;
+        }
+        else {
+            updatedValue = value;
+            updatedSchema = valueSchema;
+        }
 
         R newRecord = r.newRecord(
                 eventStruct.getString(routeByField).toLowerCase(),
