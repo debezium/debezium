@@ -20,7 +20,9 @@ import io.debezium.relational.TableId;
  * to allow for class loading to work
  */
 public class CustomTestSnapshot implements Snapshotter {
+
     private boolean hasState;
+
     @Override
     public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
         hasState = (sourceInfo != null);
@@ -54,9 +56,6 @@ public class CustomTestSnapshot implements Snapshotter {
 
     @Override
     public String snapshotTransactionIsolationLevelStatement(SlotCreationResult newSlotInfo) {
-        // this actually is never used in the tests as we don't have any tests
-        // that run against pg10+, leaving it here anyways in hopes that
-        // someday there is a build against pg10
         if (newSlotInfo != null) {
             String snapSet = String.format("SET TRANSACTION SNAPSHOT '%s';", newSlotInfo.snapshotName());
             return "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapSet;
