@@ -121,7 +121,12 @@ Look for references to the types defined in `io.debezium.connector.postgresql.De
 
     $ mvn clean install -pl debezium-connector-postgres -Pwal2json-decoder \
          -Ddocker.skip.build=true -Ddocker.skip.run=true -Dpostgres.host=<your PG host> \
-         -Dpostgres.user=<your user> -Dpostgres.password=<your password>
+         -Dpostgres.user=<your user> -Dpostgres.password=<your password> \
+         -Ddebezium.test.records.waittime=10
+
+Adjust the timeout value as needed.
+
+See [PostgreSQL on Amazon RDS](debezium-connector-postgres/RDS.md) for details on setting up a database on RDS to test against.
 
 ## Contributing
 
