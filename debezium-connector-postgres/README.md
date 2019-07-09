@@ -4,7 +4,7 @@ This module defines the connector that ingests change events from PostgreSQL dat
 
 ## Using the PostgreSQL connector with Kafka Connect
 
-The PostgreSQL connector is designed to work with [Kafka Connect](http://kafka.apache.org/documentation.html#connect) and to be deployed to a Kafka Connect runtime service. The deployed connector will monitor one or more schemas within a database server 
+The PostgreSQL connector is designed to work with [Kafka Connect](http://kafka.apache.org/documentation.html#connect) and to be deployed to a Kafka Connect runtime service. The deployed connector will monitor one or more schemas within a database server
 and write all change events to Kafka topics, which can be independently consumed by one or more clients. Kafka Connect can be distributed to provide fault tolerance to ensure the connectors are running and continually keeping up with changes in the database.
 
 Kafka Connect can also be run standalone as a single process, although doing so is not tolerant of failures.
@@ -19,9 +19,9 @@ This module contains both unit tests and integration tests.
 
 A *unit test* is a JUnit test class named `*Test.java` or `Test*.java` that never requires or uses external services, though it can use the file system and can run any components within the same JVM process. They should run very quickly, be independent of each other, and clean up after itself.
 
-An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a PostgreSQL database server running in a custom Docker container based upon the [debezium/postgres:9.6](https://github.com/debezium/docker-images/tree/master/postgres/9.6) Docker image maintained by the Debezium team. 
-This docker image uses a default PostgreSQL 9.6 image on top of which it installs the [Debezium Logical Decoding plugin](https://github.com/debezium/postgres-decoderbufs) which is required in order to be able to receive database events. 
-The build will automatically start the PostgreSQL container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they succeed or fail). 
+An *integration test* is a JUnit test class named `*IT.java` or `IT*.java` that uses a PostgreSQL database server running in a custom Docker container based upon the [debezium/postgres:9.6](https://github.com/debezium/docker-images/tree/master/postgres/9.6) Docker image maintained by the Debezium team.
+This docker image uses a default PostgreSQL 9.6 image on top of which it installs the [Debezium Logical Decoding plugin](https://github.com/debezium/postgres-decoderbufs) which is required in order to be able to receive database events.
+The build will automatically start the PostgreSQL container before the integration tests are run and automatically stop and remove it after all of the integration tests complete (regardless of whether they succeed or fail).
 
 Running `mvn install` will compile all code and run the unit and integration tests. If there are any compile problems or any of the unit tests fail, the build will stop immediately. Otherwise, the command will continue to create the module's artifacts, create the Docker image with PostgreSQL and custom scripts, start the Docker container, run the integration tests, stop the container (even if there are integration test failures), and run checkstyle on the code. If there are still no problems, the build will then install the module's artifacts into the local Maven repository.
 
@@ -38,8 +38,6 @@ Of course, wildcards also work:
     $ mvn -Dit.test=Connect*IT install
 
 These commands will automatically manage the PostgreSQL Docker container.
-
-If you want to run the test suite against an Amazon RDS PostgreSQL environment, see [PostgreSQL on Amazon RDS](https://github.com/debezium/debezium/blob/master/debezium-connector-postgres/RDS.md) for details.
 
 ### Debugging tests
 
