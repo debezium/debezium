@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static io.debezium.data.VerifyRecord.assertConnectSchemasAreEqual;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.fest.assertions.Assertions.assertThat;
 
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
@@ -28,7 +30,9 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.data.Json;
 import io.debezium.data.Uuid;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.transforms.outbox.EventRouter;
 
@@ -62,42 +66,29 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
             String payloadJson,
             String additional
     ) {
-        return String.format("INSERT INTO outboxsmtit.outbox VALUES (" +
-                        "'%s'" +
-                        ", '%s'" +
-                        ", '%s'" +
-                        ", '%s'" +
-                        ", '%s'::jsonb" +
-                        "%s" +
-                        ");",
-                eventId,
-                aggregateType,
-                aggregateId,
-                eventType,
-                payloadJson,
-                additional);
-    }
+        StringBuilder insert = new StringBuilder();
+        insert.append("INSERT INTO outboxsmtit.outbox VALUES (");
+        insert.append("'").append(eventId).append("'");
+        insert.append(", '").append(aggregateType).append("'");
+        insert.append(", '").append(aggregateId).append("'");
+        insert.append(", '").append(eventType).append("'");
 
-    private static String createTombstoneEventInsert(
-            UUID eventId,
-            String eventType,
-            String aggregateType,
-            String aggregateId,
-            String additional
-    ) {
-        return String.format("INSERT INTO outboxsmtit.outbox VALUES (" +
-                        "'%s'" +
-                        ", '%s'" +
-                        ", '%s'" +
-                        ", '%s'" +
-                        ", null::jsonb" +
-                        "%s" +
-                        ");",
-                eventId,
-                aggregateType,
-                aggregateId,
-                eventType,
-                additional);
+        if (payloadJson == null) {
+            insert.append(", null::jsonb");
+        }
+        else if (payloadJson.isEmpty()) {
+            insert.append(", ''");
+        }
+        else {
+            insert.append(", '").append(payloadJson).append("'::jsonb");
+        }
+
+        if (additional != null) {
+            insert.append(additional);
+        }
+        insert.append(")");
+
+        return insert.toString();
     }
 
     @Before
@@ -186,7 +177,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add version int not null;");
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add somebooltype boolean not null;");
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
-        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add is_deleted boolean not null default false;");
+        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add is_deleted boolean default false;");
 
         TestHelper.execute(createEventInsert(
                 UUID.fromString("f9171eb6-19f3-4579-9206-0e179d2ebad7"),
@@ -204,7 +195,18 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         SourceRecord eventRouted = outboxEventRouter.apply(newEventRecord);
 
         // Validate metadata
-        assertThat(eventRouted.valueSchema().version()).isEqualTo(1);
+        Schema expectedSchema = SchemaBuilder.struct()
+                .version(1)
+                .field("eventType", Schema.STRING_SCHEMA)
+                .field("payload", Json.builder().optional().build())
+                .field("eventVersion", Schema.INT32_SCHEMA)
+                .field("aggregateType", Schema.STRING_SCHEMA)
+                .field("someBoolType", Schema.BOOLEAN_SCHEMA)
+                .field("deleted", Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                .build();
+
+        assertConnectSchemasAreEqual(null, eventRouted.valueSchema(), expectedSchema);
+
         assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
         assertThat(eventRouted.topic()).isEqualTo("outbox.event.useremail");
 
@@ -232,12 +234,12 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldConsumeDeleteEvents() throws Exception {
+    @FixFor("DBZ-1320")
+    public void shouldNotProduceTombstoneEventForNullPayload() throws Exception {
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put("table.field.event.schema.version", "version");
         config.put("table.field.event.timestamp", "createdat");
-        config.put("route.tombstone.on.empty.payload", "true");
         config.put(
                 "table.fields.additional.placement",
                 "version:envelope:eventVersion," +
@@ -258,7 +260,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserUpdated",
                 "UserEmail",
                 "a9d76f78",
-                "{\"email\": \"brandon@bbrownsound.com\"}",
+                null,
                 ", 1, true, TIMESTAMP '2019-03-24 20:52:59', true"
         ));
 
@@ -289,10 +291,13 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         // Validate message body
         assertThat(eventRouted.value()).isNotNull();
+        assertThat(((Struct) eventRouted.value()).get("eventType")).isEqualTo("UserUpdated");
+        assertThat(((Struct) eventRouted.value()).get("payload")).isNull();
     }
 
     @Test
-    public void shouldConsumeTombstoneEvents() throws Exception {
+    @FixFor("DBZ-1320")
+    public void shouldProduceTombstoneEventForNullPayload() throws Exception {
         outboxEventRouter = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put("table.field.event.schema.version", "version");
@@ -313,12 +318,12 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add is_deleted boolean not null default false;");
 
-        //Delete Event
-        TestHelper.execute(createTombstoneEventInsert(
+        TestHelper.execute(createEventInsert(
                 UUID.fromString("a9d76f78-bda6-48d3-97ed-13a146163218"),
                 "UserUpdated",
                 "UserEmail",
                 "a9d76f78",
+                null,
                 ", 1, true, TIMESTAMP '2019-03-24 20:52:59', true"
         ));
 
@@ -342,6 +347,50 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         Header headerBool = headers.lastWithName("somebooltype");
         assertThat(headerBool.schema()).isEqualTo(SchemaBuilder.BOOLEAN_SCHEMA);
         assertThat(headerBool.value()).isEqualTo(true);
+
+        // Validate Key
+        assertThat(eventRouted.keySchema()).isEqualTo(SchemaBuilder.STRING_SCHEMA);
+        assertThat(eventRouted.key()).isEqualTo("a9d76f78");
+
+        // Validate message body
+        assertThat(eventRouted.value()).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1320")
+    public void shouldProduceTombstoneEventForEmptyPayload() throws Exception {
+        outboxEventRouter = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put("route.tombstone.on.empty.payload", "true");
+        outboxEventRouter.configure(config);
+
+        TestHelper.execute("ALTER TABLE outboxsmtit.outbox ALTER COLUMN payload SET DATA TYPE VARCHAR(1000);");
+
+        TestHelper.execute(createEventInsert(
+                UUID.fromString("a9d76f78-bda6-48d3-97ed-13a146163218"),
+                "UserUpdated",
+                "UserEmail",
+                "a9d76f78",
+                "",
+                null
+        ));
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        SourceRecord newEventRecord = actualRecords.recordsForTopic(topicName("outboxsmtit.outbox")).get(0);
+        SourceRecord eventRouted = outboxEventRouter.apply(newEventRecord);
+
+        // Validate metadata
+        assertThat(eventRouted.valueSchema()).isNull();
+        assertThat(eventRouted.topic()).isEqualTo("outbox.event.useremail");
+
+        // Validate headers
+        Headers headers = eventRouted.headers();
+        assertThat(headers.size()).isEqualTo(1);
+        Header headerId = headers.lastWithName("id");
+        assertThat(headerId.schema()).isEqualTo(Uuid.schema());
+        assertThat(headerId.value()).isEqualTo("a9d76f78-bda6-48d3-97ed-13a146163218");
 
         // Validate Key
         assertThat(eventRouted.keySchema()).isEqualTo(SchemaBuilder.STRING_SCHEMA);
