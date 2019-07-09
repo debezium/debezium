@@ -163,6 +163,25 @@ public class TableSchemaBuilderTest {
         // Check the keys ...
         assertThat(schema.keySchema()).isNull();
         assertThat(schema.keyFromColumnData(data)).isNull();
+        Schema keys = schema.keySchemaOrProxyKeySchema();
+        assertThat(schema.keyOrProxyKeyFromColumnData(data)).isNotNull();
+        assertThat(keys).isNotNull();
+        assertThat(keys.field("C1").name()).isEqualTo("C1");
+        assertThat(keys.field("C1").index()).isEqualTo(0);
+        assertThat(keys.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
+        assertThat(keys.field("C2").name()).isEqualTo("C2");
+        assertThat(keys.field("C2").index()).isEqualTo(1);
+        assertThat(keys.field("C2").schema()).isEqualTo(Decimal.builder(3).parameter("connect.decimal.precision", "5").optional().build()); // scale of 3
+        assertThat(keys.field("C3").name()).isEqualTo("C3");
+        assertThat(keys.field("C3").index()).isEqualTo(2);
+        assertThat(keys.field("C3").schema()).isEqualTo(Date.builder().optional().build()); // optional date
+        assertThat(keys.field("C4").name()).isEqualTo("C4");
+        assertThat(keys.field("C4").index()).isEqualTo(3);
+        assertThat(keys.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().build()); // JDBC INTEGER = 32 bits
+        assertThat(keys.field("C5").index()).isEqualTo(4);
+        assertThat(keys.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
+        assertThat(keys.field("C6").index()).isEqualTo(5);
+        assertThat(keys.field("C6").schema()).isEqualTo(SchemaBuilder.int16().build());
         // Check the values ...
         Schema values = schema.valueSchema();
         assertThat(values).isNotNull();

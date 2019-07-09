@@ -83,6 +83,7 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
+    @SuppressWarnings("unchecked")
     public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, ColumnNameFilter filter, ColumnMappers mappers) {
         if (schemaPrefix == null) {
             schemaPrefix = "";
@@ -95,6 +96,7 @@ public class TableSchemaBuilder {
         LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Value"));
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Key"));
+        SchemaBuilder proxyKeySchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Key"));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
         table.columns().forEach(column -> {
             if (table.isPrimaryKeyColumn(column.name())) {
@@ -106,13 +108,22 @@ public class TableSchemaBuilder {
                 // Add the column to the value schema only if the column has not been filtered ...
                 ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
                 addField(valSchemaBuilder, column, mapper);
+                addField(proxyKeySchemaBuilder, column, mapper);
             }
         });
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
+        Schema proxyKeySchema = proxyKeySchemaBuilder.build();
 
+        if (keySchema == null) {
+            LOGGER.info("Table '{}' does not have primary key, mapping it to proxy key with schema: {}", tableId, SchemaUtil.asDetailedString(proxyKeySchema));
+        }
+        else {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Mapped primary key for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(keySchema));
+            }
+        }
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Mapped primary key for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(keySchema));
             LOGGER.debug("Mapped columns for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(valSchema));
         }
 
@@ -124,11 +135,11 @@ public class TableSchemaBuilder {
 
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
-        Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
+        Function<Object[], ? super Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
+        Function<Object[], Object> keyGenerator = (keySchema != null) ? createKeyGenerator(keySchema, tableId, table.primaryKeyColumns()) : (Function<Object[], Object>) valueGenerator;
 
         // And the table schema ...
-        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+        return new TableSchema(tableId, (keySchema == null) ? proxyKeySchema : keySchema, keyGenerator, envelope, valSchema, (Function<Object[], Struct>) valueGenerator, keySchema == null);
     }
 
     /**
@@ -222,7 +233,7 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the value-generating function, or null if there is no value schema
      */
-    protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
+    protected Function<Object[], ? super Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
             ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);

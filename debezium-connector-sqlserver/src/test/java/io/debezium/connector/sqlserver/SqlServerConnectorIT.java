@@ -975,4 +975,71 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
+
+    @Test
+    @FixFor("DBZ-916")
+    public void keylessTable() throws Exception {
+        connection.execute(
+                "CREATE TABLE keyless (id int, name varchar(30))",
+                "INSERT INTO keyless VALUES(1, 'k')"
+        );
+        TestHelper.enableTableCdc(connection, "keyless");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.keyless")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        final List<SchemaAndValueField> key = Arrays.asList(
+                new SchemaAndValueField("id", Schema.OPTIONAL_INT32_SCHEMA, 1),
+                new SchemaAndValueField("name", Schema.OPTIONAL_STRING_SCHEMA, "k"));
+        final List<SchemaAndValueField> key2 = Arrays.asList(
+                new SchemaAndValueField("id", Schema.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("name", Schema.OPTIONAL_STRING_SCHEMA, "k"));
+        final List<SchemaAndValueField> key3 = Arrays.asList(
+                new SchemaAndValueField("id", Schema.OPTIONAL_INT32_SCHEMA, 3),
+                new SchemaAndValueField("name", Schema.OPTIONAL_STRING_SCHEMA, "k"));
+
+        // Wait for snapshot completion
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertRecord((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key(), key);
+
+        connection.execute(
+                "INSERT INTO keyless VALUES(2, 'k')"
+        );
+        records = consumeRecordsByTopic(1);
+        assertRecord((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key(), key2);
+
+        connection.execute(
+                "UPDATE keyless SET id=3 WHERE ID=2"
+        );
+        records = consumeRecordsByTopic(3);
+        // PK change so we are deleting record with OLD PK and sending a new one
+        final SourceRecord update1 = records.recordsForTopic("server1.dbo.keyless").get(0);
+        final SourceRecord update2 = records.recordsForTopic("server1.dbo.keyless").get(1);
+        final SourceRecord update3 = records.recordsForTopic("server1.dbo.keyless").get(2);
+
+        assertRecord((Struct) update1.key(), key2);
+        assertRecord(((Struct) update1.value()).getStruct(Envelope.FieldName.BEFORE), key2);
+        assertNull(((Struct) update1.value()).getStruct(Envelope.FieldName.AFTER));
+
+        assertRecord((Struct) update2.key(), key2);
+        assertNull(update2.value());
+
+        assertRecord((Struct) update3.key(), key3);
+        assertNull(((Struct) update3.value()).getStruct(Envelope.FieldName.BEFORE));
+        assertRecord(((Struct) update3.value()).getStruct(Envelope.FieldName.AFTER), key3);
+
+        connection.execute(
+                "DELETE FROM keyless WHERE id=3"
+        );
+        records = consumeRecordsByTopic(2);
+        assertRecord((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key(), key3);
+        assertNull(records.recordsForTopic("server1.dbo.keyless").get(1).value());
+
+        stopConnector();
+    }
 }

@@ -61,7 +61,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
     private void emitCreateRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
-        Object newKey = tableSchema.keyFromColumnData(newColumnValues);
+        Object newKey = tableSchema.keyOrProxyKeyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
 
@@ -71,7 +71,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
     private void emitReadRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
-        Object newKey = tableSchema.keyFromColumnData(newColumnValues);
+        Object newKey = tableSchema.keyOrProxyKeyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
 
@@ -83,8 +83,8 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object[] oldColumnValues = getOldColumnValues();
         Object[] newColumnValues = getNewColumnValues();
 
-        Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
-        Object newKey = tableSchema.keyFromColumnData(newColumnValues);
+        Object oldKey = tableSchema.keyOrProxyKeyFromColumnData(oldColumnValues);
+        Object newKey = tableSchema.keyOrProxyKeyFromColumnData(newColumnValues);
 
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
@@ -106,7 +106,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
 
     private void emitDeleteRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
-        Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
+        Object oldKey = tableSchema.keyOrProxyKeyFromColumnData(oldColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());

@@ -179,11 +179,11 @@ public class EventDispatcher<T extends DataCollectionId> {
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
             Objects.requireNonNull(key, "key must not be null");
-            Objects.requireNonNull(value, "key must not be null");
+            Objects.requireNonNull(value, "value must not be null");
 
             LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
-            Schema keySchema = dataCollectionSchema.keySchema();
+            Schema keySchema = dataCollectionSchema.keySchemaOrProxyKeySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             SourceRecord record = new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
@@ -214,15 +214,15 @@ public class EventDispatcher<T extends DataCollectionId> {
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
             Objects.requireNonNull(key, "key must not be null");
-            Objects.requireNonNull(value, "key must not be null");
+            Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
+            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
 
-            if(bufferedEvent != null) {
+            if (bufferedEvent != null) {
                 queue.enqueue(bufferedEvent.get());
             }
 
-            Schema keySchema = dataCollectionSchema.keySchema();
+            Schema keySchema = dataCollectionSchema.keySchemaOrProxyKeySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             // the record is produced lazily, so to have the correct offset as per the pre/post completion callbacks

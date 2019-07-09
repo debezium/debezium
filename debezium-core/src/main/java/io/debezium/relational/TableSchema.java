@@ -10,15 +10,13 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.schema.DataCollectionSchema;
-
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given {@link Table table definition}, and which can
@@ -57,9 +55,11 @@ public class TableSchema implements DataCollectionSchema {
 
     private final TableId id;
     private final Schema keySchema;
+    private final Schema keySchemaOrProxyKeySchema;
     private final Envelope envelopeSchema;
     private final Schema valueSchema;
     private final Function<Object[], Object> keyGenerator;
+    private final Function<Object[], Object> keyOrProxyKeyGenerator;
     private final Function<Object[], Struct> valueGenerator;
 
     /**
@@ -73,14 +73,17 @@ public class TableSchema implements DataCollectionSchema {
      * @param valueSchema the schema for the values; may be null
      * @param valueGenerator the function that converts a row into a single value object for Kafka Connect; may not be null but
      *            may return nulls
+     * @param keySchemaProxied true if the schema is a synthetic created from all columns for tables without primary key
      */
     public TableSchema(TableId id, Schema keySchema, Function<Object[], Object> keyGenerator,
-            Envelope envelopeSchema, Schema valueSchema, Function<Object[], Struct> valueGenerator) {
+            Envelope envelopeSchema, Schema valueSchema, Function<Object[], Struct> valueGenerator, boolean keySchemaProxied) {
         this.id = id;
-        this.keySchema = keySchema;
+        this.keySchema = keySchemaProxied ? null : keySchema;
+        this.keySchemaOrProxyKeySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
-        this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
+        this.keyGenerator = !keySchemaProxied ? keyGenerator : (row) -> null;
+        this.keyOrProxyKeyGenerator = !keySchemaProxied ? this.keyGenerator : keyGenerator;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
     }
 
@@ -109,6 +112,16 @@ public class TableSchema implements DataCollectionSchema {
     }
 
     /**
+     * Get the {@link Schema} that represents the table's primary key or the artificial table's primary key for tables not providing primary key.
+     *
+     * @return the Schema describing the all column's that make up the primary key if table has no explicit primary key
+     */
+    @Override
+    public Schema keySchemaOrProxyKeySchema() {
+        return keySchemaOrProxyKeySchema;
+    }
+
+    /**
      * Get the {@link Schema} that represents the entire value of messages for the table, i.e. including before/after state
      * and source info.
      *
@@ -134,6 +147,20 @@ public class TableSchema implements DataCollectionSchema {
         return columnData == null ? null : keyGenerator.apply(columnData);
     }
 
+    /**
+     * Convert the specified row of values into a Kafka Connect key or proxied key. The row is expected to conform to the structured defined
+     * by the table.
+     *
+     * @param columnData the column values for the table
+     * @return the key, or null if the {@code columnData}
+     */
+    public Object keyOrProxyKeyFromColumnData(Object[] columnData) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("columnData from current stack: {}", columnData);
+            logger.trace("key from column data stack: ", new Throwable());
+        }
+        return columnData == null ? null : keyOrProxyKeyGenerator.apply(columnData);
+    }
     /**
      * Convert the specified row of values into a Kafka Connect value. The row is expected to conform to the structured defined
      * by the table.
