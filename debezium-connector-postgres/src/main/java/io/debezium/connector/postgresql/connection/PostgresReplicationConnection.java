@@ -187,17 +187,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      */
     @Override
     public ReplicationStream startStreaming() throws SQLException, InterruptedException {
-        // this ensures we have the right type of connection, creates the slot if needed,
-        // and sets the defaultStartingPos, so we must set it here
-        initConnection();
-        return startStreaming(defaultStartingPos);
+        return startStreaming(null);
     }
 
     @Override
     public ReplicationStream startStreaming(Long offset) throws SQLException, InterruptedException {
-        // if this method is being called by startStreaming without an offset, this
-        // will already be called, but it is made idempotent to ensure we can safely call it
-        // multiple times
         initConnection();
 
         connect();
