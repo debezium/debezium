@@ -98,30 +98,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
-
-        // to keep the same
-        try {
-            ensureSlotNotActive(getSlotInfo());
-        }
-        catch (Throwable t) {
-            close();
-            throw new ConnectException(t);
-        }
     }
 
 
     private ServerInfo.ReplicationSlot getSlotInfo() throws SQLException, InterruptedException {
         try (PostgresConnection connection = new PostgresConnection(originalConfig)) {
             return connection.readReplicationSlotInfo(slotName, plugin.getPostgresPluginName());
-        }
-    }
-
-    private void ensureSlotNotActive(ServerInfo.ReplicationSlot slotInfo) throws IllegalStateException {
-        if (slotInfo.active()) {
-            throw new IllegalStateException(
-                    "A logical replication slot named '" + slotName + "' for plugin '" + plugin.getPostgresPluginName() + "' and database '" + database() + "' is already active on the server." +
-                    "You cannot have multiple slots with the same name active for the same database."
-            );
         }
     }
 
@@ -135,7 +117,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (shouldCreateSlot) {
                 this.createReplicationSlot();
             }
-            ensureSlotNotActive(slotInfo);
 
             AtomicLong xlogStart = new AtomicLong();
             // replication connection does not support parsing of SQL statements so we need to create
@@ -227,7 +208,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("starting streaming from LSN '{}'", lsn.asString());
         }
-        return createReplicationStream(lsn);
+
+        try {
+            return createReplicationStream(lsn);
+        }
+        catch(Exception e) {
+            throw new ConnectException("Failed to start replication stream at " + lsn, e);
+        }
     }
 
     @Override
