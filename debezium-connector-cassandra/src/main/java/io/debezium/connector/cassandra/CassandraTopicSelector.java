@@ -5,12 +5,11 @@
  */
 package io.debezium.connector.cassandra;
 
-import java.util.concurrent.ConcurrentHashMap;
-
+import io.debezium.annotation.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.ThreadSafe;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Responsible for selecting the Kafka topic that the record will get send to.
@@ -30,10 +29,9 @@ public class CassandraTopicSelector {
         this.tableTopicNamer = new TopicNameCache(new TopicNameSanitizer(tableTopicNamer));
     }
 
-    @SuppressWarnings("squid:HiddenFieldCheck")
-    static CassandraTopicSelector defaultSelector(String cdcAgentLogicalName) {
+    static CassandraTopicSelector defaultSelector(String topicPrefix) {
         return new CassandraTopicSelector(
-                cdcAgentLogicalName,
+                topicPrefix,
                 DEFAULT_DELIMITER,
                 (keyspaceTable, prefix, delimiter) -> String.join(delimiter, prefix, keyspaceTable.keyspace, keyspaceTable.table));
     }
@@ -57,6 +55,7 @@ public class CassandraTopicSelector {
         TopicNameSanitizer(TableTopicNamer delegate) {
             this.delegate = delegate;
         }
+
         @Override
         public String topicNameFor(KeyspaceTable keyspaceTable, String prefix, String delimiter) {
             String topicName = delegate.topicNameFor(keyspaceTable, prefix, delimiter);

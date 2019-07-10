@@ -19,7 +19,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -27,14 +26,12 @@ import static org.junit.Assert.assertTrue;
 
 public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     private CassandraConnectorContext context;
-    private AtomicBoolean globalTaskState;
     private CommitLogProcessor commitLogProcessor;
 
     @Before
     public void setUp() throws Exception {
         context = generateTaskContext();
-        globalTaskState = new AtomicBoolean(true);
-        commitLogProcessor = new CommitLogProcessor(context, globalTaskState);
+        commitLogProcessor = new CommitLogProcessor(context);
         commitLogProcessor.initialize();
     }
 
@@ -42,7 +39,6 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void tearDown() throws Exception {
         deleteTestOffsets(context);
         commitLogProcessor.destroy();
-        globalTaskState.set(false);
         context.cleanUp();
     }
 

@@ -31,6 +31,7 @@ import java.util.Map;
  * and handle clean up after tests.
  */
 public abstract class EmbeddedCassandraConnectorTestBase {
+    public static final String TEST_CONNECTOR_NAME = "cassandra-01";
     public static final String TEST_KEYSPACE = "test_keyspace";
     public static final long STARTUP_TIMEOUT_IN_SECONDS = 10;
     public static final String TEST_CASSANDRA_YAML_CONFIG = "cassandra-unit.yaml";
@@ -38,7 +39,6 @@ public abstract class EmbeddedCassandraConnectorTestBase {
     public static final int TEST_CASSANDRA_PORT = 9042;
     public static final String TEST_KAFKA_SERVERS = "localhost:9092";
     public static final String TEST_SCHEMA_REGISTRY_URL = "http://localhost:8081";
-    public static final String TEST_OFFSET_BACKING_STORE_DIR = "target/offset/";
     public static final String TEST_KAFKA_TOPIC_PREFIX = "test_topic";
 
     @BeforeClass
@@ -167,11 +167,12 @@ public abstract class EmbeddedCassandraConnectorTestBase {
 
     protected static Map<String, Object> generateDefaultConfigMap() throws IOException {
         Map<String, Object> configs = new HashMap<>();
+        configs.put(CassandraConnectorConfig.CONNECTOR_NAME, TEST_CONNECTOR_NAME);
         configs.put(CassandraConnectorConfig.CASSANDRA_CONFIG, TEST_CASSANDRA_YAML_CONFIG);
+        configs.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, TEST_KAFKA_TOPIC_PREFIX);
         configs.put(CassandraConnectorConfig.CASSANDRA_HOSTS, TEST_CASSANDRA_HOSTS);
         configs.put(CassandraConnectorConfig.CASSANDRA_PORT, TEST_CASSANDRA_PORT);
-        configs.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, TEST_OFFSET_BACKING_STORE_DIR);
-        configs.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, TEST_KAFKA_TOPIC_PREFIX);
+        configs.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, Files.createTempDirectory("offset").toString());
         configs.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
         configs.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, TEST_SCHEMA_REGISTRY_URL);
         configs.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, Files.createTempDirectory("cdc_raw_relocation").toString());

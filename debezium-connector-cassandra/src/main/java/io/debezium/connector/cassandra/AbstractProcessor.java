@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * An abstract processor designed to be a convenient superclass for all concrete processors for Cassandra
@@ -19,22 +18,20 @@ public abstract class AbstractProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractProcessor.class);
 
     private final String name;
-    private final AtomicBoolean taskState;
-    private boolean processorState;
+    private final long delay;
+    private boolean running;
 
-    public AbstractProcessor(String name, AtomicBoolean taskState) {
+    public AbstractProcessor(String name, long delayMillis) {
         this.name = name;
-        this.taskState = taskState;
-        this.processorState = false;
+        this.delay = delayMillis;
+        this.running = false;
     }
 
-    public boolean isTaskRunning() {
-        return taskState.get();
-    }
-
-    public boolean isProcessorRunning() {
-        return processorState;
-    }
+    /**
+     * The actual work the processor is doing. This method will be executed in a while loop
+     * until processor stops or encounters exception.
+     */
+    public abstract void process() throws InterruptedException, IOException;
 
     /**
      * Override initialize to initialize resources before starting the processor
@@ -46,41 +43,31 @@ public abstract class AbstractProcessor {
      */
     public void destroy() throws Exception { }
 
-    public void start() throws InterruptedException, IOException {
-        if (!isTaskRunning()) {
-            taskState.set(true);
-        }
-        if (!isProcessorRunning()) {
-            processorState = true;
-            LOGGER.info("Starting {}", name);
-            doStart();
-        } else {
-            LOGGER.info("Ignoring start signal for {} because it is already started", name);
-        }
+    public boolean isRunning() {
+        return running;
     }
 
-    public void stop() throws InterruptedException, IOException {
-        if (isTaskRunning()) {
-            taskState.set(false);
+    public final void start() throws Exception {
+        if (running) {
+            LOGGER.warn("Ignoring start signal for {} because it is already started", name);
+            return;
         }
-        if (isProcessorRunning()) {
-            processorState = false;
-            doStop();
-            LOGGER.info("Stopped {}", name);
-        } else {
-            LOGGER.info("Ignoring stop signal for {} because it is already stopped", name);
+
+        LOGGER.info("Started {}", name);
+        running = true;
+        while (isRunning()) {
+            process();
+            Thread.sleep(delay);
         }
+        LOGGER.info("Stopped {}", name);
     }
 
-    /**
-     * The processor has been requested to start, so perform any work required to start the processor
-     */
-    public abstract void doStart() throws InterruptedException, IOException;
-
-    /**
-     * The processor has been requested to stop, so perform any work required to stop the processor
-     */
-    public abstract void doStop() throws InterruptedException, IOException;
+    public final void stop() {
+        if (isRunning()) {
+            LOGGER.info("Stopping {}", name);
+            running = false;
+        }
+    }
 
     public String getName() {
         return name;

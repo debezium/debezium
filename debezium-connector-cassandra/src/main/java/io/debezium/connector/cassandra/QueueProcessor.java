@@ -14,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A thread that constantly polls records from the queue and emit them to Kafka via the KafkaRecordEmitter.
@@ -30,10 +29,10 @@ public class QueueProcessor extends AbstractProcessor {
     public static final String ARCHIVE_FOLDER = "archive";
     public static final String ERROR_FOLDER = "error";
 
-    public QueueProcessor(CassandraConnectorContext context, AtomicBoolean taskState) {
-        this(context, taskState, new KafkaRecordEmitter(
-                context.getCassandraConnectorConfig().getKafkaConfigs(),
+    public QueueProcessor(CassandraConnectorContext context) {
+        this(context, new KafkaRecordEmitter(
                 context.getCassandraConnectorConfig().kafkaTopicPrefix(),
+                context.getCassandraConnectorConfig().getKafkaConfigs(),
                 context.getOffsetWriter(),
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
                 context.getCassandraConnectorConfig().maxOffsetFlushSize()
@@ -41,25 +40,18 @@ public class QueueProcessor extends AbstractProcessor {
     }
 
     @VisibleForTesting
-    QueueProcessor(CassandraConnectorContext context, AtomicBoolean taskState, KafkaRecordEmitter emitter) {
-        super(NAME, taskState);
+    QueueProcessor(CassandraConnectorContext context, KafkaRecordEmitter emitter) {
+        super(NAME, 0);
         this.blockingEventQueue = context.getQueue();
         this.kafkaRecordEmitter = emitter;
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
     }
 
     @Override
-    public void doStart() throws InterruptedException {
-        while (isTaskRunning()) {
-            processEvents();
-        }
-    }
-
-    @Override
-    public void doStop() throws InterruptedException {
-        // drain the queue
-        while (!blockingEventQueue.isEmpty()) {
-            processEvents();
+    public void process() throws InterruptedException {
+        List<Event> events = blockingEventQueue.poll();
+        for (Event event : events) {
+            processEvent(event);
         }
     }
 
@@ -88,13 +80,6 @@ public class QueueProcessor extends AbstractProcessor {
     @Override
     public void destroy() {
         kafkaRecordEmitter.close();
-    }
-
-    void processEvents() throws InterruptedException {
-        List<Event> events = blockingEventQueue.poll();
-        for (Event event : events) {
-            processEvent(event);
-        }
     }
 
     private void processEvent(Event event) {

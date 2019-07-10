@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 /**
  * The schema processor is responsible for periodically
  * refreshing the table schemas in Cassandra. Cassandra
@@ -17,36 +14,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SchemaProcessor extends AbstractProcessor {
 
     private static final String NAME = "Schema Processor";
-    private static final int SLEEP_MS = 100;
-    private final Duration schemaRefreshInterval;
     private final SchemaHolder schemaHolder;
 
-    public SchemaProcessor(CassandraConnectorContext context, AtomicBoolean taskState) {
-        super(NAME, taskState);
-        schemaRefreshInterval = context.getCassandraConnectorConfig().schemaPollIntervalMs();
+    public SchemaProcessor(CassandraConnectorContext context) {
+        super(NAME, context.getCassandraConnectorConfig().schemaPollIntervalMs().toMillis());
         schemaHolder = context.getSchemaHolder();
     }
 
     @Override
-    public void doStart() throws InterruptedException {
-        long then = System.currentTimeMillis();
-        while (isTaskRunning()) {
-            // Add a bit of time buffer so it isn't too busy looping
-            Thread.sleep(SLEEP_MS);
-            long now = System.currentTimeMillis();
-            if (now - then >= schemaRefreshInterval.toMillis()) {
-                refreshSchemas();
-                then = now;
-            }
-        }
-    }
-
-    @Override
-    public void doStop() {
-        // do nothing
-    }
-
-    void refreshSchemas() {
+    public void process() {
         schemaHolder.refreshSchemas();
     }
 }

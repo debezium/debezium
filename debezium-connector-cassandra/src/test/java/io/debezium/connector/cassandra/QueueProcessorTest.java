@@ -12,7 +12,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -25,20 +24,17 @@ import static org.mockito.Mockito.verify;
 public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
     private CassandraConnectorContext context;
     private QueueProcessor queueProcessor;
-    private AtomicBoolean globalTaskState;
     private KafkaRecordEmitter emitter;
 
     @Before
     public void setUp() throws Exception {
         context = generateTaskContext();
-        globalTaskState = new AtomicBoolean(true);
         emitter = mock(KafkaRecordEmitter.class);
-        queueProcessor = new QueueProcessor(context, globalTaskState, emitter);
+        queueProcessor = new QueueProcessor(context, emitter);
     }
 
     @After
     public void tearDown() {
-        globalTaskState.set(false);
         context.cleanUp();
     }
 
@@ -55,7 +51,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         }
 
         assertEquals(recordSize, queue.size());
-        queueProcessor.processEvents();
+        queueProcessor.process();
         verify(emitter, times(recordSize)).emit(any());
         assertTrue(queue.isEmpty());
     }
@@ -73,7 +69,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         }
 
         assertEquals(recordSize, queue.size());
-        queueProcessor.processEvents();
+        queueProcessor.process();
         verify(emitter, times(recordSize)).emit(any());
         assertTrue(queue.isEmpty());
     }
@@ -87,7 +83,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         queue.enqueue(new EOFEvent(commitLogFile, true));
 
         assertEquals(1, queue.size());
-        queueProcessor.processEvents();
+        queueProcessor.process();
         verify(emitter, times(0)).emit(any());
         assertTrue(queue.isEmpty());
     }

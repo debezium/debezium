@@ -34,7 +34,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private long timeOfLastFlush;
     private long emitCount = 0;
 
-    public KafkaRecordEmitter(Properties kafkaProperties, String kafkaTopicPrefix, OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize) {
+    public KafkaRecordEmitter(String kafkaTopicPrefix, Properties kafkaProperties, OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize) {
         this.producer = new KafkaProducer<>(kafkaProperties);
         this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix);
         this.offsetWriter = offsetWriter;

@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The {@link CommitLogPostProcessor} is used to post-process commit logs in the COMMIT_LOG_RELOCATION_DIR
@@ -29,37 +28,19 @@ public class CommitLogPostProcessor extends AbstractProcessor {
     private final String commitLogRelocationDir;
     private final CommitLogTransfer commitLogTransfer;
 
-    public CommitLogPostProcessor(CassandraConnectorContext context, AtomicBoolean taskState) {
-        super(NAME, taskState);
+    public CommitLogPostProcessor(CassandraConnectorContext context) {
+        super(NAME, SLEEP_MS);
         this.commitLogRelocationDir = context.getCassandraConnectorConfig().commitLogRelocationDir();
         this.executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
         this.commitLogTransfer = context.getCassandraConnectorConfig().getCommitLogTransfer();
     }
 
     @Override
-    public void doStart() throws InterruptedException {
-        while (isTaskRunning()) {
-            postProcess();
-            Thread.sleep(SLEEP_MS);
-        }
-    }
-
-    @Override
-    public void doStop() {
-        shutDown(true);
-    }
-
-    @Override
-    public void destroy() throws Exception {
-        commitLogTransfer.destroy();
-
-    }
-
-    void postProcess() {
+    public void process() {
         File[] commitLogs = CommitLogUtil.getCommitLogs(Paths.get(commitLogRelocationDir, QueueProcessor.ARCHIVE_FOLDER).toFile());
         Arrays.sort(commitLogs, CommitLogUtil::compareCommitLogs);
         for (File commitLog : commitLogs) {
-            if (isTaskRunning()) {
+            if (isRunning()) {
                 executor.submit(() -> commitLogTransfer.onSuccessTransfer(commitLog));
             }
         }
@@ -67,10 +48,17 @@ public class CommitLogPostProcessor extends AbstractProcessor {
         File[] errCommitLogs = CommitLogUtil.getCommitLogs(Paths.get(commitLogRelocationDir, QueueProcessor.ERROR_FOLDER).toFile());
         Arrays.sort(errCommitLogs, CommitLogUtil::compareCommitLogs);
         for (File errCmmitLog : errCommitLogs) {
-            if (isTaskRunning()) {
+            if (isRunning()) {
                 executor.submit(() -> commitLogTransfer.onErrorTransfer(errCmmitLog));
             }
         }
+    }
+
+    @Override
+    public void destroy() throws Exception {
+        shutDown(true);
+        commitLogTransfer.destroy();
+
     }
 
     void shutDown(boolean await) {

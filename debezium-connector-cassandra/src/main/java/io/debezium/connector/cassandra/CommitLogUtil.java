@@ -23,7 +23,6 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 public final class CommitLogUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogUtil.class);
 
-    @SuppressWarnings("squid:S4784")
     private static final Pattern FILENAME_REGEX_PATTERN = Pattern.compile("CommitLog-\\d+-(\\d+).log");
 
     private CommitLogUtil() { }

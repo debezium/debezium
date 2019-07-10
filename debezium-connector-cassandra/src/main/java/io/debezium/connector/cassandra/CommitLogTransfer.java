@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import java.io.File;
+import java.util.Properties;
 
 /**
  * Interface used to transfer commit logs
@@ -15,13 +16,14 @@ public interface CommitLogTransfer {
     /**
      * Initialize resources required by the commit log transfer
      */
-    default void init(CassandraConnectorConfig config) throws Exception { }
+    default void init(Properties commitLogTransferConfigs) throws Exception { }
 
     /**
      * Destroy resources used by the commit log transfer
      */
 
     default void destroy() throws Exception { }
+
     /**
      * Transfer a commit log that has been successfully processed.
      */

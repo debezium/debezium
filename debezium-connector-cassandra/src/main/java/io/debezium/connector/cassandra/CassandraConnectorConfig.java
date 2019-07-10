@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import com.datastax.driver.core.ConsistencyLevel;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -49,15 +50,21 @@ public class CassandraConnectorConfig {
     }
 
     /**
-     * Unique name for the Cassandra connector task.
+     * Logical name for the Cassandra connector. This name should uniquely identify the connector from
+     * those that reside in other Cassandra nodes.
      */
-    public static final String NAME = "name";
+    public static final String CONNECTOR_NAME = "connector.name";
+
+    /**
+     * Logical name for the Cassandra cluster. This name should be identical across all Cassandra connectors
+     * in a Cassandra cluster
+     */
+    public static final String KAFKA_TOPIC_PREFIX ="kafka.topic.prefix";
 
     /**
      * The prefix prepended to all Kafka producer configurations, including schema registry
      */
     public static final String KAFKA_PRODUCER_CONFIG_PREFIX = "kafka.producer.";
-    private static final String[] EMPTY_STRING_ARRAY = {};
 
     /**
      * Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the cassandra connector agent.
@@ -66,6 +73,12 @@ public class CassandraConnectorConfig {
      */
     public static final String SNAPSHOT_MODE = "snapshot.mode";
     public static final String DEFAULT_SNAPSHOT_MODE = "INITIAL";
+
+    /**
+     * Specify the {@link ConsistencyLevel} used for the snapshot query.
+     */
+    public static final String SNAPSHOT_CONSISTENCY = "snapshot.consistency";
+    public static final String DEFAULT_SNAPSHOT_CONSISTENCY = "QUORUM";
 
     /**
      * The port used by the HTTP server for ping, health check, and build info
@@ -98,7 +111,6 @@ public class CassandraConnectorConfig {
     /**
      * The password used when connecting to Cassandra hosts.
      */
-    @SuppressWarnings("squid:S2068")
     public static final String CASSANDRA_PASSWORD = "cassandra.password";
 
     /**
@@ -111,12 +123,6 @@ public class CassandraConnectorConfig {
      * The SSL config file path required for storage node.
      */
     public static final String CASSANDRA_SSL_CONFIG_PATH = "cassandra.ssl.config.path";
-
-    /**
-     * The Kafka topic prefix of the event such that the topic will be
-     * <cdc_kafka_topic_prefix>.<keyspace_name>.<table_name>
-     */
-    public static final String KAFKA_TOPIC_PREFIX = "kafka.topic.prefix";
 
     /**
      * The local directory which commit logs get relocated to once processed.
@@ -132,25 +138,16 @@ public class CassandraConnectorConfig {
 
     /**
      * The fully qualified {@link CommitLogTransfer} class used to transfer commit logs.
-     * Built-in transfers:
-     *      - {@link BlackHoleCommitLogTransfer}
-     *      - {@link GCSCommitLogTransfer}
+     * The default option will delete all commit log files after processing (successful or otherwise).
+     * You can extend a custom implementation.
      */
     public static final String COMMIT_LOG_TRANSFER_CLASS = "commit.log.transfer.class";
     public static final String DEFAULT_COMMIT_LOG_TRANSFER_CLASS = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
 
     /**
-     * The remote base directory to transfer commit log to. Required to be specified if {@link GCSCommitLogTransfer}
-     * is used as COMMIT_LOG_TRANSFER_CLASS. For example: "gcs://bucket-name/prefix-name".
+     * The prefix for all {@link CommitLogTransfer} configurations.
      */
-    public static final String REMOTE_COMMIT_LOG_RELOCATION_DIR = "remote.commit.log.relocation.dir";
-
-    /**
-     * The path of the storage key file used for setting up credential to access remote storage service.
-     * If {@link GCSCommitLogTransfer} is used and this config is not provided, then Application
-     * Default Credential would be used.
-     */
-    public static final String STORAGE_CREDENTIAL_KEY_FILE = "storage.credential.key.file";
+    public static final String COMMIT_LOG_TRANSFER_CONFIG_PREFIX = "commit.log.transfer.";
 
     /**
      * The directory to store offset tracking files.
@@ -240,6 +237,14 @@ public class CassandraConnectorConfig {
     public static final String LATEST_COMMIT_LOG_ONLY = "latest.commit.log.only";
     public static final boolean DEFAULT_LATEST_COMMIT_LOG_ONLY = false;
 
+    public String connectorName() {
+        return (String) configs.get(CONNECTOR_NAME);
+    }
+
+    public String kafkaTopicPrefix() {
+        return (String) configs.get(KAFKA_TOPIC_PREFIX);
+    }
+
     public Properties getKafkaConfigs() {
         Properties props = new Properties();
 
@@ -258,6 +263,14 @@ public class CassandraConnectorConfig {
         return props;
     }
 
+    public Properties commitLogTransferConfigs() {
+        Properties props = new Properties();
+        configs.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(COMMIT_LOG_TRANSFER_CONFIG_PREFIX))
+                .forEach(entry -> props.put(entry.getKey(), entry.getValue()));
+        return props;
+    }
+
     public boolean latestCommitLogOnly() {
         return (boolean) configs.getOrDefault(LATEST_COMMIT_LOG_ONLY, DEFAULT_LATEST_COMMIT_LOG_ONLY);
     }
@@ -268,18 +281,15 @@ public class CassandraConnectorConfig {
         this.configs = configs;
     }
 
-    public String name() {
-        return (String) configs.get(NAME);
-    }
-
     public SnapshotMode snapshotMode() {
         String mode = (String) configs.getOrDefault(SNAPSHOT_MODE, DEFAULT_SNAPSHOT_MODE);
         Optional<SnapshotMode> snapshotModeOpt = SnapshotMode.fromText(mode);
         return snapshotModeOpt.orElseThrow(() -> new CassandraConnectorConfigException(mode + " is not a valid SnapshotMode"));
     }
 
-    public String kafkaTopicPrefix() {
-        return (String) configs.get(KAFKA_TOPIC_PREFIX);
+    public ConsistencyLevel snapshotConsistencyLevel() {
+        String cl = (String) configs.getOrDefault(SNAPSHOT_CONSISTENCY, DEFAULT_SNAPSHOT_CONSISTENCY);
+        return ConsistencyLevel.valueOf(cl);
     }
 
     public int httpPort() {
@@ -327,19 +337,11 @@ public class CassandraConnectorConfig {
         try {
             String clazz = (String) configs.getOrDefault(COMMIT_LOG_TRANSFER_CLASS, DEFAULT_COMMIT_LOG_TRANSFER_CLASS);
             CommitLogTransfer transfer = (CommitLogTransfer) Class.forName(clazz).newInstance();
-            transfer.init(this);
+            transfer.init(commitLogTransferConfigs());
             return transfer;
         } catch (Exception e) {
             throw new CassandraConnectorConfigException(e);
         }
-    }
-
-    public String remoteCommitLogRelocationDir() {
-        return (String) configs.get(REMOTE_COMMIT_LOG_RELOCATION_DIR);
-    }
-
-    public String storageCredentialKeyFile() {
-        return (String) configs.get(STORAGE_CREDENTIAL_KEY_FILE);
     }
 
     public String offsetBackingStoreDir() {
@@ -386,7 +388,7 @@ public class CassandraConnectorConfig {
     public String[] fieldBlacklist() {
         String hosts = (String) configs.get(FIELD_BLACKLIST);
         if (hosts == null) {
-            return EMPTY_STRING_ARRAY;
+            return new String[0];
         }
         return hosts.split(",");
     }

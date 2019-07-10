@@ -13,7 +13,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.marshal.AbstractType;
 
 import java.util.List;
@@ -26,13 +25,12 @@ import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
  * to a GenericRecord representing key/value of the change event.
  */
 public abstract class Record implements Event {
-    static final String NAMESPACE = "io.debezium.connector.cassandra.data";
+    static final String NAMESPACE = "io.debezium.connector.cassandra";
     static final String AFTER = "after";
     static final String OPERATION = "op";
     static final String SOURCE = "source";
     static final String TIMESTAMP = "ts_ms";
 
-    @SuppressWarnings("squid:S1845")
     private final SourceInfo source;
     private final RowData rowData;
     private final Operation op;
@@ -98,11 +96,11 @@ public abstract class Record implements Event {
                 .build();
     }
 
-    public static Schema keySchema(TableMetadata tm) {
+    public static Schema keySchema(String connectorName, TableMetadata tm) {
         if (tm == null) {
             return null;
         }
-        SchemaBuilder.FieldAssembler assembler = SchemaBuilder.builder().record(getKeyName(tm)).namespace(NAMESPACE).fields();
+        SchemaBuilder.FieldAssembler assembler = SchemaBuilder.builder().record(getKeyName(connectorName, tm)).namespace(NAMESPACE).fields();
         for (ColumnMetadata cm : tm.getPrimaryKey()) {
             AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
             Schema colSchema = CassandraTypeToAvroSchemaMapper.getSchema(convertedType, false);
@@ -113,11 +111,11 @@ public abstract class Record implements Event {
         return (Schema) assembler.endRecord();
     }
 
-    public static Schema valueSchema(TableMetadata tm) {
+    public static Schema valueSchema(String connectorName, TableMetadata tm) {
         if (tm == null) {
             return null;
         }
-        return SchemaBuilder.builder().record(getValueName(tm)).namespace(NAMESPACE).fields()
+        return SchemaBuilder.builder().record(getValueName(connectorName, tm)).namespace(NAMESPACE).fields()
                 .name(TIMESTAMP).type().longType().noDefault()
                 .name(OPERATION).type().stringType().noDefault()
                 .name(SOURCE).type(SourceInfo.SOURCE_SCHEMA).noDefault()
@@ -154,12 +152,12 @@ public abstract class Record implements Event {
                 && op == record.op;
     }
 
-    public static String getKeyName(TableMetadata tm) {
-        return DatabaseDescriptor.getClusterName() + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Key";
+    public static String getKeyName(String connectorName, TableMetadata tm) {
+        return connectorName + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Key";
     }
 
-    public static String getValueName(TableMetadata tm) {
-        return DatabaseDescriptor.getClusterName() + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Value";
+    public static String getValueName(String connectorName, TableMetadata tm) {
+        return connectorName + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Value";
     }
 
 

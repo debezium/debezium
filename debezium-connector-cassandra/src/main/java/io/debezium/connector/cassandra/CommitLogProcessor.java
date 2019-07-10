@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 
@@ -39,9 +37,10 @@ public class CommitLogProcessor extends AbstractProcessor {
     private final BlockingEventQueue<Event> queue;
     private final boolean latestOnly;
     private final CommitLogProcessorMetrics metrics = new CommitLogProcessorMetrics();
+    private boolean initial = true;
 
-    public CommitLogProcessor(CassandraConnectorContext context, AtomicBoolean taskState) throws IOException {
-        super(NAME, taskState);
+    public CommitLogProcessor(CassandraConnectorContext context) throws IOException {
+        super(NAME, 0);
         commitLogReader = new org.apache.cassandra.db.commitlog.CommitLogReader();
         queue = context.getQueue();
         commitLogReadHandler = new CommitLogReadHandlerImpl(
@@ -54,7 +53,9 @@ public class CommitLogProcessor extends AbstractProcessor {
         watcher = new AbstractDirectoryWatcher(cdcDir.toPath(), context.getCassandraConnectorConfig().cdcDirPollIntervalMs(), Collections.singleton(ENTRY_CREATE)) {
             @Override
             void handleEvent(WatchEvent event, Path path) throws IOException {
-                processCommitLog(path.toFile());
+                if (isRunning()) {
+                    processCommitLog(path.toFile());
+                }
             }
         };
         latestOnly = context.getCassandraConnectorConfig().latestCommitLogOnly();
@@ -71,43 +72,25 @@ public class CommitLogProcessor extends AbstractProcessor {
     }
 
     @Override
-    public void doStart() throws InterruptedException {
-        try {
-            if (latestOnly) {
-                File lastModified = getLastModifiedCommitLog();
-                if (lastModified != null) {
-                    processCommitLog(lastModified);
-                } else {
-                    LOGGER.info("No commit logs found in {}", DatabaseDescriptor.getCommitLogLocation());
+    public void process() throws IOException, InterruptedException {
+        if (latestOnly) {
+            processLastModifiedCommitLog();
+            throw new InterruptedException();
+        }
+
+        if (initial) {
+            LOGGER.info("Reading existing commit logs in {}", cdcDir);
+            File[] commitLogFiles = CommitLogUtil.getCommitLogs(cdcDir);
+            Arrays.sort(commitLogFiles, CommitLogUtil::compareCommitLogs);
+            for (File commitLogFile : commitLogFiles) {
+                if (isRunning()) {
+                    processCommitLog(commitLogFile);
                 }
-            } else {
-                processExistingCommitLogs();
-                processWatchEventCommitLogs();
             }
-        } catch (IOException e) {
-            throw new CassandraConnectorTaskException(e);
+            initial = false;
         }
-    }
 
-    @Override
-    public void doStop() { }
-
-    private void processExistingCommitLogs() throws IOException {
-        LOGGER.info("Reading existing commit logs in {}", cdcDir);
-        File[] commitLogFiles = CommitLogUtil.getCommitLogs(cdcDir);
-        Arrays.sort(commitLogFiles, CommitLogUtil::compareCommitLogs);
-
-        for (File commitLogFile : commitLogFiles) {
-            if (isTaskRunning()) {
-                processCommitLog(commitLogFile);
-            }
-        }
-    }
-
-    private void processWatchEventCommitLogs() throws IOException, InterruptedException {
-        while (isTaskRunning()) {
-            watcher.poll();
-        }
+        watcher.poll();
     }
 
     void processCommitLog(File file) throws IOException {
@@ -129,19 +112,24 @@ public class CommitLogProcessor extends AbstractProcessor {
         }
     }
 
-    File getLastModifiedCommitLog() {
+    void processLastModifiedCommitLog() throws IOException {
         LOGGER.warn("CommitLogProcessor will read the last modified commit log from the COMMIT LOG "
                 + "DIRECTORY based on modified timestamp, NOT FROM THE CDC_RAW DIRECTORY. This method "
                 + "should not be used in PRODUCTION!");
         File commitLogDir = new File(DatabaseDescriptor.getCommitLogLocation());
         File[] files = CommitLogUtil.getCommitLogs(commitLogDir);
 
-        File commitLogFile = null;
+        File lastModified = null;
         for (File file : files) {
-            if (commitLogFile == null || commitLogFile.lastModified() < file.lastModified()) {
-                commitLogFile = file;
+            if (lastModified == null || lastModified.lastModified() < file.lastModified()) {
+                lastModified = file;
             }
         }
-        return commitLogFile;
+
+        if (lastModified != null) {
+            processCommitLog(lastModified);
+        } else {
+            LOGGER.info("No commit logs found in {}", DatabaseDescriptor.getCommitLogLocation());
+        }
     }
 }

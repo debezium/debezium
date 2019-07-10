@@ -26,8 +26,8 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     @Test
     public void testSnapshotTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
-        AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        SnapshotProcessor snapshotProcessor = new SnapshotProcessor(context, globalTaskState);
+        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
+        when(snapshotProcessor.isRunning()).thenReturn(true);
 
         int tableSize = 5;
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = true;");
@@ -39,7 +39,7 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
         BlockingEventQueue<Event> queue = context.getQueue();
         assertTrue(queue.isEmpty());
-        snapshotProcessor.snapshot();
+        snapshotProcessor.process();
         assertEquals(tableSize, queue.size());
         for (Event event : queue.poll()) {
             ChangeRecord record = (ChangeRecord) event;
@@ -53,15 +53,14 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
         deleteTestKeyspaceTables();
         deleteTestOffsets(context);
-        globalTaskState.set(false);
         context.cleanUp();
     }
 
     @Test
     public void testSnapshotSkipsNonCdcEnabledTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
-        AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        SnapshotProcessor snapshotProcessor = new SnapshotProcessor(context, globalTaskState);
+        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
+        when(snapshotProcessor.isRunning()).thenReturn(true);
 
         int tableSize = 5;
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("non_cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = false;");
@@ -72,12 +71,11 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
 
         BlockingEventQueue<Event> queue = context.getQueue();
         assertTrue(queue.isEmpty());
-        snapshotProcessor.snapshot();
+        snapshotProcessor.process();
         assertTrue(queue.isEmpty());
 
         deleteTestKeyspaceTables();
         deleteTestOffsets(context);
-        globalTaskState.set(false);
         context.cleanUp();
     }
 
@@ -85,21 +83,22 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     public void testSnapshotEmptyTable() throws Exception {
         CassandraConnectorContext context = generateTaskContext();
         AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        SnapshotProcessor snapshotProcessor = new SnapshotProcessor(context, globalTaskState);
+        SnapshotProcessor snapshotProcessor = Mockito.spy(new SnapshotProcessor(context));
+        when(snapshotProcessor.isRunning()).thenReturn(true);
 
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = true;");
         context.getSchemaHolder().refreshSchemas();
 
         BlockingEventQueue<Event> queue = context.getQueue();
         assertTrue(queue.isEmpty());
-        snapshotProcessor.snapshot(); // records empty table to snapshot.offset, so it won't be snapshotted again
+        snapshotProcessor.process(); // records empty table to snapshot.offset, so it won't be snapshotted again
         assertTrue(queue.isEmpty());
 
         int tableSize = 5;
         for (int i = 0; i < tableSize; i++) {
             context.getCassandraClient().execute("INSERT INTO " + keyspaceTable("cdc_table") + "(a, b) VALUES (?, ?)", i, String.valueOf(i));
         }
-        snapshotProcessor.snapshot();
+        snapshotProcessor.process();
         assertTrue(queue.isEmpty()); // newly inserted records should be processed by commit log processor instead
 
         deleteTestKeyspaceTables();
@@ -114,16 +113,14 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE, "always");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, 0);
         CassandraConnectorContext context = generateTaskContext(configs);
-        AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        SnapshotProcessor snapshotProcessor = new SnapshotProcessor(context, globalTaskState);
-        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(snapshotProcessor);
+        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
         doNothing().when(snapshotProcessorSpy).snapshot();
-        when(snapshotProcessorSpy.isTaskRunning()).thenReturn(true).thenReturn(true).thenReturn(false);
 
-        snapshotProcessorSpy.doStart();
-        verify(snapshotProcessorSpy, times(2)).snapshot();
+        for (int i = 0; i < 5; i++) {
+            snapshotProcessorSpy.process();
+        }
+        verify(snapshotProcessorSpy, times(5)).snapshot();
 
-        globalTaskState.set(false);
         context.cleanUp();
     }
 
@@ -133,16 +130,14 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE, "initial");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, 0);
         CassandraConnectorContext context = generateTaskContext(configs);
-        AtomicBoolean globalTaskState = new AtomicBoolean(true);
-
-        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context, globalTaskState));
+        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
         doNothing().when(snapshotProcessorSpy).snapshot();
-        when(snapshotProcessorSpy.isTaskRunning()).thenReturn(true).thenReturn(true).thenReturn(false);
 
-        snapshotProcessorSpy.doStart();
+        for (int i = 0; i < 5; i++) {
+            snapshotProcessorSpy.process();
+        }
         verify(snapshotProcessorSpy, times(1)).snapshot();
 
-        globalTaskState.set(false);
         context.cleanUp();
     }
 
@@ -152,16 +147,14 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
         configs.put(CassandraConnectorConfig.SNAPSHOT_MODE, "never");
         configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, 0);
         CassandraConnectorContext context = generateTaskContext(configs);
-        AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        SnapshotProcessor snapshotProcessor = new SnapshotProcessor(context, globalTaskState);
-        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(snapshotProcessor);
+        SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
         doNothing().when(snapshotProcessorSpy).snapshot();
-        when(snapshotProcessorSpy.isTaskRunning()).thenReturn(true).thenReturn(true).thenReturn(false);
 
-        snapshotProcessorSpy.doStart();
+        for (int i = 0; i < 5; i++) {
+            snapshotProcessorSpy.process();
+        }
         verify(snapshotProcessorSpy, never()).snapshot();
 
-        globalTaskState.set(false);
         context.cleanUp();
     }
 }

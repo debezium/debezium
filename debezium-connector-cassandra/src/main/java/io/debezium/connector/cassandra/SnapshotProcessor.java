@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -27,7 +28,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 
@@ -53,21 +53,21 @@ public class SnapshotProcessor extends AbstractProcessor {
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final RecordMaker recordMaker;
-    private final Duration pollInterval;
     private final CassandraConnectorConfig.SnapshotMode snapshotMode;
-
+    private final ConsistencyLevel consistencyLevel;
     private final Set<String> startedTableNames = new HashSet<>();
     private final SnapshotProcessorMetrics metrics = new SnapshotProcessorMetrics();
+    private boolean initial = true;
 
-    public SnapshotProcessor(CassandraConnectorContext context, AtomicBoolean taskState) {
-        super(NAME, taskState);
+    public SnapshotProcessor(CassandraConnectorContext context) {
+        super(NAME, context.getCassandraConnectorConfig().snapshotPollIntervalMs().toMillis());
         cassandraClient = context.getCassandraClient();
         queue = context.getQueue();
         offsetWriter = context.getOffsetWriter();
         schemaHolder = context.getSchemaHolder();
         recordMaker = new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(), new Filters(context.getCassandraConnectorConfig().fieldBlacklist()));
-        pollInterval = context.getCassandraConnectorConfig().snapshotPollIntervalMs();
         snapshotMode = context.getCassandraConnectorConfig().snapshotMode();
+        consistencyLevel = context.getCassandraConnectorConfig().snapshotConsistencyLevel();
     }
 
     @Override
@@ -81,20 +81,16 @@ public class SnapshotProcessor extends AbstractProcessor {
     }
 
     @Override
-    public void doStart() throws InterruptedException {
-        boolean initial = true;
-        while (isTaskRunning()) {
-            if (snapshotMode == CassandraConnectorConfig.SnapshotMode.ALWAYS
-             || (snapshotMode == CassandraConnectorConfig.SnapshotMode.INITIAL && initial)) {
-                snapshot();
-                initial = false;
-            }
-            Thread.sleep(pollInterval.toMillis());
+    public void process() {
+        if (snapshotMode ==CassandraConnectorConfig.SnapshotMode.ALWAYS) {
+            snapshot();
+        } else if (snapshotMode == CassandraConnectorConfig.SnapshotMode.INITIAL && initial) {
+            snapshot();
+            initial = false;
+        } else {
+            LOGGER.debug("Skipping snapshot [mode: {}]", snapshotMode);
         }
     }
-
-    @Override
-    public void doStop() { }
 
     /**
      * Fetch for all new tables that have not yet been snapshotted, and then iterate through the
@@ -110,11 +106,13 @@ public class SnapshotProcessor extends AbstractProcessor {
                 metrics.setTableCount(tables.size());
                 metrics.startSnapshot();
                 for (TableMetadata table : tables) {
-                    String tableName = tableName(table);
-                    LOGGER.info("Snapshotting table {}", tableName);
-                    startedTableNames.add(tableName);
-                    takeTableSnapshot(table);
-                    metrics.completeTable();
+                    if (isRunning()) {
+                        String tableName = tableName(table);
+                        LOGGER.info("Snapshotting table {}", tableName);
+                        startedTableNames.add(tableName);
+                        takeTableSnapshot(table);
+                        metrics.completeTable();
+                    }
                 }
                 metrics.stopSnapshot();
                 long endTime = System.currentTimeMillis();
@@ -144,7 +142,8 @@ public class SnapshotProcessor extends AbstractProcessor {
      */
     private void takeTableSnapshot(TableMetadata tableMetadata) throws IOException {
         BuiltStatement statement = generateSnapshotStatement(tableMetadata);
-        LOGGER.info("Executing snapshot query '{}'", statement.getQueryString());
+        statement.setConsistencyLevel(consistencyLevel);
+        LOGGER.info("Executing snapshot query '{}' with consistency level {}", statement.getQueryString(), statement.getConsistencyLevel());
         ResultSet resultSet = cassandraClient.execute(statement);
         processResultSet(tableMetadata, resultSet);
     }
@@ -198,7 +197,7 @@ public class SnapshotProcessor extends AbstractProcessor {
         }
 
         while (rowIter.hasNext()) {
-            if (isTaskRunning()) {
+            if (isRunning()) {
                 Row row = rowIter.next();
                 WriteTimeHolder writeTimeHolder = new WriteTimeHolder();
                 RowData after = extractRowData(row, tableMetadata.getColumns(), partitionKeyNames, clusteringKeyNames, writeTimeHolder);

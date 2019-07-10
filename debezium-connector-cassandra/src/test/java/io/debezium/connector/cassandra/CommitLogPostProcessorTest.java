@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -37,20 +36,19 @@ public class CommitLogPostProcessorTest extends EmbeddedCassandraConnectorTestBa
         CassandraConnectorConfig config = spy(new CassandraConnectorConfig(generateDefaultConfigMap()));
         when(config.getCommitLogTransfer()).thenReturn(myTransfer);
         CassandraConnectorContext context = new CassandraConnectorContext(config);
-        AtomicBoolean globalTaskState = new AtomicBoolean(true);
-        CommitLogPostProcessor postProcessor = new CommitLogPostProcessor(context, globalTaskState);
+        CommitLogPostProcessor postProcessor = spy(new CommitLogPostProcessor(context));
+        when(postProcessor.isRunning()).thenReturn(true);
         File dir = new File(context.getCassandraConnectorConfig().commitLogRelocationDir());
         populateFakeCommitLogsForDirectory(expectedArchivedFile, new File(dir, QueueProcessor.ARCHIVE_FOLDER));
         populateFakeCommitLogsForDirectory(expectedErrorFile, new File(dir, QueueProcessor.ERROR_FOLDER));
 
-        postProcessor.postProcess();
+        postProcessor.process();
         postProcessor.shutDown(true);
 
         assertEquals(expectedArchivedFile, archivedFileCount.get());
         assertEquals(expectedErrorFile, errorFileCount.get());
 
         clearCommitLogFromDirectory(dir, true);
-        globalTaskState.set(false);
         context.cleanUp();
     }
 }

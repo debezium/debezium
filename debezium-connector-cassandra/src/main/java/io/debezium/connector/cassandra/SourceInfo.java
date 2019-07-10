@@ -21,24 +21,30 @@ import static io.debezium.connector.cassandra.Record.SOURCE;
  * Metadata about the source of the change event
  */
 public class SourceInfo implements AvroRecord {
+    public static final String DEBEZIUM_VERSION_KEY = "version";
+    public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
     public static final String CLUSTER_KEY = "cluster";
     public static final String COMMITLOG_FILENAME_KEY = "file";
     public static final String COMMITLOG_POSITION_KEY = "pos";
     public static final String KEYSPACE_NAME_KEY = "keyspace";
     public static final String TABLE_NAME_KEY = "table";
-    public static final String COMMITLOG_SNAPSHOT_KEY = "snapshot";
-    public static final String TIMESTAMP_MICRO_KEY = "ts_micro";
+    public static final String SNAPSHOT_KEY = "snapshot";
+    public static final String TIMESTAMP_KEY = "ts_micro";
 
     public static final Schema SOURCE_SCHEMA = SchemaBuilder.builder().record(SOURCE).fields()
-            .optionalString(CLUSTER_KEY)
-            .optionalString(COMMITLOG_FILENAME_KEY)
-            .optionalInt(COMMITLOG_POSITION_KEY)
-            .optionalBoolean(COMMITLOG_SNAPSHOT_KEY)
-            .optionalString(KEYSPACE_NAME_KEY)
-            .optionalString(TABLE_NAME_KEY)
-            .name(TIMESTAMP_MICRO_KEY).type(CassandraTypeToAvroSchemaMapper.nullable(CassandraTypeToAvroSchemaMapper.TIMESTAMP_MICRO_TYPE)).withDefault(null)
+            .requiredString(DEBEZIUM_VERSION_KEY)
+            .requiredString(DEBEZIUM_CONNECTOR_KEY)
+            .requiredString(CLUSTER_KEY)
+            .requiredString(COMMITLOG_FILENAME_KEY)
+            .requiredInt(COMMITLOG_POSITION_KEY)
+            .requiredBoolean(SNAPSHOT_KEY)
+            .requiredString(KEYSPACE_NAME_KEY)
+            .requiredString(TABLE_NAME_KEY)
+            .name(TIMESTAMP_KEY).type(CassandraTypeToAvroSchemaMapper.TIMESTAMP_MICRO_TYPE).noDefault()
             .endRecord();
 
+    public final String version = Module.version();
+    public final String connector = Module.name();
     public final String cluster;
     public final OffsetPosition offsetPosition;
     public final KeyspaceTable keyspaceTable;
@@ -56,13 +62,15 @@ public class SourceInfo implements AvroRecord {
     @Override
     public GenericRecord record(Schema schema) {
         return new GenericRecordBuilder(schema)
+                .set(DEBEZIUM_VERSION_KEY, version)
+                .set(DEBEZIUM_CONNECTOR_KEY, connector)
                 .set(CLUSTER_KEY, cluster)
                 .set(COMMITLOG_FILENAME_KEY, offsetPosition.fileName)
                 .set(COMMITLOG_POSITION_KEY, offsetPosition.filePosition)
-                .set(COMMITLOG_SNAPSHOT_KEY, snapshot)
+                .set(SNAPSHOT_KEY, snapshot)
                 .set(KEYSPACE_NAME_KEY, keyspaceTable.keyspace)
                 .set(TABLE_NAME_KEY, keyspaceTable.table)
-                .set(TIMESTAMP_MICRO_KEY, tsMicro)
+                .set(TIMESTAMP_KEY, tsMicro)
                 .build();
     }
 
@@ -75,9 +83,11 @@ public class SourceInfo implements AvroRecord {
             return false;
         }
         SourceInfo that = (SourceInfo) o;
-        return cluster.equals(that.cluster)
-                && snapshot == that.snapshot
+        return version.equals(that.version)
+                && connector.equals(that.connector)
+                && cluster.equals(that.cluster)
                 && offsetPosition == that.offsetPosition
+                && snapshot == that.snapshot
                 && keyspaceTable == that.keyspaceTable
                 && tsMicro == that.tsMicro;
     }
@@ -90,13 +100,15 @@ public class SourceInfo implements AvroRecord {
     @Override
     public String toString() {
         Map<String, Object> map = new HashMap<>();
+        map.put(DEBEZIUM_VERSION_KEY, version);
+        map.put(DEBEZIUM_CONNECTOR_KEY, connector);
         map.put(CLUSTER_KEY, cluster);
-        map.put(COMMITLOG_SNAPSHOT_KEY, snapshot);
+        map.put(SNAPSHOT_KEY, snapshot);
         map.put(COMMITLOG_FILENAME_KEY, offsetPosition.fileName);
         map.put(COMMITLOG_POSITION_KEY, offsetPosition.filePosition);
         map.put(KEYSPACE_NAME_KEY, keyspaceTable.keyspace);
         map.put(TABLE_NAME_KEY, keyspaceTable.table);
-        map.put(TIMESTAMP_MICRO_KEY, tsMicro);
+        map.put(TIMESTAMP_KEY, tsMicro);
         return map.toString();
     }
 }

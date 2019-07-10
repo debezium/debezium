@@ -34,7 +34,6 @@ public class SslContextFactory {
      * @param sslConfigPath the SSL config file path required for the storage node
      * @return SslContext
      */
-    @SuppressWarnings("squid:S4797")
     public static SslContext createSslContext(String sslConfigPath) throws GeneralSecurityException, IOException {
         if (sslConfigPath == null) {
             throw new CassandraConnectorConfigException("Please specify SSL config path in cdc.yml");

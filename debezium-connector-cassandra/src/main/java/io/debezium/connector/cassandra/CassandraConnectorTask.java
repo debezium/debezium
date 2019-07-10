@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A task that reads Cassandra commit log in CDC directory and generate corresponding data
@@ -80,7 +79,7 @@ public class CassandraConnectorTask {
             httpServer.start();
 
             LOGGER.info("Starting JMX reporter ...");
-            initJmxReporter(taskContext.getCassandraConnectorConfig().name());
+            initJmxReporter(config.connectorName());
             jmxReporter.start();
 
             while (processorGroup.isRunning()) {
@@ -129,13 +128,13 @@ public class CassandraConnectorTask {
     }
 
     private void initProcessorGroup() throws IOException {
-        processorGroup = new ProcessorGroup("Cassandra Connector Processor Group");
-        processorGroup.addProcessor(new SchemaProcessor(taskContext, processorGroup.taskState));
-        processorGroup.addProcessor(new CommitLogProcessor(taskContext, processorGroup.taskState));
-        processorGroup.addProcessor(new SnapshotProcessor(taskContext, processorGroup.taskState));
-        processorGroup.addProcessor(new QueueProcessor(taskContext, processorGroup.taskState));
+        processorGroup = new ProcessorGroup("Cassandra Connector Task");
+        processorGroup.addProcessor(new SchemaProcessor(taskContext));
+        processorGroup.addProcessor(new CommitLogProcessor(taskContext));
+        processorGroup.addProcessor(new SnapshotProcessor(taskContext));
+        processorGroup.addProcessor(new QueueProcessor(taskContext));
         if (taskContext.getCassandraConnectorConfig().postProcessEnabled()) {
-            processorGroup.addProcessor(new CommitLogPostProcessor(taskContext, processorGroup.taskState));
+            processorGroup.addProcessor(new CommitLogPostProcessor(taskContext));
         }
     }
 
@@ -159,36 +158,30 @@ public class CassandraConnectorTask {
 
     /**
      * A processor group consist of one or more processors; each processor will be running on a separate thread.
-     * The processors are interdependent of one another and share the same 'taskState'. If one of the processors
-     * is stopped, that processor will update the 'taskState' to false. and this will result in all other processors
-     * in this processor group to be terminated eventually as each processor periodically checks this 'taskState'.
+     * The processors are interdependent of one another: if one of the processors is stopped, all other processors
+     * will be signaled to stop as well.
      */
     public static class ProcessorGroup {
         private final String name;
-        private final AtomicBoolean taskState;
         private final Set<AbstractProcessor> processors;
         private ExecutorService executorService;
 
         ProcessorGroup(String name) {
             this.name = name;
-            this.taskState = new AtomicBoolean(false);
             this.processors = new HashSet<>();
         }
 
         public boolean isRunning() {
-            return taskState.get();
+            for (AbstractProcessor processor : processors) {
+                if (!processor.isRunning()) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public String getName() {
             return name;
-        }
-
-        AtomicBoolean getTaskState() {
-            return taskState;
-        }
-
-        Set<AbstractProcessor> getProcessors() {
-            return processors;
         }
 
         void addProcessor(AbstractProcessor processor) {
@@ -196,37 +189,42 @@ public class CassandraConnectorTask {
         }
 
         void start() {
-            executorService = Executors.newFixedThreadPool(getProcessors().size());
+            executorService = Executors.newFixedThreadPool(processors.size());
             LOGGER.info("Starting processor group {}", getName());
-            for (AbstractProcessor processor : getProcessors()) {
-                executorService.submit(createRunnable(processor));
-            }
-        }
-
-        void terminate() throws InterruptedException {
-            LOGGER.info("Stopping processor group {}", getName());
-            executorService.shutdown();
-            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
-                executorService.shutdownNow();
-            }
-        }
-
-        private <T extends AbstractProcessor> Runnable createRunnable(T processor) {
-            return () -> {
-                try {
-                    processor.initialize();
-                    processor.start();
-                } catch (Exception e) {
-                    LOGGER.error("Terminating Cassandra connector task. Encountered exception while running {}: {}", processor.getName(), e.getStackTrace());
-                } finally {
+            for (AbstractProcessor processor : processors) {
+                Runnable runnable = () -> {
                     try {
-                        processor.stop();
-                        processor.destroy();
+                        processor.initialize();
+                        processor.start();
                     } catch (Exception e) {
-                        LOGGER.error("Encountered exception while stopping {}: {}", processor.getName(), e.getStackTrace());
+                        LOGGER.error("Encountered exception while running {}; stopping all processors in {}", processor.getName(), getName(), e);
+                        try {
+                            stopProcessors();
+                        } catch (Exception e2) {
+                            LOGGER.error("Encountered exceptions while stopping all processors in {}", getName(), e2);
+                        }
                     }
+                };
+                executorService.submit(runnable);
+            }
+        }
+
+        void terminate() throws Exception {
+            stopProcessors();
+            LOGGER.info("Terminating processor group {}", getName());
+            if (!executorService.isShutdown()) {
+                executorService.shutdown();
+                if (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
                 }
-            };
+            }
+        }
+
+        private void stopProcessors() throws Exception {
+            for (AbstractProcessor processor : processors) {
+                processor.stop();
+                processor.destroy();
+            }
         }
     }
 }

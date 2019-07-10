@@ -28,9 +28,11 @@ public class SchemaHolder {
     private final Map<KeyspaceTable, KeyValueSchema> tableToKVSchemaMap = new ConcurrentHashMap<>();
 
     private final CassandraClient cassandraClient;
+    private final String connectorName;
 
-    public SchemaHolder(CassandraClient cassandraClient) {
+    public SchemaHolder(CassandraClient cassandraClient, String connectorName) {
         this.cassandraClient = cassandraClient;
+        this.connectorName = connectorName;
         refreshSchemas();
     }
 
@@ -84,7 +86,7 @@ public class SchemaHolder {
         TableMetadata latest = cassandraClient.getCdcEnabledTableMetadata(keyspaceTable.keyspace, keyspaceTable.table);
         if (existing != latest) {
             if (existing == null) {
-                tableToKVSchemaMap.put(keyspaceTable, new KeyValueSchema(latest));
+                tableToKVSchemaMap.put(keyspaceTable, new KeyValueSchema(connectorName, latest));
                 LOGGER.debug("Updated schema for {}", keyspaceTable);
             }
             if (latest == null) {
@@ -113,7 +115,7 @@ public class SchemaHolder {
         latestTableMetadataMap.forEach((table, metadata) -> {
             TableMetadata existingTableMetadata = tableToKVSchemaMap.containsKey(table) ? tableToKVSchemaMap.get(table).tableMetadata() : null;
             if (existingTableMetadata != metadata) {
-                KeyValueSchema keyValueSchema = new KeyValueSchema(metadata);
+                KeyValueSchema keyValueSchema = new KeyValueSchema(connectorName, metadata);
                 tableToKVSchemaMap.put(table, keyValueSchema);
                 LOGGER.debug("Updated schema for {}", table);
             }
@@ -125,10 +127,10 @@ public class SchemaHolder {
         private final Schema keySchema;
         private final Schema valueSchema;
 
-        KeyValueSchema(TableMetadata tableMetadata) {
+        KeyValueSchema(String connectorName, TableMetadata tableMetadata) {
             this.tableMetadata = tableMetadata;
-            this.keySchema = Record.keySchema(tableMetadata);
-            this.valueSchema = Record.valueSchema(tableMetadata);
+            this.keySchema = Record.keySchema(connectorName, tableMetadata);
+            this.valueSchema = Record.valueSchema(connectorName, tableMetadata);
         }
 
         public TableMetadata tableMetadata() {
