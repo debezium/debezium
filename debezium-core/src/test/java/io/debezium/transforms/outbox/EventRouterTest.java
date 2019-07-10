@@ -5,8 +5,10 @@
  */
 package io.debezium.transforms.outbox;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -15,8 +17,11 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +34,9 @@ import static org.fest.assertions.Assertions.assertThat;
  * @author Renato mefi (gh@mefi.in)
  */
 public class EventRouterTest {
+
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
 
     @Test
     public void canSkipTombstone() {
@@ -73,6 +81,125 @@ public class EventRouterTest {
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 envelope.schema(),
                 payload
+        );
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1383")
+    public void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaName() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+        value.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                valueSchema,
+                value
+        );
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNull();
+    }
+
+    @Test
+    public void shouldFailWhenTheSchemaLooksValidButDoesNotHaveTheCorrectFields() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat.Envelope")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+        value.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                valueSchema,
+                value
+        );
+
+        exceptionRule.expect(DataException.class);
+        exceptionRule.expectMessage("op is not a valid field name");
+
+        router.apply(eventRecord);
+    }
+
+    @Test
+    @FixFor("DBZ-1383")
+    public void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaNameSuffix() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+        value.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                valueSchema,
+                value
+        );
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1383")
+    public void canSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingValueSchema() {
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        router.configure(config);
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+        value.put(AbstractSourceInfo.TIMESTAMP_KEY, Instant.now().toEpochMilli());
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.outbox",
+                SchemaBuilder.STRING_SCHEMA,
+                "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
+                null,
+                value
         );
 
         final SourceRecord eventRouted = router.apply(eventRecord);

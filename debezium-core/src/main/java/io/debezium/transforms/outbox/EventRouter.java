@@ -43,6 +43,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private static final String ENVELOPE_EVENT_TYPE = "eventType";
     private static final String ENVELOPE_PAYLOAD = "payload";
+    private static final String RECORD_ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final RegexRouter<R> regexRouter = new RegexRouter<>();
@@ -68,7 +69,16 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     public R apply(R r) {
         // Ignoring tombstones
         if (r.value() == null) {
-            LOGGER.info("Tombstone message {} ignored", r.key());
+            LOGGER.debug("Tombstone message ignored. Message key: \"{}\"", r.key());
+            return null;
+        }
+
+        // Ignoring messages which do not adhere to the CDC Envelope, for instance:
+        // Heartbeat and Schema Change messages
+        if (r.valueSchema() == null ||
+                r.valueSchema().name() == null ||
+                !r.valueSchema().name().endsWith(RECORD_ENVELOPE_SCHEMA_NAME_SUFFIX)) {
+            LOGGER.debug("Message without Debezium CDC Envelope ignored. Message key: \"{}\"", r.key());
             return null;
         }
 
