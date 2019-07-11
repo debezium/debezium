@@ -479,6 +479,9 @@ public class Replicator {
                 }
                 try {
                     heartbeat.heartbeat(source.partition(replicaSet.replicaSetName()), () -> {
+                            // note opLogEvent() will have been called before via handleOplogEvent()
+                            // (unless the event is filtered out), but that's ok, as it's idempotent
+                            // and the code here is only actually is executed if a heartbeat is due
                             source.opLogEvent(replicaSet.replicaSetName(), event);
                             return source.lastOffset(replicaSet.replicaSetName());
                         },

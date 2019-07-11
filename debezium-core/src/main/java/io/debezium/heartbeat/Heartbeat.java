@@ -27,6 +27,11 @@ import io.debezium.function.BlockingConsumer;
  */
 public interface Heartbeat {
 
+    /**
+     * Returns the offset to be used when emitting a heartbeat event. This supplier
+     * interface allows for a lazy creation of the offset only when a heartbeat
+     * actually is sent, in cases where it's determination is costly.
+     */
     @FunctionalInterface
     public static interface OffsetProducer {
         Map<String, ?> offset();
@@ -91,8 +96,6 @@ public interface Heartbeat {
      * @param offsetProducer lazily calculated offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
-    // too
     void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
 
     /**
