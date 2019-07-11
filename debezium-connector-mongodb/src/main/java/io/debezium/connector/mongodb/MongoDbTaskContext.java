@@ -9,7 +9,6 @@ import java.util.Collections;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.schema.TopicSelector;
 
 /**
@@ -32,11 +31,11 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
         final String serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.filters = new Filters(config);
-        this.source = new SourceInfo(new MongoDbConnectorConfig(config));
-        this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX));
+        this.connectorConfig = new MongoDbConnectorConfig(config);
+        this.source = new SourceInfo(connectorConfig);
+        this.topicSelector = MongoDbTopicSelector.defaultSelector(serverName, connectorConfig.getHeartbeatTopicsPrefix());
         this.serverName = config.getString(MongoDbConnectorConfig.LOGICAL_NAME);
         this.connectionContext = new ConnectionContext(config);
-        this.connectorConfig = new MongoDbConnectorConfig(config);
     }
 
     public TopicSelector<CollectionId> topicSelector() {

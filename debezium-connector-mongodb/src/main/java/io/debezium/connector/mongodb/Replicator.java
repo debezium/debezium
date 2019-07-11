@@ -45,6 +45,7 @@ import io.debezium.connector.mongodb.RecordMakers.RecordsForCollection;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BufferedBlockingConsumer;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
@@ -108,6 +109,7 @@ public class Replicator {
     private final Clock clock;
     private ConnectionContext.MongoPrimary primaryClient;
     private final Consumer<Throwable> onFailure;
+    private final Heartbeat heartbeat;
 
     /**
      * @param context the replication context; may not be null
@@ -129,6 +131,9 @@ public class Replicator {
         this.recordMakers = new RecordMakers(context.filters(), this.source, context.topicSelector(), this.bufferedRecorder, context.getConnectorConfig().isEmitTombstoneOnDelete());
         this.clock = this.context.getClock();
         this.onFailure = onFailure;
+
+        heartbeat = Heartbeat.create(context.getConnectorConfig().getConfig(), context.topicSelector().getHeartbeatTopic(),
+                context.getConnectorConfig().getLogicalName());
     }
 
     /**
@@ -467,8 +472,24 @@ public class Replicator {
         // Read as much of the oplog as we can ...
         try (MongoCursor<Document> cursor = results.iterator()) {
             while (running.get() && cursor.hasNext()) {
-                if (!handleOplogEvent(primaryAddress, cursor.next())) {
+                final Document event = cursor.next();
+                if (!handleOplogEvent(primaryAddress, event)) {
                     // Something happened, and we're supposed to stop reading
+                    return;
+                }
+                try {
+                    heartbeat.heartbeat(source.partition(replicaSet.replicaSetName()), () -> {
+                            // note opLogEvent() will have been called before via handleOplogEvent()
+                            // (unless the event is filtered out), but that's ok, as it's idempotent
+                            // and the code here is only actually is executed if a heartbeat is due
+                            source.opLogEvent(replicaSet.replicaSetName(), event);
+                            return source.lastOffset(replicaSet.replicaSetName());
+                        },
+                        bufferedRecorder);
+                }
+                catch (InterruptedException e) {
+                    logger.info("Replicator thread is interrupted");
+                    Thread.currentThread().interrupt();
                     return;
                 }
             }

@@ -81,6 +81,14 @@ class HeartbeatImpl implements Heartbeat {
     }
 
     @Override
+    public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        if (heartbeatTimeout.expired()) {
+            forcedBeat(partition, offsetProducer.offset(), consumer);
+            heartbeatTimeout = resetHeartbeat();
+        }
+    }
+
+    @Override
     public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
             throws InterruptedException {
         LOGGER.debug("Generating heartbeat event");

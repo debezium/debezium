@@ -19,6 +19,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.heartbeat.Heartbeat;
 
 /**
  * The configuration properties.
@@ -320,7 +321,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                                                      CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      CommonConnectorConfig.SNAPSHOT_DELAY_MS,
                                                      CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                                                     SNAPSHOT_MODE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+                                                     SNAPSHOT_MODE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+                                                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -339,7 +341,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
                 CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE);
