@@ -310,50 +310,49 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             } else {
                 throw e;
             }
-        } finally {
-            changes = tables().drainChanges();
-            // No need to send schema events or store DDL if no table has changed
-            if (!storeOnlyMonitoredTablesDdl || ddlChanges.anyMatch(filters.databaseFilter(), filters.tableFilter())) {
-                if (statementConsumer != null) {
+        }
+        changes = tables().drainChanges();
+        // No need to send schema events or store DDL if no table has changed
+        if (!storeOnlyMonitoredTablesDdl || ddlChanges.anyMatch(filters.databaseFilter(), filters.tableFilter())) {
+            if (statementConsumer != null) {
 
-                    // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
-                    // by database. Unfortunately, the databaseName on the event might not be the same database as that
-                    // being modified by the DDL statements (since the DDL statements can have fully-qualified names).
-                    // Therefore, we have to look at each statement to figure out which database it applies and then
-                    // record the DDL statements (still in the same order) to those databases.
+                // We are supposed to _also_ record the schema changes as SourceRecords, but these need to be filtered
+                // by database. Unfortunately, the databaseName on the event might not be the same database as that
+                // being modified by the DDL statements (since the DDL statements can have fully-qualified names).
+                // Therefore, we have to look at each statement to figure out which database it applies and then
+                // record the DDL statements (still in the same order) to those databases.
 
-                    if (!ddlChanges.isEmpty() && ddlChanges.applyToMoreDatabasesThan(databaseName)) {
+                if (!ddlChanges.isEmpty() && ddlChanges.applyToMoreDatabasesThan(databaseName)) {
 
-                        // We understood at least some of the DDL statements and can figure out to which database they apply.
-                        // They also apply to more databases than 'databaseName', so we need to apply the DDL statements in
-                        // the same order they were read for each _affected_ database, grouped together if multiple apply
-                        // to the same _affected_ database...
-                        ddlChanges.groupStatementStringsByDatabase((dbName, tables, ddl) -> {
-                            if (filters.databaseFilter().test(dbName) || dbName == null || "".equals(dbName)) {
-                                if (dbName == null) {
-                                    dbName = "";
-                                }
-                                statementConsumer.consume(dbName, tables, ddl);
+                    // We understood at least some of the DDL statements and can figure out to which database they apply.
+                    // They also apply to more databases than 'databaseName', so we need to apply the DDL statements in
+                    // the same order they were read for each _affected_ database, grouped together if multiple apply
+                    // to the same _affected_ database...
+                    ddlChanges.groupStatementStringsByDatabase((dbName, tables, ddl) -> {
+                        if (filters.databaseFilter().test(dbName) || dbName == null || "".equals(dbName)) {
+                            if (dbName == null) {
+                                dbName = "";
                             }
-                        });
-                    } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
-                        if (databaseName == null) {
-                            databaseName = "";
+                            statementConsumer.consume(dbName, tables, ddl);
                         }
-                        statementConsumer.consume(databaseName, changes, ddlStatements);
+                    });
+                } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
+                    if (databaseName == null) {
+                        databaseName = "";
                     }
+                    statementConsumer.consume(databaseName, changes, ddlStatements);
                 }
+            }
 
-                // Record the DDL statement so that we can later recover them if needed. We do this _after_ writing the
-                // schema change records so that failure recovery (which is based on of the history) won't lose
-                // schema change records.
-                if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
-                    dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
-                }
+            // Record the DDL statement so that we can later recover them if needed. We do this _after_ writing the
+            // schema change records so that failure recovery (which is based on of the history) won't lose
+            // schema change records.
+            if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
+                dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
             }
-            else {
-                logger.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
-            }
+        }
+        else {
+            logger.debug("Changes for DDL '{}' were filtered and not recorded in database history", ddlStatements);
         }
 
         // Figure out what changed ...
@@ -368,7 +367,6 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         });
         return true;
     }
-
 
     /**
      * @return true if only monitored tables should be stored in database history, false if all tables should be stored
