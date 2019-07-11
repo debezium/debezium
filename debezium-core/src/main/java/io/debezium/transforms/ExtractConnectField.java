@@ -5,8 +5,8 @@
  */
 package io.debezium.transforms;
 
-import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireMapOrNull;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStructOrNull;
 
 import java.util.Collections;
 import java.util.List;
@@ -65,7 +65,12 @@ public class ExtractConnectField<R extends ConnectRecord<R>> implements Transfor
     }
 
     private R applySchemaless(final R record) {
-        final Map<String, Object> value = requireMap(record.value(), PURPOSE);
+        final Map<String, Object> value = requireMapOrNull(record.value(), PURPOSE);
+
+        if (value == null) {
+            return record;
+        }
+
         final Map<String, Object> afterValue = getMap(value, "after");
         final Map<String, Object> innerValue = afterValue != null ? afterValue : getMap(value, "before");
 
@@ -89,7 +94,12 @@ public class ExtractConnectField<R extends ConnectRecord<R>> implements Transfor
     }
 
     private R applyWithSchema(final R record) {
-        final Struct value = requireStruct(record.value(), PURPOSE);
+        final Struct value = requireStructOrNull(record.value(), PURPOSE);
+
+        if (value == null) {
+            return record;
+        }
+
         final Struct innerValue = value.getStruct("after") != null
                 ? value.getStruct("after")
                 : value.getStruct("before");

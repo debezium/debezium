@@ -171,6 +171,27 @@ public class ExtractConnectFieldSchemaTest {
         assertEquals(inputValue, transformedRecord.value());
     }
 
+    @Test
+    public void tombstoneRecordsWillNotBeTransformed() {
+        final Schema valueSchema = buildEnvelopeSchema(buildInnerSchema());
+        final SinkRecord record = new SinkRecord(
+                "myLittleTopic",
+                0,
+                null,
+                null,
+                valueSchema,
+                null,
+                0
+        );
+
+        final SinkRecord transformedRecord = transform.apply(record);
+
+        assertNull(transformedRecord.keySchema());
+        assertNull(transformedRecord.key());
+        assertEquals(valueSchema, transformedRecord.valueSchema());
+        assertNull(transformedRecord.value());
+    }
+
     private Schema buildInnerSchema() {
         return SchemaBuilder.struct()
                 .field(EXTRACTED_FIELD_NAME, Schema.STRING_SCHEMA)

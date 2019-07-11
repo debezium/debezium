@@ -134,6 +134,25 @@ public class ExtractConnectFieldSchemalessTest {
         assertEquals(inputValue, transformedRecord.value());
     }
 
+    @Test
+    public void tombstoneRecordsWillNotBeTransformed() {
+        final SinkRecord record = new SinkRecord(
+                "myLittleTopic",
+                0,  null,
+                null,
+                null,
+                null,
+                0
+        );
+
+        final SinkRecord transformedRecord = transform.apply(record);
+
+        assertNull(transformedRecord.keySchema());
+        assertNull(transformedRecord.key());
+        assertNull(transformedRecord.valueSchema());
+        assertNull(transformedRecord.value());
+    }
+
     private static Map<String, Object> buildInnerValue(final String payload) {
         return Collections.singletonMap(EXTRACTED_FIELD_NAME, payload);
     }
