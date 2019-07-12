@@ -55,6 +55,14 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1376")
+    public void shouldSupportCreateIndexBothAlgoAndLock() {
+        parser.parse("CREATE INDEX `idx` ON `db`.`table` (created_at) COMMENT '' ALGORITHM DEFAULT LOCK DEFAULT", tables);
+        parser.parse("DROP INDEX `idx` ON `db`.`table` LOCK DEFAULT ALGORITHM DEFAULT", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-1349")
     public void shouldSupportUtfMb3Charset() {
         String ddl = " CREATE TABLE `engine_cost` (\n" +
