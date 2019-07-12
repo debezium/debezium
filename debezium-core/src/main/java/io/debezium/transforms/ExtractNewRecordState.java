@@ -9,12 +9,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.cache.Cache;
+import org.apache.kafka.common.cache.LRUCache;
+import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
 import org.apache.kafka.connect.transforms.Transformation;
+import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +29,7 @@ import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values
  * <code>before</code> and <code>after change</code>. Sink connectors usually are not able to work
@@ -35,23 +42,29 @@ import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandli
  * <p>
  * The SMT by default drops the tombstone message created by Debezium and converts the delete message into
  * a tombstone message that can be dropped, too, if required.
- *
+ * * <p>
+ * The SMT also has the option to insert fields from the original record's 'source' struct into the new 
+ * unwrapped record prefixed with "__" (for example __lsn in Postgres, or __file in MySQL)
+ * 
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
  */
 public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final String ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
+    private static final String PURPOSE = "source field insertion";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
 
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
     private boolean addOperationHeader;
+    private String[] addSourceFields;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
     private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
+    private Cache<Schema, Schema> schemaUpdateCache;
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -65,6 +78,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         handleDeletes = DeleteHandling.parse(config.getString(ExtractNewRecordStateConfigDefinition.HANDLE_DELETES));
 
         addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
+
+        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ?
+            null :  config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
 
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
@@ -83,6 +99,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         delegateConfig.put("static.field", ExtractNewRecordStateConfigDefinition.DELETED_FIELD);
         delegateConfig.put("static.value", "false");
         updatedDelegate.configure(delegateConfig);
+
+        schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
     }
 
     @Override
@@ -117,7 +135,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
             return record;
         }
-        final R newRecord = afterDelegate.apply(record);
+        R newRecord = afterDelegate.apply(record);
         if (newRecord.value() == null) {
             // Handling delete records
             switch (handleDeletes) {
@@ -132,6 +150,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     return newRecord;
             }
         } else {
+            // Add on any requested source fields from the original record to the new unwrapped record
+            newRecord = addSourceFields(addSourceFields, record, newRecord);
+
             // Handling insert and update records
             switch (handleDeletes) {
                 case REWRITE:
@@ -141,6 +162,55 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     return newRecord;
             }
         }
+    }
+
+    private R addSourceFields(String[] addSourceFields, R originalRecord, R unwrappedRecord) {
+        // Return if no source fields to add
+        if(addSourceFields == null) {
+            return unwrappedRecord;
+        }
+        
+        final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
+        Struct source = ((Struct) originalRecord.value()).getStruct("source");
+        
+        // Get the updated schema from the cache, or create and cache if it doesn't exist
+        Schema updatedSchema = schemaUpdateCache.get(value.schema());
+        if (updatedSchema == null) {
+            updatedSchema = makeUpdatedSchema(value.schema(), addSourceFields);
+            schemaUpdateCache.put(value.schema(), updatedSchema);
+        }   
+
+        // Create the updated struct
+        final Struct updatedValue = new Struct(updatedSchema);
+        for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
+            updatedValue.put(field.name(), value.get(field));
+        }
+        for(String sourceField : addSourceFields) {
+            String fieldValue = source.schema().field(sourceField) == null ? "" : source.get(sourceField).toString();
+            updatedValue.put("__" + sourceField, fieldValue);
+        }
+
+        return unwrappedRecord.newRecord(
+            unwrappedRecord.topic(), 
+            unwrappedRecord.kafkaPartition(), 
+            unwrappedRecord.keySchema(), 
+            unwrappedRecord.key(), 
+            updatedSchema, 
+            updatedValue, 
+            unwrappedRecord.timestamp());
+    }
+
+    private Schema makeUpdatedSchema(Schema schema, String[] addSourceFields) {
+        final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
+        // Get fields from original schema
+        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
+            builder.field(field.name(), field.schema());
+        }
+        // Add the requested source fields
+        for(String sourceField: addSourceFields) {
+            builder.field("__" + sourceField, SchemaBuilder.string());
+        }
+        return builder.build();
     }
 
     @Override

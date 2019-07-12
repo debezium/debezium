@@ -29,6 +29,7 @@ public class ExtractNewRecordStateTest {
     private static final String DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
     private static final String OPERATION_HEADER = "operation.header";
+    private static final String ADD_SOURCE_FIELDS = "add.source.fields";
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -80,14 +81,22 @@ public class ExtractNewRecordStateTest {
 
     private SourceRecord createCreateRecord() {
         final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
+        final Schema sourceSchema = SchemaBuilder.struct()
+                .field("lsn", SchemaBuilder.int32())
+                .field("version", SchemaBuilder.string())
+                .build();
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(SchemaBuilder.struct().build())
+                .withSource(sourceSchema)
                 .build();
         final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
         before.put("id", (byte) 1);
-        final Struct payload = envelope.create(before, null, System.nanoTime());
+        source.put("lsn", 1234);
+        source.put("version", "version!");
+        final Struct payload = envelope.create(before, source, System.nanoTime());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
@@ -233,7 +242,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-677")
     public void canUseDeprecatedSmt() {
-        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
@@ -242,4 +251,45 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
         }
     }
+
+    @Test
+    public void testAddSourceField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_SOURCE_FIELDS, "lsn");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo("1234");
+        }
+    }
+
+    @Test
+    public void testAddSourceFields() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_SOURCE_FIELDS, "lsn,version");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo("1234");
+            assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
+        }
+    }
+ 
+    @Test
+    public void testAddSourceNonExistantField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_SOURCE_FIELDS, "nope");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            
+            assertThat(((Struct) unwrapped.value()).getString("__nope")).isEqualTo("");
+        }
+    }  
 }
