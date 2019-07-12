@@ -744,7 +744,7 @@ public class VerifyRecord {
             msg = "comparing key schema to that serialized/deserialized with JSON converter";
             assertThat(keyWithSchema.schema()).isEqualTo(record.keySchema());
             msg = "comparing key to that serialized/deserialized with JSON converter";
-            assertThat(keyWithSchema.value()).isEqualTo(record.key());
+            assertThat(keyWithSchema.value()).isEqualTo(addMissingFieldWithDefaultValueToKey(record.key()));
             msg = "comparing key to its schema";
             schemaMatchesStruct(keyWithSchema);
 
@@ -817,6 +817,27 @@ public class VerifyRecord {
             }
             fail("error " + msg + ": " + t.getMessage());
         }
+    }
+
+    /**
+     * JSON key serializer adds the null field with default value as field with the field
+     * set to the default value. So to do an ser/deser assertion we need to extend the expected
+     * key struct with it.
+     */
+    private static Object addMissingFieldWithDefaultValueToKey(Object o) {
+        if (!(o instanceof Struct)) {
+            return o;
+        }
+        final Struct key = (Struct) o;
+        final Schema schema = key.schema();
+        final Struct enrichedKey = new Struct(schema);
+        for (Field field: schema.fields()) {
+            final Object fieldValue = key.get(field);
+            if (fieldValue != null) {
+                enrichedKey.put(field, fieldValue);
+            }
+        }
+        return enrichedKey;
     }
 
     protected static void validateSchemaNames(Schema schema) {

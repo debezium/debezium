@@ -26,6 +26,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
@@ -1005,18 +1006,21 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         // Wait for snapshot completion
         SourceRecords records = consumeRecordsByTopic(1);
+        records.forEach(VerifyRecord::isValid);
         assertRecord((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key(), key);
 
         connection.execute(
                 "INSERT INTO keyless VALUES(2, 'k')"
         );
         records = consumeRecordsByTopic(1);
+        records.forEach(VerifyRecord::isValid);
         assertRecord((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key(), key2);
 
         connection.execute(
                 "UPDATE keyless SET id=3 WHERE ID=2"
         );
         records = consumeRecordsByTopic(3);
+        records.forEach(VerifyRecord::isValid);
         // PK change so we are deleting record with OLD PK and sending a new one
         final SourceRecord update1 = records.recordsForTopic("server1.dbo.keyless").get(0);
         final SourceRecord update2 = records.recordsForTopic("server1.dbo.keyless").get(1);
@@ -1037,6 +1041,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 "DELETE FROM keyless WHERE id=3"
         );
         records = consumeRecordsByTopic(2);
+        records.forEach(VerifyRecord::isValid);
         assertRecord((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key(), key3);
         assertNull(records.recordsForTopic("server1.dbo.keyless").get(1).value());
 

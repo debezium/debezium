@@ -183,7 +183,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
-            Schema keySchema = dataCollectionSchema.keySchemaOrProxyKeySchema();
+            Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             SourceRecord record = new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
@@ -222,7 +222,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 queue.enqueue(bufferedEvent.get());
             }
 
-            Schema keySchema = dataCollectionSchema.keySchemaOrProxyKeySchema();
+            Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             // the record is produced lazily, so to have the correct offset as per the pre/post completion callbacks

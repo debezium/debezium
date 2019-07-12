@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
 
@@ -1069,17 +1070,19 @@ public class JdbcValueConverters implements ValueConverterProvider {
                     r.deliver(bytes);
                 }
                 if (byteOrderOfBitType() == ByteOrder.BIG_ENDIAN) {
+                    byte[] bytesNew = Arrays.copyOf(bytes, bytes.length);
                     // Reverse it to little endian ...
                     int i = 0;
-                    int j = bytes.length - 1;
+                    int j = bytesNew.length - 1;
                     byte tmp;
                     while (j > i) {
-                        tmp = bytes[j];
-                        bytes[j] = bytes[i];
-                        bytes[i] = tmp;
+                        tmp = bytesNew[j];
+                        bytesNew[j] = bytesNew[i];
+                        bytesNew[i] = tmp;
                         ++i;
                         --j;
                     }
+                    bytes = bytesNew;
                 }
                 r.deliver(padLittleEndian(numBytes, bytes));
             }

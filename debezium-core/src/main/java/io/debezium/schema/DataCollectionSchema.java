@@ -13,6 +13,5 @@ public interface DataCollectionSchema {
 
     DataCollectionId id();
     Schema keySchema();
-    Schema keySchemaOrProxyKeySchema();
     Envelope getEnvelopeSchema();
 }

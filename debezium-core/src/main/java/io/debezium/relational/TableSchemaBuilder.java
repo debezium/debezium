@@ -135,11 +135,11 @@ public class TableSchemaBuilder {
 
 
         // Create the generators ...
+        Function<Object[], Object> keyGenerator = (keySchema != null) ? createKeyGenerator(keySchema, tableId, table.primaryKeyColumns()) : (Function<Object[], Object>) createValueGenerator(proxyKeySchema, tableId, table.columns(), filter, mappers);
         Function<Object[], ? super Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
-        Function<Object[], Object> keyGenerator = (keySchema != null) ? createKeyGenerator(keySchema, tableId, table.primaryKeyColumns()) : (Function<Object[], Object>) valueGenerator;
 
         // And the table schema ...
-        return new TableSchema(tableId, (keySchema == null) ? proxyKeySchema : keySchema, keyGenerator, envelope, valSchema, (Function<Object[], Struct>) valueGenerator, keySchema == null);
+        return new TableSchema(tableId, (keySchema == null) ? proxyKeySchema : keySchema, keyGenerator, envelope, valSchema, (Function<Object[], Struct>) valueGenerator);
     }
 
     /**

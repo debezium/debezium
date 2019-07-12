@@ -161,10 +161,8 @@ public class TableSchemaBuilderTest {
                 .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
-        assertThat(schema.keySchema()).isNull();
-        assertThat(schema.keyFromColumnData(data)).isNull();
-        Schema keys = schema.keySchemaOrProxyKeySchema();
-        assertThat(schema.keyOrProxyKeyFromColumnData(data)).isNotNull();
+        Schema keys = schema.keySchema();
+        assertThat(schema.keyFromColumnData(data)).isNotNull();
         assertThat(keys).isNotNull();
         assertThat(keys.field("C1").name()).isEqualTo("C1");
         assertThat(keys.field("C1").index()).isEqualTo(0);
