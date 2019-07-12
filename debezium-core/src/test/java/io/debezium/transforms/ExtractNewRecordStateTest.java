@@ -242,7 +242,7 @@ public class ExtractNewRecordStateTest {
     @Test
     @FixFor("DBZ-677")
     public void canUseDeprecatedSmt() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
             final Map<String, String> props = new HashMap<>();
             transform.configure(props);
 
