@@ -83,6 +83,25 @@ public class ExtractNewRecordStateTest {
         final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
         final Schema sourceSchema = SchemaBuilder.struct()
                 .field("lsn", SchemaBuilder.int32())
+                .build();
+        Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        source.put("lsn", 1234);
+        final Struct payload = envelope.create(before, source, System.nanoTime());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
+    private SourceRecord createComplexCreateRecord() {
+        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
+        final Schema sourceSchema = SchemaBuilder.struct()
+                .field("lsn", SchemaBuilder.int32())
                 .field("version", SchemaBuilder.string())
                 .build();
         Envelope envelope = Envelope.defineSchema()
@@ -259,9 +278,9 @@ public class ExtractNewRecordStateTest {
             props.put(ADD_SOURCE_FIELDS, "lsn");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo("1234");
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
         }
     }
 
@@ -272,9 +291,9 @@ public class ExtractNewRecordStateTest {
             props.put(ADD_SOURCE_FIELDS, "lsn,version");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo("1234");
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
             assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
         }
     }
@@ -286,10 +305,36 @@ public class ExtractNewRecordStateTest {
             props.put(ADD_SOURCE_FIELDS, "nope");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
             
-            assertThat(((Struct) unwrapped.value()).getString("__nope")).isEqualTo("");
+            assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
+        }
+    }  
+
+    @Test
+    public void testAddSourceOptionalFieldCaching() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_SOURCE_FIELDS, "lsn,version");
+            transform.configure(props);
+
+            // Run recors with different schemas through multiple times to make sure the schema caching is
+            // is working properly
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord complexCreateRecord = createComplexCreateRecord();
+            SourceRecord unwrapped = transform.apply(createRecord);
+            final SourceRecord complexUnwrapped = transform.apply(complexCreateRecord);
+            unwrapped = transform.apply(createRecord);
+            
+            // Verify the optional 'version' field does not exist
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).schema().field("__version")).isNull();
+
+            // Verify the optional 'version' field exists
+            assertThat(((Struct) complexUnwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) complexUnwrapped.value()).getString("__version")).isEqualTo("version!");
+
         }
     }  
 }
