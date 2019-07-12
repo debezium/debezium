@@ -173,10 +173,11 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct source = ((Struct) originalRecord.value()).getStruct("source");
         
-        // Get the updated schema from the cache, or create and cache if it doesn't exist
-        Schema updatedSchema = schemaUpdateCache.get(value.schema());
+        // Get the updated schema from the cache, or create and cache if it doesn't exist. Use the schema of the original unflattened
+        // record which controls both the unwrapped record's schema, and contains the source schema
+        Schema updatedSchema = schemaUpdateCache.get(((Struct) originalRecord.value()).schema());
         if (updatedSchema == null) {
-            updatedSchema = makeUpdatedSchema(value.schema(), addSourceFields);
+            updatedSchema = makeUpdatedSchema(value.schema(), source.schema(),  addSourceFields);
             schemaUpdateCache.put(value.schema(), updatedSchema);
         }   
 
@@ -186,8 +187,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             updatedValue.put(field.name(), value.get(field));
         }
         for(String sourceField : addSourceFields) {
-            String fieldValue = source.schema().field(sourceField) == null ? "" : source.get(sourceField).toString();
-            updatedValue.put("__" + sourceField, fieldValue);
+            if (source.schema().field(sourceField) != null) {
+                updatedValue.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, source.get(sourceField));
+            }
         }
 
         return unwrappedRecord.newRecord(
@@ -200,15 +202,19 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             unwrappedRecord.timestamp());
     }
 
-    private Schema makeUpdatedSchema(Schema schema, String[] addSourceFields) {
+    private Schema makeUpdatedSchema(Schema schema, Schema sourceSchema, String[] addSourceFields) {
         final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
         // Get fields from original schema
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             builder.field(field.name(), field.schema());
         }
-        // Add the requested source fields
+        // Add the requested source fields if they exist in the source record's schema
         for(String sourceField: addSourceFields) {
-            builder.field("__" + sourceField, SchemaBuilder.string());
+            if(sourceSchema.field(sourceField) != null) {
+                builder.field(
+                    ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, 
+                    sourceSchema.field(sourceField).schema());
+            }
         }
         return builder.build();
     }

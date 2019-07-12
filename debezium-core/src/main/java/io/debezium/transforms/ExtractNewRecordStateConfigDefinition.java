@@ -14,6 +14,7 @@ public class ExtractNewRecordStateConfigDefinition {
 
     public static final String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
     public static final String DELETED_FIELD = "__deleted";
+    public static final String METADATA_FIELD_PREFIX = "__";
 
     public static enum DeleteHandling implements EnumeratedValue {
         DROP("drop"),
