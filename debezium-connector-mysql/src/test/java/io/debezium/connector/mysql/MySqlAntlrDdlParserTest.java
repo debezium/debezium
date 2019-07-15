@@ -55,6 +55,20 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1397")
+    public void shouldSupportBinaryCharset() {
+        String ddl = "CREATE TABLE mytable (col BINARY(16) GENERATED ALWAYS AS (CAST('xx' as CHAR(16) CHARSET BINARY)) VIRTUAL)" + System.lineSeparator();
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        final Table table = tables.forTable(null, null, "mytable");
+
+        final Column f1 = table.columnWithName("col");
+        assertThat(f1).isNotNull();
+    }
+
+    @Test
     @FixFor("DBZ-1349")
     public void shouldSupportUtfMb3Charset() {
         String ddl = " CREATE TABLE `engine_cost` (\n" +
