@@ -850,8 +850,8 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-646")
-    public void shouldParseTokuDBTable() {
+    @FixFor("DBZ-646, DBZ-1398")
+    public void shouldParseThirdPartyStorageEngine() {
         String ddl1 = "CREATE TABLE foo ( " + System.lineSeparator()
                 + " c1 INTEGER NOT NULL, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
@@ -860,12 +860,18 @@ public class MySqlAntlrDdlParserTest {
                 + " c1 INTEGER NOT NULL, " + System.lineSeparator()
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + ") engine=TokuDB compression='tokudb_zlib';";
-        parser.parse(ddl1 + ddl2, tables);
-        assertThat(tables.size()).isEqualTo(2);
+        String ddl3 = "CREATE TABLE baz ( " + System.lineSeparator()
+        + " c1 INTEGER NOT NULL, " + System.lineSeparator()
+        + " c2 VARCHAR(22) " + System.lineSeparator()
+        + ") engine=Aria;";
+        parser.parse(ddl1 + ddl2 + ddl3, tables);
+        assertThat(tables.size()).isEqualTo(3);
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
         listener.assertNext().createTableNamed("bar").ddlStartsWith("CREATE TABLE bar (");
+        listener.assertNext().createTableNamed("baz").ddlStartsWith("CREATE TABLE baz (");
         parser.parse("DROP TABLE foo", tables);
         parser.parse("DROP TABLE bar", tables);
+        parser.parse("DROP TABLE baz", tables);
         assertThat(tables.size()).isEqualTo(0);
     }
 
