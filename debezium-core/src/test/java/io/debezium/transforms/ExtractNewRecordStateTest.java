@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -298,7 +299,7 @@ public class ExtractNewRecordStateTest {
         }
     }
  
-    @Test
+    @Test(expected = ConfigException.class)
     public void testAddSourceNonExistantField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -309,32 +310,6 @@ public class ExtractNewRecordStateTest {
             final SourceRecord unwrapped = transform.apply(createRecord);
             
             assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
-        }
-    }  
-
-    @Test
-    public void testAddSourceOptionalFieldCaching() {
-        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
-            final Map<String, String> props = new HashMap<>();
-            props.put(ADD_SOURCE_FIELDS, "lsn,version");
-            transform.configure(props);
-
-            // Run recors with different schemas through multiple times to make sure the schema caching is
-            // is working properly
-            final SourceRecord createRecord = createCreateRecord();
-            final SourceRecord complexCreateRecord = createComplexCreateRecord();
-            SourceRecord unwrapped = transform.apply(createRecord);
-            final SourceRecord complexUnwrapped = transform.apply(complexCreateRecord);
-            unwrapped = transform.apply(createRecord);
-            
-            // Verify the optional 'version' field does not exist
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
-            assertThat(((Struct) unwrapped.value()).schema().field("__version")).isNull();
-
-            // Verify the optional 'version' field exists
-            assertThat(((Struct) complexUnwrapped.value()).get("__lsn")).isEqualTo(1234);
-            assertThat(((Struct) complexUnwrapped.value()).getString("__version")).isEqualTo("version!");
-
         }
     }  
 }

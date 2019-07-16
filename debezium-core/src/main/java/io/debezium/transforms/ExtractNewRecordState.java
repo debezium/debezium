@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
@@ -173,9 +174,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct source = ((Struct) originalRecord.value()).getStruct("source");
         
-        // Get the updated schema from the cache, or create and cache if it doesn't exist. Use the schema of the original unflattened
-        // record which controls both the unwrapped record's schema, and contains the source schema
-        Schema updatedSchema = schemaUpdateCache.get(((Struct) originalRecord.value()).schema());
+        // Get the updated schema from the cache, or create and cache if it doesn't exist
+        Schema updatedSchema = schemaUpdateCache.get(value.schema());
         if (updatedSchema == null) {
             updatedSchema = makeUpdatedSchema(value.schema(), source.schema(),  addSourceFields);
             schemaUpdateCache.put(value.schema(), updatedSchema);
@@ -187,9 +187,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             updatedValue.put(field.name(), value.get(field));
         }
         for(String sourceField : addSourceFields) {
-            if (source.schema().field(sourceField) != null) {
-                updatedValue.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, source.get(sourceField));
-            }
+            updatedValue.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, source.get(sourceField));
         }
 
         return unwrappedRecord.newRecord(
@@ -208,13 +206,14 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             builder.field(field.name(), field.schema());
         }
-        // Add the requested source fields if they exist in the source record's schema
+        // Add the requested source fields, throw exception if a specified source field is not part of the source schema
         for(String sourceField: addSourceFields) {
-            if(sourceSchema.field(sourceField) != null) {
-                builder.field(
-                    ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, 
-                    sourceSchema.field(sourceField).schema());
+            if(sourceSchema.field(sourceField) == null) {
+                throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
             }
+            builder.field(
+                ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, 
+                sourceSchema.field(sourceField).schema());
         }
         return builder.build();
     }
