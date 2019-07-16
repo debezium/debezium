@@ -178,8 +178,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
-            Objects.requireNonNull(key, "key must not be null");
-            Objects.requireNonNull(value, "key must not be null");
+            Objects.requireNonNull(value, "value must not be null");
 
             LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
@@ -213,8 +212,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         @Override
         public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
-            Objects.requireNonNull(key, "key must not be null");
-            Objects.requireNonNull(value, "key must not be null");
+            Objects.requireNonNull(value, "value must not be null");
 
             LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
