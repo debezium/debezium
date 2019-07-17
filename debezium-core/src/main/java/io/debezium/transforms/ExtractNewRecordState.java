@@ -10,9 +10,6 @@ import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.cache.Cache;
-import org.apache.kafka.common.cache.LRUCache;
-import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -29,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
+import io.debezium.util.BoundedConcurrentHashMap;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 /**
@@ -54,6 +52,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
     private static final String ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
     private static final String PURPOSE = "source field insertion";
+    private static final int SCHEMA_CACHE_SIZE = 64;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
 
@@ -65,7 +64,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
     private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
-    private Cache<Schema, Schema> schemaUpdateCache;
+    private BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache;
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -101,7 +100,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         delegateConfig.put("static.value", "false");
         updatedDelegate.configure(delegateConfig);
 
-        schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
+        schemaUpdateCache = new BoundedConcurrentHashMap<>(SCHEMA_CACHE_SIZE);
     }
 
     @Override
@@ -174,13 +173,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct source = ((Struct) originalRecord.value()).getStruct("source");
         
-        // Get the updated schema from the cache, or create and cache if it doesn't exist
-        Schema updatedSchema = schemaUpdateCache.get(value.schema());
-        if (updatedSchema == null) {
-            updatedSchema = makeUpdatedSchema(value.schema(), source.schema(),  addSourceFields);
-            schemaUpdateCache.put(value.schema(), updatedSchema);
-        }   
-
+        // Get (or compute) the updated schema from the cache
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), s -> makeUpdatedSchema(s, source.schema(),  addSourceFields));
+        
         // Create the updated struct
         final Struct updatedValue = new Struct(updatedSchema);
         for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
