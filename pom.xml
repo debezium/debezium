@@ -467,7 +467,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
-			    <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                        <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -743,6 +743,12 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

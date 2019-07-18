@@ -25,14 +25,16 @@ else if (DRY_RUN instanceof String) {
 }
 echo "Dry run: ${DRY_RUN}"
 
-GIT_CREDENTIALS_ID = '17e7a907-8401-4b7e-a91b-a7823047b3e5'
+GIT_CREDENTIALS_ID = 'debezium-github'
 JIRA_CREDENTIALS_ID = 'debezium-jira'
+HOME_DIR = '/home/cloud-user'
+GPG_DIR = 'gpg'
 
 DEBEZIUM_DIR = 'debezium'
 DEBEZIUM_INCUBATOR_DIR = 'debezium-incubator'
 IMAGES_DIR = 'images'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
-ORACLE_ARTIFACT_DIR = '/home/jenkins/oracle-libs/12.2.0.1.0'
+ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
 ORACLE_ARTIFACT_VERSION = '12.1.0.2'
 
 VERSION_TAG = "v$RELEASE_VERSION"
@@ -70,7 +72,7 @@ MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
 INCUBATOR_STAGING_REPO_ID = null
-LOCAL_MAVEN_REPO = "/home/jenkins/.m2/repository"
+LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 
 withCredentials([usernamePassword(credentialsId: JIRA_CREDENTIALS_ID, passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
     JIRA_USERNAME = USERNAME
@@ -199,10 +201,8 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
             }
         }
         withCredentials([
-            string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
-            [$class: 'FileBinding', credentialsId: 'debezium-ci-gpg-public', variable: 'PUBLIC_FILE'],
-            [$class: 'FileBinding', credentialsId: 'debezium-ci-gpg', variable: 'PRIVATE_FILE']]) {
-            def mvnlog = sh(script: 'mvn release:perform -DlocalCheckout=$DRY_RUN -Darguments="-s $HOME/.m2/settings-snapshots.xml -Dgpg.secretKeyring=$PRIVATE_FILE -Dgpg.publicKeyring=$PUBLIC_FILE -Dgpg.passphrase=$PASSPHRASE -Dgpg.keyname=8DCDC40D -DskipTests -DskipITs $buildArgs ' + buildArgs + '"', returnStdout: true).trim()
+            string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE')]) {
+            def mvnlog = sh(script: "mvn release:perform -DlocalCheckout=$DRY_RUN -Darguments=\"-s $HOME/.m2/settings-snapshots.xml -Dgpg.homedir=\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=$PASSPHRASE -DskipTests -DskipITs $buildArgs\" $buildArgs", returnStdout: true).trim()
             echo mvnlog
             def match = mvnlog =~ /Created staging repository with ID \"(iodebezium-.+)\"/
             if (!match[0]) {
@@ -229,6 +229,16 @@ node('Slave') {
     stage ('Initialize') {
         dir('.') {
             deleteDir()
+            sh "git config user.email || git config --global user.email \"debezium@gmail.com\" && git config --global user.name \"Debezium Builder\""
+        }
+        dir(GPG_DIR) {
+            withCredentials([
+                string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
+                [$class: 'FileBinding', credentialsId: 'debezium-ci-secret-key', variable: 'SECRET_KEY_FILE']]) {
+                echo 'Creating GPG directory'
+                def gpglog = sh(script: "gpg --import --batch --passphrase $PASSPHRASE --homedir . $SECRET_KEY_FILE", returnStdout: true).trim()
+                echo gpglog
+            }
         }
         checkout([$class: 'GitSCM', 
             branches: [[name: "*/$DEBEZIUM_BRANCH"]], 

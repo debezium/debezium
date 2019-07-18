@@ -10,11 +10,13 @@ if (
     error 'Input parameters not provided'
 }
 
-GIT_CREDENTIALS_ID = '17e7a907-8401-4b7e-a91b-a7823047b3e5'
+GIT_CREDENTIALS_ID = 'debezium-github'
 
 DEBEZIUM_DIR = 'debezium'
 INCUBATOR_DIR = 'debezium-incubator'
-ORACLE_ARTIFACT_DIR = '/home/jenkins/oracle-libs/12.2.0.1.0'
+HOME_DIR = '/home/cloud-user'
+
+ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/12.2.0.1.0"
 ORACLE_ARTIFACT_VERSION = '12.1.0.2'
 
 node('Slave') {
