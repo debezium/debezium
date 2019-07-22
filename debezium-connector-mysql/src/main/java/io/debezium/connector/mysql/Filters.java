@@ -30,6 +30,9 @@ public class Filters {
     protected static final Set<String> BUILT_IN_DB_NAMES = Collect.unmodifiableSet("mysql", "performance_schema", "sys", "information_schema");
 
     protected static boolean isBuiltInDatabase(String databaseName) {
+        if (databaseName == null) {
+            return false;
+        }
         return BUILT_IN_DB_NAMES.contains(databaseName.toLowerCase());
     }
 
