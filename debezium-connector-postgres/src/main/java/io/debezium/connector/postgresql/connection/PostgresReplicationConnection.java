@@ -192,11 +192,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     @Override
     public ReplicationStream startStreaming(Long offset) throws SQLException, InterruptedException {
+        boolean skipFirstFlushRecord = true;
         initConnection();
 
         connect();
         if (offset == null || offset <= 0) {
             offset = defaultStartingPos;
+            skipFirstFlushRecord = false;
         }
         LogSequenceNumber lsn = LogSequenceNumber.valueOf(offset);
         if (LOGGER.isDebugEnabled()) {
@@ -204,7 +206,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         try {
-            return createReplicationStream(lsn);
+            return createReplicationStream(lsn, skipFirstFlushRecord);
         }
         catch(Exception e) {
             throw new ConnectException("Failed to start replication stream at " + lsn, e);
@@ -282,7 +284,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
 
-    private ReplicationStream createReplicationStream(final LogSequenceNumber lsn) throws SQLException, InterruptedException {
+    private ReplicationStream createReplicationStream(final LogSequenceNumber lsn, boolean skipFirstFlushRecord) throws SQLException, InterruptedException {
         PGReplicationStream s;
 
         try {
@@ -348,8 +350,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             @Override
             public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.read();
+                final long lastReceiveLsn = stream.getLastReceiveLSN().asLong();
+                LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startingLsn, lastReceiveLsn);
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
-                if (startingLsn >= stream.getLastReceiveLSN().asLong()) {
+                // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
+                if ((startingLsn > stream.getLastReceiveLSN().asLong()) || (startingLsn == stream.getLastReceiveLSN().asLong() && skipFirstFlushRecord)) {
+                    LOGGER.info("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startingLsn, lastReceiveLsn);
                     return;
                 }
                 deserializeMessages(read, processor);
@@ -358,8 +364,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             @Override
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.readPending();
+                final long lastReceiveLsn = stream.getLastReceiveLSN().asLong();
+                if (read == null) {
+                    return false;
+                }
+                LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startingLsn, lastReceiveLsn);
                 // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
-                if (read == null || startingLsn >= stream.getLastReceiveLSN().asLong()) {
+                // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
+                if ((startingLsn > stream.getLastReceiveLSN().asLong()) || (startingLsn == stream.getLastReceiveLSN().asLong() && skipFirstFlushRecord)) {
+                    LOGGER.info("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startingLsn, lastReceiveLsn);
                     return false;
                 }
                 deserializeMessages(read, processor);
