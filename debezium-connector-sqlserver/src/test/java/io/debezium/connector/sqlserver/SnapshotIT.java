@@ -347,6 +347,127 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         stopConnector();
     }
+    
+    @Test
+    public void reoderCapturedTables() throws Exception {
+        connection.execute(
+                "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE table_b (id int, name varchar(30), amount integer primary key(id))"
+        );
+        connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO table_b VALUES(11, 'some_name', 447)");
+        TestHelper.enableTableCdc(connection, "table_a");
+        TestHelper.enableTableCdc(connection, "table_b");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.table_b,dbo.table_a")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_b");
+        
+        Assertions.assertThat(tableB).hasSize(1);
+        Assertions.assertThat(tableA).isNull();
+        
+        records = consumeRecordsByTopic(1);
+        tableA = records.recordsForTopic("server1.dbo.table_a");
+        Assertions.assertThat(tableA).hasSize(1);
+        
+        stopConnector();
+    }
+    
+    @Test
+    public void reoderCapturedTablesWithOverlappingTableWhitelist() throws Exception {
+        connection.execute(
+                "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE table_ac (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE table_ab (id int, name varchar(30), amount integer primary key(id))"
+        );
+        connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO table_ab VALUES(11, 'some_name', 447)");
+        connection.execute("INSERT INTO table_ac VALUES(12, 'some_name', 885)");
+        TestHelper.enableTableCdc(connection, "table_a");
+        TestHelper.enableTableCdc(connection, "table_ab");
+        TestHelper.enableTableCdc(connection, "table_ac");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.table_ab,dbo.table_(.*)")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_ab");
+        List<SourceRecord> tableC = records.recordsForTopic("server1.dbo.table_ac");
+        
+        Assertions.assertThat(tableB).hasSize(1);
+        Assertions.assertThat(tableA).isNull();
+        Assertions.assertThat(tableC).isNull();
+        
+        records = consumeRecordsByTopic(1);
+        tableA = records.recordsForTopic("server1.dbo.table_a");
+        Assertions.assertThat(tableA).hasSize(1);
+        Assertions.assertThat(tableC).isNull();
+        
+        records = consumeRecordsByTopic(1);
+        tableC = records.recordsForTopic("server1.dbo.table_ac");
+        Assertions.assertThat(tableC).hasSize(1);
+        
+        stopConnector();
+    }
+    
+    @Test
+    public void reoderCapturedTablesWithoutTableWhitelist() throws Exception {
+        connection.execute(
+                "CREATE TABLE table_ac (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE table_a (id int, name varchar(30), amount integer primary key(id))",
+                "CREATE TABLE table_ab (id int, name varchar(30), amount integer primary key(id))"
+                );
+        connection.execute("INSERT INTO table_ac VALUES(12, 'some_name', 885)");
+        connection.execute("INSERT INTO table_a VALUES(10, 'some_name', 120)");
+        connection.execute("INSERT INTO table_ab VALUES(11, 'some_name', 447)");
+        TestHelper.enableTableCdc(connection, "table_a");
+        TestHelper.enableTableCdc(connection, "table_ab");
+        TestHelper.enableTableCdc(connection, "table_ac");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_BLACKLIST, "dbo.table1")
+                
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
+        List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_ab");
+        List<SourceRecord> tableC = records.recordsForTopic("server1.dbo.table_ac");
+        
+        Assertions.assertThat(tableA).hasSize(1);
+        Assertions.assertThat(tableB).isNull();
+        Assertions.assertThat(tableC).isNull();
+        
+        records = consumeRecordsByTopic(1);
+        tableB = records.recordsForTopic("server1.dbo.table_ab");
+        Assertions.assertThat(tableB).hasSize(1);
+        Assertions.assertThat(tableC).isNull();
+        
+        records = consumeRecordsByTopic(1);
+        tableC = records.recordsForTopic("server1.dbo.table_ac");
+        Assertions.assertThat(tableC).hasSize(1);
+        
+        stopConnector();
+    }
+    
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));

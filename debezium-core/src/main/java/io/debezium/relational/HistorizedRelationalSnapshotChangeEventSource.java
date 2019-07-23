@@ -13,7 +13,11 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -216,6 +220,27 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
      */
     protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
     }
+    
+    private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
+        return tableIds
+                .stream()
+                .filter(tid -> pattern.asPredicate().test(tid.toString()))
+                .sorted();
+    }
+
+    private Set<TableId> sort(Set<TableId> capturedTables) throws Exception {
+        String value = connectorConfig.getConfig().getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST);
+        if (value != null) {
+            return Strings.listOfRegex(value, Pattern.CASE_INSENSITIVE)
+                    .stream()
+                    .flatMap(pattern -> toTableIds(capturedTables, pattern))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+        return capturedTables
+                .stream()
+                .sorted()
+                .collect(Collectors.toCollection(HashSet::new));
+    }
 
     private void determineCapturedTables(SnapshotContext ctx) throws Exception {
         Set<TableId> allTableIds = getAllTableIds(ctx);
@@ -232,7 +257,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             }
         }
 
-        ctx.capturedTables = capturedTables;
+        ctx.capturedTables = sort(capturedTables);
     }
 
     /**
