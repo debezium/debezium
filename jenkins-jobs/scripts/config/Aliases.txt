@@ -1,6 +1,7 @@
 arosenber,Aaron Rosenberg
 jcechace,Jakub Cechacek
 taylor-rolison,Taylor Rolison
+adriank-convoy,Adrian Kreuziger
 trolison,Taylor Rolison
 tomaz.fernandes,Tomaz Lemos Fernandes
 vucina.ivan,Ivan Vucina
@@ -16,6 +17,8 @@ SyedMuhammadSufyian,Syed Muhammad Sufyian
 LiuHanlin,Liu Hanlin
 GraySmog,Wang-Yu-Chao
 Brendan Maguire,Brandon Maguire
+BinLi1988,Bin Li
+brandonbrown,Brandon Brown
 hpgrahsl,Hans-Peter Grahsl
 jchipmunk,Andrey Pustovetov
 luobo,Leo Mei

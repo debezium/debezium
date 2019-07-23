@@ -1,5 +1,6 @@
 Aaron Rosenberg
 Addison Higham
+Adrian Kreuziger
 Akshath Patkar
 Alexander Kovryga
 Amit Sela
@@ -15,6 +16,8 @@ Attila Szucs
 Barry LaFond
 Bartosz Miedlar
 Ben Williams
+Bin Li
+Brandon Brown
 Brandon Maguire
 Cheng Pan
 Ching Tsai
