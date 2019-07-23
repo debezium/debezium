@@ -23,7 +23,7 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
     public boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord) {
         // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
         // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
-        if (startLsn > lastReceivedLsn || (startLsn.equals(lastReceivedLsn) && skipFirstFlushRecord)) {
+        if (startLsn.compareTo(lastReceivedLsn) > 0 || (startLsn.equals(lastReceivedLsn) && skipFirstFlushRecord)) {
             LOGGER.info("Streaming requested from LSN {} but received LSN {} that is same or smaller so skipping the message", startLsn, lastReceivedLsn);
             return true;
         }
