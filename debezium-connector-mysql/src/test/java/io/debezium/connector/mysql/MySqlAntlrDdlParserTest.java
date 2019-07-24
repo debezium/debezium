@@ -1343,9 +1343,13 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1411")
     public void shouldParseGrantStatement() {
-        String ddl = "GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'";
-        parser.parse(ddl, tables);
+        parser.parse("GRANT ALL PRIVILEGES ON `mysql`.* TO 'mysqluser'@'%'", tables);
+        parser.parse("GRANT ALL PRIVILEGES ON `mysql`.`t` TO 'mysqluser'@'%'", tables);
+        parser.parse("GRANT ALL PRIVILEGES ON mysql.t TO 'mysqluser'@'%'", tables);
+        parser.parse("GRANT ALL PRIVILEGES ON `mysql`.t TO 'mysqluser'@'%'", tables);
+        parser.parse("GRANT ALL PRIVILEGES ON mysql.`t` TO 'mysqluser'@'%'", tables);
         assertThat(tables.size()).isEqualTo(0); // no tables
         assertThat(listener.total()).isEqualTo(0);
     }
