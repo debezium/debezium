@@ -30,6 +30,7 @@ import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder
 import io.debezium.connector.postgresql.connection.wal2json.NonStreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.connection.wal2json.StreamingWal2JsonMessageDecoder;
 import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
+import io.debezium.connector.postgresql.snapshot.ExportedSnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
@@ -132,6 +133,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * Perform a snapshot and then stop before attempting to receive any logical changes.
          */
         INITIAL_ONLY("initial_only", (c) -> new InitialOnlySnapshotter()),
+
+        /**
+         * Perform an exported snapshot
+         */
+        EXPORTED("exported", (c) -> new ExportedSnapshotter()),
 
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
@@ -655,6 +661,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
                                                            + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes;"
                                                            + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server; and"
+                                                           + "'exported' to specify the connector should run a snapshot based on the position when the replication slot was created; "
                                                            + "'custom' to specify a custom class with 'snapshot.custom_class' which will be loaded and used to determine the snapshot, see docs for more details.");
 
     public static final Field SNAPSHOT_MODE_CLASS = Field.create("snapshot.custom.class")

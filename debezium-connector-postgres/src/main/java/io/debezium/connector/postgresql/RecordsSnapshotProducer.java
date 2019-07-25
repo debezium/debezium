@@ -225,7 +225,7 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 }
             }
 
-            long xlogStart = connection.currentXLogLocation();
+            long xlogStart = getTransactionStartLsn(connection);
             long txId = connection.currentTransactionId().longValue();
             if (logger.isInfoEnabled()) {
                 logger.info("\t read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
@@ -318,6 +318,17 @@ public class RecordsSnapshotProducer extends RecordsProducer {
                 logger.warn("Snapshot aborted after '{}'", Strings.duration(clock().currentTimeInMillis() - snapshotStart));
             }
         }
+    }
+
+    private long getTransactionStartLsn(PostgresConnection connection) throws SQLException {
+        if (snapshotter.exportSnapshot() && slotCreatedInfo != null) {
+            // When performing an exported snapshot based on a newly created replication slot, the txLogStart position
+            // should be based on the replication slot snapshot transaction point.  This is crucial so that if any
+            // SQL operations occur mid-snapshot that they'll be properly captured when streaming begins; otherwise
+            // they'll be lost.
+            return slotCreatedInfo.startLsn();
+        }
+        return connection.currentXLogLocation();
     }
 
     private void changeSourceToLastSnapshotRecord(SourceRecord currentRecord) {

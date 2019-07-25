@@ -851,6 +851,68 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 2);
     }
 
+    @Test
+    @FixFor("DBZ-1035")
+    public void shouldAllowForExportedSnapshot() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+
+        // Inside RecordsSnapshotProducer, we inject a new row into s1.a with aa=5 prior to executing the
+        // actual snapshot.  The snapshot reference is that of what the tables looked like at the time
+        // the replication slot was created.
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.EXPORTED.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Consume records from the snapshot
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        List<SourceRecord> s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        List<SourceRecord> s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+
+        VerifyRecord.isValidRead(s1recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
+
+        // Insert 2 more rows
+        // These are captured by the stream
+        // NOTE: Manually tested the notion that if records were inserted between creation of replication slot and
+        // the finalization of the snapshot that those records would be captured and streamed at this point.
+        TestHelper.execute(INSERT_STMT);
+        actualRecords = consumeRecordsByTopic(2);
+
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+
+        VerifyRecord.isValidInsert(s1recs.get(0), PK_FIELD, 2);
+        VerifyRecord.isValidInsert(s2recs.get(0), PK_FIELD, 2);
+        stopConnector();
+
+        config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.EXPORTED.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        actualRecords = consumeRecordsByTopic(4);
+
+        s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
+        s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(s1recs.size()).isEqualTo(2);
+        assertThat(s2recs.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(s1recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s1recs.get(1), PK_FIELD, 2);
+        VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
+        VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 2);
+    }
+
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
         return connection.prepareQueryAndMap(
                 "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
