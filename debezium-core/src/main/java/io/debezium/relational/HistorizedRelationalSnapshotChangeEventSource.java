@@ -413,7 +413,17 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
         }
 
-        return overriddenSelect != null ? overriddenSelect : getSnapshotSelect(snapshotContext, tableId);
+        return overriddenSelect != null ? enhanceOverriddenSelect(snapshotContext, overriddenSelect) : getSnapshotSelect(snapshotContext, tableId);
+    }
+
+    /**
+     * Default implementation. Return the query string. Oracle implementation overrides this and adds AS OF SCN logic
+     * @param snapshotContext
+     * @param overriddenSelect
+     * @return
+     */
+    protected String enhanceOverriddenSelect(HistorizedRelationalSnapshotChangeEventSource.SnapshotContext snapshotContext, String overriddenSelect) {
+        return overriddenSelect;
     }
 
     /**
