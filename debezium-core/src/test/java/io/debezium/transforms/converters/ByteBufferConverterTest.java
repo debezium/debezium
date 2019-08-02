@@ -1,4 +1,4 @@
-package io.debezium.connector.mysql.converter;
+package io.debezium.transforms.converters;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
@@ -89,5 +89,4 @@ public class ByteBufferConverterTest {
         assertThat(schemaAndValue.schema()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA);
         assertThat(schemaAndValue.value()).isNull();
     }
-
 }

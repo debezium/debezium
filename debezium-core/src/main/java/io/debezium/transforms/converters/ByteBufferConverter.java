@@ -1,4 +1,9 @@
-package io.debezium.connector.mysql.converter;
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.transforms.converters;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Schema;
@@ -11,6 +16,15 @@ import org.apache.kafka.connect.storage.HeaderConverter;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
+/**
+ * A customized value converter to allow avro message to be delivered as it is (byte[]) to kafka, this is used
+ * for outbox pattern where payload is serialized by KafkaAvroSerializer, the consumer need to get the deseralized payload.
+ *
+ * To enabled the converter in a connector, the following value need to be specified
+ * "value.converter": "io.debezium.transforms.converters.ByteBufferConverter"
+ *
+ * @author Yang Yang
+ */
 public class ByteBufferConverter implements Converter, HeaderConverter {
 
     private static final ConfigDef CONFIG_DEF = ConverterConfig.newConfigDef();
