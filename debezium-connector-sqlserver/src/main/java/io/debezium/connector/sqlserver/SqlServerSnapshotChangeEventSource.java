@@ -120,7 +120,7 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
 
                     LOGGER.info("Locking table {}", tableId);
 
-                    String query = String.format("SELECT * FROM [%s].[%s] WITH (TABLOCKX)", tableId.schema(), tableId.table());
+                    String query = String.format("SELECT TOP(0) * FROM [%s].[%s] WITH (TABLOCKX)", tableId.schema(), tableId.table());
                     statement.executeQuery(query).close();
                 }
             }
