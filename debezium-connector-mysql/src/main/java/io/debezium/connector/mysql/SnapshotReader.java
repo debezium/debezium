@@ -336,7 +336,7 @@ public class SnapshotReader extends AbstractReader {
                 }
                 logger.info("Step {}: read list of available tables in each database", step++);
                 List<TableId> knownTableIds = new ArrayList<>();
-                final List<TableId> monitoredTableIds = new ArrayList<>();
+                final List<TableId> capturedTableIds = new ArrayList<>();
                 final Filters createTableFilters = getCreateTableFilters(filters);
                 final Map<String, List<TableId>> createTablesMap = new HashMap<>();
                 final Set<String> readableDatabaseNames = new HashSet<>();
@@ -360,10 +360,10 @@ public class SnapshotReader extends AbstractReader {
                                     logger.info("\t '{}' is not added among known tables", id);
                                 }
                                 if (filters.tableFilter().test(id)) {
-                                    monitoredTableIds.add(id);
+                                    capturedTableIds.add(id);
                                     logger.info("\t including '{}' for further processing", id);
                                 } else {
-                                    logger.info("\t '{}' is filtered out of monitoring", id);
+                                    logger.info("\t '{}' is filtered out of capturing", id);
                                 }
                             }
                         });
@@ -379,7 +379,7 @@ public class SnapshotReader extends AbstractReader {
                 List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST), Pattern.CASE_INSENSITIVE);
                 List<TableId> tableIdsSorted = new ArrayList<>();
                 tableWhitelistPattern.forEach(pattern -> {
-                    List<TableId> tablesMatchedByPattern = monitoredTableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
+                    List<TableId> tablesMatchedByPattern = capturedTableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
                             .collect(Collectors.toList());
                                         tablesMatchedByPattern.forEach(t -> {
                                                 if (!tableIdsSorted.contains(t)) {
@@ -387,7 +387,7 @@ public class SnapshotReader extends AbstractReader {
                                                 }
                                         });
                 });
-                monitoredTableIds.sort(Comparator.comparing(tableIdsSorted::indexOf));
+                capturedTableIds.sort(Comparator.comparing(tableIdsSorted::indexOf));
                 final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
                 logger.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
 
@@ -406,7 +406,7 @@ public class SnapshotReader extends AbstractReader {
                         }
                         // We have the required privileges, so try to lock all of the tables we're interested in ...
                         logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, knownTableIds.size());
-                        String tableList = monitoredTableIds.stream()
+                        String tableList = capturedTableIds.stream()
                             .map(tid -> quote(tid))
                             .reduce((r, element) -> r + "," + element)
                             .orElse(null);
@@ -522,15 +522,15 @@ public class SnapshotReader extends AbstractReader {
                     BufferedBlockingConsumer<SourceRecord> bufferedRecordQueue = BufferedBlockingConsumer.bufferLast(super::enqueueRecord);
 
                     // Dump all of the tables and generate source records ...
-                    logger.info("Step {}: scanning contents of {} tables while still in transaction", step, monitoredTableIds.size());
-                    metrics.monitoredTablesDetermined(monitoredTableIds);
+                    logger.info("Step {}: scanning contents of {} tables while still in transaction", step, capturedTableIds.size());
+                    metrics.monitoredTablesDetermined(capturedTableIds);
 
                     long startScan = clock.currentTimeInMillis();
                     AtomicLong totalRowCount = new AtomicLong();
                     int counter = 0;
                     int completedCounter = 0;
                     long largeTableCount = context.rowCountForLargeTable();
-                    Iterator<TableId> tableIdIter = monitoredTableIds.iterator();
+                    Iterator<TableId> tableIdIter = capturedTableIds.iterator();
                     while (tableIdIter.hasNext()) {
                         TableId tableId = tableIdIter.next();
                         AtomicLong rowNum = new AtomicLong();
@@ -572,7 +572,7 @@ public class SnapshotReader extends AbstractReader {
 
                             // Scan the rows in the table ...
                             long start = clock.currentTimeInMillis();
-                            logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, monitoredTableIds.size());
+                            logger.info("Step {}: - scanning table '{}' ({} of {} tables)", step, tableId, ++counter, capturedTableIds.size());
 
                             Map<TableId, String> selectOverrides = context.getConnectorConfig().getSnapshotSelectOverridesByTable();
 
@@ -651,14 +651,14 @@ public class SnapshotReader extends AbstractReader {
                         bufferedRecordQueue.close(this::replaceOffsetAndSource);
                         if (logger.isInfoEnabled()) {
                             logger.info("Step {}: scanned {} rows in {} tables in {}",
-                                        step, totalRowCount, monitoredTableIds.size(), Strings.duration(stop - startScan));
+                                        step, totalRowCount, capturedTableIds.size(), Strings.duration(stop - startScan));
                         }
                     } catch (InterruptedException e) {
                         Thread.interrupted();
                         // We were not able to finish all rows in all tables ...
                         if (logger.isInfoEnabled()) {
                             logger.info("Step {}: aborting the snapshot after {} rows in {} of {} tables {}",
-                                        step, totalRowCount, completedCounter, monitoredTableIds.size(), Strings.duration(stop - startScan));
+                                        step, totalRowCount, completedCounter, capturedTableIds.size(), Strings.duration(stop - startScan));
                         }
                         interrupted.set(true);
                     }
