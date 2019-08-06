@@ -64,13 +64,11 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return config;
     }
 
-    protected void refreshSchema(boolean printReplicaIdentityInfo) throws SQLException {
-        try (final PostgresConnection connection = createConnection()) {
-            schema.refresh(connection, printReplicaIdentityInfo);
-        }
+    protected void refreshSchema(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
+        schema.refresh(connection, printReplicaIdentityInfo);
     }
 
-    Long getSlotXmin() throws SQLException {
+    Long getSlotXmin(PostgresConnection connection) throws SQLException {
         // when xmin fetch is set to 0, we don't track it to ignore any performance of querying the
         // slot periodically
         if (config.xminFetchInterval().toMillis() <= 0) {
@@ -79,7 +77,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         assert(this.refreshXmin != null);
 
         if (this.refreshXmin.hasElapsed()) {
-            lastXmin = getCurrentSlotState().slotCatalogXmin();
+            lastXmin = getCurrentSlotState(connection).slotCatalogXmin();
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Fetched new xmin from slot of {}", lastXmin);
             }
@@ -93,10 +91,8 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         return lastXmin;
     }
 
-    private SlotState getCurrentSlotState() throws SQLException {
-        try (final PostgresConnection connection = createConnection()) {
-            return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
-        }
+    private SlotState getCurrentSlotState(PostgresConnection connection) throws SQLException {
+        return connection.getReplicationSlotState(config.slotName(), config.plugin().getPostgresPluginName());
     }
 
     protected ReplicationConnection createReplicationConnection(boolean exportSnapshot) throws SQLException {
