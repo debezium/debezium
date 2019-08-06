@@ -196,11 +196,11 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         }
         purgeDatabaseLogs();
         start(MySqlConnector.class, config);
-        // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 1 additional DROP whitelisted table + 8 data
-        records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 1 + 8);
+        // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 8 data
+        records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 8);
         assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(8);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
-        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(12);
+        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(11);
         stopConnector();
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
@@ -217,11 +217,11 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             );
         }
         start(MySqlConnector.class, config);
-        // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 1 additional DROP whitelisted table + 8 data
-        records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 1 + 12);
+        // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 8 data
+        records = consumeRecordsByTopic(1 + 3 + 2 * 4 + 12);
         assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(12);
         assertThat(records.topics().size()).isEqualTo(1 + 1);
-        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(12);
+        assertThat(records.ddlRecordsForDatabase(database.getDatabaseName()).size()).isEqualTo(11);
         stopConnector();
     }
 }
