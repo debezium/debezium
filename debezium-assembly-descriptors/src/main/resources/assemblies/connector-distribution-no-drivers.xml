@@ -19,8 +19,6 @@
               <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
 
               <!-- Exclude connection drivers -->
-              <exclude>mysql:mysql-connector-java:*</exclude>
-              <exclude>org.postgresql:postgresql:*</exclude>
               <exclude>org.mongodb:mongodb-driver:*</exclude>
               <exclude>org.mongodb:bson:*</exclude>
               <exclude>org.mongodb:mongodb-driver-core:*</exclude>
