@@ -102,7 +102,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicName();
+        Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = super.schemaAndValuesByTopicNameAdaptiveTimeMicroseconds();
         consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
 
         // check the offset information for each record
@@ -567,7 +567,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.time_table", schemaAndValuesForDateTimeTypes());
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.time_table", schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }

@@ -37,7 +37,6 @@ import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
@@ -688,17 +687,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                               .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                                                                                "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
-    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
-                                                         .withDisplayName("Time Precision")
-                                                         .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
-                                                         .withWidth(Width.SHORT)
-                                                         .withImportance(Importance.MEDIUM)
-                                                         .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
-                                                                 + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
-                                                                 + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
-                                                                 + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                                                                 + "which uses millisecond precision regardless of the database columns' precision .");
-
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
                                                           .withDisplayName("HStore Handling")
                                                           .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
@@ -782,7 +770,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
 
-    private final TemporalPrecisionMode temporalPrecisionMode;
     private final HStoreHandlingMode  hStoreHandlingMode;
     private final SnapshotMode snapshotMode;
     private final SchemaRefreshMode schemaRefreshMode;
@@ -797,7 +784,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 DEFAULT_SNAPSHOT_FETCH_SIZE
         );
 
-        this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.hStoreHandlingMode = hStoreHandlingMode;
@@ -839,10 +825,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected Duration statusUpdateInterval() {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
-    }
-
-    protected TemporalPrecisionMode temporalPrecisionMode() {
-        return temporalPrecisionMode;
     }
 
     protected HStoreHandlingMode hStoreHandlingMode() {

@@ -238,6 +238,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
             RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
             RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
+            RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
+            RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE,
@@ -263,7 +265,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION
         );
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE);
+                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
+        );
 
         return config;
     }

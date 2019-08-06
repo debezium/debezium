@@ -9,6 +9,10 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,10 +24,14 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.NanoTimestamp;
@@ -125,6 +133,30 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
             new SchemaAndValueField("val_datetimeoffset", ZonedTimestamp.builder().optional().build(), "2018-07-13T12:23:45.456+11:00"),
             new SchemaAndValueField("val_datetime", Timestamp.builder().optional().build(), 1_531_488_225_780l),
             new SchemaAndValueField("val_smalldatetime", Timestamp.builder().optional().build(), 1_531_491_840_000l)
+    );
+
+    private static final List<SchemaAndValueField> EXPECTED_DATE_TIME_AS_CONNECT = Arrays.asList(
+            new SchemaAndValueField("val_date",  org.apache.kafka.connect.data.Date.builder().optional().build(),
+                    java.util.Date.from(LocalDate.of(2018, 7, 13).atStartOfDay()
+                            .atOffset(ZoneOffset.UTC)
+                            .toInstant())),
+            new SchemaAndValueField("val_time", org.apache.kafka.connect.data.Time.builder().optional().build(),
+                    java.util.Date.from(LocalTime.of(10, 23, 45).atDate(LocalDate.ofEpochDay(0))
+                            .atOffset(ZoneOffset.UTC)
+                            .toInstant())),
+            new SchemaAndValueField("val_datetime2", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 7, 13, 11, 23, 45, 340_000_000)
+                            .atOffset(ZoneOffset.UTC)
+                            .toInstant())),
+            new SchemaAndValueField("val_datetimeoffset", ZonedTimestamp.builder().optional().build(), "2018-07-13T12:23:45.456+11:00"),
+            new SchemaAndValueField("val_datetime", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 7, 13, 13, 23, 45, 780_000_000)
+                            .atOffset(ZoneOffset.UTC)
+                            .toInstant())),
+            new SchemaAndValueField("val_smalldatetime", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
+                    java.util.Date.from(LocalDateTime.of(2018, 7, 13, 14, 24, 00)
+                            .atOffset(ZoneOffset.UTC)
+                            .toInstant()))
     );
 
     private static final List<SchemaAndValueField> EXPECTED_XML = Arrays.asList(
@@ -233,6 +265,24 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     }
 
     @Test
+    public void dateTimeTypesAsConnect() throws Exception {
+        stopConnector();
+        init(TemporalPrecisionMode.CONNECT);
+
+        Testing.debug("Inserted");
+
+        final SourceRecords records = consumeRecordsByTopic(EXPECTED_RECORD_COUNT);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.dbo.type_time");
+        assertThat(testTableRecords).hasSize(1);
+
+        // insert
+        VerifyRecord.isValidRead(testTableRecords.get(0));
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertRecord(after, EXPECTED_DATE_TIME_AS_CONNECT);
+    }
+
+    @Test
     public void otherTypes() throws Exception {
         Testing.debug("Inserted");
 
@@ -249,5 +299,19 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    }
+
+    public void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception {
+        initializeConnectorTestFramework();
+        Testing.Debug.enable();
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
+                .build();
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        Thread.sleep(1000);
     }
 }

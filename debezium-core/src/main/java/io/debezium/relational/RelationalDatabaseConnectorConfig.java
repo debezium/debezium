@@ -20,6 +20,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
@@ -192,7 +193,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
 
+    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
+                                                             .withDisplayName("Time Precision")
+                                                             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
+                                                             .withWidth(Width.SHORT)
+                                                             .withImportance(Importance.MEDIUM)
+                                                             .withValidation(RelationalDatabaseConnectorConfig::validateTimePrecisionMode)
+                                                             .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+                                                                     + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
+                                                                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                                                                     + "which uses millisecond precision regardless of the database columns' precision.");
+
     private final RelationalTableFilters tableFilters;
+
+    private final TemporalPrecisionMode temporalPrecisionMode;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
@@ -205,6 +219,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         else {
             this.tableFilters = null;
         }
+        this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
     }
 
     public RelationalTableFilters getTableFilters() {
@@ -234,6 +249,26 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     /**
+     * Validate the time.precision.mode configuration.
+     *
+     * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
+     * option was deprecated and no longer supported for this connector.
+     */
+    private static int validateTimePrecisionMode(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(TIME_PRECISION_MODE.name())) {
+            final String timePrecisionMode = config.getString(TIME_PRECISION_MODE.name());
+            if (TemporalPrecisionMode.ADAPTIVE.getValue().equals(timePrecisionMode)) {
+                // this is a problem
+                problems.accept(TIME_PRECISION_MODE, timePrecisionMode, "The 'adaptive' time.precision.mode is no longer supported");
+                return 1;
+            }
+        }
+
+        // Everything checks out ok.
+        return 0;
+    }
+
+    /**
      * Returns any SELECT overrides, if present.
      */
     public Map<TableId, String> getSnapshotSelectOverridesByTable() {
@@ -253,5 +288,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
+
+    public TemporalPrecisionMode getTemporalPrecisionMode() {
+        return temporalPrecisionMode;
     }
 }

@@ -23,7 +23,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
-import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -912,17 +911,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
                                                            + "configured tables. The parallel binlog reader will have a configured server id of 10000 + the primary binlog reader's server id.");
 
-    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
-                                                         .withDisplayName("Time Precision")
-                                                         .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
-                                                         .withWidth(Width.SHORT)
-                                                         .withImportance(Importance.MEDIUM)
-                                                         .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)
-                                                         .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
-                                                                 + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
-                                                                 + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                                                                 + "which uses millisecond precision regardless of the database columns' precision.");
-
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
                                                            .withDisplayName("BIGINT UNSIGNED Handling")
                                                            .withEnum(BigIntUnsignedHandlingMode.class, BigIntUnsignedHandlingMode.LONG)
@@ -1148,26 +1136,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             // Sanity check, validate the configured value is a valid option.
             if (lockingModeValue == null) {
                 problems.accept(SNAPSHOT_LOCKING_MODE, lockingModeValue, "Must be a valid snapshot.locking.mode value");
-                return 1;
-            }
-        }
-
-        // Everything checks out ok.
-        return 0;
-    }
-
-    /**
-     * Validate the time.precision.mode configuration.
-     *
-     * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
-     * option was deprecated and no longer supported for this connector.
-     */
-    private static int validateTimePrecisionMode(Configuration config, Field field, ValidationOutput problems) {
-        if (config.hasKey(TIME_PRECISION_MODE.name())) {
-            final String timePrecisionMode = config.getString(TIME_PRECISION_MODE.name());
-            if (TemporalPrecisionMode.ADAPTIVE.getValue().equals(timePrecisionMode)) {
-                // this is a problem
-                problems.accept(TIME_PRECISION_MODE, timePrecisionMode, "The 'adaptive' time.precision.mode is no longer supported");
                 return 1;
             }
         }

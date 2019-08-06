@@ -137,8 +137,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     private static MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
         // Use MySQL-specific converters and schemas for values ...
 
-        String timePrecisionModeStr = configuration.getConfig().getString(MySqlConnectorConfig.TIME_PRECISION_MODE);
-        TemporalPrecisionMode timePrecisionMode = TemporalPrecisionMode.parse(timePrecisionModeStr);
+        TemporalPrecisionMode timePrecisionMode = configuration.getTemporalPrecisionMode();
 
         DecimalMode decimalMode = configuration.getDecimalMode();
 

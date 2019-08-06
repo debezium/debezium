@@ -136,7 +136,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         //date and time
         consumer.expects(1);
-        assertInsert(INSERT_DATE_TIME_TYPES_STMT, 1, schemaAndValuesForDateTimeTypes());
+        assertInsert(INSERT_DATE_TIME_TYPES_STMT, 1, schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds());
 
         // text
         consumer.expects(1);

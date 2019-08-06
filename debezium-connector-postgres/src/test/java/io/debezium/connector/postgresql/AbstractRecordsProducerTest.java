@@ -717,7 +717,7 @@ public abstract class AbstractRecordsProducerTest {
 
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTopicName() {
         return ALL_STMTS.stream().collect(Collectors.toMap(AbstractRecordsProducerTest::topicNameFromInsertStmt,
-                                                           this::schemasAndValuesForTable));
+                                                           this::schemasAndValuesForTableAdaptiveTimeMicroseconds));
     }
 
     protected Map<String, List<SchemaAndValueField>> schemaAndValuesByTopicNameAdaptiveTimeMicroseconds() {
