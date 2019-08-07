@@ -272,19 +272,25 @@ public class EventRouterConfigDefinition {
 
     static List<AdditionalField> parseAdditionalFieldsConfig(Configuration config) {
         String extraFieldsMapping = config.getString(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT);
+        String eventTypeColumn = config.getString(FIELD_EVENT_TYPE);
 
         List<AdditionalField> additionalFields = new ArrayList<>();
 
-        if (extraFieldsMapping == null) {
-            return additionalFields;
+        boolean eventTypeMappingProvided = false;
+        if (extraFieldsMapping != null) {
+            for (String field : extraFieldsMapping.split(",")) {
+                final String[] parts = field.split(":");
+                final String fieldName = parts[0];
+                AdditionalFieldPlacement placement = AdditionalFieldPlacement.parse(parts[1]);
+                final AdditionalField addField = new AdditionalField(placement, fieldName, parts.length == 3 ? parts[2] : fieldName);
+                additionalFields.add(addField);
+                if (EventRouter.ENVELOPE_EVENT_TYPE.equals(addField.getAlias())) {
+                    eventTypeMappingProvided = true;
+                }
+            }
         }
-
-        for (String field : extraFieldsMapping.split(",")) {
-            final String[] parts = field.split(":");
-            AdditionalFieldPlacement placement = AdditionalFieldPlacement.parse(parts[1]);
-            additionalFields.add(
-                    new AdditionalField(placement, parts[0], parts.length == 3 ? parts[2] : parts[0])
-            );
+        if (!eventTypeMappingProvided) {
+            additionalFields.add(0, new AdditionalField(AdditionalFieldPlacement.ENVELOPE, eventTypeColumn, EventRouter.ENVELOPE_EVENT_TYPE));
         }
 
         return additionalFields;

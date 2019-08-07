@@ -41,7 +41,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventRouter.class);
 
-    private static final String ENVELOPE_EVENT_TYPE = "eventType";
+    public static final String ENVELOPE_EVENT_TYPE = "eventType";
     private static final String ENVELOPE_PAYLOAD = "payload";
     private static final String RECORD_ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
 
@@ -51,7 +51,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private String fieldEventId;
     private String fieldEventKey;
-    private String fieldEventType;
     private String fieldEventTimestamp;
     private String fieldPayload;
     private String fieldPayloadId;
@@ -106,7 +105,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 : eventStruct.getInt64(fieldEventTimestamp);
 
         Object eventId = eventStruct.get(fieldEventId);
-        Object eventType = eventStruct.get(fieldEventType);
         Object payload = eventStruct.get(fieldPayload);
         Object payloadId = eventStruct.get(fieldPayloadId);
 
@@ -118,7 +116,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 : getValueSchema(eventValueSchema, eventStruct.getInt32(fieldSchemaVersion));
 
         Struct value = new Struct(valueSchema)
-                .put(ENVELOPE_EVENT_TYPE, eventType)
                 .put(ENVELOPE_PAYLOAD, payload);
 
         additionalFields.forEach((additionalField -> {
@@ -211,7 +208,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
         fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
-        fieldEventType = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TYPE);
         fieldEventTimestamp = config.getString(EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP);
         fieldPayload = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD);
         fieldPayloadId = config.getString(EventRouterConfigDefinition.FIELD_PAYLOAD_ID);
@@ -257,7 +253,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         // Add default fields
         schemaBuilder
-                .field(ENVELOPE_EVENT_TYPE, debeziumEventSchema.field(fieldEventType).schema())
                 .field(ENVELOPE_PAYLOAD, debeziumEventSchema.field(fieldPayload).schema());
 
         // Add additional fields while keeping the schema inherited from Debezium based on the table column type
