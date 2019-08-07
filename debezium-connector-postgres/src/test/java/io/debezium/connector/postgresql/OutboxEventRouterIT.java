@@ -138,6 +138,43 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldSendEventTypeAsHeader() throws Exception {
+        startConnectorWithInitialSnapshotRecord();
+
+        TestHelper.execute(createEventInsert(
+                UUID.fromString("59a42efd-b015-44a9-9dde-cb36d9002425"),
+                "UserCreated",
+                "User",
+                "10711fa5",
+                "{}",
+                ""
+        ));
+
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                "table.fields.additional.placement",
+                "type:header:eventType"
+        );
+        outboxEventRouter.configure(config);
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        SourceRecord newEventRecord = actualRecords.recordsForTopic(topicName("outboxsmtit.outbox")).get(0);
+        SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
+
+        assertThat(routedEvent).isNotNull();
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
+
+        Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        assertThat(routedEvent.headers().lastWithName("eventType").value()).isEqualTo("UserCreated");
+        assertThat(valueStruct.schema().field("eventType")).isNull();
+        JsonNode payload = (new ObjectMapper()).readTree(valueStruct.getString("payload"));
+        assertThat(payload.get("email")).isEqualTo(null);
+
+    }
+
+    @Test
     public void shouldRespectJsonFormatAsString() throws Exception {
         startConnectorWithInitialSnapshotRecord();
 
@@ -202,8 +239,8 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         // Validate metadata
         Schema expectedSchema = SchemaBuilder.struct()
                 .version(1)
-                .field("eventType", Schema.STRING_SCHEMA)
                 .field("payload", Json.builder().optional().build())
+                .field("eventType", Schema.STRING_SCHEMA)
                 .field("eventVersion", Schema.INT32_SCHEMA)
                 .field("aggregateType", Schema.STRING_SCHEMA)
                 .field("someBoolType", Schema.BOOLEAN_SCHEMA)
