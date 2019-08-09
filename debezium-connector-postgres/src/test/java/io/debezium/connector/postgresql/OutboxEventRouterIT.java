@@ -146,7 +146,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserCreated",
                 "User",
                 "10711fa5",
-                "{}",
+                "{\"email\": \"gh@mefi.in\"}",
                 ""
         ));
 
@@ -166,11 +166,11 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         assertThat(routedEvent).isNotNull();
         assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
 
-        Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
+        Object value = routedEvent.value();
         assertThat(routedEvent.headers().lastWithName("eventType").value()).isEqualTo("UserCreated");
-        assertThat(valueStruct.schema().field("eventType")).isNull();
-        JsonNode payload = (new ObjectMapper()).readTree(valueStruct.getString("payload"));
-        assertThat(payload.get("email")).isEqualTo(null);
+        assertThat(value).isInstanceOf(String.class);
+        JsonNode payload = (new ObjectMapper()).readTree((String) value);
+        assertThat(payload.get("email").getTextValue()).isEqualTo("gh@mefi.in");
 
     }
 
