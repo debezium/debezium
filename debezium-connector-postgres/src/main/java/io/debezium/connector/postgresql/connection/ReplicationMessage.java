@@ -6,10 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.OffsetTime;
+import java.time.*;
 import java.util.List;
 
 import org.postgresql.geometric.PGbox;
@@ -80,8 +77,8 @@ public interface ReplicationMessage {
         Double asDouble();
         SpecialValueDecimal asDecimal();
         LocalDate asLocalDate();
-        long asTimestampWithTimeZone();
-        long asTimestampWithoutTimeZone();
+        OffsetDateTime asOffsetDateTime();
+        OffsetDateTime asOffsetDateTimeWithoutTimeZone();
         LocalTime asLocalTime();
         OffsetTime asOffsetTime();
         byte[] asByteArray();

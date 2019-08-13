@@ -21,7 +21,6 @@ import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.time.Conversions;
 
 /**
  * <p>JSON deserialization of a message sent by
@@ -146,7 +145,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
                         // Correct initial chunk
                         txId = message.getLong("xid");
                         final String timestamp = message.getString("timestamp");
-                        commitTime = Conversions.toInstant(dateTime.systemTimestamp(timestamp));
+                        commitTime = dateTime.systemTimestampToOffsetDateTime(timestamp).toInstant();
                         messageInProgress = true;
                         currentChunk = null;
                     }
