@@ -7,8 +7,8 @@ package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 
@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.connection.wal2json.DateTimeFormat;
-import io.debezium.time.Conversions;
 
 /**
  * @author Chris Cranford
@@ -51,14 +50,13 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public long asTimestampWithTimeZone() {
-        return DateTimeFormat.get().timestampWithTimeZone(asString());
+    public OffsetDateTime asOffsetDateTime() {
+        return DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(asString());
     }
 
     @Override
-    public long asTimestampWithoutTimeZone() {
-        final LocalDateTime serverLocal = Conversions.fromNanosToLocalDateTimeUTC(DateTimeFormat.get().timestamp(asString()));
-        return Conversions.toEpochNanos(serverLocal.toInstant(ZoneOffset.UTC));
+    public OffsetDateTime asOffsetDateTimeWithoutTimeZone() {
+        return DateTimeFormat.get().timestampToOffsetDateTime(asString(), ZoneOffset.UTC);
     }
 
     @Override

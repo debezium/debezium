@@ -5,24 +5,24 @@
  */
 package io.debezium.connector.postgresql.connection.wal2json;
 
+import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.SignStyle;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.util.function.Supplier;
-
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.time.NanoTimestamp;
 
 /**
  * Transformer for time/date related string representations in JSON messages coming from the wal2json plugin.
@@ -31,9 +31,9 @@ import io.debezium.time.NanoTimestamp;
  *
  */
 public interface DateTimeFormat {
-    public long timestamp(final String s);
-    public long timestampWithTimeZone(final String s);
-    public long systemTimestamp(final String s);
+    public OffsetDateTime timestampToOffsetDateTime(final String s, ZoneOffset offset);
+    public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(final String s);
+    public OffsetDateTime systemTimestampToOffsetDateTime(final String s);
     public LocalDate date(final String s);
     public LocalTime time(final String s);
     public OffsetTime timeWithTimeZone(final String s);
@@ -44,20 +44,33 @@ public interface DateTimeFormat {
     public static class ISODateTimeFormat implements DateTimeFormat {
         private static final Logger LOGGER = LoggerFactory.getLogger(ISODateTimeFormat.class);
 
-        private static final String TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss[.S]";
+        // This formatter is similar to standard Java's ISO_LOCAL_DATE. But this one is
+        // using 'YEAR_OF_ERA + SignStyle.NEVER' instead of 'YEAR+SignStyle.EXCEEDS_PAD'
+        // to support ChronoField.ERA at the end of the date string.
+        private static final DateTimeFormatter NON_ISO_LOCAL_DATE = new DateTimeFormatterBuilder()
+                .appendValue(ChronoField.YEAR_OF_ERA, 4, 10, SignStyle.NEVER)
+                .appendLiteral('-')
+                .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+                .appendLiteral('-')
+                .appendValue(ChronoField.DAY_OF_MONTH, 2)
+                .toFormatter();
+
+        private static final String TS_FORMAT_PATTERN_HINT = "y..y-MM-dd HH:mm:ss[.S]";
         private static final DateTimeFormatter TS_FORMAT = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd HH:mm:ss")
-                .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+                .append(NON_ISO_LOCAL_DATE)
+                .appendLiteral(' ')
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
                 .optionalStart()
                 .appendLiteral(" ")
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
                 .optionalEnd()
                 .toFormatter();
 
-        private static final String TS_TZ_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss[.S]X";
+        private static final String TS_TZ_FORMAT_PATTERN_HINT = "y..y-MM-dd HH:mm:ss[.S]X";
         private static final DateTimeFormatter TS_TZ_FORMAT = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd HH:mm:ss")
-                .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+                .append(NON_ISO_LOCAL_DATE)
+                .appendLiteral(' ')
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
                 .appendOffset("+HH:mm", "")
                 .optionalStart()
                 .appendLiteral(" ")
@@ -65,10 +78,11 @@ public interface DateTimeFormat {
                 .optionalEnd()
                 .toFormatter();
 
-        private static final String SYSTEM_TS_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss.SSSSSSX";
+        private static final String SYSTEM_TS_FORMAT_PATTERN_HINT = "y..y-MM-dd HH:mm:ss.SSSSSSX";
         private static final DateTimeFormatter SYSTEM_TS_FORMAT = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd HH:mm:ss")
-                .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+                .append(NON_ISO_LOCAL_DATE)
+                .appendLiteral(' ')
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
                 .appendOffset("+HH:mm", "Z")
                 .optionalStart()
                 .appendLiteral(" ")
@@ -76,8 +90,14 @@ public interface DateTimeFormat {
                 .optionalEnd()
                 .toFormatter();
 
-        private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd[ GG]";
-        private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN);
+        private static final String DATE_FORMAT_OPT_ERA_PATTERN_HINT = "y..y-MM-dd[ GG]";
+        private static final DateTimeFormatter DATE_FORMAT_OPT_ERA = new DateTimeFormatterBuilder()
+                .append(NON_ISO_LOCAL_DATE)
+                .optionalStart()
+                .appendLiteral(' ')
+                .appendText(ChronoField.ERA, TextStyle.SHORT)
+                .optionalEnd()
+                .toFormatter();
 
         private static final String TIME_FORMAT_PATTERN = "HH:mm:ss[.S]";
         private static final DateTimeFormatter TIME_FORMAT = new DateTimeFormatterBuilder()
@@ -89,26 +109,13 @@ public interface DateTimeFormat {
 
         private static final String TIME_TZ_FORMAT_PATTERN = "HH:mm:ss[.S]X";
         private static final DateTimeFormatter TIME_TZ_FORMAT = new DateTimeFormatterBuilder()
-                .appendPattern("HH:mm:ss")
-                .optionalStart()
-                .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
-                .optionalEnd()
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
                 .appendOffset("+HH:mm", "")
                 .toFormatter();
 
         @Override
-        public long timestamp(final String s) {
-                return format(TS_FORMAT_PATTERN, s, () -> NanoTimestamp.toEpochNanos(LocalDateTime.parse(s, TS_FORMAT), null));
-        }
-
-        @Override
-        public long timestampWithTimeZone(final String s) {
-            return formatTZ(TS_TZ_FORMAT_PATTERN, TS_TZ_FORMAT, s);
-        }
-
-        @Override
         public LocalDate date(final String s) {
-            return format(DATE_FORMAT_PATTERN, s, () -> LocalDate.parse(s, DATE_FORMAT));
+            return format(DATE_FORMAT_OPT_ERA_PATTERN_HINT, s, () -> LocalDate.parse(s, DATE_FORMAT_OPT_ERA));
         }
 
         @Override
@@ -119,11 +126,6 @@ public interface DateTimeFormat {
         @Override
         public OffsetTime timeWithTimeZone(final String s) {
             return format(TIME_TZ_FORMAT_PATTERN, s, () -> OffsetTime.parse(s, TIME_TZ_FORMAT)).withOffsetSameInstant(ZoneOffset.UTC);
-        }
-
-        @Override
-        public long systemTimestamp(final String s) {
-            return formatTZ(SYSTEM_TS_FORMAT_PATTERN, SYSTEM_TS_FORMAT, s);
         }
 
         private long formatTZ(final String pattern, final DateTimeFormatter formatter, final String s) {
@@ -140,6 +142,21 @@ public interface DateTimeFormat {
                 LOGGER.error("Cannot parse time/date value '{}', expected format '{}'", s, pattern);
                 throw new ConnectException(e);
             }
+        }
+
+        @Override
+        public OffsetDateTime timestampToOffsetDateTime(String s, ZoneOffset offset) {
+            return format(TS_FORMAT_PATTERN_HINT, s, () -> LocalDateTime.from(TS_FORMAT.parse(s)).atOffset(offset));
+        }
+
+        @Override
+        public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(String s) {
+            return format(TS_TZ_FORMAT_PATTERN_HINT, s, () -> OffsetDateTime.from(TS_TZ_FORMAT.parse(s)));
+        }
+
+        @Override
+        public OffsetDateTime systemTimestampToOffsetDateTime(String s) {
+            return format(SYSTEM_TS_FORMAT_PATTERN_HINT, s, () -> OffsetDateTime.from(SYSTEM_TS_FORMAT.parse(s)));
         }
     }
 }

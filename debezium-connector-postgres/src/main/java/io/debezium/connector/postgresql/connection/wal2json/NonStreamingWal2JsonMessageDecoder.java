@@ -25,7 +25,6 @@ import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
-import io.debezium.time.Conversions;
 
 /**
  * A non-streaming version of JSON deserialization of a message sent by
@@ -55,7 +54,7 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
             final Document message = DocumentReader.floatNumbersAsTextReader().read(content);
             final long txId = message.getLong("xid");
             final String timestamp = message.getString("timestamp");
-            final Instant commitTime = Conversions.toInstant(dateTime.systemTimestamp(timestamp));
+            final Instant commitTime = dateTime.systemTimestampToOffsetDateTime(timestamp).toInstant();
             final Array changes = message.getArray("change");
 
             // WAL2JSON may send empty changes that still have a txid. These events are from things like vacuum,
