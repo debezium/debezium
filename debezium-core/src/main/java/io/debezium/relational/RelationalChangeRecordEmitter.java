@@ -8,6 +8,8 @@ package io.debezium.relational;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Struct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -22,6 +24,7 @@ import io.debezium.util.Clock;
  */
 public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitter {
 
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
     private final OffsetContext offsetContext;
     private final Clock clock;
 
@@ -65,6 +68,10 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
 
+        if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
+            logger.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, offsetContext.getSourceInfo());
+            return;
+        }
         receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
     }
 
@@ -89,6 +96,10 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
+        if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
+            logger.warn("no new values found for table '{}' from update message at '{}'; skipping record", tableSchema, offsetContext.getSourceInfo());
+            return;
+        }
         // some configurations does not provide old values in case of updates
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
@@ -110,6 +121,11 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
+        if (skipEmptyMessages() && (oldColumnValues == null || oldColumnValues.length == 0)) {
+            logger.warn("no old values found for table '{}' from delete message at '{}'; skipping record", tableSchema, offsetContext.getSourceInfo());
+            return;
+        }
+
         Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
         receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
     }
@@ -128,4 +144,8 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
      * Returns the new row state in case of a CREATE or READ.
      */
     protected abstract Object[] getNewColumnValues();
+
+    protected boolean skipEmptyMessages() {
+        return false;
+    }
 }
