@@ -980,6 +980,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.b")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
+                false
         );
 
         String statement = "CREATE SCHEMA s1;" +
@@ -990,11 +992,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         // streaming from database is non-blocking so we should receive many heartbeats
         final int expectedHeartbeats = 5;
-        consumer = testConsumer(1 + expectedHeartbeats);
+        // heartbeat for unfiltered table, data change, heartbeats
+        consumer = testConsumer(1 + 1 + expectedHeartbeats);
         consumer.setIgnoreExtraRecords(true);
         executeAndWait(statement);
 
         // change record for s1.b and heartbeats
+        assertHeartBeatRecordInserted();
         assertRecordInserted("s1.b", PK_FIELD, 1);
         for (int i = 0; i < expectedHeartbeats; i++) {
             assertHeartBeatRecordInserted();
