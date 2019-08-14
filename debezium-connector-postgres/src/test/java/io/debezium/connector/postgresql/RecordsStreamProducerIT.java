@@ -100,7 +100,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         start(PostgresConnector.class, new PostgresConnectorConfig(customConfig.apply(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                 .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL))
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, waitForSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NEVER))
                 .build()).getConfig()
         );
         assertConnectorIsRunning();
@@ -1356,7 +1356,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             );
         }
 
-        startConnector(config -> config.with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, mode));
+        startConnector(config -> config.with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, mode), false);
+        consumer = testConsumer(1);
 
         final String toastedValue = RandomStringUtils.randomAlphanumeric(10000);
 
