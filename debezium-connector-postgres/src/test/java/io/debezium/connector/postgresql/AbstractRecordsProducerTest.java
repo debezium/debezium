@@ -47,6 +47,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.source.SourceTask;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
@@ -1079,7 +1080,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         waitForStreamingRunning("postgres", "test_server");
     }
 
-    protected PostgresSchema getSchema() {
-        return null;
+    protected void assertWithTask(Consumer<SourceTask> consumer) {
+        engine.runWithTask(consumer);
     }
 }

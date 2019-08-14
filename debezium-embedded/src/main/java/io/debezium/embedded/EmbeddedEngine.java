@@ -602,6 +602,8 @@ public final class EmbeddedEngine implements Runnable {
     private long timeOfLastCommitMillis = 0;
     private OffsetCommitPolicy offsetCommitPolicy;
 
+    private SourceTask task;
+
     private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, ChangeConsumer handler,
                            CompletionCallback completionCallback, ConnectorCallback connectorCallback,
                            OffsetCommitPolicy offsetCommitPolicy) {
@@ -767,7 +769,7 @@ public final class EmbeddedEngine implements Runnable {
                     connectorCallback.ifPresent(ConnectorCallback::connectorStarted);
                     List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     Class<? extends Task> taskClass = connector.taskClass();
-                    SourceTask task = null;
+                    task = null;
                     try {
                         task = (SourceTask) taskClass.newInstance();
                     }
@@ -1029,6 +1031,10 @@ public final class EmbeddedEngine implements Runnable {
     @Override
     public String toString() {
         return "EmbeddedEngine{id=" + config.getString(ENGINE_NAME) + '}';
+    }
+
+    public void runWithTask(Consumer<SourceTask> consumer) {
+        consumer.accept(task);
     }
 
     protected static class EmbeddedConfig extends WorkerConfig {

@@ -248,4 +248,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
     protected Iterable<Field> getAllConfigurationFields() {
         return PostgresConnectorConfig.ALL_FIELDS;
     }
+
+    public PostgresTaskContext getTaskContext() {
+        return taskContext;
+    }
 }
