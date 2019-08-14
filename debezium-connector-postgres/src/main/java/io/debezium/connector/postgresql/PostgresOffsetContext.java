@@ -129,6 +129,10 @@ public class PostgresOffsetContext implements OffsetContext {
         return sourceInfo.lsn() != null;
     }
 
+    boolean hasCompletelyProcessedPosition() {
+        return this.lastCompletelyProcessedLsn != null;
+    }
+
     Long lsn() {
         return sourceInfo.lsn();
     }

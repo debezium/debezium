@@ -173,8 +173,16 @@ public class EventDispatcher<T extends DataCollectionId> {
         schemaChangeEventEmitter.emitSchemaChangeEvent(new SchemaChangeEventReceiver());
     }
 
-    public void dispatchHeartbeatEvent(OffsetContext offset) throws InterruptedException {
+    public void alwaysDispatchHeartbeatEvent(OffsetContext offset) throws InterruptedException {
         heartbeat.forcedBeat(
+                offset.getPartition(),
+                offset.getOffset(),
+                this::enqueueHeartbeat
+        );
+    }
+
+    public void dispatchHeartbeatEvent(OffsetContext offset) throws InterruptedException {
+        heartbeat.heartbeat(
                 offset.getPartition(),
                 offset.getOffset(),
                 this::enqueueHeartbeat

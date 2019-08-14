@@ -91,12 +91,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             final ReplicationStream stream = this.replicationStream.get();
             while (context.isRunning()) {
-                stream.readPending(message -> {
+                if (!stream.readPending(message -> {
                     final Long lsn = stream.lastReceivedLsn();
                     if (message == null) {
                         LOGGER.trace("Received empty message");
                         lastCompletelyProcessedLsn = lsn;
-                        pauseNoMessage.pause();
                         return;
                     }
                     if (message.isLastEventForLsn()) {
@@ -119,7 +118,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                                         message
                                 )
                         );
-                });
+                })) {
+                    if (offsetContext.hasCompletelyProcessedPosition()) {
+                        dispatcher.dispatchHeartbeatEvent(offsetContext);
+                        pauseNoMessage.pause();
+                    }
+                }
             }
         }
         catch (Throwable e) {

@@ -164,7 +164,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
                 ctx.offset.postSnapshotCompletion();
             }
 
-            dispatcher.dispatchHeartbeatEvent(ctx.offset);
+            dispatcher.alwaysDispatchHeartbeatEvent(ctx.offset);
             snapshotProgressListener.snapshotCompleted();
             return SnapshotResult.completed(ctx.offset);
         }
