@@ -1031,8 +1031,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         consumer.expects(1);
         executeAndWait(statement);
-        Table tbl = getSchema().tableFor(TableId.parse("public.test_table"));
-        assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
+        assertWithTask(task -> {
+            Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table"));
+            assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
+        });
     }
 
     @Test
@@ -1065,9 +1067,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         consumer.expects(1);
         executeAndWait(statement);
-        Table tbl = getSchema().tableFor(TableId.parse("public.test_table"));
-
-        assertEquals(Arrays.asList("pk", "not_toast"), tbl.retrieveColumnNames());
+        assertWithTask(task -> {
+            Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table"));
+            assertEquals(Arrays.asList("pk", "not_toast"), tbl.retrieveColumnNames());
+        });
     }
 
     @Test
@@ -1111,8 +1114,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(6);
         executeAndWait(statement);
         consumer.process(record -> {
-            Table tbl = getSchema().tableFor(TableId.parse("public.test_table"));
-            assertEquals(Arrays.asList("pk", "text", "not_toast", "mandatory_text"), tbl.retrieveColumnNames());
+            assertWithTask(task -> {
+                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table"));
+                assertEquals(Arrays.asList("pk", "text", "not_toast", "mandatory_text"), tbl.retrieveColumnNames());
+            });
         });
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
