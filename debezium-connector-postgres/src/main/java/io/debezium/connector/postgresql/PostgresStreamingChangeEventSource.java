@@ -74,7 +74,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         try {
             if (offsetContext.hasLastKnownPosition()) {
                 // start streaming from the last recorded position in the offset
-                Long lsn = offsetContext.lsn();
+                final Long lsn = offsetContext.lsn();
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("retrieved latest position from stored offset '{}'", ReplicationConnection.format(lsn));
                 }

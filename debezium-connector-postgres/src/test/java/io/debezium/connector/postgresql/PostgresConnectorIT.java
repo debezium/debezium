@@ -755,8 +755,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // Generate empty logical decoding message
         TestHelper.execute(statement);
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+
+        SourceRecord record = consumeRecord();
+        assertThat(record == null || !record.sourceOffset().isEmpty());
     }
 
     @Test
