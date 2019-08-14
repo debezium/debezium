@@ -51,8 +51,8 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
             }
             final byte[] source = buffer.array();
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
+            LOGGER.trace("Message arrived for decoding {}", new String(content));
             final Document message = DocumentReader.floatNumbersAsTextReader().read(content);
-            LOGGER.debug("Message arrived for decoding {}", message);
             final long txId = message.getLong("xid");
             final String timestamp = message.getString("timestamp");
             final Instant commitTime = Conversions.toInstant(dateTime.systemTimestamp(timestamp));
