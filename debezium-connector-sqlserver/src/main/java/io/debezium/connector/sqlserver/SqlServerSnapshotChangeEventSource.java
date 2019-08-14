@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
-import java.time.Instant;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,16 +20,15 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.HistorizedRelationalSnapshotChangeEventSource;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
 
-public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnapshotChangeEventSource {
+public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerSnapshotChangeEventSource.class);
 
@@ -199,15 +198,8 @@ public class SqlServerSnapshotChangeEventSource extends HistorizedRelationalSnap
      * @return a valid query string
      */
     @Override
-    protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
-        return String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table());
-    }
-
-    @Override
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row) {
-        ((SqlServerOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(getClock().currentTimeInMillis()));
-        ((SqlServerOffsetContext) snapshotContext.offset).setTableId(tableId);
-        return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
+    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+        return Optional.of(String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table()));
     }
 
     /**

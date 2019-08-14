@@ -22,8 +22,8 @@ import org.postgresql.geometric.PGpolygon;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGmoney;
 
+import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
-import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 import io.debezium.data.SpecialValueDecimal;
 
 /**

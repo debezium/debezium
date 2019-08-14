@@ -246,4 +246,8 @@ public final class Conversions {
     public static Instant toInstantFromMicros(long epochMicros) {
         return toInstant(TimeUnit.MICROSECONDS.toNanos(epochMicros));
     }
+
+    public static Instant toInstantFromMillis(long epochMillis) {
+        return toInstant(TimeUnit.MILLISECONDS.toNanos(epochMillis));
+    }
 }

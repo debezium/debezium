@@ -38,7 +38,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 public final class TestHelper {
 
     protected static final String TEST_SERVER = "test_server";
-    protected static final String TEST_DATABASE = "test_database";
+    protected static final String TEST_DATABASE = "postgres";
     protected static final String PK_FIELD = "pk";
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);

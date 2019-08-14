@@ -29,6 +29,10 @@ public interface ChangeRecordEmitter {
      */
     OffsetContext getOffset();
 
+    default DataCollectionSchema synchronizeTableSchema(DataCollectionSchema dataCollectionSchema) {
+        return dataCollectionSchema;
+    }
+
     public interface Receiver {
         void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value, OffsetContext offset) throws InterruptedException;
     }

@@ -13,17 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
-import io.debezium.connector.postgresql.snapshot.SnapshotterWrapper;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
-import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 
 /**
  * Integration test for {@link io.debezium.connector.postgresql.PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE}
@@ -49,43 +45,23 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
             "INSERT INTO over.t2 VALUES (102);" +
             "INSERT INTO over.t2 VALUES (103);";
 
-    private RecordsSnapshotProducer snapshotProducer;
-    private PostgresTaskContext context;
-    private PostgresConnectorConfig config;
-
-    public void before(Configuration overrides) throws SQLException {
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropAllSchemas();
-
-        config = new PostgresConnectorConfig(TestHelper.defaultConfig().with(overrides).build());
-        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
-        context = new PostgresTaskContext(
-                config,
-                TestHelper.getSchema(config),
-                selector
-        );
-    }
-
-    @After
-    public void after() throws Exception {
-        if (snapshotProducer != null) {
-            snapshotProducer.stop();
-        }
     }
 
     @Test
     public void shouldUseOverriddenSelectStatementDuringSnapshotting() throws Exception {
-        before(Configuration.create()
+        TestHelper.execute(STATEMENTS);
+
+        buildProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 100")
-                .build());
-        snapshotProducer = buildStreamProducer(context, config);
+        );
 
         final int expectedRecordsCount = 3 + 6;
 
-        TestHelper.execute(STATEMENTS);
         TestConsumer consumer = testConsumer(expectedRecordsCount, "over");
-
-        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
@@ -95,19 +71,17 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
 
     @Test
     public void shouldUseMultipleOverriddenSelectStatementsDuringSnapshotting() throws Exception {
-        before(Configuration.create()
+        TestHelper.execute(STATEMENTS);
+
+        buildProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1,over.t2")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 101")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t2", "SELECT * FROM over.t2 WHERE pk > 100")
-                .build());
-        snapshotProducer = buildStreamProducer(context, config);
+        );
 
         final int expectedRecordsCount = 2 + 3;
 
-        TestHelper.execute(STATEMENTS);
         TestConsumer consumer = testConsumer(expectedRecordsCount, "over");
-
-        snapshotProducer.start(consumer, e -> {});
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
 
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
@@ -125,9 +99,11 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         return recordsByTopic;
     }
 
-    private RecordsSnapshotProducer buildStreamProducer(PostgresTaskContext ctx, PostgresConnectorConfig config) {
-        Snapshotter sn = new InitialOnlySnapshotter();
-        SnapshotterWrapper snw = new SnapshotterWrapper(sn, config, null, null);
-        return new RecordsSnapshotProducer(ctx, TestHelper.sourceInfo(), snw);
+    private void buildProducer(Configuration.Builder config) {
+        start(PostgresConnector.class, config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
+                .build()
+        );
+        assertConnectorIsRunning();
     }
 }

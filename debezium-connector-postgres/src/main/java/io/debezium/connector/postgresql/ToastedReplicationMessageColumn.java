@@ -28,7 +28,7 @@ public class ToastedReplicationMessageColumn extends AbstractReplicationMessageC
     }
 
     @Override
-    public Object getValue(RecordsStreamProducer.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+    public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         throw new UnsupportedOperationException("A toasted column does not supply a value");
     }
 }

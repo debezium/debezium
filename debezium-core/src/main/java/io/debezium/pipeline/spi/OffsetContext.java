@@ -5,10 +5,13 @@
  */
 package io.debezium.pipeline.spi;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+
+import io.debezium.relational.TableId;
 
 /**
  * Keeps track of the current offset within the source DB's change stream. This reflects in the offset as committed to
@@ -57,4 +60,11 @@ public interface OffsetContext {
      * Signals that a snapshot has been completed, which should reflect in an updated offset state.
      */
     void postSnapshotCompletion();
+
+    /**
+     * Records the name of the table and the timestamp of the last event
+     * @param tableId
+     * @param timestamp
+     */
+    void event(TableId tableId, Instant timestamp);
 }

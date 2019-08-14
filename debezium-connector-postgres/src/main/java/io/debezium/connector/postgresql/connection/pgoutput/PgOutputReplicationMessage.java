@@ -8,8 +8,8 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 import java.time.Instant;
 import java.util.List;
 
+import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
-import io.debezium.connector.postgresql.RecordsStreamProducer.PgConnectionSupplier;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessageColumnValueResolver;
 

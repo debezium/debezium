@@ -7,17 +7,12 @@
 package io.debezium.connector.postgresql;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.relational.TableId;
-import io.debezium.time.Conversions;
 
 /**
  * Information about the source of information, which for normal events contains information about the transaction id and the
@@ -74,9 +69,8 @@ import io.debezium.time.Conversions;
  * @author Horia Chiorean
  */
 @NotThreadSafe
-public final class SourceInfo extends AbstractSourceInfo {
+public final class SourceInfo extends BaseSourceInfo {
 
-    public static final String SERVER_PARTITION_KEY = "server";
     public static final String TIMESTAMP_USEC_KEY = "ts_usec";
     public static final String TXID_KEY = "txId";
     public static final String XMIN_KEY = "xmin";
@@ -84,75 +78,17 @@ public final class SourceInfo extends AbstractSourceInfo {
     public static final String LAST_SNAPSHOT_RECORD_KEY = "last_snapshot_record";
 
     private final String dbName;
-    private final Map<String, String> sourcePartition;
 
     private Long lsn;
     private Long txId;
     private Long xmin;
     private Instant timestamp;
-    private boolean snapshot = false;
-    private Boolean lastSnapshotRecord;
     private String schemaName;
     private String tableName;
 
     protected SourceInfo(PostgresConnectorConfig connectorConfig) {
         super(connectorConfig);
         this.dbName = connectorConfig.databaseName();
-        this.sourcePartition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-    }
-
-    protected void load(Map<String, Object> lastStoredOffset) {
-        this.lsn = ((Number) lastStoredOffset.get(LSN_KEY)).longValue();
-        this.txId = ((Number) lastStoredOffset.get(TXID_KEY)).longValue();
-        this.xmin = (Long) lastStoredOffset.get(XMIN_KEY);
-        this.timestamp = Conversions.toInstantFromMicros((Long) lastStoredOffset.get(TIMESTAMP_USEC_KEY));
-        this.snapshot = lastStoredOffset.containsKey(SNAPSHOT_KEY);
-        if (this.snapshot) {
-            this.lastSnapshotRecord = (Boolean) lastStoredOffset.get(LAST_SNAPSHOT_RECORD_KEY);
-        }
-    }
-
-    /**
-     * Get the Kafka Connect detail about the source "partition", which describes the portion of the source that we are
-     * consuming. Since we're streaming changes for a single database, the source partition specifies only the {@code serverName}
-     * as the value for the partition.
-     *
-     * @return the source partition information; never null
-     */
-    public Map<String, String> partition() {
-        return sourcePartition;
-    }
-
-    /**
-     * Get the Kafka Connect detail about the source "offset", which describes the position within the source where we last
-     * have last read.
-     *
-     * @return a copy of the current offset; never null
-     */
-    public Map<String, ?> offset() {
-        assert serverName() != null && dbName != null;
-        Map<String, Object> result = new HashMap<>();
-        if (timestamp != null) {
-            result.put(TIMESTAMP_USEC_KEY, Conversions.toEpochMicros(timestamp));
-        }
-        if (txId != null) {
-            result.put(TXID_KEY, txId);
-        }
-        if (lsn != null) {
-            result.put(LSN_KEY, lsn);
-        }
-        if (xmin != null) {
-            result.put(XMIN_KEY, xmin);
-        }
-        if (snapshot) {
-            result.put(SNAPSHOT_KEY, true);
-            result.put(LAST_SNAPSHOT_RECORD_KEY, lastSnapshotRecord);
-        }
-        return result;
-    }
-
-    public OffsetState asOffsetState() {
-        return new OffsetState(lsn, txId, xmin, timestamp, isSnapshotInEffect());
     }
 
     /**
@@ -194,35 +130,6 @@ public final class SourceInfo extends AbstractSourceInfo {
         return this;
     }
 
-    protected SourceInfo markLastSnapshotRecord() {
-        this.lastSnapshotRecord = true;
-        return this;
-    }
-
-    /**
-     * Determine whether a snapshot is currently in effect, meaning it was started and has not completed.
-     *
-     * @return {@code true} if a snapshot is in effect, or {@code false} otherwise
-     */
-    public boolean isSnapshotInEffect() {
-        return snapshot && (this.lastSnapshotRecord == null || !this.lastSnapshotRecord);
-    }
-
-    /**
-     * Denote that a snapshot is being (or has been) started.
-     */
-    protected void startSnapshot() {
-        this.snapshot = true;
-        this.lastSnapshotRecord = false;
-    }
-
-    /**
-     * Denote that a snapshot has completed successfully.
-     */
-    protected void completeSnapshot() {
-        this.snapshot = false;
-    }
-
     public Long lsn() {
         return this.lsn;
     }
@@ -249,19 +156,13 @@ public final class SourceInfo extends AbstractSourceInfo {
         return timestamp;
     }
 
-    @Override
-    protected SnapshotRecord snapshot() {
-        if (snapshot) {
-            if (lastSnapshotRecord) {
-                return SnapshotRecord.LAST;
-            }
-            return SnapshotRecord.TRUE;
-        }
-        return SnapshotRecord.FALSE;
+    protected Long txId() {
+        return txId;
     }
 
-    public boolean hasLastKnownPosition() {
-        return this.lsn != null;
+    @Override
+    public SnapshotRecord snapshot() {
+        return super.snapshot();
     }
 
     @Override
@@ -281,11 +182,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         if (timestamp != null) {
             sb.append(", timestamp=").append(timestamp);
         }
-        boolean snapshotInEffect = isSnapshotInEffect();
-        sb.append(", snapshot=").append(snapshotInEffect);
-        if (snapshotInEffect) {
-            sb.append(", last_snapshot_record=").append(lastSnapshotRecord);
-        }
+        sb.append(", snapshot=").append(snapshot());
         if (schemaName != null) {
             sb.append(", schema=").append(schemaName);
         }

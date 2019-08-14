@@ -89,8 +89,9 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
-        // regular update
-        if (Objects.equals(oldKey, newKey)) {
+        // some configurations does not provide old values in case of updates
+        // in this case we handle all updates as regular ones
+        if (oldKey == null || Objects.equals(oldKey, newKey)) {
             Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
             receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, offsetContext);
         }

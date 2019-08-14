@@ -87,6 +87,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
     @Test
     public void takeSnapshotInSnapshotMode() throws Exception {
+        Testing.Print.enable();
         takeSnapshot(SnapshotIsolationMode.SNAPSHOT);
     }
 

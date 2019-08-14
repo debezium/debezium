@@ -13,15 +13,15 @@ import static org.junit.Assert.assertFalse;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
@@ -30,7 +30,6 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.relational.TableId;
-import io.debezium.schema.TopicSelector;
 
 /**
  * Integration test to verify PostGIS types defined in public schema.
@@ -39,9 +38,7 @@ import io.debezium.schema.TopicSelector;
  */
 public class PublicGeometryIT extends AbstractRecordsProducerTest {
 
-    private RecordsStreamProducer recordsProducer;
     private TestConsumer consumer;
-    private final Consumer<Throwable> blackHole = t -> {};
 
     @Rule
     public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
@@ -63,26 +60,14 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
             "CREATE TABLE public.postgis_array_table (pk SERIAL, ga GEOMETRY[], gann GEOMETRY[] NOT NULL, PRIMARY KEY(pk));",
             "CREATE TABLE public.dummy_table (pk SERIAL, PRIMARY KEY(pk));"
         );
-        PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
-                .build());
-        setupRecordsProducer(config);
-    }
-
-    @After
-    public void after() throws Exception {
-        if (recordsProducer != null) {
-            recordsProducer.stop();
-        }
+        setupRecordsProducer(TestHelper.defaultConfig());
     }
 
     @Test(timeout = 30000)
     @FixFor("DBZ-1144")
     public void shouldReceiveChangesForInsertsWithPostgisTypes() throws Exception {
-        consumer = testConsumer(1, "public"); // spatial_ref_sys produces a ton of records in the postgis schema
-        consumer.setIgnoreExtraRecords(true);
-        recordsProducer.start(consumer, blackHole);
-
+        consumer = testConsumer(1, "public");
+        waitForStreamingToStart();
         // need to wait for all the spatial_ref_sys to flow through and be ignored.
         // this exceeds the normal 2s timeout.
         TestHelper.execute("INSERT INTO public.dummy_table DEFAULT VALUES;");
@@ -104,19 +89,12 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
         assertInsert(INSERT_POSTGIS_ARRAY_TYPES_IN_PUBLIC_STMT, 1, schemaAndValuesForPostgisArrayTypes());
     }
 
-    private void setupRecordsProducer(PostgresConnectorConfig config) {
-        if (recordsProducer != null) {
-            recordsProducer.stop();
-        }
-
-        TopicSelector<TableId> selector = PostgresTopicSelector.create(config);
-
-        PostgresTaskContext context = new PostgresTaskContext(
-                config,
-                TestHelper.getSchema(config),
-                selector
+    private void setupRecordsProducer(Configuration.Builder config) {
+        start(PostgresConnector.class, config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .build()
         );
-        recordsProducer = new RecordsStreamProducer(context, new SourceInfo(config));
+        assertConnectorIsRunning();
     }
 
     private void assertInsert(String statement, Integer pk, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {

@@ -11,9 +11,11 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -42,7 +44,7 @@ import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
 /**
- * Base class for {@link SnapshotChangeEventSource} for relational databases with a schema history.
+ * Base class for {@link SnapshotChangeEventSource} for relational databases with or without a schema history.
  * <p>
  * A transaction is managed by this base class, sub-classes shouldn't rollback or commit this transaction. They are free
  * to use nested transactions or savepoints, though.
@@ -51,9 +53,9 @@ import io.debezium.util.Threads.Timer;
  */
 // TODO Mostly, this should be usable for Postgres as well; only the aspect of managing the schema history will have to
 // be made optional based on the connector
-public abstract class HistorizedRelationalSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public abstract class RelationalSnapshotChangeEventSource implements SnapshotChangeEventSource {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(HistorizedRelationalSnapshotChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
     /**
      * Interval for showing a log statement with the progress while scanning a single table.
@@ -65,10 +67,10 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     private final JdbcConnection jdbcConnection;
     private final HistorizedRelationalDatabaseSchema schema;
     private final EventDispatcher<TableId> dispatcher;
-    private final Clock clock;
+    protected final Clock clock;
     private final SnapshotProgressListener snapshotProgressListener;
 
-    public HistorizedRelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
+    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
             OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
             EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
@@ -78,6 +80,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
+    }
+
+    public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
+            OffsetContext previousOffset, JdbcConnection jdbcConnection,
+            EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+        this(connectorConfig, previousOffset, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
@@ -299,7 +307,9 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
 
             Table table = snapshotContext.tables.forTable(tableId);
 
-            schema.applySchemaChange(getCreateTableEvent(snapshotContext, table));
+            if (schema != null) {
+                schema.applySchemaChange(getCreateTableEvent(snapshotContext, table));
+            }
         }
     }
 
@@ -339,11 +349,15 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
 
-        final String selectStatement = determineSnapshotSelect(snapshotContext, table.id());
-        LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement);
+        final Optional<String> selectStatement = determineSnapshotSelect(snapshotContext, table.id());
+        if (!selectStatement.isPresent()) {
+            LOGGER.warn("For table '{}' the select statement was not provided, skipping table", table.id());
+            return;
+        }
+        LOGGER.info("\t For table '{}' using select statement: '{}'", table.id(), selectStatement.get());
 
         try (Statement statement = readTableStatement();
-                ResultSet rs = statement.executeQuery(selectStatement)) {
+                ResultSet rs = statement.executeQuery(selectStatement.get())) {
 
             Column[] columns = getColumnsForResultSet(table, rs);
             final int numColumns = table.columns().size();
@@ -375,9 +389,12 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
                     if (snapshotContext.lastTable && snapshotContext.lastRecordInTable) {
                         snapshotContext.offset.markLastSnapshotRecord();
                     }
-                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row),
-                            snapshotReceiver);
+                    dispatcher.dispatchSnapshotEvent(table.id(), getChangeRecordEmitter(snapshotContext, table.id(), row), snapshotReceiver);
                 }
+            }
+            else if (snapshotContext.lastTable) {
+                // if the last table does not contain any records we still need to mark the last processed event as the last one
+                snapshotContext.offset.markLastSnapshotRecord();
             }
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
@@ -396,16 +413,19 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
     /**
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
-    protected abstract ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row);
+    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row) {
+        snapshotContext.offset.event(tableId, Instant.ofEpochMilli(getClock().currentTimeInMillis()));
+        return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
+    }
 
     /**
      * Returns a valid query string for the specified table, either given by the user via snapshot select overrides or
      * defaulting to a statement provided by the DB-specific change event source.
      *
      * @param tableId the table to generate a query for
-     * @return a valid query string
+     * @return a valid query string or empty if table will not be snapshotted
      */
-    private String determineSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    private Optional<String> determineSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         String overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(tableId);
 
         // try without catalog id, as this might or might not be populated based on the given connector
@@ -413,16 +433,17 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
             overriddenSelect = connectorConfig.getSnapshotSelectOverridesByTable().get(new TableId(null, tableId.schema(), tableId.table()));
         }
 
-        return overriddenSelect != null ? overriddenSelect : getSnapshotSelect(snapshotContext, tableId);
+        return overriddenSelect != null ? Optional.of(overriddenSelect) : getSnapshotSelect(snapshotContext, tableId);
     }
 
     /**
-     * Returns the SELECT statement to be used for scanning the given table
+     * Returns the SELECT statement to be used for scanning the given table or empty value if
+     * the table will be streamed from but not snapshotted
      */
     // TODO Should it be Statement or similar?
     // TODO Handle override option generically; a problem will be how to handle the dynamic part (Oracle's "... as of
     // scn xyz")
-    protected abstract String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
+    protected abstract Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId);
 
     private Column[] getColumnsForResultSet(Table table, ResultSet rs) throws SQLException {
         ResultSetMetaData metaData = rs.getMetaData();
@@ -435,7 +456,7 @@ public abstract class HistorizedRelationalSnapshotChangeEventSource implements S
         return columns;
     }
 
-    private Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
+    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
         return rs.getObject(columnIndex);
     }
 

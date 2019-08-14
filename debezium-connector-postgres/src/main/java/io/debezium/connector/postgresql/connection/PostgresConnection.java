@@ -484,7 +484,7 @@ public class PostgresConnection extends JdbcConnection {
             }
         }
         catch (SQLException e) {
-            throw new ConnectException("Could not intialize type registry", e);
+            throw new ConnectException("Database connection failed during intializiation of the type registry", e);
         }
         return typeRegistryBuilder.build();
     }
