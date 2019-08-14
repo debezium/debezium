@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.connector.AbstractSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -25,6 +26,7 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
@@ -41,6 +43,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.schema.TopicSelector;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
+import org.junit.rules.ExpectedException;
 
 /**
  * Unit test for {@link ExtractNewDocumentState}. It uses {@link RecordMakers}
@@ -66,6 +69,9 @@ public class ExtractNewDocumentStateTest {
 
     private ExtractNewDocumentState<SourceRecord> transformation;
 
+    @Rule
+    public ExpectedException exceptionRule = ExpectedException.none();
+
     @Before
     public void setup() {
         filters = new Configurator().createFilters();
@@ -84,6 +90,172 @@ public class ExtractNewDocumentStateTest {
     @After
     public void closeSmt() {
         transformation.close();
+    }
+
+    @Test
+    @FixFor("DBZ-1430")
+    public void shouldDropHeartbeatMessages() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema).put(AbstractSourceInfo.TIMESTAMP_KEY, 1565787098802L);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.ServerNameKey")
+                .field("serverName", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key = new Struct(keySchema).put("serverName", "op.with.heartbeat");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                valueSchema,
+                value
+        );
+
+        // when
+        SourceRecord transformed = transformation.apply(eventRecord);
+
+        assertThat(transformed).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1430")
+    public void shouldDropMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaName() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("op.with.heartbeat.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key = new Struct(keySchema).put("id", "123");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                valueSchema,
+                value
+        );
+
+        // when
+        SourceRecord transformed = transformation.apply(eventRecord);
+
+        assertThat(transformed).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1430")
+    public void shouldDropMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaNameSuffix() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("op.with.heartbeat.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key = new Struct(keySchema).put("id", "123");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                valueSchema,
+                value
+        );
+
+        // when
+        SourceRecord transformed = transformation.apply(eventRecord);
+
+        assertThat(transformed).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1430")
+    public void shouldDropMessagesWithoutDebeziumCdcEnvelopeDueToMissingValueSchema() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat.Envelope")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("op.with.heartbeat.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key = new Struct(keySchema).put("id", "123");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                null,
+                value
+        );
+
+        // when
+        SourceRecord transformed = transformation.apply(eventRecord);
+
+        assertThat(transformed).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1430")
+    public void shouldFailWhenTheSchemaLooksValidButDoesNotHaveTheCorrectFields() {
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Heartbeat.Envelope")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
+
+        Struct value = new Struct(valueSchema);
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("op.with.heartbeat.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
+
+        Struct key = new Struct(keySchema).put("id", "123");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                valueSchema,
+                value
+        );
+
+        exceptionRule.expect(NullPointerException.class);
+
+        // when
+        SourceRecord transformed = transformation.apply(eventRecord);
+
+        assertThat(transformed).isNull();
     }
 
     @Test
