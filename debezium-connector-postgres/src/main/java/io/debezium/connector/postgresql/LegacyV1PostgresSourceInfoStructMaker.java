@@ -11,6 +11,8 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.LegacyV1AbstractSourceInfoStructMaker;
+import io.debezium.connector.SnapshotRecord;
+import io.debezium.time.Conversions;
 
 public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourceInfoStructMaker<SourceInfo> {
 
@@ -51,8 +53,22 @@ public class LegacyV1PostgresSourceInfoStructMaker extends LegacyV1AbstractSourc
         result.put(SourceInfo.DATABASE_NAME_KEY, sourceInfo.database());
         result.put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.schemaName());
         result.put(SourceInfo.TABLE_NAME_KEY, sourceInfo.tableName());
-        // use the offset information without the snapshot part (see below)
-        sourceInfo.offset().forEach(result::put);
+        if (sourceInfo.timestamp() != null) {
+            result.put(SourceInfo.TIMESTAMP_USEC_KEY, Conversions.toEpochMicros(sourceInfo.timestamp()));
+        }
+        if (sourceInfo.txId() != null) {
+            result.put(SourceInfo.TXID_KEY, sourceInfo.txId());
+        }
+        if (sourceInfo.lsn() != null) {
+            result.put(SourceInfo.LSN_KEY, sourceInfo.lsn());
+        }
+        if (sourceInfo.xmin() != null) {
+            result.put(SourceInfo.XMIN_KEY, sourceInfo.xmin());
+        }
+        if (sourceInfo.isSnapshot()) {
+            result.put(SourceInfo.SNAPSHOT_KEY, true);
+            result.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, sourceInfo.snapshot() == SnapshotRecord.LAST);
+        }
         return result;
     }
 }

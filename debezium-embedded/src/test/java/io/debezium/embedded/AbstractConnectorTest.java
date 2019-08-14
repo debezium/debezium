@@ -8,7 +8,9 @@ package io.debezium.embedded;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
+import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,6 +29,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -44,6 +50,7 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -59,7 +66,9 @@ import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
 import io.debezium.relational.history.HistoryRecord;
+import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
 
 /**
@@ -290,10 +299,14 @@ public abstract class AbstractConnectorTest implements Testing {
                                        logger.error("Stopping connector after record as requested");
                                        throw new ConnectException("Stopping connector after record as requested");
                                    }
-                                   try {
-                                       consumedLines.put(record);
-                                   } catch (InterruptedException e) {
-                                       Thread.interrupted();
+                                   // Test stopped the connector, remaining records are ignored
+                                   if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                                       return;
+                                   }
+                                   while (!consumedLines.offer(record)) {
+                                       if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                                           return;
+                                       }
                                    }
                                })
                                .using(this.getClass().getClassLoader())
@@ -540,7 +553,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that the connector is NOT currently running.
      */
     protected void assertConnectorNotRunning() {
-        assertThat(engine.isRunning()).isFalse();
+        assertThat(engine != null && engine.isRunning()).isFalse();
     }
 
     /**
@@ -731,6 +744,56 @@ public abstract class AbstractConnectorTest implements Testing {
             return offsetReader.offsets(partitions);
         } finally {
             offsetStore.stop();
+        }
+    }
+
+    public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
+        int waitForSeconds = 60;
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
+
+        while (true) {
+            if (waitForSeconds-- <= 0) {
+                Assert.fail("Snapshot was not completed on time");
+            }
+            try {
+                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server), "SnapshotCompleted");
+                if (completed) {
+                    break;
+                }
+            }
+            catch (InstanceNotFoundException e) {
+                Testing.print("Metrics has not started yet");
+            }
+            catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            metronome.pause();
+        }
+    }
+
+    public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
+        int waitForSeconds = 60;
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
+
+        while (true) {
+            if (waitForSeconds-- <= 0) {
+                Assert.fail("Streaming was not started on time");
+            }
+            try {
+                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=streaming,server=" + server), "Connected");
+                if (completed) {
+                    break;
+                }
+            }
+            catch (InstanceNotFoundException e) {
+                Testing.print("Metrics has not started yet");
+            }
+            catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            metronome.pause();
         }
     }
 }

@@ -11,6 +11,8 @@ import java.util.Arrays;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -29,6 +31,8 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
  */
 public class PgProtoMessageDecoder extends AbstractMessageDecoder {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoMessageDecoder.class);
+
     @Override
     public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         try {
@@ -39,6 +43,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
             final byte[] source = buffer.array();
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
             final RowMessage message = PgProto.RowMessage.parseFrom(content);
+            LOGGER.trace("Received protobuf message from the server {}", message);
             if (!message.getNewTypeinfoList().isEmpty() && message.getNewTupleCount() != message.getNewTypeinfoCount()) {
                 throw new ConnectException(String.format("Message from transaction {} has {} data columns but only {} of type info",
                         Integer.toUnsignedLong(message.getTransactionId()),

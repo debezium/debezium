@@ -319,6 +319,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-997")
     public void shouldReceiveChangesForChangePKColumnDefinition() throws Exception {
+        Testing.Print.enable();
         final String slotName = "pkcolumndef" + new Random().nextInt(100);
         TestHelper.create().dropReplicationSlot(slotName);
         try {
@@ -410,6 +411,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             // where there are limited logical replication slots configured.
             stopConnector(null);
             TestHelper.create().dropReplicationSlot(slotName);
+            throw t;
         }
     }
 
@@ -536,14 +538,14 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
-        SourceRecords actualRecords = consumeRecordsByTopic(7);
+        SourceRecords actualRecords = consumeRecordsByTopic(6);
         assertKey(actualRecords.allRecordsInOrder().get(0), "pk", 1);
         assertKey(actualRecords.allRecordsInOrder().get(1), "pk", 2);
 
         // JdbcConnection#connection() is called multiple times during connector start-up,
         // so the given statements will be executed multiple times, resulting in multiple
         // records; here we're interested just in the first insert for s2.a
-        assertValueField(actualRecords.allRecordsInOrder().get(6), "after/bb", "hello; world");
+        assertValueField(actualRecords.allRecordsInOrder().get(5), "after/bb", "hello; world");
 
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();

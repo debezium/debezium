@@ -108,14 +108,6 @@ public class SqlServerOffsetContext implements OffsetContext {
         sourceInfo.setChangeLsn(position.getInTxLsn());
     }
 
-    public void setSourceTime(Instant instant) {
-        sourceInfo.setSourceTime(instant);
-    }
-
-    public void setTableId(TableId tableId) {
-        sourceInfo.setTableId(tableId);
-    }
-
     @Override
     public boolean isSnapshotRunning() {
         return sourceInfo.isSnapshot() && !snapshotCompleted;
@@ -185,5 +177,11 @@ public class SqlServerOffsetContext implements OffsetContext {
     @Override
     public void markLastSnapshotRecord() {
         sourceInfo.setSnapshot(SnapshotRecord.LAST);
+    }
+
+    @Override
+    public void event(TableId tableId, Instant timestamp) {
+        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.setTableId(tableId);
     }
 }

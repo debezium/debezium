@@ -222,8 +222,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             final Object[] dataNext = (operation == SqlServerChangeRecordEmitter.OP_UPDATE_BEFORE) ? tableWithSmallestLsn.getData() : null;
 
                             offsetContext.setChangePosition(tableWithSmallestLsn.getChangePosition(), eventCount);
-                            offsetContext.setSourceTime(metadataConnection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn()));
-                            offsetContext.setTableId(tableWithSmallestLsn.getChangeTable().getSourceTableId());
+                            offsetContext.event(tableWithSmallestLsn.getChangeTable().getSourceTableId(), metadataConnection.timestampOfLsn(tableWithSmallestLsn.getChangePosition().getCommitLsn()));
 
                             dispatcher
                                     .dispatchDataChangeEvent(

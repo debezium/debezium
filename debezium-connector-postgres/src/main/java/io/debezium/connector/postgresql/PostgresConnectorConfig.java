@@ -7,6 +7,8 @@
 package io.debezium.connector.postgresql;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -39,6 +41,8 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.TableFilter;
 
 /**
  * The configuration properties for the {@link PostgresConnector}
@@ -587,32 +591,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                         .withDescription("A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
 
     /**
-     * A comma-separated list of regular expressions that match schema names to be monitored.
-     * May not be used with {@link #SCHEMA_BLACKLIST}.
-     */
-    public static final Field SCHEMA_WHITELIST = Field.create("schema.whitelist")
-                                                      .withDisplayName("Schemas")
-                                                      .withType(Type.LIST)
-                                                      .withWidth(Width.LONG)
-                                                      .withImportance(Importance.HIGH)
-                                                      .withDependents(TABLE_WHITELIST_NAME)
-                                                      .withDescription("The schemas for which events should be captured");
-
-    /**
-     * A comma-separated list of regular expressions that match schema names to be excluded from monitoring.
-     * May not be used with {@link #SCHEMA_WHITELIST}.
-     */
-    public static final Field SCHEMA_BLACKLIST = Field.create("schema.blacklist")
-                                                      .withDisplayName("Exclude Schemas")
-                                                      .withType(Type.STRING)
-                                                      .withWidth(Width.LONG)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withValidation(PostgresConnectorConfig::validateSchemaBlacklist)
-                                                      .withInvisibleRecommender()
-                                                      .withDescription("");
-
-
-    /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
      * Fully-qualified names for tables are of the form {@code <schemaName>.<tableName>} or
      * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_BLACKLIST}, and superseded by schema
@@ -792,8 +770,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         super(
                 config,
                 config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
-                null, // TODO whitelist handling implemented locally here for the time being
-                null,
+                new SystemTablesPredicate(),
+                x -> x.schema() + "." + x.table(),
                 DEFAULT_SNAPSHOT_FETCH_SIZE
         );
 
@@ -924,16 +902,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return config;
     }
 
-    private static int validateSchemaBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String whitelist = config.getString(SCHEMA_WHITELIST);
-        String blacklist = config.getString(SCHEMA_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(SCHEMA_BLACKLIST, blacklist, "Schema whitelist is already specified");
-            return 1;
-        }
-        return 0;
-    }
-
     private static int validateTableBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
         String whitelist = config.getString(TABLE_WHITELIST);
         String blacklist = config.getString(TABLE_BLACKLIST);
@@ -948,4 +916,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public String getContextName() {
         return Module.contextName();
     }
-}
+
+    private static class SystemTablesPredicate implements TableFilter {
+        protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
+
+        @Override
+        public boolean isIncluded(TableId t) {
+            return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase());
+        }
+    }}

@@ -21,7 +21,8 @@ public class RelationalTableFilters implements DataCollectionFilters {
         Predicate<TableId> predicate = Selectors.tableSelector()
 //                                                  .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
 //                                                  .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
-                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdMapper)
+                                                  .includeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_WHITELIST))
+                                                  .excludeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST))                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdMapper)
                                                   .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST), tableIdMapper)
                                                   .build();
 
