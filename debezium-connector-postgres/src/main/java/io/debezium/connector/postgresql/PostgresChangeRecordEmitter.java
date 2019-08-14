@@ -111,7 +111,10 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         final boolean metadataInMessage = message.hasTypeMetadata();
         final TableId tableId = (TableId) tableSchema.id();
         final Table table = schema.tableFor(tableId);
-        final List<ReplicationMessage.Column> columns = getOperation() == Operation.DELETE ? message.getOldTupleList() : message.getNewTupleList();
+        if (getOperation() == Operation.DELETE || message.shouldSchemaBeSynchronized()) {
+            return tableSchema;
+        }
+        final List<ReplicationMessage.Column> columns = message.getNewTupleList();
         // check if we need to refresh our local schema due to DB schema changes for this table
         if (schemaChanged(columns, table, metadataInMessage)) {
             // Refresh the schema so we get information about primary keys
