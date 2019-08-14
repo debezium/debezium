@@ -44,6 +44,9 @@ import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandli
  */
 public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    private static final String RECORD_ENVELOPE_VALUE_SCHEMA_NAME_SUFFIX = ".Envelope";
+    private static final String RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX = ".Key";
+
     public enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
         DOCUMENT("document");
@@ -139,8 +142,13 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
     @Override
     public R apply(R record) {
-        final R afterRecord = afterExtractor.apply(record);
-        final R patchRecord = patchExtractor.apply(record);
+        if (record.keySchema() == null ||
+                record.keySchema().name() == null ||
+                !record.keySchema().name().endsWith(RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX)) {
+            LOGGER.debug("Message without Debezium CDC Envelope ignored, missing Key Schema. Message key: \"{}\"", record.key());
+            return null;
+        }
+
         final R keyRecord = keyExtractor.apply(record);
 
         BsonDocument keyDocument = BsonDocument.parse("{ \"id\" : " + keyRecord.key().toString() + "}");
@@ -157,6 +165,16 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             }
             return newRecord(record, keyDocument, valueDocument);
         }
+
+        if (record.valueSchema() == null ||
+                record.valueSchema().name() == null ||
+                !record.valueSchema().name().endsWith(RECORD_ENVELOPE_VALUE_SCHEMA_NAME_SUFFIX)) {
+            LOGGER.debug("Message without Debezium CDC Envelope ignored. Message key: \"{}\"", record.key());
+            return null;
+        }
+
+        final R afterRecord = afterExtractor.apply(record);
+        final R patchRecord = patchExtractor.apply(record);
 
         if (addOperationHeader) {
             record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, ((Struct) record.value()).get("op").toString());
@@ -186,7 +204,6 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         if (handleDeletes.equals(DeleteHandling.REWRITE)) {
             valueDocument.append(ExtractNewRecordStateConfigDefinition.DELETED_FIELD, new BsonBoolean(isDeletion));
         }
-
 
         return newRecord(record, keyDocument, valueDocument);
     }
