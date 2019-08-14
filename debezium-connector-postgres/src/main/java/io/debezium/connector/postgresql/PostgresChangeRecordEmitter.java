@@ -18,6 +18,7 @@ import org.postgresql.jdbc.PgConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.function.Predicates;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Column;
@@ -111,7 +112,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         final boolean metadataInMessage = message.hasTypeMetadata();
         final TableId tableId = (TableId) tableSchema.id();
         final Table table = schema.tableFor(tableId);
-        if (getOperation() == Operation.DELETE || message.shouldSchemaBeSynchronized()) {
+        if (getOperation() == Operation.DELETE || !message.shouldSchemaBeSynchronized()) {
             return tableSchema;
         }
         final List<ReplicationMessage.Column> columns = message.getNewTupleList();
@@ -137,10 +138,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
         // based on the schema columns, create the values on the same position as the columns
         List<Column> schemaColumns = table.columns();
+        // based on the replication message without toasted columns for now
+        List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn)).collect(Collectors.toList());
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columns.size() < schemaColumns.size() ? schemaColumns.size() : columns.size()];
+        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
 
-        for (ReplicationMessage.Column column: columns) {
+        for (ReplicationMessage.Column column: columnsWithoutToasted) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             final String columnName = Strings.unquoteIdentifierPart(column.getName());
             final Column tableColumn = table.columnWithName(columnName);

@@ -336,19 +336,19 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
         if (!resolvedTable.isPresent()) {
-            return;
+            processor.process(null);
         }
-
-        Table table = resolvedTable.get();
-        List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-
-        processor.process(new PgOutputReplicationMessage(
-                Operation.INSERT,
-                table.id().toDoubleQuotedString(),
-                commitTimestamp,
-                transactionId,
-                null,
-                columns));
+        else {
+            Table table = resolvedTable.get();
+            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+            processor.process(new PgOutputReplicationMessage(
+                    Operation.INSERT,
+                    table.id().toDoubleQuotedString(),
+                    commitTimestamp,
+                    transactionId,
+                    null,
+                    columns));
+        }
     }
 
     /**
@@ -365,35 +365,35 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
         if (!resolvedTable.isPresent()) {
-            return;
+            processor.process(null);
         }
+        else {
+            Table table = resolvedTable.get();
 
-        Table table = resolvedTable.get();
+            // When reading the tuple-type, we could get 3 different values, 'O', 'K', or 'N'.
+            // 'O' (Optional) - States the following tuple-data is the key, only for replica identity index configs.
+            // 'K' (Optional) - States the following tuple-data is the old tuple, only for replica identity full configs.
+            //
+            // 'N' (Not-Optional) - States the following tuple-data is the new tuple.
+            // This is always present.
+            List<Column> oldColumns = null;
+            char tupleType = (char) buffer.get();
+            if ('O' == tupleType || 'K' == tupleType) {
+                oldColumns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+                // Read the 'N' tuple type
+                // This is necessary so the stream position is accurate for resolving the column tuple data
+                tupleType = (char) buffer.get();
+            }
 
-        // When reading the tuple-type, we could get 3 different values, 'O', 'K', or 'N'.
-        // 'O' (Optional) - States the following tuple-data is the key, only for replica identity index configs.
-        // 'K' (Optional) - States the following tuple-data is the old tuple, only for replica identity full configs.
-        //
-        // 'N' (Not-Optional) - States the following tuple-data is the new tuple.
-        // This is always present.
-        List<Column> oldColumns = null;
-        char tupleType = (char) buffer.get();
-        if ('O' == tupleType || 'K' == tupleType) {
-            oldColumns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-            // Read the 'N' tuple type
-            // This is necessary so the stream position is accurate for resolving the column tuple data
-            tupleType = (char) buffer.get();
+            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+            processor.process(new PgOutputReplicationMessage(
+                    Operation.UPDATE,
+                    table.id().toDoubleQuotedString(),
+                    commitTimestamp,
+                    transactionId,
+                    oldColumns,
+                    columns));
         }
-
-        List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-
-        processor.process(new PgOutputReplicationMessage(
-                Operation.UPDATE,
-                table.id().toDoubleQuotedString(),
-                commitTimestamp,
-                transactionId,
-                oldColumns,
-                columns));
     }
 
     /**
@@ -412,18 +412,19 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
         if (!resolvedTable.isPresent()) {
-            return;
+            processor.process(null);
         }
-
-        Table table = resolvedTable.get();
-        List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
-        processor.process(new PgOutputReplicationMessage(
-                Operation.DELETE,
-                table.id().toDoubleQuotedString(),
-                commitTimestamp,
-                transactionId,
-                columns,
-                null));
+        else {
+            Table table = resolvedTable.get();
+            List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
+            processor.process(new PgOutputReplicationMessage(
+                    Operation.DELETE,
+                    table.id().toDoubleQuotedString(),
+                    commitTimestamp,
+                    transactionId,
+                    columns,
+                    null));
+        }
     }
 
     /**
