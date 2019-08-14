@@ -137,6 +137,10 @@ public class PostgresOffsetContext implements OffsetContext {
         return sourceInfo.lsn();
     }
 
+    Long lastCompletelyProcessedLsn() {
+        return lastCompletelyProcessedLsn;
+    }
+
     Long xmin() {
         return sourceInfo.xmin();
     }
