@@ -23,6 +23,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.sun.scenario.effect.Offset;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -599,34 +601,26 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    @Override
-    protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            data = nanosToLocalDateTimeUTC((Long) data);
-        }
-        return super.convertTimestampToEpochMillis(column, fieldDefn, data);
+    private LocalDateTime instantToLocalDateTimeUtc(Instant instant) {
+        return LocalDateTime.ofInstant(Instant.from(instant), ZoneOffset.UTC);
     }
 
     @Override
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
             data = nanosToLocalDateTimeUTC((Long) data);
+        } else if (data instanceof OffsetDateTime) {
+            data = instantToLocalDateTimeUtc(((OffsetDateTime) data).toInstant());
         }
         return super.convertTimestampToEpochMicros(column, fieldDefn, data);
-    }
-
-    @Override
-    protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            data = nanosToLocalDateTimeUTC((Long) data);
-        }
-        return super.convertTimestampToEpochNanos(column, fieldDefn, data);
     }
 
     @Override
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
         if (data instanceof Long) {
             data = nanosToLocalDateTimeUTC((Long) data);
+        } else if (data instanceof OffsetDateTime) {
+            data = instantToLocalDateTimeUtc(((OffsetDateTime) data).toInstant()).toLocalDate();
         }
         return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
     }
@@ -636,6 +630,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof Long) {
             LocalDateTime localDateTime = nanosToLocalDateTimeUTC((Long) data);
             data = OffsetDateTime.of(localDateTime, ZoneOffset.UTC);
+        }
+        else if (data instanceof OffsetDateTime) {
+            data = ((OffsetDateTime) data).atZoneSameInstant(ZoneOffset.UTC);
         }
         else if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
@@ -844,12 +841,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == null) {
             return null;
         }
-        if (!(data instanceof Timestamp)) {
-            return data;
+        if (data instanceof OffsetDateTime) {
+            return instantToLocalDateTimeUtc(((OffsetDateTime) data).toInstant());
         }
-        final Timestamp timestamp = (Timestamp) data;
-
-        return timestamp.toLocalDateTime();
+        if (data instanceof Timestamp) {
+            final Timestamp timestamp = (Timestamp) data;
+            return timestamp.toLocalDateTime();
+        }
+        return data;
     }
 
     @Override
