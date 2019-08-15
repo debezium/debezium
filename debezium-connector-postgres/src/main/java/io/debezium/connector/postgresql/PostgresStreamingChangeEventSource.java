@@ -122,8 +122,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 })) {
                     if (offsetContext.hasCompletelyProcessedPosition()) {
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
-                        pauseNoMessage.pause();
                     }
+                    pauseNoMessage.pause();
                 }
             }
         }
