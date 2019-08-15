@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 public class SqlServerOffsetContext implements OffsetContext {
@@ -180,8 +181,8 @@ public class SqlServerOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void event(TableId tableId, Instant timestamp) {
+    public void event(DataCollectionId tableId, Instant timestamp) {
         sourceInfo.setSourceTime(timestamp);
-        sourceInfo.setTableId(tableId);
+        sourceInfo.setTableId((TableId) tableId);
     }
 }
