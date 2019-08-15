@@ -11,7 +11,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -412,7 +411,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
      * Returns a {@link ChangeRecordEmitter} producing the change records for the given table row.
      */
     protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row) {
-        snapshotContext.offset.event(tableId, Instant.ofEpochMilli(getClock().currentTimeInMillis()));
+        snapshotContext.offset.event(tableId, getClock().currentTime());
         return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, getClock());
     }
 

@@ -70,11 +70,10 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
+
         if (snapshotter == null) {
-            LOGGER.error("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
             throw new ConnectException("Unable to load snapshotter, if using custom snapshot mode, double check your settings");
         }
-
 
         jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
@@ -97,7 +96,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 slotInfo = connection.getReplicationSlotState(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
             }
             catch (SQLException e) {
-                LOGGER.warn("unable to load info of replication slot, debezium will try to create the slot");
+                LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot");
             }
 
             if (previousOffset == null) {

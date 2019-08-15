@@ -46,8 +46,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     protected final static String PUBLIC_SCHEMA_NAME = "public";
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
-    private final Filters filters;
-
     private final TypeRegistry typeRegistry;
 
     private final Map<TableId, List<String>> tableIdToToastableColumns;
@@ -64,7 +62,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         super(config, topicSelector, new Filters(config).tableFilter(),
                 new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false);
 
-        this.filters = new Filters(config);
         this.typeRegistry = typeRegistry;
         this.tableIdToToastableColumns = new HashMap<>();
         this.relationIdToTableId = new HashMap<>();
@@ -88,7 +85,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      */
     protected PostgresSchema refresh(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
         // read all the information from the DB
-        connection.readSchema(tables(), null, null, filters.tableFilter(), null, true);
+        connection.readSchema(tables(), null, null, getTableFilter(), null, true);
         if (printReplicaIdentityInfo) {
             // print out all the replica identity info
             tableIds().forEach(tableId -> printReplicaIdentityInfo(connection, tableId));
@@ -151,7 +148,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     }
 
     protected boolean isFilteredOut(TableId id) {
-        return !filters.tableFilter().isIncluded(id);
+        return !getTableFilter().isIncluded(id);
     }
 
     /**

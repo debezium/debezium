@@ -11,7 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
-import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * Keeps track of the current offset within the source DB's change stream. This reflects in the offset as committed to
@@ -62,9 +62,7 @@ public interface OffsetContext {
     void postSnapshotCompletion();
 
     /**
-     * Records the name of the table and the timestamp of the last event
-     * @param tableId
-     * @param timestamp
+     * Records the name of the collection and the timestamp of the last event
      */
-    void event(TableId tableId, Instant timestamp);
+    void event(DataCollectionId collectionId, Instant timestamp);
 }

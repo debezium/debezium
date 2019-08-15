@@ -38,7 +38,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(
-                        "Invalid buffer received from PG server during streaming replication");
+                        "Invalid buffer received from Postgres server during streaming replication");
             }
             final byte[] source = buffer.array();
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
