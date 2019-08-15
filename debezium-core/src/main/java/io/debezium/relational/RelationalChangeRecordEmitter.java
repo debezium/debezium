@@ -145,6 +145,12 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
      */
     protected abstract Object[] getNewColumnValues();
 
+    /**
+     * Whether empty data messages should be ignored.
+     *
+     * @return true if empty data messages coming from data source should be ignored.</br>
+     * Typical use case are PostgreSQL changes without FULL replica identity. 
+     */
     protected boolean skipEmptyMessages() {
         return false;
     }
