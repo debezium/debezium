@@ -6,7 +6,11 @@
 
 package io.debezium.connector.postgresql.connection;
 
-import java.time.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
 import java.util.List;
 
 import org.postgresql.geometric.PGbox;
