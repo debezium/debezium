@@ -45,6 +45,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
 
+import io.debezium.cloudevents.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
@@ -1363,6 +1364,38 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         if (value.getStruct("after") != null) {
             assertThat(value.getStruct("after").getString("bb")).isEqualTo("*****");
+        }
+
+        stopConnector();
+    }
+
+    @FixFor("DBZ-1292")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+        List<SourceRecord> snapshot = snapshotRecords.allRecordsInOrder();
+
+        for (SourceRecord record : snapshot) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+        }
+
+        // insert some more records and test streaming
+        TestHelper.execute(INSERT_STMT);
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(2);
+        List<SourceRecord> streaming = streamingRecords.allRecordsInOrder();
+
+        for (SourceRecord record : streaming) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
         }
 
         stopConnector();
