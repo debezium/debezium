@@ -23,6 +23,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 
@@ -173,7 +174,7 @@ public class PostgresOffsetContext implements OffsetContext {
             final Instant useconds = Conversions.toInstantFromMicros((Long) offset.get(SourceInfo.TIMESTAMP_USEC_KEY));
             final boolean snapshot = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
             final boolean lastSnapshotRecord = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Boolean.FALSE);
-            return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, txId, useconds, snapshot, lastSnapshotRecord); 
+            return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, txId, useconds, snapshot, lastSnapshotRecord);
         }
     }
 
@@ -219,7 +220,7 @@ public class PostgresOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void event(TableId tableId, Instant instant) {
-        sourceInfo.update(instant, tableId);
+    public void event(DataCollectionId tableId, Instant instant) {
+        sourceInfo.update(instant, (TableId) tableId);
     }
 }
