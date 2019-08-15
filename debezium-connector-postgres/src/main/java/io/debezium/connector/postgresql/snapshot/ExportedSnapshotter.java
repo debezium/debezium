@@ -6,7 +6,6 @@
 package io.debezium.connector.postgresql.snapshot;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -22,11 +21,8 @@ import io.debezium.relational.TableId;
  */
 public class ExportedSnapshotter implements Snapshotter {
 
-    private Map<TableId, String> snapshotOverrides;
-
     @Override
     public void init(PostgresConnectorConfig config, OffsetState sourceInfo, SlotState slotState) {
-        this.snapshotOverrides = config.getSnapshotSelectOverridesByTable();
     }
 
     @Override
@@ -46,12 +42,7 @@ public class ExportedSnapshotter implements Snapshotter {
 
     @Override
     public Optional<String> buildSnapshotQuery(TableId tableId) {
-        if (snapshotOverrides.containsKey(tableId)) {
-            return Optional.of(snapshotOverrides.get(tableId));
-        }
-        else {
-            return Optional.of("select * from " + tableId.toDoubleQuotedString());
-        }
+        return Optional.of("select * from " + tableId.toDoubleQuotedString());
     }
 
     @Override

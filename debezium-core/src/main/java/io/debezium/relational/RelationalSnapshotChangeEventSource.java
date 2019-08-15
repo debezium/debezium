@@ -51,8 +51,6 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-// TODO Mostly, this should be usable for Postgres as well; only the aspect of managing the schema history will have to
-// be made optional based on the connector
 public abstract class RelationalSnapshotChangeEventSource implements SnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
@@ -228,7 +226,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
      */
     protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
     }
-    
+
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()

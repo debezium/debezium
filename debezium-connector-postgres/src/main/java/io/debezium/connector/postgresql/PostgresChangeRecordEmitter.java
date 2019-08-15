@@ -43,6 +43,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresSchema schema;
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresConnection connection;
+    private final TableId tableId;
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection, ReplicationMessage message) {
         super(offset, clock);
@@ -51,6 +52,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         this.message = message;
         this.connectorConfig = connectorConfig;
         this.connection = connection;
+
+        this.tableId = PostgresSchema.parse(message.getTable());
+        Objects.requireNonNull(tableId);
     }
 
     @Override
@@ -68,10 +72,13 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     @Override
-    protected Object[] getOldColumnValues() {
-        final TableId tableId = PostgresSchema.parse(message.getTable());
-        Objects.requireNonNull(tableId);
+    public void emitChangeRecords(DataCollectionSchema schema, Receiver receiver) throws InterruptedException {
+        schema = synchronizeTableSchema(schema);
+        super.emitChangeRecords(schema, receiver);
+    }
 
+    @Override
+    protected Object[] getOldColumnValues() {
         try {
             switch (getOperation()) {
                 case CREATE:
@@ -89,9 +96,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     @Override
     protected Object[] getNewColumnValues() {
-        final TableId tableId = PostgresSchema.parse(message.getTable());
-        Objects.requireNonNull(tableId);
-
         try {
             switch (getOperation()) {
                 case CREATE:
@@ -107,8 +111,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         }
     }
 
-    @Override
-    public DataCollectionSchema synchronizeTableSchema(DataCollectionSchema tableSchema) {
+    private DataCollectionSchema synchronizeTableSchema(DataCollectionSchema tableSchema) {
         final boolean metadataInMessage = message.hasTypeMetadata();
         final TableId tableId = (TableId) tableSchema.id();
         final Table table = schema.tableFor(tableId);

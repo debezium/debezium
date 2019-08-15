@@ -57,7 +57,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final Heartbeat heartbeat;
     private DataChangeEventListener eventListener = DataChangeEventListener.NO_OP;
     private final boolean emitTombstonesOnDelete;
-    private InconsistentSchemaHandler<T> inconsistentSchemaHandler = this::errorOnMissingSchema;
+    private final InconsistentSchemaHandler<T> inconsistentSchemaHandler;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -67,6 +67,11 @@ public class EventDispatcher<T extends DataCollectionId> {
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
             DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
             ChangeEventCreator changeEventCreator) {
+        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null);
+    }
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
+            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler) {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.historizedSchema = schema instanceof HistorizedDatabaseSchema
@@ -77,6 +82,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.changeEventCreator = changeEventCreator;
         this.streamingReceiver = new StreamingChangeRecordReceiver();
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
+        this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
         heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
                 connectorConfig.getLogicalName());
@@ -125,13 +131,12 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             // TODO handle as per inconsistent schema info option
             if (dataCollectionSchema == null) {
-                final Optional<DataCollectionSchema> replacementSchema = inconsistentSchemaHandler.handle(dataCollectionId, changeRecordEmitter); 
+                final Optional<DataCollectionSchema> replacementSchema = inconsistentSchemaHandler.handle(dataCollectionId, changeRecordEmitter);
                 if (!replacementSchema.isPresent()) {
                     return;
                 }
                 dataCollectionSchema = replacementSchema.get();
             }
-            dataCollectionSchema = changeRecordEmitter.synchronizeTableSchema(dataCollectionSchema);
 
             changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver() {
 
@@ -149,10 +154,6 @@ public class EventDispatcher<T extends DataCollectionId> {
                 changeRecordEmitter.getOffset().getOffset(),
                 this::enqueueHeartbeat
         );
-    }
-
-    public void setInconsistentSchemaHandler(InconsistentSchemaHandler<T> inconsistentSchemaHandler) {
-        this.inconsistentSchemaHandler = inconsistentSchemaHandler;
     }
 
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {
