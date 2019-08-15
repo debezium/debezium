@@ -193,6 +193,12 @@ public class OracleOffsetContext implements OffsetContext {
         sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }
 
+    @Override
+    public void event(TableId tableId, Instant timestamp) {
+        sourceInfo.setTableId(tableId);
+        sourceInfo.setSourceTime(timestamp);
+    }
+
     public static class Loader implements OffsetContext.Loader {
 
         private final OracleConnectorConfig connectorConfig;

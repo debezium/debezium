@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,9 +20,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.HistorizedRelationalSnapshotChangeEventSource;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
@@ -35,20 +33,18 @@ import io.debezium.util.Clock;
  *
  * @author Gunnar Morling
  */
-public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapshotChangeEventSource {
+public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSnapshotChangeEventSource.class);
 
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
-    private final Clock clock;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection, OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
 
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
-        this.clock = clock;
     }
 
     @Override
@@ -225,17 +221,9 @@ public class OracleSnapshotChangeEventSource extends HistorizedRelationalSnapsho
     }
 
     @Override
-    protected String getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         long snapshotOffset = (Long) snapshotContext.offset.getOffset().get("scn");
-        return "SELECT * FROM " + tableId.schema() + "." + tableId.table() + " AS OF SCN " + snapshotOffset;
-    }
-
-    @Override
-    protected ChangeRecordEmitter getChangeRecordEmitter(SnapshotContext snapshotContext, TableId tableId, Object[] row) {
-        // TODO can this be done in a better way than doing it as a side-effect here?
-        ((OracleOffsetContext) snapshotContext.offset).setSourceTime(Instant.ofEpochMilli(clock.currentTimeInMillis()));
-        ((OracleOffsetContext) snapshotContext.offset).setTableId(tableId);
-        return new SnapshotChangeRecordEmitter(snapshotContext.offset, row, clock);
+        return Optional.of("SELECT * FROM " + tableId.schema() + "." + tableId.table() + " AS OF SCN " + snapshotOffset);
     }
 
     @Override
