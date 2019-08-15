@@ -145,7 +145,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
                         // Correct initial chunk
                         txId = message.getLong("xid");
                         final String timestamp = message.getString("timestamp");
-                        commitTime = dateTime.systemTimestampToOffsetDateTime(timestamp).toInstant();
+                        commitTime = dateTime.systemTimestampToInstant(timestamp);
                         messageInProgress = true;
                         currentChunk = null;
                     }
@@ -193,7 +193,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
      * This issue is very hard to reproduce so a precaution is taken and metadata are filled with
      * synthetic values.
      * <p>The new wal2json format will be resilient to this situation.
-     * 
+     *
      * @param content
      */
     protected void outOfOrderChunk(final byte[] content) {

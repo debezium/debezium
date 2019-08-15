@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.postgresql.connection.wal2json;
 
-import org.fest.assertions.Assertions;
-import org.junit.Test;
-
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -18,29 +15,29 @@ import java.time.chrono.IsoEra;
 import java.time.format.TextStyle;
 import java.util.Locale;
 
+import org.fest.assertions.Assertions;
+import org.junit.Test;
+
 public class ISODateTimeFormatTest {
     private static final String BCE_DISPLAY_NAME = IsoEra.BCE.getDisplayName(TextStyle.SHORT, Locale.getDefault());
 
     @Test
-    public void testTimestampToOffsetDateTime() {
+    public void testTimestampToInstant() {
         ZoneOffset offset = ZoneOffset.UTC;
-        ZoneOffset otherOffset = ZoneOffset.ofHoursMinutes(2, 30);
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("2016-11-04 13:51:30", offset))
-                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 0, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("2016-11-04 13:51:30.123", offset))
-                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_000_000, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("2016-11-04 13:51:30.123000", offset))
-                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_000_000, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("2016-11-04 13:51:30.123456", offset))
-                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_456_000, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("2016-11-04 13:51:30.123456", offset))
-                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_456_000, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("0002-12-01 17:00:00 " + BCE_DISPLAY_NAME, offset))
-                .isEqualTo(OffsetDateTime.of(-1, 12, 1, 17, 0, 0, 0, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("20160-11-04 13:51:30.123456", offset))
-                .isEqualTo(OffsetDateTime.of(20160, 11, 4, 13, 51, 30, 123_456_000, offset));
-        Assertions.assertThat(DateTimeFormat.get().timestampToOffsetDateTime("20160-11-04 13:51:30.123456", otherOffset))
-                .isEqualTo(OffsetDateTime.of(20160, 11, 4, 13, 51, 30, 123_456_000, otherOffset));
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30"))
+                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 0, offset).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30.123"))
+                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_000_000, offset).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30.123000"))
+                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_000_000, offset).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30.123456"))
+                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_456_000, offset).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30.123456"))
+                .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 123_456_000, offset).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("0002-12-01 17:00:00 " + BCE_DISPLAY_NAME))
+                .isEqualTo(OffsetDateTime.of(-1, 12, 1, 17, 0, 0, 0, offset).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().timestampToInstant("20160-11-04 13:51:30.123456"))
+                .isEqualTo(OffsetDateTime.of(20160, 11, 4, 13, 51, 30, 123_456_000, offset).toInstant());
     }
 
     @Test
@@ -81,14 +78,13 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
-    public void testSystemTimestampToOffsetDateTime() {
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("2017-10-17 13:51:30Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 0, ZoneOffset.UTC));
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("2017-10-17 13:51:30.000Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 0, ZoneOffset.UTC));
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("2017-10-17 13:51:30.456Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, Duration.ofMillis(456).getNano(), ZoneOffset.UTC));
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("2017-10-17 13:51:30.345123Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 345_123_000, ZoneOffset.UTC));
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("2018-03-22 12:30:56.824452+05:30")).isEqualTo(OffsetDateTime.of(2018, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHoursMinutes(5, 30)));
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("2018-03-22 12:30:56.824452+05")).isEqualTo(OffsetDateTime.of(2018, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHours(5)));
-        Assertions.assertThat(DateTimeFormat.get().systemTimestampToOffsetDateTime("20180-03-22 12:30:56.824452+05")).isEqualTo(OffsetDateTime.of(20180, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHours(5)));
+    public void testSystemTimestampToInstant() {
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 0, ZoneOffset.UTC).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30.000Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 0, ZoneOffset.UTC).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30.456Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, Duration.ofMillis(456).getNano(), ZoneOffset.UTC).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30.345123Z")).isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 345_123_000, ZoneOffset.UTC).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("2018-03-22 12:30:56.824452+05:30")).isEqualTo(OffsetDateTime.of(2018, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHoursMinutes(5, 30)).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("2018-03-22 12:30:56.824452+05")).isEqualTo(OffsetDateTime.of(2018, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHours(5)).toInstant());
+        Assertions.assertThat(DateTimeFormat.get().systemTimestampToInstant("20180-03-22 12:30:56.824452+05")).isEqualTo(OffsetDateTime.of(20180, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHours(5)).toInstant());
     }
-
 }

@@ -82,7 +82,7 @@ public interface ReplicationMessage {
         SpecialValueDecimal asDecimal();
         LocalDate asLocalDate();
         OffsetDateTime asOffsetDateTime();
-        OffsetDateTime asOffsetDateTimeWithoutTimeZone();
+        Instant asInstant();
         LocalTime asLocalTime();
         OffsetTime asOffsetTime();
         byte[] asByteArray();

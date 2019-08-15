@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.postgresql.connection.wal2json;
 
-import org.apache.kafka.connect.errors.ConnectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +20,10 @@ import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.util.function.Supplier;
 
+import org.apache.kafka.connect.errors.ConnectException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Transformer for time/date related string representations in JSON messages coming from the wal2json plugin.
  *
@@ -31,9 +31,9 @@ import java.util.function.Supplier;
  *
  */
 public interface DateTimeFormat {
-    public OffsetDateTime timestampToOffsetDateTime(final String s, ZoneOffset offset);
+    public Instant timestampToInstant(final String s);
     public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(final String s);
-    public OffsetDateTime systemTimestampToOffsetDateTime(final String s);
+    public Instant systemTimestampToInstant(final String s);
     public LocalDate date(final String s);
     public LocalTime time(final String s);
     public OffsetTime timeWithTimeZone(final String s);
@@ -128,13 +128,6 @@ public interface DateTimeFormat {
             return format(TIME_TZ_FORMAT_PATTERN, s, () -> OffsetTime.parse(s, TIME_TZ_FORMAT)).withOffsetSameInstant(ZoneOffset.UTC);
         }
 
-        private long formatTZ(final String pattern, final DateTimeFormatter formatter, final String s) {
-            return format(pattern, s, () -> {
-               final Instant ts = Instant.from(formatter.parse(s));
-               return ts.getEpochSecond() * 1_000_000_000 + ts.getNano();
-            });
-        }
-
         private <T> T format(final String pattern, final String s, final Supplier<T> value) {
             try {
                 return value.get();
@@ -145,8 +138,8 @@ public interface DateTimeFormat {
         }
 
         @Override
-        public OffsetDateTime timestampToOffsetDateTime(String s, ZoneOffset offset) {
-            return format(TS_FORMAT_PATTERN_HINT, s, () -> LocalDateTime.from(TS_FORMAT.parse(s)).atOffset(offset));
+        public Instant timestampToInstant(String s) {
+            return format(TS_FORMAT_PATTERN_HINT, s, () -> LocalDateTime.from(TS_FORMAT.parse(s)).toInstant(ZoneOffset.UTC));
         }
 
         @Override
@@ -155,8 +148,8 @@ public interface DateTimeFormat {
         }
 
         @Override
-        public OffsetDateTime systemTimestampToOffsetDateTime(String s) {
-            return format(SYSTEM_TS_FORMAT_PATTERN_HINT, s, () -> OffsetDateTime.from(SYSTEM_TS_FORMAT.parse(s)));
+        public Instant systemTimestampToInstant(String s) {
+            return format(SYSTEM_TS_FORMAT_PATTERN_HINT, s, () -> OffsetDateTime.from(SYSTEM_TS_FORMAT.parse(s)).toInstant());
         }
     }
 }

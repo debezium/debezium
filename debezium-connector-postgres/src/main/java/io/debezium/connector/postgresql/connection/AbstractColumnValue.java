@@ -6,11 +6,11 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
-import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGbox;
@@ -55,8 +55,8 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public OffsetDateTime asOffsetDateTimeWithoutTimeZone() {
-        return DateTimeFormat.get().timestampToOffsetDateTime(asString(), ZoneOffset.UTC);
+    public Instant asInstant() {
+        return DateTimeFormat.get().timestampToInstant(asString());
     }
 
     @Override
