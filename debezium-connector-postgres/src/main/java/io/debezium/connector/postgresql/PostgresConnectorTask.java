@@ -145,8 +145,9 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     schema,
                     queue,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
-                    DataChangeEvent::new);
-                    dispatcher.setInconsistentSchemaHandler(PostgresChangeRecordEmitter::updateSchema);
+                    DataChangeEvent::new,
+                    PostgresChangeRecordEmitter::updateSchema
+            );
 
             coordinator = new ChangeEventSourceCoordinator(
                     previousOffset,
