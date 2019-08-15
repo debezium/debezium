@@ -75,7 +75,7 @@
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
 
         <!-- Connectors -->
-        <version.com.google.protobuf>3.4.0</version.com.google.protobuf>
+        <version.com.google.protobuf>3.5.0</version.com.google.protobuf>
 
         <!-- ANTLR -->
         <antlr.version>4.7</antlr.version>
@@ -98,7 +98,7 @@
         <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
         <version.docker.maven.plugin>0.26.0</version.docker.maven.plugin>
         <version.staging.plugin>1.6.3</version.staging.plugin>
-        <version.protoc.maven.plugin>3.0.0.1</version.protoc.maven.plugin>
+        <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>
