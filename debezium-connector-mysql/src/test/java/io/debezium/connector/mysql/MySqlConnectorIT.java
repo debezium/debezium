@@ -29,6 +29,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.cloudevents.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
@@ -1947,6 +1948,30 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Assertions.assertThat(key.get("name")).isNotNull();
         });
 
+    }
+
+    @Test
+    @FixFor("DBZ-1292")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        final SourceRecords records = consumeRecordsByTopic(PRODUCTS_TABLE_EVENT_COUNT);
+        final List<SourceRecord> table = records.recordsForTopic(DATABASE.topicForTable(tableName));
+
+        for (SourceRecord record : table) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+        }
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {
