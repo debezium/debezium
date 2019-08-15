@@ -258,11 +258,15 @@ public final class TestHelper {
     }
 
     protected static void dropPublication() {
+        dropPublication(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+    }
+
+    protected static void dropPublication(String publicationName) {
         try {
-            execute("DROP PUBLICATION " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+            execute("DROP PUBLICATION " + publicationName);
         }
         catch (Exception e) {
-            LOGGER.debug("Error while dropping default publication", e);
+            LOGGER.debug("Error while dropping publication: '" + publicationName + "'", e);
         }
     }
 
