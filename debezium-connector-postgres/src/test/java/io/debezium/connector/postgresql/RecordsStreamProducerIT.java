@@ -983,6 +983,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
                 false
         );
+        waitForStreamingToStart();
 
         String statement = "CREATE SCHEMA s1;" +
                            "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
