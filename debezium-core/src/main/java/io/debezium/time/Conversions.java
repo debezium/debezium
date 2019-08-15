@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
@@ -119,6 +120,12 @@ public final class Conversions {
     protected static LocalDateTime toLocalDateTime(Object obj) {
         if ( obj == null ) {
             return null;
+        }
+        if (obj instanceof OffsetDateTime) {
+            return ((OffsetDateTime) obj).toLocalDateTime();
+        }
+        if (obj instanceof Instant) {
+            return ((Instant) obj).atOffset(ZoneOffset.UTC).toLocalDateTime();
         }
         if ( obj instanceof LocalDateTime) {
             return (LocalDateTime) obj;

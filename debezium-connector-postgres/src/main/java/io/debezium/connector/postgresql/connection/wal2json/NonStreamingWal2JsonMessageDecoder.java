@@ -54,7 +54,7 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
             final Document message = DocumentReader.floatNumbersAsTextReader().read(content);
             final long txId = message.getLong("xid");
             final String timestamp = message.getString("timestamp");
-            final Instant commitTime = dateTime.systemTimestampToOffsetDateTime(timestamp).toInstant();
+            final Instant commitTime = dateTime.systemTimestampToInstant(timestamp);
             final Array changes = message.getArray("change");
 
             // WAL2JSON may send empty changes that still have a txid. These events are from things like vacuum,
