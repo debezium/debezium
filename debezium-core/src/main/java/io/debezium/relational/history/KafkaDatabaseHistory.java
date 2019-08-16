@@ -199,7 +199,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             }
         } catch( InterruptedException e) {
             logger.trace("Interrupted before record was written into database history: {}", record);
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new DatabaseHistoryException(e);
         } catch (ExecutionException e) {
             throw new DatabaseHistoryException(e);

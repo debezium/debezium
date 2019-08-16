@@ -528,7 +528,7 @@ public class BinlogReader extends AbstractReader {
             logger.info("Error processing binlog event, and propagating to Kafka Connect so it stops this connector. Future binlog events read before connector is shutdown will be ignored.");
         } catch (InterruptedException e) {
             // Most likely because this reader was stopped and our thread was interrupted ...
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             eventHandlers.clear();
             logger.info("Stopped processing binlog events due to thread interruption");
         }

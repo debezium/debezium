@@ -92,7 +92,7 @@ public class ChangeEventSourceCoordinator {
                 }
             }
             catch (InterruptedException e) {
-                Thread.interrupted();
+                Thread.currentThread().interrupt();
                 LOGGER.warn("Change event source executor was interrupted", e);
             }
             catch (Throwable e) {
@@ -117,7 +117,7 @@ public class ChangeEventSourceCoordinator {
         running = false;
 
         executor.shutdown();
-        Thread.interrupted();
+        Thread.currentThread().interrupt();
         boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
         if (!isShutdown) {

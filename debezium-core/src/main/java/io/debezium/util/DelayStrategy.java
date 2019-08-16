@@ -57,7 +57,7 @@ public interface DelayStrategy {
             try {
                 Thread.sleep(delayInMilliseconds);
             } catch (InterruptedException e) {
-                Thread.interrupted();
+                Thread.currentThread().interrupt();
             }
             return true;
         };
@@ -89,7 +89,7 @@ public interface DelayStrategy {
                 try {
                     Thread.sleep(misses * delayInMilliseconds);
                 } catch (InterruptedException e) {
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                 }
                 return true;
             }
@@ -148,7 +148,7 @@ public interface DelayStrategy {
                 try {
                     Thread.sleep(previousDelay);
                 } catch (InterruptedException e) {
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                 }
                 return true;
             }

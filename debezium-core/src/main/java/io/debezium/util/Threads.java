@@ -222,7 +222,7 @@ public class Threads {
                     Thread.sleep(sleepTimeInMillis);
                 } catch (InterruptedException e) {
                     // awoke from sleep
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                     return;
                 }
             }
