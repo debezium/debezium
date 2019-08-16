@@ -148,7 +148,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     engine.await(60, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
                     logger.warn("Engine has not stopped on time");
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                 }
             }
             if (executor != null) {
@@ -160,7 +160,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     }
                 } catch (InterruptedException e) {
                     logger.warn("Executor has not stopped on time");
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                 }
             }
             if (engine != null && engine.isRunning()) {
@@ -170,7 +170,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     }
                 } catch (InterruptedException e) {
                     logger.warn("Connector has not stopped on time");
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                 }
             }
             if (callback != null){

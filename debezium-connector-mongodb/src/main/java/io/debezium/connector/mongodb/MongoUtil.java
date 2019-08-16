@@ -153,7 +153,7 @@ public class MongoUtil {
                     try {
                         documentOperation.accept(cursor.next());
                     } catch (InterruptedException e) {
-                        Thread.interrupted();
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 }

@@ -817,7 +817,12 @@ public final class EmbeddedEngine implements Runnable {
                             catch (InterruptedException e) {
                                 // Interrupted while polling ...
                                 logger.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
-                                Thread.interrupted();
+                                if (this.runningThread.get() == Thread.currentThread()) {
+                                    // this thread is still set as the running thread -> we were not interrupted
+                                    // due the stop() call -> probably someone else called the interrupt on us ->
+                                    // -> we should raise the interrupt flag
+                                    Thread.currentThread().interrupt();
+                                }
                                 break;
                             }
                             try {

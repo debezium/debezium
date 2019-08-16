@@ -620,7 +620,7 @@ public class SnapshotReader extends AbstractReader {
                                             metrics.rowsScanned(tableId, rowNum.get());
                                         }
                                     } catch (InterruptedException e) {
-                                        Thread.interrupted();
+                                        Thread.currentThread().interrupt();
                                         // We were not able to finish all rows in all tables ...
                                         logger.info("Step {}: Stopping the snapshot due to thread interruption", stepNum);
                                         interrupted.set(true);
@@ -654,7 +654,7 @@ public class SnapshotReader extends AbstractReader {
                                         step, totalRowCount, capturedTableIds.size(), Strings.duration(stop - startScan));
                         }
                     } catch (InterruptedException e) {
-                        Thread.interrupted();
+                        Thread.currentThread().interrupt();
                         // We were not able to finish all rows in all tables ...
                         if (logger.isInfoEnabled()) {
                             logger.info("Step {}: aborting the snapshot after {} rows in {} of {} tables {}",

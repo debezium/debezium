@@ -130,7 +130,7 @@ The engine's connector will stop reading information from the source system, for
             logger.info("Wating another 30 seconds for the embedded enging to shut down");            
         }
     } catch ( InterruptedException e ) {
-        Thread.interrupted();
+        Thread.currentThread().interrupt();
     }
 
 Recall that when the JVM shuts down, it only waits for daemon threads. Therefore, if your application exits, be sure to wait for completion of the engine or alternatively run the engine on a daemon thread.

@@ -266,7 +266,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 logger.error("Failed to start the connector (see other exception), but got this error while cleaning up", s);
             }
             if (e instanceof InterruptedException) {
-                Thread.interrupted();
+                Thread.currentThread().interrupt();
                 throw new ConnectException("Interrupted while starting the connector", e);
             }
             if (e instanceof ConnectException) {

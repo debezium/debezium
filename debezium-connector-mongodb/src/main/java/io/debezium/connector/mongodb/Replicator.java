@@ -343,7 +343,7 @@ public class Replicator {
         try {
             latch.await();
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             aborted.set(true);
         }
         this.copyThreads.shutdown();
@@ -566,7 +566,7 @@ public class Replicator {
                 try {
                     factory.recordEvent(event, clock.currentTimeInMillis());
                 } catch (InterruptedException e) {
-                    Thread.interrupted();
+                    Thread.currentThread().interrupt();
                     return false;
                 }
             }
