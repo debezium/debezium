@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -992,15 +993,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                            "INSERT INTO s1.b (bb) VALUES (22);";
 
         // streaming from database is non-blocking so we should receive many heartbeats
+        final int expectedAtMostStartHeartbeats = 3;
         final int expectedHeartbeats = 5;
         // heartbeat for unfiltered table, data change, heartbeats
-        consumer = testConsumer(1 + 1 + expectedHeartbeats);
+        consumer = testConsumer(expectedAtMostStartHeartbeats + 1 + expectedHeartbeats);
         consumer.setIgnoreExtraRecords(true);
         executeAndWait(statement);
 
         // change record for s1.b and heartbeats
-        assertHeartBeatRecordInserted();
-        assertRecordInserted("s1.b", PK_FIELD, 1);
+        Optional<SourceRecord> record;
+        int startHeartbeats = 0;
+        while (true) {
+            record = isHeartBeatRecordInserted();
+            if (record.isPresent()) {
+                assertThat(startHeartbeats).describedAs("Too many start heartbeats").isLessThanOrEqualTo(expectedAtMostStartHeartbeats);
+                break;
+            }
+            startHeartbeats++;
+        }
+
+        assertRecordInserted(record.get(), "s1.b", PK_FIELD, 1);
         for (int i = 0; i < expectedHeartbeats; i++) {
             assertHeartBeatRecordInserted();
         }
@@ -1432,6 +1444,25 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
     }
 
+    private Optional<SourceRecord> isHeartBeatRecordInserted() {
+        assertFalse("records not generated", consumer.isEmpty());
+        final String heartbeatTopicName = "__debezium-heartbeat." + TestHelper.TEST_SERVER;
+
+        SourceRecord record = consumer.remove();
+        if (!heartbeatTopicName.equals(record.topic())) {
+            return Optional.of(record);
+        }
+
+        assertEquals(heartbeatTopicName, record.topic());
+
+        Struct key = (Struct) record.key();
+        assertThat(key.get("serverName")).isEqualTo(TestHelper.TEST_SERVER);
+
+        Struct value = (Struct) record.value();
+        assertThat(value.getInt64("ts_ms")).isLessThanOrEqualTo(Instant.now().toEpochMilli());
+        return Optional.empty();
+    }
+
     private void assertInsert(String statement, List<SchemaAndValueField> expectedSchemaAndValuesByColumn) {
         assertInsert(statement, null, expectedSchemaAndValuesByColumn);
     }
@@ -1453,9 +1484,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
-    private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
-        assertFalse("records not generated", consumer.isEmpty());
-        SourceRecord insertedRecord = consumer.remove();
+    private SourceRecord assertRecordInserted(SourceRecord insertedRecord, String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
         assertEquals(topicName(expectedTopicName), insertedRecord.topic());
 
         if (pk != null) {
@@ -1466,6 +1495,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
 
         return insertedRecord;
+    }
+
+    private SourceRecord assertRecordInserted(String expectedTopicName, String pkColumn, Integer pk) throws InterruptedException {
+        assertFalse("records not generated", consumer.isEmpty());
+        SourceRecord insertedRecord = consumer.remove();
+
+        return assertRecordInserted(insertedRecord, expectedTopicName, pkColumn, pk);
     }
 
     private void executeAndWait(String statements) throws Exception {
