@@ -1044,6 +1044,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final SnapshotLockingMode snapshotLockingMode;
     private final GtidNewChannelPosition gitIdNewChannelPosition;
     private final SnapshotNewTables snapshotNewTables;
+    private final TemporalPrecisionMode temporalPrecisionMode;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -1054,6 +1055,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                 DEFAULT_SNAPSHOT_FETCH_SIZE
         );
 
+        this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
 
         String gitIdNewChannelPosition = config.getString(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION);
@@ -1195,5 +1197,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public String getContextName() {
         return Module.contextName();
+    }
+
+    @Override
+    public TemporalPrecisionMode getTemporalPrecisionMode() {
+        return temporalPrecisionMode;
     }
 }
