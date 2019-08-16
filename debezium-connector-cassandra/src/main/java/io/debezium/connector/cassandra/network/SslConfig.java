@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.cassandra.network;
 
-import java.util.Map;
+import java.util.Properties;
 
 public class SslConfig {
 
@@ -25,9 +25,9 @@ public class SslConfig {
     public static final String TRUST_MANAGER_ALGORITHM = "trustManager.algorithm";
     public static final String DEFAULT_TRUST_MANAGER_ALGORITHM = "SunX509";
 
-    private Map<String, Object> configs;
+    private Properties configs;
 
-    public SslConfig(Map<String, Object> configs) {
+    public SslConfig(Properties configs) {
         this.configs = configs;
     }
 

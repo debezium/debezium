@@ -237,6 +237,12 @@ public class CassandraConnectorConfig {
     public static final String LATEST_COMMIT_LOG_ONLY = "latest.commit.log.only";
     public static final boolean DEFAULT_LATEST_COMMIT_LOG_ONLY = false;
 
+    private Properties configs;
+
+    public CassandraConnectorConfig(Properties configs) {
+        this.configs = configs;
+    }
+
     public String connectorName() {
         return (String) configs.get(CONNECTOR_NAME);
     }
@@ -253,9 +259,9 @@ public class CassandraConnectorConfig {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
 
         configs.entrySet().stream()
-                .filter(entry -> entry.getKey().startsWith(KAFKA_PRODUCER_CONFIG_PREFIX))
+                .filter(entry -> entry.getKey().toString().startsWith(KAFKA_PRODUCER_CONFIG_PREFIX))
                 .forEach(entry -> {
-                    String k = entry.getKey().replace(KAFKA_PRODUCER_CONFIG_PREFIX, "");
+                    String k = entry.getKey().toString().replace(KAFKA_PRODUCER_CONFIG_PREFIX, "");
                     Object v = entry.getValue();
                     props.put(k, v);
                 });
@@ -266,19 +272,13 @@ public class CassandraConnectorConfig {
     public Properties commitLogTransferConfigs() {
         Properties props = new Properties();
         configs.entrySet().stream()
-                .filter(entry -> entry.getKey().startsWith(COMMIT_LOG_TRANSFER_CONFIG_PREFIX))
+                .filter(entry -> entry.getKey().toString().startsWith(COMMIT_LOG_TRANSFER_CONFIG_PREFIX))
                 .forEach(entry -> props.put(entry.getKey(), entry.getValue()));
         return props;
     }
 
     public boolean latestCommitLogOnly() {
         return (boolean) configs.getOrDefault(LATEST_COMMIT_LOG_ONLY, DEFAULT_LATEST_COMMIT_LOG_ONLY);
-    }
-
-    private Map<String, Object> configs;
-
-    public CassandraConnectorConfig(Map<String, Object> configs) {
-        this.configs = configs;
     }
 
     public SnapshotMode snapshotMode() {
@@ -400,7 +400,7 @@ public class CassandraConnectorConfig {
     @Override
     public String toString() {
         return configs.entrySet().stream()
-                .filter(e -> !e.getKey().toLowerCase().contains("username") && !e.getKey().toLowerCase().contains("password"))
+                .filter(e -> !e.getKey().toString().toLowerCase().contains("username") && !e.getKey().toString().toLowerCase().contains("password"))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
                 .toString();
     }

@@ -7,8 +7,7 @@ package io.debezium.connector.cassandra;
 
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.Properties;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -131,13 +130,15 @@ public class CassandraConnectorConfigTest {
     }
 
     private CassandraConnectorConfig buildTaskConfig(String key, Object value) {
-        Map<String, Object> map = Collections.singletonMap(key, value);
-        return new CassandraConnectorConfig(map);
+        Properties props = new Properties();
+        props.put(key, value);
+        return new CassandraConnectorConfig(props);
     }
 
     @Test
     public void testDefaultConfigs() {
-        CassandraConnectorConfig config = new CassandraConnectorConfig(Collections.emptyMap());
+        Properties props = new Properties();
+        CassandraConnectorConfig config = new CassandraConnectorConfig(props);
         assertEquals(CassandraConnectorConfig.DEFAULT_SNAPSHOT_CONSISTENCY, config.snapshotConsistencyLevel().name().toUpperCase());
         assertEquals(CassandraConnectorConfig.DEFAULT_HTTP_PORT, config.httpPort());
         assertArrayEquals(CassandraConnectorConfig.DEFAULT_CASSANDRA_HOST.split(","), config.cassandraHosts());

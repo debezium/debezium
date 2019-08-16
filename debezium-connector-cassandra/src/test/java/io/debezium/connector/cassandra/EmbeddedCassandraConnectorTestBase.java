@@ -23,8 +23,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Base class used to automatically spin up a single-node embedded Cassandra cluster before tests
@@ -75,7 +75,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
      * Generate a task context with default test configs
      */
     protected static CassandraConnectorContext generateTaskContext() throws GeneralSecurityException, IOException {
-        Map<String, Object> defaults = generateDefaultConfigMap();
+        Properties defaults = generateDefaultConfigMap();
         return new CassandraConnectorContext(new CassandraConnectorConfig(defaults));
     }
 
@@ -83,7 +83,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
      * General a task context with default and custom test configs
      */
     protected static CassandraConnectorContext generateTaskContext(Map<String, Object> configs) throws GeneralSecurityException, IOException {
-        Map<String, Object> defaults = generateDefaultConfigMap();
+        Properties defaults = generateDefaultConfigMap();
         defaults.putAll(configs);
         return new CassandraConnectorContext(new CassandraConnectorConfig(defaults));
     }
@@ -165,18 +165,18 @@ public abstract class EmbeddedCassandraConnectorTestBase {
         }
     }
 
-    protected static Map<String, Object> generateDefaultConfigMap() throws IOException {
-        Map<String, Object> configs = new HashMap<>();
-        configs.put(CassandraConnectorConfig.CONNECTOR_NAME, TEST_CONNECTOR_NAME);
-        configs.put(CassandraConnectorConfig.CASSANDRA_CONFIG, TEST_CASSANDRA_YAML_CONFIG);
-        configs.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, TEST_KAFKA_TOPIC_PREFIX);
-        configs.put(CassandraConnectorConfig.CASSANDRA_HOSTS, TEST_CASSANDRA_HOSTS);
-        configs.put(CassandraConnectorConfig.CASSANDRA_PORT, TEST_CASSANDRA_PORT);
-        configs.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, Files.createTempDirectory("offset").toString());
-        configs.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
-        configs.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, TEST_SCHEMA_REGISTRY_URL);
-        configs.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, Files.createTempDirectory("cdc_raw_relocation").toString());
-        return configs;
+    protected static Properties generateDefaultConfigMap() throws IOException {
+        Properties props = new Properties();
+        props.put(CassandraConnectorConfig.CONNECTOR_NAME, TEST_CONNECTOR_NAME);
+        props.put(CassandraConnectorConfig.CASSANDRA_CONFIG, TEST_CASSANDRA_YAML_CONFIG);
+        props.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, TEST_KAFKA_TOPIC_PREFIX);
+        props.put(CassandraConnectorConfig.CASSANDRA_HOSTS, TEST_CASSANDRA_HOSTS);
+        props.put(CassandraConnectorConfig.CASSANDRA_PORT, TEST_CASSANDRA_PORT);
+        props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, Files.createTempDirectory("offset").toString());
+        props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
+        props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, TEST_SCHEMA_REGISTRY_URL);
+        props.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, Files.createTempDirectory("cdc_raw_relocation").toString());
+        return props;
     }
 
     private static void startEmbeddedCassandra() throws Exception {

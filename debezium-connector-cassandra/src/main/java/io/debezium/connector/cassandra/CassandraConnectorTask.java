@@ -18,7 +18,6 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.Properties;
 
 /**
  * A task that reads Cassandra commit log in CDC directory and generate corresponding data
@@ -54,7 +54,9 @@ public class CassandraConnectorTask {
 
         String configPath = args[0];
         try (FileInputStream fis = new FileInputStream(configPath)) {
-            Map<String, Object> props = new Yaml().load(fis);
+            Properties props = new Properties();
+            props.load(fis);
+            fis.close();
             CassandraConnectorConfig config = new CassandraConnectorConfig(props);
             CassandraConnectorTask task = new CassandraConnectorTask(config);
             task.run();

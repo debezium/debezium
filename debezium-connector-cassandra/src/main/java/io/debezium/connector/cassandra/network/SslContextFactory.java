@@ -12,7 +12,6 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
@@ -20,6 +19,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.util.Properties;
 
 public class SslContextFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(SslContextFactory.class);
@@ -27,7 +27,7 @@ public class SslContextFactory {
 
     /**
      * Return an {@link SslContext} containing all SSL configurations parsed
-     * from the YAML file path
+     * from the Properties file path
      * <p>
      * See {@link SslConfig} class for a list of valid config names
      *
@@ -38,9 +38,11 @@ public class SslContextFactory {
         if (sslConfigPath == null) {
             throw new CassandraConnectorConfigException("Please specify SSL config path in cdc.yml");
         }
-        Yaml yaml = new Yaml();
+        Properties props = new Properties();
         try (FileInputStream fis = new FileInputStream(sslConfigPath)) {
-            SslConfig sslConfig = new SslConfig(yaml.load(fis));
+            props.load(fis);
+            fis.close();
+            SslConfig sslConfig = new SslConfig(props);
             return createSslContext(sslConfig);
         }
     }
