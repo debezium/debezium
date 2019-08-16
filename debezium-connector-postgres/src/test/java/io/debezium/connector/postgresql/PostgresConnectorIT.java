@@ -904,16 +904,16 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
 
-        actualRecords = consumeRecordsByTopic(4);
+        TestHelper.execute(INSERT_STMT);
+
+        actualRecords = consumeRecordsByTopic(2);
 
         s1recs = actualRecords.recordsForTopic(topicName("s1.a"));
         s2recs = actualRecords.recordsForTopic(topicName("s2.a"));
-        assertThat(s1recs.size()).isEqualTo(2);
-        assertThat(s2recs.size()).isEqualTo(2);
-        VerifyRecord.isValidRead(s1recs.get(0), PK_FIELD, 1);
-        VerifyRecord.isValidRead(s1recs.get(1), PK_FIELD, 2);
-        VerifyRecord.isValidRead(s2recs.get(0), PK_FIELD, 1);
-        VerifyRecord.isValidRead(s2recs.get(1), PK_FIELD, 2);
+        assertThat(s1recs.size()).isEqualTo(1);
+        assertThat(s2recs.size()).isEqualTo(1);
+        VerifyRecord.isValidInsert(s1recs.get(0), PK_FIELD, 3);
+        VerifyRecord.isValidInsert(s2recs.get(0), PK_FIELD, 3);
     }
 
     private String getConfirmedFlushLsn(PostgresConnection connection) throws SQLException {
