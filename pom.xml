@@ -9,7 +9,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-incubator-parent</artifactId>
-    <version>0.10.0.Beta4</version>
+    <version>0.10.0-SNAPSHOT</version>
     <name>Debezium Incubator Parent POM</name>
     <description>Parent POM for incubating connectors of Debezium, an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -18,7 +18,7 @@
         <connection>scm:git:git@github.com:debezium/debezium-incubator.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium-incubator.git</developerConnection>
         <url>https://github.com/debezium/debezium-incubator</url>
-      <tag>v0.10.0.Beta4</tag>
+      <tag>HEAD</tag>
     </scm>
 
     <properties>
