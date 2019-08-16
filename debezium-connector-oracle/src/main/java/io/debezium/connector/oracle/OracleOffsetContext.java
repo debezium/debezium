@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 
 public class OracleOffsetContext implements OffsetContext {
 
@@ -194,8 +195,8 @@ public class OracleOffsetContext implements OffsetContext {
     }
 
     @Override
-    public void event(TableId tableId, Instant timestamp) {
-        sourceInfo.setTableId(tableId);
+    public void event(DataCollectionId tableId, Instant timestamp) {
+        sourceInfo.setTableId((TableId) tableId);
         sourceInfo.setSourceTime(timestamp);
     }
 
