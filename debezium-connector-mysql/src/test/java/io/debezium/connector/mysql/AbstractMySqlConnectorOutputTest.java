@@ -93,7 +93,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
                     Thread.sleep(100);
                 }
             } catch (InterruptedException e) {
-                Thread.interrupted();
+                Thread.currentThread().interrupt();
             } finally {
                 latch.countDown();
             }
@@ -108,7 +108,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
             }
             Testing.print("Waited a total of " + sw.durations().statistics().getTotalAsString() + " for the replica to catch up to the master.");
         } catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
         }
     }
 

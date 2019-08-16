@@ -110,7 +110,7 @@ public final class ReplicaSetMonitorThread implements Runnable {
                 return replicaSets;
             }
         } catch (InterruptedException e) {
-            Thread.interrupted(); // but do nothing else
+            Thread.currentThread().interrupt(); // but do nothing else
         }
         return null;
     }

@@ -85,7 +85,7 @@ public class ZookeeperServer {
             return this;
         } catch (InterruptedException e) {
             factory = null;
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             throw new IOException(e);
         }
     }
