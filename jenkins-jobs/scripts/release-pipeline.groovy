@@ -201,8 +201,9 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
             }
         }
         withCredentials([
-            string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE')]) {
-            def mvnlog = sh(script: "mvn release:perform -DlocalCheckout=$DRY_RUN -Darguments=\"-s $HOME/.m2/settings-snapshots.xml -Dgpg.homedir=\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=$PASSPHRASE -DskipTests -DskipITs $buildArgs\" $buildArgs", returnStdout: true).trim()
+            string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'GPG_PASSPHRASE'),
+            usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+            def mvnlog = sh(script: "mvn release:perform -DlocalCheckout=$DRY_RUN -DconnectionUrl=scm:git:https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repoName} -Darguments=\"-s $HOME/.m2/settings-snapshots.xml -Dgpg.homedir=\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=$GPG_PASSPHRASE -DskipTests -DskipITs $buildArgs\" $buildArgs", returnStdout: true).trim()
             echo mvnlog
             def match = mvnlog =~ /Created staging repository with ID \"(iodebezium-.+)\"/
             if (!match[0]) {
@@ -230,6 +231,7 @@ node('Slave') {
         dir('.') {
             deleteDir()
             sh "git config user.email || git config --global user.email \"debezium@gmail.com\" && git config --global user.name \"Debezium Builder\""
+            sh "ssh-keyscan github.com >> $HOME_DIR/.ssh/known_hosts"
         }
         dir(GPG_DIR) {
             withCredentials([
