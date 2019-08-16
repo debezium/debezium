@@ -20,6 +20,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
@@ -219,12 +220,25 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                                                       .withInvisibleRecommender()
                                                       .withDescription("The schemas for which events must not be captured");
 
+    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
+                                                             .withDisplayName("Time Precision")
+                                                             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
+                                                             .withWidth(Width.SHORT)
+                                                             .withImportance(Importance.MEDIUM)
+                                                             .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+                                                                     + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
+                                                                     + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
+                                                                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                                                                     + "which uses millisecond precision regardless of the database columns' precision .");
+
     private final RelationalTableFilters tableFilters;
+    private final TemporalPrecisionMode temporalPrecisionMode;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
+        this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
         }
@@ -246,6 +260,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return DecimalHandlingMode
                 .parse(this.getConfig().getString(DECIMAL_HANDLING_MODE))
                 .asDecimalMode();
+    }
+
+    /**
+     * Returns the temporal precision mode mode Enum for {@code time.precision.mode}
+     * configuration. This defaults to {@code adaptive} if nothing is provided.
+     */
+    public TemporalPrecisionMode getTemporalPrecisionMode() {
+        return temporalPrecisionMode;
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {

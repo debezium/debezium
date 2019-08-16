@@ -10,10 +10,7 @@ import java.sql.SQLException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import io.debezium.config.Configuration;
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
-import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.util.Testing;
+import io.debezium.jdbc.TemporalPrecisionMode;
 
 /**
  * Integration test to verify different SQL Server datatypes.
@@ -30,15 +27,6 @@ public class DatatypesFromSnapshotIT extends AbstractSqlServerDatatypesTest {
 
     @Before
     public void before() throws Exception {
-        initializeConnectorTestFramework();
-        Testing.Debug.enable();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
-
-        Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .build();
-        start(SqlServerConnector.class, config);
-        assertConnectorIsRunning();
-        Thread.sleep(1000);
+        init(TemporalPrecisionMode.ADAPTIVE);
     }
 }
