@@ -202,17 +202,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
+    // Temporary replication slots is a new feature of PostgreSQL 10
     private boolean useTemporarySlot() throws SQLException {
-        return dropSlotOnClose && isPg94OrGreater();
+        return dropSlotOnClose && pgConnection().haveMinimumServerVersion(100000);
     }
 
-    private boolean exportSnapshotOnCreate() throws SQLException {
-        return exportSnapshot && isPg94OrGreater();
-    }
-
-    private boolean isPg94OrGreater() throws SQLException {
-        return pgConnection().haveMinimumServerVersion(90400);
-    }
     /**
      * creating a replication connection and starting to stream involves a few steps:
      * 1. we create the connection and ensure that
@@ -276,7 +270,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         LOGGER.debug("Creating new replication slot '{}' for plugin '{}'", slotName, plugin);
         String tempPart = "";
-        Boolean canExportSnapshot = isPg94OrGreater();
+        // Exported snapshots are supported in PostgreSQL 9.4+
+        Boolean canExportSnapshot = pgConnection().haveMinimumServerVersion(90400);
         if ((dropSlotOnClose || exportSnapshot) && !canExportSnapshot) {
             LOGGER.warn("A slot marked as temporary or with an exported snapshot was created, " +
                     "but not on a supported version of Postgres, ignoring!");
