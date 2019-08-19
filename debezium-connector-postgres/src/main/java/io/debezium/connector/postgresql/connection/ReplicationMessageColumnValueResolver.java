@@ -102,7 +102,7 @@ public class ReplicationMessageColumnValueResolver {
 
             case "timestamp with time zone":
             case "timestamptz":
-                return value.asOffsetDateTime();
+                return value.asOffsetDateTimeAtUtc();
 
             case "timestamp":
             case "timestamp without time zone":
@@ -116,7 +116,7 @@ public class ReplicationMessageColumnValueResolver {
 
             case "time with time zone":
             case "timetz":
-                return value.asOffsetTime();
+                return value.asOffsetTimeUtc();
 
             case "bytea":
                 return value.asByteArray();

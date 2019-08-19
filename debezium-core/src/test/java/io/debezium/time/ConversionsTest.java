@@ -5,15 +5,17 @@
  */
 package io.debezium.time;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch
@@ -55,7 +57,7 @@ public class ConversionsTest {
         java.sql.Date date = new java.sql.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth());
         assertThat(Conversions.toLocalDate(date)).isEqualTo(now);
     }
-    
+
     @Test
     public void shouldThrowExceptionWhenConvertingSqlTimeToLocalDate() {
         java.sql.Time time = new java.sql.Time(1);
@@ -66,16 +68,16 @@ public class ConversionsTest {
             // expected
         }
     }
-    
+
     @Test
     public void shouldReturnLocalDateInstanceWhenConvertingLongToLocalDate() {
         LocalDate now = LocalDate.now();
         long epochDay = now.toEpochDay();
         assertThat(Conversions.toLocalDate(epochDay)).isEqualTo(now);
     }
-    
-    
-    
+
+
+
     @Test
     public void shouldReturnSameLocalDateTimeInstanceWhenConvertingToLocalDateTime() {
         LocalDateTime now = LocalDateTime.now();
@@ -87,13 +89,13 @@ public class ConversionsTest {
         LocalDate now = LocalDate.now();
         assertThat(Conversions.toLocalDateTime(now)).isEqualTo(LocalDateTime.of(now, LocalTime.MIDNIGHT));
     }
-    
+
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingLocalTimeToLocalDateTime() {
         LocalTime now = LocalTime.now();
         assertThat(Conversions.toLocalDateTime(now)).isEqualTo(LocalDateTime.of(Conversions.EPOCH, now));
     }
-    
+
     @SuppressWarnings("deprecation")
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingUtilTimeToLocalDateTime() {
@@ -110,7 +112,7 @@ public class ConversionsTest {
         java.sql.Date date = new java.sql.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth());
         assertThat(Conversions.toLocalDateTime(date)).isEqualTo(LocalDateTime.of(now, LocalTime.MIDNIGHT));
     }
-    
+
     @SuppressWarnings("deprecation")
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingSqlTimeToLocalDateTime() {
@@ -118,7 +120,7 @@ public class ConversionsTest {
         java.sql.Time time = new java.sql.Time(now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalDateTime(time)).isEqualTo(LocalDateTime.of(Conversions.EPOCH, now.withNano(0)));
     }
-    
+
     @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingLongToLocalDateTime() {
         try {
@@ -128,8 +130,8 @@ public class ConversionsTest {
             // expected
         }
     }
-    
-    
+
+
     @Test
     public void shouldReturnSameLocalTimeInstanceWhenConvertingToLocalTime() {
         LocalTime now = LocalTime.now();
@@ -141,7 +143,7 @@ public class ConversionsTest {
         LocalDateTime now = LocalDateTime.now();
         assertThat(Conversions.toLocalTime(now)).isEqualTo(now.toLocalTime());
     }
-    
+
     @SuppressWarnings("deprecation")
     @Test
     public void shouldReturnLocalTimeInstanceWhenConvertingUtilTimeToLocalTime() {
@@ -160,7 +162,7 @@ public class ConversionsTest {
             // expected
         }
     }
-    
+
     @SuppressWarnings("deprecation")
     @Test
     public void shouldReturnLocalTimeInstanceWhenConvertingSqlTimeToLocalTime() {
@@ -168,11 +170,42 @@ public class ConversionsTest {
         java.sql.Time time = new java.sql.Time(now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalTime(time)).isEqualTo(now.withNano(0));
     }
-    
+
     @Test
-    public void shouldReturnLocalTimeInstanceWhenConvertingLongToLocalTime() {
-        LocalTime now = LocalTime.now();
-        long nanoOfDay = now.toNanoOfDay();
-        assertThat(Conversions.toLocalTime(nanoOfDay)).isEqualTo(now);
+    public void shouldReturnCorrectInstantWhenConvertingMicroSecondsSinceEpoch() {
+        // value obtained from Postgres for '21016-11-04T13:51:30.123456'::TIMESTAMP
+        long usSinceEpoch = 601060312290123456L;
+        assertThat(Conversions.toInstantFromMicros(usSinceEpoch)).isEqualTo(OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 123456000, ZoneOffset.UTC).toInstant());
+
+        Instant source = LocalDateTime.parse("1970-01-01T00:00:01.250").toInstant(ZoneOffset.UTC);
+        long epochMicros = Conversions.toEpochMicros(source);
+        Instant target = Conversions.toInstantFromMicros(epochMicros);
+        assertThat(target).isEqualTo(source);
+
+        source = LocalDateTime.parse("1969-12-31T23:59:58.750000").toInstant(ZoneOffset.UTC);
+        epochMicros = Conversions.toEpochMicros(source);
+        target = Conversions.toInstantFromMicros(epochMicros);
+        assertThat(target).isEqualTo(source);
+
+        source = LocalDateTime.parse("1969-12-31T23:59:58.250000").toInstant(ZoneOffset.UTC);
+        epochMicros = Conversions.toEpochMicros(source);
+        target = Conversions.toInstantFromMicros(epochMicros);
+        assertThat(target).isEqualTo(source);
+
+        source = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 123456000, ZoneOffset.UTC).toInstant();
+        epochMicros = Conversions.toEpochMicros(source);
+        target = Conversions.toInstantFromMicros(epochMicros);
+        assertThat(target).isEqualTo(source);
+
+        // Postgres' timestamp is 294276 AD, but this should be good enough
+        source = OffsetDateTime.of(294247, 1, 10, 4, 0, 54, 775_807_000, ZoneOffset.UTC).toInstant();
+        epochMicros = Conversions.toEpochMicros(source);
+        target = Conversions.toInstantFromMicros(epochMicros);
+        assertThat(target).isEqualTo(source);
+
+        source = OffsetDateTime.of(-4713, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant();
+        epochMicros = Conversions.toEpochMicros(source);
+        target = Conversions.toInstantFromMicros(epochMicros);
+        assertThat(target).isEqualTo(source);
     }
 }

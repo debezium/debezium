@@ -5,6 +5,7 @@
  */
 package io.debezium.time;
 
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.temporal.TemporalAdjuster;
 
@@ -15,7 +16,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * A utility for converting various Java time representations into the {@link SchemaBuilder#int32() INT32} number of
  * <em>milliseconds</em> since midnight, and for defining a Kafka Connect {@link Schema} for time values with no date or timezone
  * information.
- * 
+ *
  * @author Randall Hauch
  * @see MicroTime
  * @see NanoTime
@@ -31,7 +32,7 @@ public class Time {
      * <p>
      * You can use the resulting SchemaBuilder to set or override additional schema settings such as required/optional, default
      * value, and documentation.
-     * 
+     *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
@@ -44,7 +45,7 @@ public class Time {
      * Returns a Schema for a {@link Time} but with all other default Schema settings. The schema describes a field
      * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int32() INT32} for the literal
      * type storing the number of <em>milliseconds</em> past midnight.
-     * 
+     *
      * @return the schema
      * @see #builder()
      */
@@ -56,7 +57,7 @@ public class Time {
      * Get the number of milliseconds past midnight of the given {@link java.time.LocalDateTime}, {@link java.time.LocalDate},
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
      * {@link java.sql.Timestamp}, ignoring any date portions of the supplied value.
-     * 
+     *
      * @param value the local or SQL date, time, or timestamp value; may not be null
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
@@ -64,6 +65,10 @@ public class Time {
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types
      */
     public static int toMilliOfDay(Object value, TemporalAdjuster adjuster) {
+        if (value instanceof Duration) {
+            // int conversion is ok for the range of TIME
+            return (int) ((Duration) value).toMillis();
+        }
         LocalTime time = Conversions.toLocalTime(value);
         if (adjuster != null) {
             time = time.with(adjuster);

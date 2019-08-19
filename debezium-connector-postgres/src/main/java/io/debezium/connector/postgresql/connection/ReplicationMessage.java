@@ -81,10 +81,10 @@ public interface ReplicationMessage {
         Double asDouble();
         SpecialValueDecimal asDecimal();
         LocalDate asLocalDate();
-        OffsetDateTime asOffsetDateTime();
+        OffsetDateTime asOffsetDateTimeAtUtc();
         Instant asInstant();
         LocalTime asLocalTime();
-        OffsetTime asOffsetTime();
+        OffsetTime asOffsetTimeUtc();
         byte[] asByteArray();
         PGbox asBox();
         PGcircle asCircle();
