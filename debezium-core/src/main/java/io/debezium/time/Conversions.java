@@ -109,10 +109,6 @@ public final class Conversions {
                 throw new IllegalArgumentException("Time values must use number of milliseconds greater than 0 and less than 86400000000000");
             }
         }
-        if ( obj instanceof Long) {
-            // Assume the value is the epoch day number
-            return LocalTime.ofNanoOfDay((Long) obj);
-        }
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
 
@@ -175,83 +171,15 @@ public final class Conversions {
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
 
-    /**
-     * Get the number of nanoseconds past epoch of the given {@link LocalDateTime}.
-     *
-     * @param timestamp the Java timestamp value
-     * @return the epoch nanoseconds
-     */
-    static long toEpochNanos(LocalDateTime timestamp) {
-        long nanoInDay = timestamp.toLocalTime().toNanoOfDay();
-        long nanosOfDay = toEpochNanos(timestamp.toLocalDate());
-        return nanosOfDay + nanoInDay;
-    }
-
-    /**
-     * Get the number of nanoseconds past epoch of the given {@link LocalDate}.
-     *
-     * @param date the Java date value
-     * @return the epoch nanoseconds
-     */
-    static long toEpochNanos(LocalDate date) {
-        long epochDay = date.toEpochDay();
-        return epochDay * Conversions.NANOSECONDS_PER_DAY;
-    }
-
-    /**
-     * Get the UTC-based {@link LocalDateTime} for given microseconds epoch
-     *
-     * @param microseconds - timestamp in microseconds
-     * @return timestamp in UTC timezone
-     */
-    public static LocalDateTime toLocalDateTimeUTC(long microseconds) {
-        long seconds = microseconds / MICROSECONDS_PER_SECOND;
-        // typecasting is safe as microseconds and nanoseconds in second fit in int range
-        int microsecondsOfSecond = (int) (microseconds % MICROSECONDS_PER_SECOND);
-        if (microsecondsOfSecond < 0) {
-            seconds--;
-            microsecondsOfSecond = (int) Conversions.MICROSECONDS_PER_SECOND + microsecondsOfSecond;
-        }
-        return LocalDateTime.ofEpochSecond(seconds, (int) (microsecondsOfSecond * NANOSECONDS_PER_MICROSECOND), ZoneOffset.UTC);
-    }
-
-    /**
-     * Get the UTC-based {@link LocalDateTime} for given nanoseconds epoch
-     *
-     * @param nanoseconds - timestamp in nanoseconds
-     * @return timestamp in UTC timezone
-     */
-    public static LocalDateTime fromNanosToLocalDateTimeUTC(long nanoseconds) {
-        long seconds = nanoseconds / NANOSECONDS_PER_SECOND;
-        // typecasting is safe as microseconds and nanoseconds in second fit in int range
-        int nanosecondsOfSecond = (int) (nanoseconds % NANOSECONDS_PER_SECOND);
-        if (nanosecondsOfSecond < 0) {
-            seconds--;
-            nanosecondsOfSecond = (int) Conversions.NANOSECONDS_PER_SECOND + nanosecondsOfSecond;
-        }
-        return LocalDateTime.ofEpochSecond(seconds, nanosecondsOfSecond, ZoneOffset.UTC);
-    }
-
-    /**
-     * Get the number of nanoseconds past epoch of the given {@link Instant}.
-     *
-     * @param instant the Java instant value
-     * @return the epoch nanoseconds
-     */
-    public static long toEpochNanos(Instant instant) {
-        return TimeUnit.NANOSECONDS.convert(instant.getEpochSecond() * MICROSECONDS_PER_SECOND + instant.getNano() / NANOSECONDS_PER_MICROSECOND, TimeUnit.MICROSECONDS);
-    }
-
     public static long toEpochMicros(Instant instant) {
         return TimeUnit.SECONDS.toMicros(instant.getEpochSecond()) + TimeUnit.NANOSECONDS.toMicros(instant.getNano());
     }
 
-    public static Instant toInstant(long epochNanos) {
-        return Instant.ofEpochSecond(0, epochNanos);
-    }
-
-    public static Instant toInstantFromMicros(long epochMicros) {
-        return toInstant(TimeUnit.MICROSECONDS.toNanos(epochMicros));
+    public static Instant toInstantFromMicros(long microsSinceEpoch) {
+        return Instant.ofEpochSecond(
+                TimeUnit.MICROSECONDS.toSeconds(microsSinceEpoch),
+                TimeUnit.MICROSECONDS.toNanos(microsSinceEpoch % TimeUnit.SECONDS.toMicros(1))
+        );
     }
 
     public static Instant toInstantFromMillis(long epochMillis) {

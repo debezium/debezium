@@ -318,19 +318,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 }
                 return (data) -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
             case Types.TIME:
-                if(adaptiveTimeMicrosecondsPrecisionMode) {
-                    return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-                }
-                if (adaptiveTimePrecisionMode) {
-                    if (getTimePrecision(column) <= 3) {
-                        return data -> convertTimeToMillisPastMidnight(column, fieldDefn, data);
-                    }
-                    if (getTimePrecision(column) <= 6) {
-                        return data -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-                    }
-                    return (data) -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
-                }
-                return (data) -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
+                return (data) -> convertTime(column, fieldDefn, data);
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
@@ -420,6 +408,25 @@ public class JdbcValueConverters implements ValueConverterProvider {
             } catch (IllegalArgumentException e) {
             }
         });
+    }
+
+    protected Object convertTime(Column column, Field fieldDefn, Object data) {
+        if(adaptiveTimeMicrosecondsPrecisionMode) {
+            return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+        }
+        if (adaptiveTimePrecisionMode) {
+            if (getTimePrecision(column) <= 3) {
+                return convertTimeToMillisPastMidnight(column, fieldDefn, data);
+            }
+            if (getTimePrecision(column) <= 6) {
+                return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+            }
+            return convertTimeToNanosPastMidnight(column, fieldDefn, data);
+        }
+        // "connect" mode
+        else {
+            return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
+        }
     }
 
     /**

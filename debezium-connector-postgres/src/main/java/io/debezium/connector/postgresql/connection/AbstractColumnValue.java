@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGbox;
@@ -45,13 +46,13 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public OffsetTime asOffsetTime() {
+    public OffsetTime asOffsetTimeUtc() {
         return DateTimeFormat.get().timeWithTimeZone(asString());
     }
 
     @Override
-    public OffsetDateTime asOffsetDateTime() {
-        return DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(asString());
+    public OffsetDateTime asOffsetDateTimeAtUtc() {
+        return DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(asString()).withOffsetSameInstant(ZoneOffset.UTC);
     }
 
     @Override

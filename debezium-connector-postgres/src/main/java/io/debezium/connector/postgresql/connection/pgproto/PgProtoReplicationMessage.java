@@ -9,13 +9,13 @@ package io.debezium.connector.postgresql.connection.pgproto;
 import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -187,23 +187,28 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     return null;
                 }
                 // these types are sent by the plugin as LONG - microseconds since Unix Epoch
-                // but we'll convert them to nanos which is the smallest unit
-                final LocalDateTime serverLocal = Conversions.toLocalDateTimeUTC(datumMessage.getDatumInt64());
-                return Conversions.toEpochNanos(serverLocal.toInstant(ZoneOffset.UTC));
+                return Conversions.toInstantFromMicros(datumMessage.getDatumInt64());
             case PgOid.TIMESTAMPTZ:
-            case PgOid.TIME:
                 if (!datumMessage.hasDatumInt64()) {
                     return null;
                 }
                 // these types are sent by the plugin as LONG - microseconds since Unix Epoch
-                // but we'll convert them to nanos which is the smallest unit
-                return TimeUnit.NANOSECONDS.convert(datumMessage.getDatumInt64(), TimeUnit.MICROSECONDS);
+                return Conversions.toInstantFromMicros(datumMessage.getDatumInt64()).atOffset(ZoneOffset.UTC);
+            case PgOid.TIME:
+                if (!datumMessage.hasDatumInt64()) {
+                    return null;
+                }
+
+                // these types are sent by the plugin as LONG - microseconds since Unix Epoch
+                return Duration.of(datumMessage.getDatumInt64(), ChronoUnit.MICROS);
             case PgOid.TIMETZ:
                 if (!datumMessage.hasDatumDouble()) {
                     return null;
                 }
-                // the value is sent as a double microseconds, convert to nano
-                return BigDecimal.valueOf(datumMessage.getDatumDouble() * 1000).longValue();
+                // the value is sent as a double microseconds
+                return Conversions.toInstantFromMicros((long) datumMessage.getDatumDouble())
+                        .atOffset(ZoneOffset.UTC)
+                        .toOffsetTime();
             case PgOid.INTERVAL:
                 // these are sent as doubles by the plugin since their storage is larger than 8 bytes
                 return datumMessage.hasDatumDouble() ? datumMessage.getDatumDouble() : null;

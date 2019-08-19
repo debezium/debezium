@@ -9,14 +9,10 @@ package io.debezium.connector.postgresql;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -303,7 +299,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INTERVAL:
                 return data -> convertInterval(column, fieldDefn, data);
             case PgOid.TIME:
-                return data -> convertTwentyFourHourTime(column, fieldDefn, data);
+                return data -> convertTime(column, fieldDefn, data);
             case PgOid.TIMESTAMP:
                 return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             case PgOid.TIMESTAMPTZ:
@@ -430,6 +426,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
         final ValueConverter elementConverter = converter(elementColumn, elementField);
 
         return data -> convertArray(column, fieldDefn, elementConverter, data);
+    }
+
+    @Override
+    protected Object convertTime(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String) {
+            data = Strings.asDuration((String) data);
+        }
+
+        return super.convertTime(column, fieldDefn, data);
     }
 
     protected Object convertDecimal(Column column, Field fieldDefn, Object data, DecimalMode mode) {
@@ -600,44 +605,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     @Override
-    protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            data = nanosToLocalDateTimeUTC((Long) data);
-        }
-        return super.convertTimestampToEpochMillis(column, fieldDefn, data);
-    }
-
-    @Override
-    protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            data = nanosToLocalDateTimeUTC((Long) data);
-        }
-        return super.convertTimestampToEpochMicros(column, fieldDefn, data);
-    }
-
-    @Override
-    protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            data = nanosToLocalDateTimeUTC((Long) data);
-        }
-        return super.convertTimestampToEpochNanos(column, fieldDefn, data);
-    }
-
-    @Override
-    protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            data = nanosToLocalDateTimeUTC((Long) data);
-        }
-        return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
-    }
-
-    @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Long) {
-            LocalDateTime localDateTime = nanosToLocalDateTimeUTC((Long) data);
-            data = OffsetDateTime.of(localDateTime, ZoneOffset.UTC);
-        }
-        else if (data instanceof java.util.Date) {
+        if (data instanceof java.util.Date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
             data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
@@ -648,13 +617,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
-        // during streaming
-        if (data instanceof Long) {
-            LocalTime localTime = LocalTime.ofNanoOfDay((Long) data);
-            data = OffsetTime.of(localTime, ZoneOffset.UTC);
-        }
-        // during snapshotting
-        else if (data instanceof String) {
+        // during snapshotting; already receiving OffsetTime @ UTC during streaming
+        if (data instanceof String) {
             // The TIMETZ column is returned as a String which we initially parse here
             // The parsed offset-time potentially has a zone-offset from the data, shift it after to GMT.
             final OffsetTime offsetTime = OffsetTime.parse((String) data, TIME_WITH_TIMEZONE_FORMATTER);
@@ -662,49 +626,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         return super.convertTimeWithZone(column, fieldDefn, data);
-    }
-
-    private Object convertTwentyFourHourTime(Column column, Field fieldDefn, Object data) {
-        long twentyFourHour = NANO_SECONDS_PER_DAY;
-
-        if (adaptiveTimeMicrosecondsPrecisionMode) {
-            twentyFourHour = NANO_SECONDS_PER_DAY / 1_000;
-        }
-        if (adaptiveTimePrecisionMode) {
-            if (getTimePrecision(column) <= 3) {
-                twentyFourHour = NANO_SECONDS_PER_DAY / 1_000_000;
-            }
-            if (getTimePrecision(column) <= 6) {
-                twentyFourHour = NANO_SECONDS_PER_DAY / 1_000;
-            }
-        }
-
-        // during streaming
-        if (data instanceof Long) {
-            if ((Long) data == NANO_SECONDS_PER_DAY) {
-                return twentyFourHour;
-            }
-            return super.converter(column, fieldDefn).convert(data);
-        }
-        // during snapshotting
-        else if (data instanceof String) {
-            Duration d = Strings.asDuration((String) data);
-
-            if (d.equals(ONE_DAY)) {
-                return twentyFourHour;
-            }
-            return super.converter(column, fieldDefn).convert(d);
-        }
-
-        return super.converter(column, fieldDefn).convert(data);
-    }
-
-    private static LocalDateTime nanosToLocalDateTimeUTC(long epocNanos) {
-        // the pg plugin stores date/time info as microseconds since epoch
-        BigInteger epochMicrosBigInt = BigInteger.valueOf(epocNanos);
-        BigInteger[] secondsAndNanos = epochMicrosBigInt.divideAndRemainder(BigInteger.valueOf(TimeUnit.SECONDS.toNanos(1)));
-        return LocalDateTime.ofInstant(Instant.ofEpochSecond(secondsAndNanos[0].longValue(), secondsAndNanos[1].longValue()),
-                                       ZoneOffset.UTC);
     }
 
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
