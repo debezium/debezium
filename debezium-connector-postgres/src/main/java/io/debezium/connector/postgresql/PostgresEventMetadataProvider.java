@@ -33,7 +33,7 @@ class PostgresEventMetadataProvider implements EventMetadataProvider {
             return timestamp == null ? null : Conversions.toInstantFromMicros(timestamp);
         }
         final Long timestamp = sourceInfo.getInt64(SourceInfo.TIMESTAMP_KEY);
-        return timestamp == null ? null : Conversions.toInstantFromMillis(timestamp);
+        return timestamp == null ? null : Instant.ofEpochMilli(timestamp);
     }
 
     @Override

@@ -67,7 +67,7 @@ public class MicroTime {
     public static long toMicroOfDay(Object value, TemporalAdjuster adjuster) {
         // conversion to nanos is fine as TIME values won't exceed long range
         if (value instanceof Duration) {
-            return ((Duration)value).toNanos() / 1_000;
+            return ((Duration) value).toNanos() / 1_000;
         }
 
         LocalTime time = Conversions.toLocalTime(value);
