@@ -181,8 +181,4 @@ public final class Conversions {
                 TimeUnit.MICROSECONDS.toNanos(microsSinceEpoch % TimeUnit.SECONDS.toMicros(1))
         );
     }
-
-    public static Instant toInstantFromMillis(long epochMillis) {
-        return toInstant(TimeUnit.MILLISECONDS.toNanos(epochMillis));
-    }
 }
