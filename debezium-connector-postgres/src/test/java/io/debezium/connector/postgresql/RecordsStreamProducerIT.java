@@ -181,10 +181,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("CREATE TABLE t0 (pk SERIAL, d INTEGER, PRIMARY KEY(pk));");
 
         consumer = testConsumer(1);
-
-        // Start the producer and wait; the wait is to guarantee that the stream thread is polling
-        // This appears to be a potential race condition problem
-        TimeUnit.SECONDS.sleep(TestHelper.waitTimeForRecords());
+        waitForStreamingToStart();
 
         // Insert new row and verify inserted
         executeAndWait("INSERT INTO t0 (pk,d) VALUES(1,1);");
@@ -206,7 +203,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 false
         );
         consumer = testConsumer(1);
-        TimeUnit.SECONDS.sleep(TestHelper.waitTimeForRecords());
+        waitForStreamingToStart();
 
         // Insert new row and verify inserted
         executeAndWait("INSERT INTO t0 (pk,d,d2) VALUES (2,1,3);");
