@@ -35,6 +35,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.NanoTimestamp;
+import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
@@ -86,6 +87,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     private static final String DDL_TIME = "create table type_time (" +
             "  id int not null, " +
             "  val_date date, " +
+            "  val_time_p2 time(2), " +
             "  val_time time(4), " +
             "  val_datetime2 datetime2, " +
             "  val_datetimeoffset datetimeoffset, " +
@@ -128,11 +130,12 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
 
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME = Arrays.asList(
             new SchemaAndValueField("val_date",  Date.builder().optional().build(), 17_725),
-            new SchemaAndValueField("val_time", MicroTime.builder().optional().build(), 37_425_000_000l),
-            new SchemaAndValueField("val_datetime2", NanoTimestamp.builder().optional().build(), 1_531_481_025_340_000_000l),
+            new SchemaAndValueField("val_time_p2", Time.builder().optional().build(), 37_425_680),
+            new SchemaAndValueField("val_time", MicroTime.builder().optional().build(), 37_425_679_000L), // value truncated by the driver
+            new SchemaAndValueField("val_datetime2", NanoTimestamp.builder().optional().build(), 1_531_481_025_340_000_000L),
             new SchemaAndValueField("val_datetimeoffset", ZonedTimestamp.builder().optional().build(), "2018-07-13T12:23:45.456+11:00"),
-            new SchemaAndValueField("val_datetime", Timestamp.builder().optional().build(), 1_531_488_225_780l),
-            new SchemaAndValueField("val_smalldatetime", Timestamp.builder().optional().build(), 1_531_491_840_000l)
+            new SchemaAndValueField("val_datetime", Timestamp.builder().optional().build(), 1_531_488_225_780L),
+            new SchemaAndValueField("val_smalldatetime", Timestamp.builder().optional().build(), 1_531_491_840_000L)
     );
 
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME_AS_CONNECT = Arrays.asList(
@@ -140,8 +143,12 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                     java.util.Date.from(LocalDate.of(2018, 7, 13).atStartOfDay()
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
+            new SchemaAndValueField("val_time_p2", org.apache.kafka.connect.data.Time.builder().optional().build(),
+                    java.util.Date.from(LocalTime.of(10, 23, 45, 680_000_000).atDate(LocalDate.ofEpochDay(0))
+                            .atOffset(ZoneOffset.UTC)
+                            .toInstant())),
             new SchemaAndValueField("val_time", org.apache.kafka.connect.data.Time.builder().optional().build(),
-                    java.util.Date.from(LocalTime.of(10, 23, 45).atDate(LocalDate.ofEpochDay(0))
+                    java.util.Date.from(LocalTime.of(10, 23, 45, 679_000_000).atDate(LocalDate.ofEpochDay(0)) // value truncated by the driver
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
             new SchemaAndValueField("val_datetime2", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
@@ -198,7 +205,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                     "INSERT INTO type_int VALUES (0, 1, 22, 333, 4444, 55555)",
                     "INSERT INTO type_fp VALUES (0, 1.123, 2, 3.323, 4.323, 5.323, 6.323)",
                     "INSERT INTO type_string VALUES (0, 'c\u010d', 'vc\u010d', 't\u010d', N'c\u010d', N'vc\u010d', N't\u010d')",
-                    "INSERT INTO type_time VALUES (0, '2018-07-13', '10:23:45', '2018-07-13 11:23:45.34', '2018-07-13 12:23:45.456+11:00', '2018-07-13 13:23:45.78', '2018-07-13 14:23:45')",
+                    "INSERT INTO type_time VALUES (0, '2018-07-13', '10:23:45.678', '10:23:45.6789', '2018-07-13 11:23:45.34', '2018-07-13 12:23:45.456+11:00', '2018-07-13 13:23:45.78', '2018-07-13 14:23:45')",
                     "INSERT INTO type_xml VALUES (0, '<a>b</a>')"
             );
         }
