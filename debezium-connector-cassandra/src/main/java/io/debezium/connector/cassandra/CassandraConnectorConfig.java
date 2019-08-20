@@ -278,7 +278,8 @@ public class CassandraConnectorConfig {
     }
 
     public boolean latestCommitLogOnly() {
-        return (boolean) configs.getOrDefault(LATEST_COMMIT_LOG_ONLY, DEFAULT_LATEST_COMMIT_LOG_ONLY);
+        return configs.containsKey(LATEST_COMMIT_LOG_ONLY) ?
+                Boolean.parseBoolean((String) configs.get(LATEST_COMMIT_LOG_ONLY)) : DEFAULT_LATEST_COMMIT_LOG_ONLY;
     }
 
     public SnapshotMode snapshotMode() {
@@ -293,7 +294,7 @@ public class CassandraConnectorConfig {
     }
 
     public int httpPort() {
-        return (int) configs.getOrDefault(HTTP_PORT, DEFAULT_HTTP_PORT);
+        return configs.containsKey(HTTP_PORT) ? Integer.parseInt((String) configs.get(HTTP_PORT)) : DEFAULT_HTTP_PORT;
     }
 
     public String cassandraConfig() {
@@ -306,11 +307,13 @@ public class CassandraConnectorConfig {
     }
 
     public int cassandraPort() {
-        return (int) configs.getOrDefault(CASSANDRA_PORT, DEFAULT_CASSANDRA_PORT);
+        return configs.containsKey(CASSANDRA_PORT) ?
+                Integer.parseInt((String) configs.get(CASSANDRA_PORT)) : DEFAULT_CASSANDRA_PORT;
     }
 
     public boolean cassandraSslEnabled() {
-        return (boolean) configs.getOrDefault(CASSANDRA_SSL_ENABLED, DEFAULT_CASSANDRA_SSL_ENABLED);
+        return configs.containsKey(CASSANDRA_SSL_ENABLED) ?
+                Boolean.parseBoolean((String) configs.get(CASSANDRA_SSL_ENABLED)) : DEFAULT_CASSANDRA_SSL_ENABLED;
     }
 
     public String cassandraSslConfigPath() {
@@ -330,12 +333,15 @@ public class CassandraConnectorConfig {
     }
 
     public boolean postProcessEnabled() {
-        return (boolean) configs.getOrDefault(COMMIT_LOG_POST_PROCESSING_ENABLED, DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED);
+        return configs.containsKey(COMMIT_LOG_POST_PROCESSING_ENABLED) ?
+                Boolean.parseBoolean((String) configs.get(COMMIT_LOG_POST_PROCESSING_ENABLED)) :
+                DEFAULT_COMMIT_LOG_POST_PROCESSING_ENABLED;
     }
 
     public CommitLogTransfer getCommitLogTransfer() {
         try {
-            String clazz = (String) configs.getOrDefault(COMMIT_LOG_TRANSFER_CLASS, DEFAULT_COMMIT_LOG_TRANSFER_CLASS);
+            String clazz = configs.containsKey(COMMIT_LOG_TRANSFER_CLASS) ?
+                    (String) configs.get(COMMIT_LOG_TRANSFER_CLASS) : DEFAULT_COMMIT_LOG_TRANSFER_CLASS;
             CommitLogTransfer transfer = (CommitLogTransfer) Class.forName(clazz).newInstance();
             transfer.init(commitLogTransferConfigs());
             return transfer;
@@ -349,39 +355,47 @@ public class CassandraConnectorConfig {
     }
 
     public Duration offsetFlushIntervalMs() {
-        int ms = (int) configs.getOrDefault(OFFSET_FLUSH_INTERVAL_MS, DEFAULT_OFFSET_FLUSH_INTERVAL_MS);
+        int ms = configs.containsKey(OFFSET_FLUSH_INTERVAL_MS) ?
+                Integer.parseInt((String) configs.get(OFFSET_FLUSH_INTERVAL_MS)) : DEFAULT_OFFSET_FLUSH_INTERVAL_MS;
         return Duration.ofMillis(ms);
     }
 
     public long maxOffsetFlushSize() {
-        return (int) configs.getOrDefault(MAX_OFFSET_FLUSH_SIZE, DEFAULT_MAX_OFFSET_FLUSH_SIZE);
+        return configs.containsKey(MAX_OFFSET_FLUSH_SIZE) ?
+                Long.parseLong((String) configs.get(MAX_OFFSET_FLUSH_SIZE)) : DEFAULT_MAX_OFFSET_FLUSH_SIZE;
     }
 
     public int maxQueueSize() {
-        return (int) configs.getOrDefault(MAX_QUEUE_SIZE, DEFAULT_MAX_QUEUE_SIZE);
+        return configs.containsKey(MAX_QUEUE_SIZE) ?
+                Integer.parseInt((String) configs.get(MAX_QUEUE_SIZE)) : DEFAULT_MAX_QUEUE_SIZE;
     }
 
     public int maxBatchSize() {
-        return (int) configs.getOrDefault(MAX_BATCH_SIZE, DEFAULT_MAX_BATCH_SIZE);
+        return configs.containsKey(MAX_BATCH_SIZE) ?
+                Integer.parseInt((String) configs.get(MAX_BATCH_SIZE)) : DEFAULT_MAX_BATCH_SIZE;
     }
 
     public Duration pollIntervalMs() {
-        int ms = (int) configs.getOrDefault(POLL_INTERVAL_MS, DEFAULT_POLL_INTERVAL_MS);
+        int ms = configs.containsKey(POLL_INTERVAL_MS) ?
+                Integer.parseInt((String) configs.get(POLL_INTERVAL_MS)) : DEFAULT_POLL_INTERVAL_MS;
         return Duration.ofMillis(ms);
     }
 
     public Duration schemaPollIntervalMs() {
-        int ms = (int) configs.getOrDefault(SCHEMA_POLL_INTERVAL_MS, DEFAULT_SCHEMA_POLL_INTERVAL_MS);
+        int ms = configs.containsKey(SCHEMA_POLL_INTERVAL_MS) ?
+                Integer.parseInt((String) configs.get(SCHEMA_POLL_INTERVAL_MS)) : DEFAULT_SCHEMA_POLL_INTERVAL_MS;
         return Duration.ofMillis(ms);
     }
 
     public Duration cdcDirPollIntervalMs() {
-        int ms = (int) configs.getOrDefault(CDC_DIR_POLL_INTERVAL_MS, DEFAULT_CDC_DIR_POLL_INTERVAL_MS);
+        int ms = configs.containsKey(CDC_DIR_POLL_INTERVAL_MS) ?
+                Integer.parseInt((String) configs.get(CDC_DIR_POLL_INTERVAL_MS)) : DEFAULT_CDC_DIR_POLL_INTERVAL_MS;
         return Duration.ofMillis(ms);
     }
 
     public Duration snapshotPollIntervalMs() {
-        int ms = (int) configs.getOrDefault(SNAPSHOT_POLL_INTERVAL_MS, DEFAULT_SNAPSHOT_POLL_INTERVAL_MS);
+        int ms = configs.containsKey(SNAPSHOT_POLL_INTERVAL_MS) ?
+                Integer.parseInt((String) configs.get(SNAPSHOT_POLL_INTERVAL_MS)) : DEFAULT_SNAPSHOT_POLL_INTERVAL_MS;
         return Duration.ofMillis(ms);
     }
 
@@ -394,7 +408,8 @@ public class CassandraConnectorConfig {
     }
 
     public boolean tombstonesOnDelete() {
-        return (boolean) configs.getOrDefault(TOMBSTONES_ON_DELETE, DEFAULT_TOMBSTONES_ON_DELETE);
+        return configs.containsKey(TOMBSTONES_ON_DELETE) ?
+                Boolean.parseBoolean((String) configs.get(TOMBSTONES_ON_DELETE)) : DEFAULT_TOMBSTONES_ON_DELETE;
     }
 
     @Override

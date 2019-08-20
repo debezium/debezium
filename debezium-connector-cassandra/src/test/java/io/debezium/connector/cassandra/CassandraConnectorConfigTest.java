@@ -31,7 +31,7 @@ public class CassandraConnectorConfigTest {
         assertEquals(snapshotConsistency, config.snapshotConsistencyLevel().name().toUpperCase());
 
         int port = 1234;
-        config = buildTaskConfig(CassandraConnectorConfig.HTTP_PORT, port);
+        config = buildTaskConfig(CassandraConnectorConfig.HTTP_PORT, String.valueOf(port));
         assertEquals(port, config.httpPort());
 
         String cassandraConfig = "cassandra-unit.yaml";
@@ -43,7 +43,7 @@ public class CassandraConnectorConfigTest {
         assertArrayEquals(cassandraHosts.split(","), config.cassandraHosts());
 
         int cassandraPort = 9412;
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PORT, cassandraPort);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PORT, String.valueOf(cassandraPort));
         assertEquals(cassandraPort, config.cassandraPort());
 
         String cassandraUsername = "test_user";
@@ -54,7 +54,7 @@ public class CassandraConnectorConfigTest {
         config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PASSWORD, cassandraPassword);
         assertEquals(cassandraPassword, config.cassandraPassword());
 
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_SSL_ENABLED, true);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_SSL_ENABLED, "true");
         assertTrue(config.cassandraSslEnabled());
 
         String cassandraSslConfigPath = "/some/path/";
@@ -74,42 +74,42 @@ public class CassandraConnectorConfigTest {
         assertEquals(offsetBackingStore, config.offsetBackingStoreDir());
 
         int offsetFlushIntervalMs = 1234;
-        config = buildTaskConfig(CassandraConnectorConfig.OFFSET_FLUSH_INTERVAL_MS, offsetFlushIntervalMs);
+        config = buildTaskConfig(CassandraConnectorConfig.OFFSET_FLUSH_INTERVAL_MS, String.valueOf(offsetFlushIntervalMs));
         assertEquals(offsetFlushIntervalMs, config.offsetFlushIntervalMs().toMillis());
 
         int offsetMaxFlushSize = 200;
-        config = buildTaskConfig(CassandraConnectorConfig.MAX_OFFSET_FLUSH_SIZE, offsetMaxFlushSize);
+        config = buildTaskConfig(CassandraConnectorConfig.MAX_OFFSET_FLUSH_SIZE, String.valueOf(offsetMaxFlushSize));
         assertEquals(offsetMaxFlushSize, config.maxOffsetFlushSize());
 
         int maxQueueSize = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.MAX_QUEUE_SIZE, maxQueueSize);
+        config = buildTaskConfig(CassandraConnectorConfig.MAX_QUEUE_SIZE, String.valueOf(maxQueueSize));
         assertEquals(maxQueueSize, config.maxQueueSize());
 
         int maxBatchSize = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.MAX_BATCH_SIZE, maxBatchSize);
+        config = buildTaskConfig(CassandraConnectorConfig.MAX_BATCH_SIZE, String.valueOf(maxBatchSize));
         assertEquals(maxBatchSize, config.maxBatchSize());
 
         int pollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.POLL_INTERVAL_MS, pollIntervalMs);
+        config = buildTaskConfig(CassandraConnectorConfig.POLL_INTERVAL_MS, String.valueOf(pollIntervalMs));
         assertEquals(pollIntervalMs, config.pollIntervalMs().toMillis());
 
         int schemaPollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.SCHEMA_POLL_INTERVAL_MS, schemaPollIntervalMs);
+        config = buildTaskConfig(CassandraConnectorConfig.SCHEMA_POLL_INTERVAL_MS, String.valueOf(schemaPollIntervalMs));
         assertEquals(schemaPollIntervalMs, config.schemaPollIntervalMs().toMillis());
 
         int cdcDirPollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.CDC_DIR_POLL_INTERVAL_MS, cdcDirPollIntervalMs);
+        config = buildTaskConfig(CassandraConnectorConfig.CDC_DIR_POLL_INTERVAL_MS, String.valueOf(cdcDirPollIntervalMs));
         assertEquals(cdcDirPollIntervalMs, config.cdcDirPollIntervalMs().toMillis());
 
         int snapshotPollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, snapshotPollIntervalMs);
+        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, String.valueOf(snapshotPollIntervalMs));
         assertEquals(snapshotPollIntervalMs, config.snapshotPollIntervalMs().toMillis());
 
         String fieldBlacklist = "keyspace1.table1.column1,keyspace1.table1.column2";
         config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST, fieldBlacklist);
         assertArrayEquals(fieldBlacklist.split(","), config.fieldBlacklist());
 
-        config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE, true);
+        config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE, "true");
         assertTrue(config.tombstonesOnDelete());
 
         String snapshotMode = "always";
@@ -120,9 +120,8 @@ public class CassandraConnectorConfigTest {
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, commitLogDir);
         assertEquals(commitLogDir, config.commitLogRelocationDir());
 
-        boolean shouldPostProcess = false;
-        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_POST_PROCESSING_ENABLED, shouldPostProcess);
-        assertEquals(shouldPostProcess, config.postProcessEnabled());
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_POST_PROCESSING_ENABLED, "false");
+        assertEquals(false, config.postProcessEnabled());
 
         String transferClazz = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_TRANSFER_CLASS, transferClazz);
@@ -156,6 +155,7 @@ public class CassandraConnectorConfigTest {
         assertFalse(config.cassandraSslEnabled());
         assertFalse(config.tombstonesOnDelete());
         assertEquals(CassandraConnectorConfig.SnapshotMode.INITIAL, config.snapshotMode());
+        assertEquals(CassandraConnectorConfig.DEFAULT_LATEST_COMMIT_LOG_ONLY, config.latestCommitLogOnly());
     }
 
     @Test
