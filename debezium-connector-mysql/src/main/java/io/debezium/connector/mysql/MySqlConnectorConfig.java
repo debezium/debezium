@@ -912,16 +912,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                            + "point, both old and new binlog readers will be momentarily halted and new binlog reader will start that will read the binlog for all "
                                                            + "configured tables. The parallel binlog reader will have a configured server id of 10000 + the primary binlog reader's server id.");
 
-    public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
-                                                         .withDisplayName("Time Precision")
+
+    public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
                                                          .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
-                                                         .withWidth(Width.SHORT)
-                                                         .withImportance(Importance.MEDIUM)
-                                                         .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)
-                                                         .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
-                                                                 + "'adaptive_time_microseconds' (the default) like 'adaptive' mode, but TIME fields always use microseconds precision;"
-                                                                 + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                                                                 + "which uses millisecond precision regardless of the database columns' precision.");
+                                                         .withValidation(MySqlConnectorConfig::validateTimePrecisionMode);
 
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
                                                            .withDisplayName("BIGINT UNSIGNED Handling")
