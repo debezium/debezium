@@ -171,7 +171,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
         props.put(CassandraConnectorConfig.CASSANDRA_CONFIG, TEST_CASSANDRA_YAML_CONFIG);
         props.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, TEST_KAFKA_TOPIC_PREFIX);
         props.put(CassandraConnectorConfig.CASSANDRA_HOSTS, TEST_CASSANDRA_HOSTS);
-        props.put(CassandraConnectorConfig.CASSANDRA_PORT, TEST_CASSANDRA_PORT);
+        props.put(CassandraConnectorConfig.CASSANDRA_PORT, String.valueOf(TEST_CASSANDRA_PORT));
         props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, Files.createTempDirectory("offset").toString());
         props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
         props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, TEST_SCHEMA_REGISTRY_URL);
