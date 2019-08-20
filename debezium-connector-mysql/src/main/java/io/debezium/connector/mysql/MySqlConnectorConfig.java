@@ -915,7 +915,11 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field TIME_PRECISION_MODE = RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE
                                                          .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
-                                                         .withValidation(MySqlConnectorConfig::validateTimePrecisionMode);
+                                                         .withValidation(MySqlConnectorConfig::validateTimePrecisionMode)
+                                                         .withDescription("Time, date and timestamps can be represented with different kinds of precisions, including:"
+                                                           + "'adaptive_time_microseconds': the precision of date and timestamp values is based the database column's precision; but time fields always use microseconds precision;"
+                                                           + "'connect': always represents time, date and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                                                           + "which uses millisecond precision regardless of the database columns' precision.");
 
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
                                                            .withDisplayName("BIGINT UNSIGNED Handling")
