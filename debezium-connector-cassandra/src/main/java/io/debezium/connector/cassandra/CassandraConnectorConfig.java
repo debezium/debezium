@@ -340,8 +340,7 @@ public class CassandraConnectorConfig {
 
     public CommitLogTransfer getCommitLogTransfer() {
         try {
-            String clazz = configs.containsKey(COMMIT_LOG_TRANSFER_CLASS) ?
-                    (String) configs.get(COMMIT_LOG_TRANSFER_CLASS) : DEFAULT_COMMIT_LOG_TRANSFER_CLASS;
+            String clazz = (String) configs.getOrDefault(COMMIT_LOG_TRANSFER_CLASS, DEFAULT_COMMIT_LOG_TRANSFER_CLASS);
             CommitLogTransfer transfer = (CommitLogTransfer) Class.forName(clazz).newInstance();
             transfer.init(commitLogTransferConfigs());
             return transfer;
