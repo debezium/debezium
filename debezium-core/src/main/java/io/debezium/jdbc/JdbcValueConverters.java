@@ -544,7 +544,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             try {
-                r.deliver(Time.toMilliOfDay(data, adjuster));
+                r.deliver(Time.toMilliOfDay(data, supportsLargeTimeValues()));
             } catch (IllegalArgumentException e) {
             }
         });
@@ -569,7 +569,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
-                r.deliver(MicroTime.toMicroOfDay(data, adjuster));
+                r.deliver(MicroTime.toMicroOfDay(data, supportsLargeTimeValues()));
             } catch (IllegalArgumentException e) {
             }
         });
@@ -594,7 +594,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
-                r.deliver(NanoTime.toNanoOfDay(data, adjuster));
+                r.deliver(NanoTime.toNanoOfDay(data, supportsLargeTimeValues()));
             } catch (IllegalArgumentException e) {
             }
         });
@@ -619,7 +619,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         // epoch is the fallback value
         return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
             try {
-                r.deliver(new java.util.Date(Time.toMilliOfDay(data, adjuster)));
+                r.deliver(new java.util.Date(Time.toMilliOfDay(data, supportsLargeTimeValues())));
             } catch (IllegalArgumentException e) {
             }
         });
@@ -1212,5 +1212,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
         logger.trace("Callback is: {}", callback);
         logger.trace("Value from ResultReceiver: {}", r);
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
+    }
+
+    private boolean supportsLargeTimeValues() {
+        return adaptiveTimePrecisionMode  || adaptiveTimeMicrosecondsPrecisionMode;
     }
 }

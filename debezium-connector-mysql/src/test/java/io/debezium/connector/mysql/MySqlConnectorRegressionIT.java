@@ -433,12 +433,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
                 // '17:51:04.777'
                 java.util.Date c2 = (java.util.Date) after.get("c2"); // milliseconds past midnight
-                LocalTime c2Time = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(c2.getTime()));
-                assertThat(c2Time.getHour()).isEqualTo(17);
-                assertThat(c2Time.getMinute()).isEqualTo(51);
-                assertThat(c2Time.getSecond()).isEqualTo(4);
-                assertThat(c2Time.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo((int) c2.getTime());
+                assertThat(c2.toInstant()).isEqualTo(LocalDateTime.of(1970, 1, 1, 17, 51, 4, 780_000_000).atOffset(ZoneOffset.UTC).toInstant());
 
                 // '2014-09-08 17:51:04.777'
                 // DATETIME is a logical date and time, it doesn't contain any TZ information;
@@ -494,7 +489,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c2Time.getMinute() == 0 || c2Time.getMinute() == 1).isTrue();
                 assertThat(c2Time.getSecond()).isEqualTo(0);
                 assertThat(c2Time.getNano()).isEqualTo(0);
-                assertThat(io.debezium.time.Time.toMilliOfDay(c2Time, ADJUSTER)).isEqualTo((int) c2.getTime());
 
                 java.util.Date c3 = (java.util.Date) after.get("c3"); // epoch millis
                 assertThat(c3).isNull();
