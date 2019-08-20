@@ -7,7 +7,6 @@ package io.debezium.time;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -24,6 +23,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 public class Time {
 
     public static final String SCHEMA_NAME = "io.debezium.time.Time";
+
+    private static final Duration ONE_DAY = Duration.ofDays(1);
 
     /**
      * Returns a {@link SchemaBuilder} for a {@link Time}. The resulting schema will describe a field
@@ -54,25 +55,27 @@ public class Time {
     }
 
     /**
-     * Get the number of milliseconds past midnight of the given {@link java.time.LocalDateTime}, {@link java.time.LocalDate},
-     * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time}, or
-     * {@link java.sql.Timestamp}, ignoring any date portions of the supplied value.
+     * Get the number of milliseconds past midnight of the given {@link Duration}.
      *
-     * @param value the local or SQL date, time, or timestamp value; may not be null
-     * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
-     * adjustment is necessary
+     * @param value the duration value; may not be null
+     * @param acceptLargeValues whether to accept values less than 00:00:00 and larger than 24:00:00 or not
      * @return the milliseconds past midnight
-     * @throws IllegalArgumentException if the value is not an instance of the acceptable types
+     * @throws IllegalArgumentException if the value is not an instance of the acceptable types or it is out of the supported range
      */
-    public static int toMilliOfDay(Object value, TemporalAdjuster adjuster) {
+    public static int toMilliOfDay(Object value, boolean acceptLargeValues) {
         if (value instanceof Duration) {
+            Duration duration = (Duration) value;
+            if (!acceptLargeValues && (duration.isNegative() || duration.compareTo(ONE_DAY) > 0)) {
+                throw new IllegalArgumentException("Time values must be between 00:00:00 and 24:00:00 (inclusive): " + duration);
+            }
+
             // int conversion is ok for the range of TIME
             return (int) ((Duration) value).toMillis();
         }
+
+        // TODO only needed for SQL Server/Oracle, where we don't produce Duration right away;
+        // this should go eventually, as the conversion to LocalTime is superfluous
         LocalTime time = Conversions.toLocalTime(value);
-        if (adjuster != null) {
-            time = time.with(adjuster);
-        }
         long micros = Math.floorDiv(time.toNanoOfDay(), Conversions.NANOSECONDS_PER_MILLISECOND);
         assert Math.abs(micros) < Integer.MAX_VALUE;
         return (int) micros;
