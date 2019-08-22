@@ -1,0 +1,4 @@
+= Concepts
+include::_attributes.adoc[]
+
+Coming soon. In the meantime, our xref:tutorial.adoc[tutorial] walks you through using Debezium, its different services, and how those services work together.
