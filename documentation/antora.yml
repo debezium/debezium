@@ -1,0 +1,5 @@
+name: debezium
+title: Debezium Documentation
+version: '0.10'
+nav:
+  - modules/ROOT/nav.adoc
