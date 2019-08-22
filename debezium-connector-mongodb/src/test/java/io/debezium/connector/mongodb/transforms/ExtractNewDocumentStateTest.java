@@ -60,6 +60,7 @@ public class ExtractNewDocumentStateTest {
     private static final String OPERATION_HEADER = "operation.header";
     private static final String HANDLE_DELETES = "delete.handling.mode";
     private static final String DROP_TOMBSTONE = "drop.tombstones";
+    private static final String ADD_SOURCE_FIELDS = "add.source.fields";
 
     private Filters filters;
     private SourceInfo source;
@@ -90,6 +91,41 @@ public class ExtractNewDocumentStateTest {
     @After
     public void closeSmt() {
         transformation.close();
+    }
+
+    @Test
+    public void shouldAddSourceFields() throws InterruptedException {
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("$set", new Document("name", "Sally"));
+
+        // given
+        Document event = new Document().append("o", obj)
+                .append("o2", objId)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", 12345678L)
+                .append("op", "u");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        transformation.configure(props);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+        Struct value = (Struct) transformed.value();
+
+        // assert source fields' value
+        assertThat(value.get("__h")).isEqualTo(12345678L);
+        assertThat(value.get("__ts_ms")).isEqualTo(1000000L);
+        assertThat(value.get("__ord")).isEqualTo(1);
+        assertThat(value.get("__db")).isEqualTo("dbA");
+        assertThat(value.get("__rs")).isEqualTo("rs0");
     }
 
     @Test
@@ -984,6 +1020,7 @@ public class ExtractNewDocumentStateTest {
 
         final Map<String, String> props = new HashMap<>();
         props.put(OPERATION_HEADER, "true");
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
         transformation.configure(props);
 
         // when
@@ -1011,12 +1048,17 @@ public class ExtractNewDocumentStateTest {
         assertThat(value.get("phone")).isEqualTo(123L);
         assertThat(value.get("active")).isEqualTo(true);
         assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
+        assertThat(value.get("__h")).isEqualTo(12345678L);
+        assertThat(value.get("__ts_ms")).isEqualTo(1000000L);
+        assertThat(value.get("__ord")).isEqualTo(1);
+        assertThat(value.get("__db")).isEqualTo("dbA");
+        assertThat(value.get("__rs")).isEqualTo("rs0");
 
         assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
         assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
         assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build());
-        assertThat(value.schema().fields()).hasSize(5);
+        assertThat(value.schema().fields()).hasSize(10);
     }
 }
