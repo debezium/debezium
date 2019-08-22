@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -134,6 +135,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     private final Flatten<R> recordFlattener = new Flatten.Value<>();
 
     private boolean addOperationHeader;
+    private String[] addSourceFields;
     private boolean flattenStruct;
     private String delimiter;
 
@@ -245,6 +247,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                 }
             }
 
+            if (addSourceFields != null) {
+               addSourceFieldsSchema(addSourceFields, record, valueSchemaBuilder);
+            }
+
             finalValueSchema = valueSchemaBuilder.build();
             finalValueStruct = new Struct(finalValueSchema);
             for (Entry<String, BsonValue> valuePairsForStruct : valuePairs) {
@@ -258,6 +264,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                     converter.convertRecord(valuePairsForStruct, finalValueSchema, finalValueStruct);
                 }
             }
+
+            if (addSourceFields != null) {
+                addSourceFieldsValue(addSourceFields, record, finalValueStruct);
+            }
         }
 
         R newRecord = record.newRecord(record.topic(), record.kafkaPartition(), finalKeySchema,
@@ -268,6 +278,25 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         }
 
         return newRecord;
+    }
+
+    private void addSourceFieldsSchema(String[] addSourceFields, R originalRecord, SchemaBuilder valueSchemaBuilder) {
+        Schema sourceSchema = originalRecord.valueSchema().field("source").schema();
+        for (String sourceField : addSourceFields) {
+            if (sourceSchema.field(sourceField) == null) {
+                throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
+            }
+            valueSchemaBuilder.field(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
+                    sourceSchema.field(sourceField).schema());
+        }
+    }
+
+    private void addSourceFieldsValue(String[] addSourceFields, R originalRecord, Struct valueStruct) {
+        Struct sourceValue = ((Struct) originalRecord.value()).getStruct("source");
+        for (String sourceField : addSourceFields) {
+            valueStruct.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
+                    sourceValue.get(sourceField));
+        }
     }
 
     private BsonDocument getUpdateDocument(R patchRecord, BsonDocument keyDocument) {
@@ -349,6 +378,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         converter = new MongoDataConverter(ArrayEncoding.parse(config.getString(ARRAY_ENCODING)));
 
         addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
+
+        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ?
+                null :  config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);
