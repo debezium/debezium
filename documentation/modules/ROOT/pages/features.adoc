@@ -1,0 +1,4 @@
+= Debezium Features
+include::_attributes.adoc[]
+
+Coming soon. In the meantime, our xref:tutorial.adoc[tutorial] shows off many of Debezium's features.

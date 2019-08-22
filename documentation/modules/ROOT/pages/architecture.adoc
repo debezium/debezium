@@ -1,0 +1,4 @@
+= Debezium Architecture
+include::_attributes.adoc[]
+
+Coming soon. In the meantime, our xref:tutorial.adoc[tutorial] shows how you can use Debezium, and that might give you some insight into the Debezium architecture.
