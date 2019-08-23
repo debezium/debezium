@@ -5,17 +5,19 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.ConsistencyLevel;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
-import org.apache.kafka.clients.producer.ProducerConfig;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
+
+import org.apache.kafka.clients.producer.ProducerConfig;
+
+import com.datastax.driver.core.ConsistencyLevel;
+
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 
 /**
  * All configs used by a Cassandra connector agent.
@@ -237,7 +239,7 @@ public class CassandraConnectorConfig {
     public static final String LATEST_COMMIT_LOG_ONLY = "latest.commit.log.only";
     public static final boolean DEFAULT_LATEST_COMMIT_LOG_ONLY = false;
 
-    private Properties configs;
+    private final Properties configs;
 
     public CassandraConnectorConfig(Properties configs) {
         this.configs = configs;
