@@ -69,14 +69,22 @@ public class ExtractNewRecordStateTest {
 
     private SourceRecord createDeleteRecord() {
         final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
+        final Schema sourceSchema = SchemaBuilder.struct()
+                .field("lsn", SchemaBuilder.int32())
+                .field("version", SchemaBuilder.string())
+                .build();
         Envelope envelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(SchemaBuilder.struct().build())
+                .withSource(sourceSchema)
                 .build();
         final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
         before.put("id", (byte) 1);
-        final Struct payload = envelope.delete(before, null, System.nanoTime());
+        source.put("lsn", 1234);
+        source.put("version", "version!");
+        final Struct payload = envelope.delete(before, source, System.nanoTime());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
@@ -310,6 +318,37 @@ public class ExtractNewRecordStateTest {
             final SourceRecord unwrapped = transform.apply(createRecord);
             
             assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
+        }
+    }
+
+    @Test
+    public void testAddSourceFieldHandleDeleteRewrite() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_SOURCE_FIELDS, "lsn");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    public void testAddSourceFieldsHandleDeleteRewrite() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_SOURCE_FIELDS, "lsn,version");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
         }
     }  
 }
