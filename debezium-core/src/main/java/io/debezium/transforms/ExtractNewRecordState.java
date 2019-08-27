@@ -144,8 +144,10 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     return null;
                 case REWRITE:
                     LOGGER.trace("Delete message {} requested to be rewritten", record.key());
-                    final R oldRecord = beforeDelegate.apply(record);
-                    return removedDelegate.apply(oldRecord);
+                    R oldRecord = beforeDelegate.apply(record);
+                    oldRecord = addSourceFields(addSourceFields, record, oldRecord);
+                    final R deleteRecord = removedDelegate.apply(oldRecord);
+                    return deleteRecord;
                 default:
                     return newRecord;
             }
