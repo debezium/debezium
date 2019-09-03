@@ -105,7 +105,7 @@ public class ChangeEventSourceCoordinator {
     }
 
     public void commitOffset(Map<String, ?> offset) {
-        if (streamingSource != null) {
+        if (streamingSource != null && offset != null) {
             streamingSource.commitOffset(offset);
         }
     }
