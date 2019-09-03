@@ -4,10 +4,10 @@
 :imagesdir: {moduledir}/assets/images
 :partialsdir: {moduledir}/pages/_partials
 
-:debezium-version: 0.10.0.Beta4
-:debezium-dev-version: 0.10
-:debezium-kafka-version: 2.3.0
-:debezium-docker-label: 0.10
-:install-version: 0.10
+:debezium-version: 0.9.5.Final
+:debezium-dev-version: 0.9
+:debezium-kafka-version: 2.2.0
+:debezium-docker-label: 0.9
+:install-version: 0.9
 :confluent-platform-version: 5.1.2
 :strimzi-version: 0.9.0
