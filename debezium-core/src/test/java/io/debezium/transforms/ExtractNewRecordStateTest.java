@@ -306,7 +306,7 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
         }
     }
- 
+
     @Test(expected = ConfigException.class)
     public void testAddSourceNonExistantField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
@@ -316,12 +316,13 @@ public class ExtractNewRecordStateTest {
 
             final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            
+
             assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
         }
     }
 
     @Test
+    @FixFor("DBZ-1448")
     public void testAddSourceFieldHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -337,6 +338,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1448")
     public void testAddSourceFieldsHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -350,5 +352,5 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
             assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
         }
-    }  
+    }
 }
