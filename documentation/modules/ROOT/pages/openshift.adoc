@@ -6,8 +6,7 @@ include::_attributes.adoc[]
 The following describes how to set up the Debezium connectors for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
 
 These instructions have been tested using the https://github.com/minishift/minishift[Minishift tool]
--- allowing you to run a single node OpenShift instance locally on your machine --
-but should work equally well for https://www.openshift.com/pricing/index.html[OpenShift Online (Pro)] or https://www.openshift.com/dedicated/[OpenShift Dedicated].
+-- allowing you to run a single node OpenShift instance locally on your machine.
 
 You can find a complete example of this set-up using Minishift in our https://github.com/debezium/debezium-examples/tree/master/openshift[examples repository].
 
@@ -16,7 +15,7 @@ It starts an OpenShift cluster just for you, allowing you to take your first ste
 
 == Debezium Deployment
 
-For setting up Kafka and Kafka Connect on OpenShift, a set of images provided by the http://strimzi.io/[Strimzi] project can be used, which offers "Kafka as a Service".
+For setting up Kafka and Kafka Connect on OpenShift, a set of images provided by the https://strimzi.io/[Strimzi] project can be used, which offers "Kafka as a Service".
 It consists of enterprise grade configuration files and images that bring Kafka to OpenShift.
 
 First we install the operators and templates for the Kafka broker and Kafka Connect into our OpenShift project:
@@ -37,10 +36,10 @@ Next we will deploy a Kafka broker cluster and a Kafka Connect cluster and then 
 [listing,subs="attributes",options="nowrap"]
 ----
 # Deploy an ephemeral single instance Kafka broker
-oc new-app strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 | oc apply -f -
 
 # Deploy a single instance of Kafka Connect with no plug-in installed
-oc new-app strimzi-connect-s2i -p CLUSTER_NAME=debezium -p KAFKA_CONNECT_BOOTSTRAP_SERVERS=broker-kafka-bootstrap:9092 -p KAFKA_CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false -p KAFKA_CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+oc process strimzi-connect-s2i -p CLUSTER_NAME=debezium -p KAFKA_CONNECT_BOOTSTRAP_SERVERS=broker-kafka-bootstrap:9092 -p KAFKA_CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 -p KAFKA_CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false -p KAFKA_CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false | oc apply -f -
 
 # Build a Debezium image
 export DEBEZIUM_VERSION={debezium-version}
@@ -129,7 +128,7 @@ Kafka Connect's log file should contain messages regarding execution of initial 
 
 [source%nowrap,bash]
 ----
-oc logs $(oc get pods -o name -l app=strimzi-connect-s2i)
+oc logs $(oc get pods -o name -l strimzi.io/name=debezium-connect)
 ----
 
 Now we can read change events for the `customers` table from the corresponding Kafka topic:
