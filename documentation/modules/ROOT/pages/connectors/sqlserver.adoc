@@ -13,7 +13,7 @@ Want to help us further hone and improve it? link:/docs/contribute/[Learn how].
 
 toc::[]
 
-Debezium's SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server 2017 database.
+Debezium's SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
 This connector was added in Debezium 0.9.0.
 
 The first time it connects to a SQL Server database/cluster, it reads a consistent snapshot of all of the schemas.
@@ -25,6 +25,7 @@ All of the events for each table are recorded in a separate Kafka topic, where t
 
 The functionality of the connector is based upon https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/about-change-data-capture-sql-server?view=sql-server-2017[change data capture] feature provided by SQL Server Standard (https://blogs.msdn.microsoft.com/sqlreleaseservices/sql-server-2016-service-pack-1-sp1-released/[since SQL Server 2016 SP1]) or Enterprise edition.
 Using this mechanism a SQL Server capture process monitors all databases and tables the user is interested in and stores the changes into specifically created _CDC_ tables that have stored procedure facade.
+The connector has been tested with SQL Server 2017, but community members have reportedly used it successfully with earlier versions up to 2014, too (as long as the CDC feature is provided).
 
 The database operator must https://docs.microsoft.com/en-us/sql/relational-databases/track-changes/enable-and-disable-change-data-capture-sql-server?view=sql-server-2017[enable] _CDC_ for the table(s) that should be captured by the Debezium connector.
 The connector then produces a _change event_ for every row-level insert, update, and delete operation that was published via the _CDC API_, recording all the change events for each table in a separate Kafka topic.
