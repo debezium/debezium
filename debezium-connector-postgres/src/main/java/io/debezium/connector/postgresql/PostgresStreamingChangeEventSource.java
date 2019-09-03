@@ -67,7 +67,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         if (!snapshotter.shouldStream()) {
-            LOGGER.info("Streaming is not enabled in currect configuration");
+            LOGGER.info("Streaming is not enabled in correct configuration");
             return;
         }
 
