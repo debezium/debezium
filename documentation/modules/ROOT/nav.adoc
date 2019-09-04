@@ -1,6 +1,5 @@
 * xref:index.adoc[Welcome]
 * Getting Started
-** xref:concepts.adoc[Concepts]
 ** xref:architecture.adoc[Architecture]
 ** xref:features.adoc[Features]
 ** xref:embedded.adoc[Embedding Debezium]
