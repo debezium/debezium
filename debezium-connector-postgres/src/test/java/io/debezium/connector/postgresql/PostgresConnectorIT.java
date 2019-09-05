@@ -171,6 +171,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_WHITELIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_BLACKLIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.COLUMN_BLACKLIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.MSG_KEY_COLUMNS, null);
         validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
         validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, PostgresConnectorConfig.DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS);
         validateField(validatedConfig, PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE);
@@ -1122,6 +1123,30 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         stopConnector(value -> assertThat(logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'")).isTrue());
         assertTrue(TestHelper.publicationExists("cdc"));
+    }
+    
+    @Test
+    @FixFor("DBZ-1015")
+    public void shouldRewriteIdentityKey() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(INSERT_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                                               .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
+                                               //rewrite key from table 'a': from {pk} to {pk, aa}
+                                               .with(PostgresConnectorConfig.MSG_KEY_COLUMNS, "(.*).a:pk,aa");
+        
+        start(PostgresConnector.class, configBuilder.build());
+        waitForSnapshotToBeCompleted();
+        SourceRecords records = consumeRecordsByTopic(1);
+        records.recordsForTopic("test_server.s1.a").forEach(record -> {
+            Struct key = (Struct) record.key();
+            Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
+            Assertions.assertThat(key.get("aa")).isNotNull();
+        });
+        
+        stopConnector();
+        
     }
 
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {

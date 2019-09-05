@@ -36,7 +36,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()
                 ),
-                false);
+                false, connectorConfig.keyMapper());
     }
 
     @Override

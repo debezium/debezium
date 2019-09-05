@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParser;
@@ -30,8 +31,8 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
             TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-            boolean tableIdCaseInsensitive) {
-        super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive);
+            boolean tableIdCaseInsensitive, CustomKeyMapper customKeysMapper) {
+        super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper);
 
         this.databaseHistory = config.getDatabaseHistory();
         this.databaseHistory.start();

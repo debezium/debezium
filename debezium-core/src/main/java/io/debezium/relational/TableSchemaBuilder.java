@@ -24,6 +24,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
+import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
@@ -87,7 +88,7 @@ public class TableSchemaBuilder {
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
-    public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, ColumnNameFilter filter, ColumnMappers mappers) {
+    public TableSchema create(String schemaPrefix, String envelopSchemaName, Table table, ColumnNameFilter filter, ColumnMappers mappers, CustomKeyMapper keysMapper) {
         if (schemaPrefix == null) {
             schemaPrefix = "";
         }
@@ -100,18 +101,21 @@ public class TableSchemaBuilder {
         SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Value"));
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Key"));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
-        table.columns().forEach(column -> {
-            if (table.isPrimaryKeyColumn(column.name())) {
-                // The column is part of the primary key, so ALWAYS add it to the PK schema ...
-                addField(keySchemaBuilder, column, null);
-                hasPrimaryKey.set(true);
-            }
-            if (filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name())) {
-                // Add the column to the value schema only if the column has not been filtered ...
+        
+        Key tableKey = new Key.Builder(table).customKeyMapper(keysMapper).build();
+        tableKey.keyColumns().forEach(column -> {
+            addField(keySchemaBuilder, column, null);
+            hasPrimaryKey.set(true);
+        });
+        
+        table.columns()
+            .stream()
+            .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+            .forEach(column -> {
                 ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
                 addField(valSchemaBuilder, column, mapper);
-            }
-        });
+            });
+        
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
 
@@ -128,7 +132,7 @@ public class TableSchemaBuilder {
 
 
         // Create the generators ...
-        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, table.primaryKeyColumns());
+        Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns());
         Function<Object[], Struct> valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...

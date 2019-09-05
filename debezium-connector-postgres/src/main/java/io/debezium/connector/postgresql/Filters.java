@@ -73,4 +73,5 @@ public class Filters {
     protected ColumnNameFilter columnFilter() {
         return columnFilter;
     }
+
 }

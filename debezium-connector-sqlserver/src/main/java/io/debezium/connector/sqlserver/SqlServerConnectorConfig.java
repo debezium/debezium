@@ -24,6 +24,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -238,6 +239,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
             RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
             RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
+            RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
             RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
             RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
             CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -259,6 +261,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                 RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
+                RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
                 RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
@@ -275,6 +278,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final ColumnNameFilter columnFilter;
+    private final CustomKeyMapper customKeysMapper;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
@@ -283,6 +287,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+        this.customKeysMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS));
     }
 
     private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
@@ -312,6 +317,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public ColumnNameFilter getColumnFilter() {
         return columnFilter;
+    }
+    
+    public CustomKeyMapper keyMapper() {
+        return customKeysMapper;
     }
 
     @Override
@@ -349,4 +358,5 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public String getContextName() {
         return Module.contextName();
     }
+
 }

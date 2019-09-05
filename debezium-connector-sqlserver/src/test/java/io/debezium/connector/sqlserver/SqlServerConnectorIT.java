@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.sqlserver;
 
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertNull;
+
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -30,9 +33,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
-
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertNull;
 
 /**
  * Integration test for the Debezium SQL Server connector.
@@ -1011,8 +1011,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 "INSERT INTO keyless VALUES(2, 'k')"
         );
         records = consumeRecordsByTopic(1);
-        assertThat((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key()).isNull();
-        assertThat((Struct) records.recordsForTopic("server1.dbo.keyless").get(0).key()).isNull();
+        assertThat(records.recordsForTopic("server1.dbo.keyless").get(0).key()).isNull();
+        assertThat(records.recordsForTopic("server1.dbo.keyless").get(0).key()).isNull();
 
         connection.execute(
                 "UPDATE keyless SET id=3 WHERE ID=2"
@@ -1035,7 +1035,35 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         stopConnector();
     }
+    
+    @Test
+    @FixFor("DBZ-1015")
+    public void shouldRewriteIdentityKey() throws InterruptedException, SQLException {
+        
+        connection.execute(
+                "CREATE TABLE keyless (id int, name varchar(30))",
+                "INSERT INTO keyless VALUES(1, 'k')"
+        );
+        TestHelper.enableTableCdc(connection, "keyless");
 
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.keyless")
+                //rewrite key from table 'products': from {null} to {id}
+                .with(SqlServerConnectorConfig.MSG_KEY_COLUMNS, "(.*).keyless:id")
+                .build();
+
+        start(SqlServerConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.dbo.keyless");
+        assertThat(recordsForTopic.get(0).key()).isNotNull();
+        Struct key = (Struct) recordsForTopic.get(0).key();
+        Assertions.assertThat(key.get("id")).isNotNull();
+        
+        stopConnector();
+    }
+    
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
