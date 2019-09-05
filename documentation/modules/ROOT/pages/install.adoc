@@ -34,7 +34,7 @@ The connector plugins are available from Maven:
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{install-version}/debezium-connector-sqlserver-{install-version}-plugin.tar.gz[SQL Server Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{install-version}/debezium-connector-oracle-{install-version}-plugin.tar.gz[Oracle Connector plugin archive] (incubating)
 
-If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka, and Kafka Connect with the MySQL and MongoDB connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about. You can even xref:openshift.adoc[run Debezium on OpenShift].
+If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka, and Kafka Connect with the MySQL and MongoDB connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about. You can even xref:operations/openshift.adoc[run Debezium on OpenShift].
 
 By default, the directory _/kafka/connect_ is used as plugin directory by the Debezium Docker image for Kafka Connect.
 So any additional connectors you may wish to use should be added to that directory.
@@ -88,4 +88,4 @@ e.g. when updating them
 
 Although Debezium is intended to be used as turnkey services, all of JARs and other artifacts are available in http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22[Maven Central].
 
-We do provide a small library so applications can xref:embedded.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system. This provides a light weight system (since Zookeeper, Kafka, and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs. It's perfect for use in tests, and with careful consideration it may be useful in some applications.
+We do provide a small library so applications can xref:operations/embedded.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system. This provides a light weight system (since Zookeeper, Kafka, and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs. It's perfect for use in tests, and with careful consideration it may be useful in some applications.

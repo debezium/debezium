@@ -923,7 +923,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 [[monitoring]]
 === Monitoring
 
-Kafka, Zookeeper, and Kafka Connect all have xref:monitoring.adoc[built-in support] for JMX metrics. The SQL Server connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Streaming metrics help you monitor the progress and activity while the connector reads CDC table data.
+Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[built-in support] for JMX metrics. The SQL Server connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Streaming metrics help you monitor the progress and activity while the connector reads CDC table data.
 
 [[monitoring-snapshots]]
 [[snapshot-metrics]]

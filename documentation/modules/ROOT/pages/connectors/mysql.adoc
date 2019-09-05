@@ -1325,7 +1325,7 @@ To use the connector to produce change events for a particular MySQL server or c
 [[monitoring]]
 === Monitoring
 
-Kafka, Zookeeper, and Kafka Connect all have xref:monitoring.adoc[built-in support] for JMX metrics. The MySQL connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Binlog metrics help you monitor the progress and activity while the connector reads the MySQL binlog.
+Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[built-in support] for JMX metrics. The MySQL connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Binlog metrics help you monitor the progress and activity while the connector reads the MySQL binlog.
 
 [[monitoring-snapshots]]
 [[snapshot-metrics]]
@@ -1723,7 +1723,7 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 | Specifies how the connector should react to exceptions during deserialization of binlog events.
 `fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
-(make sure that xref:configuration/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
+(make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
 `ignore` will cause problematic event will be skipped.
 
 |`inconsistent.schema.handling.mode` +
@@ -1732,7 +1732,7 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 | Specifies how the connector should react to binlog events that relate to tables that are not present in internal schema representation (i.e. internal representation is not consistent with database)
 `fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
-(make sure that xref:configuration/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
+(make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
 `ignore` will cause the problematic event to be skipped.
 
 |`max.queue.size`
