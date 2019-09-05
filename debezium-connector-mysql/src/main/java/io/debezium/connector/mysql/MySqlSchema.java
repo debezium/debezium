@@ -24,6 +24,7 @@ import io.debezium.document.Document;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Table;
@@ -97,7 +98,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 new TableSchemaBuilder(
                         getValueConverters(configuration), SchemaNameAdjuster.create(logger), configuration.getSourceInfoStructMaker().schema(), configuration.getSanitizeFieldNames())
                 ,
-                tableIdCaseInsensitive
+                tableIdCaseInsensitive,
+                CustomKeyMapper.getInstance(configuration.keyMapper())
         );
 
         Configuration config = configuration.getConfig();

@@ -229,6 +229,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_WHITELIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TABLE_BLACKLIST);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.COLUMN_BLACKLIST);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.MSG_KEY_COLUMNS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
@@ -1863,6 +1864,37 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isFalse());
+    }
+    
+    @Test
+    @FixFor("DBZ-1015")
+    public void shouldRewriteIdentityKey() throws InterruptedException, SQLException {
+        // Define the table we want to watch events from.
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+            .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+            .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+            // Explicitly configure connector TO parse query
+            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, true)
+            //rewrite key from table 'products': from {id} to {id, name}
+            .with(MySqlConnectorConfig.MSG_KEY_COLUMNS, "(.*).products:id,name")
+            .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        final SourceRecords records = consumeRecordsByTopic(9);
+        // Parse through the source record for the query value.
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable(tableName));
+        
+        recordsForTopic.forEach(record -> {
+            Struct key = (Struct) record.key();
+            Assertions.assertThat(key.get("id")).isNotNull();
+            Assertions.assertThat(key.get("name")).isNotNull();
+        });
+        
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -32,6 +33,7 @@ import io.debezium.relational.Tables.TableFilter;
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
     private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
+    private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -172,6 +174,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("");
+    
+    public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
+            .withDisplayName("Columns PK mapping")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(RelationalDatabaseConnectorConfig::validateMessageKeyColumnsField)
+            .withDescription("A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. "
+                    + "Each item must match the fully-qualified table.':'.a comma-separated list of columns representing the custom key. "
+                    + "Fully-qualified tables could be defined as (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the specific connector");
 
     public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
             .withDisplayName("Decimal Handling")
@@ -309,6 +321,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         String blacklist = config.getString(SCHEMA_BLACKLIST);
         if (whitelist != null && blacklist != null) {
             problems.accept(SCHEMA_BLACKLIST, blacklist, "Schema whitelist is already specified");
+            return 1;
+        }
+        return 0;
+    }
+    
+    private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
+        String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
+        if (msgKeyColumns != null && !MSG_KEY_COLUMNS_PATTERN.asPredicate().test(msgKeyColumns)) {
+            problems.accept(MSG_KEY_COLUMNS, msgKeyColumns, MSG_KEY_COLUMNS.name() + " has an invalid format (expecting '" + MSG_KEY_COLUMNS_PATTERN.pattern() + "')");
             return 1;
         }
         return 0;

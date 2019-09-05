@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.mapping.ColumnMappers;
@@ -34,6 +35,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final TableFilter tableFilter;
     private final ColumnNameFilter columnFilter;
     private final ColumnMappers columnMappers;
+    private final CustomKeyMapper customKeysMapper;
 
     private final String schemaPrefix;
     private final SchemasByTableId schemasByTableId;
@@ -41,13 +43,14 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
     protected RelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
             TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-            boolean tableIdCaseInsensitive) {
+            boolean tableIdCaseInsensitive, CustomKeyMapper customKeysMapper) {
 
         this.topicSelector = topicSelector;
         this.schemaBuilder = schemaBuilder;
         this.tableFilter = tableFilter;
         this.columnFilter = columnFilter;
         this.columnMappers = ColumnMappers.create(config.getConfig());
+        this.customKeysMapper = customKeysMapper;
 
         this.schemaPrefix = getSchemaPrefix(config.getLogicalName());
         this.schemasByTableId = new SchemasByTableId(tableIdCaseInsensitive);
@@ -123,7 +126,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
      */
     protected void buildAndRegisterSchema(Table table) {
         if (tableFilter.isIncluded(table.id())) {
-            TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, columnFilter, columnMappers);
+            TableSchema schema = schemaBuilder.create(schemaPrefix, getEnvelopeSchemaName(table), table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
         }
     }

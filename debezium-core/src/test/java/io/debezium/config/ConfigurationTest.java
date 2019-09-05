@@ -5,6 +5,7 @@
  */
 package io.debezium.config;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Properties;
@@ -142,5 +143,31 @@ public class ConfigurationTest {
         String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
         Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
         assertThat(ddlFilter.test("FLUSH RELAY LOGS")).isTrue();
+    }
+    
+    @Test
+    @FixFor("DBZ-1015")
+    public void testMsgKeyColumnsField() {
+        // null : ok
+        config = Configuration.create().build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        //empty field: error
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isNotEmpty();
+        //field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        //field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1,C2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        //field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1,C2;t2:C1,C2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        //field: ok
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
+        //field: invalid format
+        config = Configuration.create().with(MSG_KEY_COLUMNS, "t1,t2").build();
+        assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isNotEmpty();
     }
 }

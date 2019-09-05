@@ -91,14 +91,7 @@ public final class Tables {
          */
         public static ColumnNameFilter getInstance(String fullyQualifiedColumnNames) {
             Predicate<ColumnId> delegate = Predicates.excludes(fullyQualifiedColumnNames, ColumnId::toString);
-
-            return new ColumnNameFilter() {
-
-                @Override
-                public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                    return delegate.test(new ColumnId(new TableId(catalogName, schemaName, tableName), columnName));
-                }
-            };
+            return (catalogName, schemaName, tableName, columnName) -> delegate.test(new ColumnId(new TableId(catalogName, schemaName, tableName), columnName));
         }
     }
 
