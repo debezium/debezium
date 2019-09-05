@@ -1,6 +1,7 @@
 * Getting Started
 ** xref:tutorial.adoc[Tutorial]
 ** xref:install.adoc[Installation]
+*** xref:postgres-plugins.adoc[PostgreSQL Decoding Plugins]
 ** xref:architecture.adoc[Architecture]
 ** xref:features.adoc[Features]
 * Configuration
