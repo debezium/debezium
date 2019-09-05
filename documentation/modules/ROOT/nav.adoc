@@ -1,14 +1,9 @@
 * Getting Started
+** xref:tutorial.adoc[Tutorial]
+** xref:install.adoc[Installation]
 ** xref:architecture.adoc[Architecture]
 ** xref:features.adoc[Features]
-** xref:embedded.adoc[Embedding Debezium]
-** xref:openshift.adoc[Running on Openshift]
-** xref:amq-streams.adoc[Running with AMQ Streams]
-** xref:monitoring.adoc[Monitoring]
-** xref:install.adoc[Installation]
-** xref:tutorial.adoc[Tutorial]
 * Configuration
-** xref:configuration/logging.adoc[Logging]
 ** xref:configuration/avro.adoc[Avro Serialization]
 ** xref:configuration/topic-routing.adoc[Topic Routing]
 ** xref:configuration/event-flattening.adoc[New Record State Extraction]
@@ -22,3 +17,9 @@
 ** xref:connectors/oracle.adoc[Oracle]
 ** xref:connectors/sqlserver.adoc[SQL Server]
 ** xref:connectors/cassandra.adoc[Cassandra]
+* Operations
+** xref:operations/logging.adoc[Logging]
+** xref:operations/monitoring.adoc[Monitoring]
+** xref:operations/openshift.adoc[Running on Openshift]
+** xref:operations/amq-streams.adoc[Running with AMQ Streams]
+** xref:operations/embedded.adoc[Embedding Debezium]
