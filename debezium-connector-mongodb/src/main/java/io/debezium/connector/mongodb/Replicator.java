@@ -544,6 +544,11 @@ public class Replicator {
             }
             return true;
         }
+        if (!RecordMakers.isValidOperation(event.getString("op"))) {
+            // the op is not insert/update/delete
+            logger.debug("Skipping event with \"op={}\"", event.getString("op"));
+            return true;
+        }
         int delimIndex = ns.indexOf('.');
         if (delimIndex > 0) {
             assert (delimIndex + 1) < ns.length();
