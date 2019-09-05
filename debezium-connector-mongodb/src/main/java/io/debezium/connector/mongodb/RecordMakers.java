@@ -94,6 +94,10 @@ public class RecordMakers {
         });
     }
 
+    public static boolean isValidOperation(String operation) {
+        return operationLiterals.containsKey(operation);
+    }
+
     /**
      * A record producer for a given collection.
      */
