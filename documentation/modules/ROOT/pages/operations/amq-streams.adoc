@@ -173,7 +173,7 @@ image::/images/openshift_amq_pods.png[width=771,align="center"]
 
 == Verifying the Deployment
 
-Next we are going to verify whether the deployment is correct by emulating the xref:tutorial.adoc[Debezium Tutorial] and following the steps in xref:openshift.adoc#verifying_the_deployment[OpenShift Installation]
+Next we are going to verify whether the deployment is correct by emulating the xref:tutorial.adoc[Debezium Tutorial] and following the steps in xref:operations/openshift.adoc#verifying_the_deployment[OpenShift Installation]
 
 [NOTE]
 ====
