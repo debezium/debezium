@@ -746,11 +746,11 @@ The Cassandra connector will fail upon startup, report error or exception in the
 
 Once the connector is running, if the Cassandra node becomes unavailable for any reason, the connector will fail and stop. In this case, restart the connector once the server becomes available. If this happened during snapshot, it will rebootstrap the entire table from the beginning of the table.
 
-==== Cassandra Cassandra Connector Stops Gracefully
+==== Cassandra Connector Stops Gracefully
 
 If the Cassandra connector is gracefully shut down, prior to stopping the process it will make sure to flush all events in the ChangeEventQueue to Kafka. The Cassandra connector keeps track of the filename and offset each time a streamed record is send to Kafka. So when the connector is restarted, it will resume from where it left off. It does this by searching for the oldest commit log in the directory, start processing that commitlog, skipping the already-read records, until it finds the most recent record that hasn’t been processed. If the Cassandra connector is stopped during snapshot, it will pick up from that table, but will rebootstrap the entire table.
 
-==== Cassandra Cassandra Connector Crashes
+==== Cassandra Connector Crashes
 
 If the Cassandra connector crashes unexpected, then the Cassandra connector would likely have terminated without recording the most-recently processed offset. In this case, when the connector is restarted, it will resume from the most recent recorded offset. This means duplicates is likely (which is trivial since we already be get duplicates from RF). Note that since the offset is only updated when a record has been successfully send to Kafka, it is okay to lose the un-emitted data in the ChangeEventQueue during a crash, as these events will be recreated.
 
@@ -758,19 +758,52 @@ If the Cassandra connector crashes unexpected, then the Cassandra connector woul
 
 As the connector generate change event, it will publish those events to Kafka using Kafka producer API. If Kafka broker becomes unavailable (producer encounters TimeoutException), the Cassandra connector will repeatedly attempt to reconnect to the broker once per second until a successful retry.
 
-==== Cassandra Cassandra connector is Stopped for a Duration
+==== Cassandra connector is Stopped for a Duration
 
 Depending on the write load of a table, when a Cassandra connector is stopped for a long time, it risks into hitting the cdc_total_space_in_mb capacity. Once this upper limit is reached, Cassandra will stop accepting writes for this table; which means it is important to monitor this space while running the Cassandra connector. In the worst case scenario when this happens, the best thing to do is to (1) turn off Cassandra connector (2) disable cdc for the table so it stops generating additional writes (although writes to other cdc-enabled tables on the same node could still affect the commitlog file generation given the commit logs are not filtered) (3) remove the recorded offset from the offset file (4) once the capacity is increased or the directory used space is under control, restart the connector so it will rebootstrap the table.
 
 [[deploying-a-connector]]
 == Deploying A Connector
 
-The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster.  The Cassandra connector Jar file takes in a cdc configuration file. See link:#example-configuration[see example configurations] for reference.
+The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster. The Cassandra connector Jar file takes in a cdc configuration (.properties) file. See link:#example-configuration[see example configurations] for reference.
 
 [[example-configuration]]
 === Example configuration
 
-#TODO: provide example
+The following represents an example .properties configuration file for Cassandra Connector:
+
+[source,indent=0]
+----
+connector.name=test_connector
+kafka.topic.prefix=test_prefix
+snapshot.consistency=ALL
+http.port=1234
+cassandra.config=cassandra-unit.yaml
+cassandra.hosts=127.0.0.1,127.0.0.2
+cassandra.port=9412
+cassandra.username=test_user
+cassandra.password=test_pw
+cassandra.ssl.enabled=true
+cassandra.ssl.config.path=/some/path/
+kafka.producer.bootstrap.servers=host1,host2,host3
+kafka.producer.schema.registry=schema-registry-host
+offset.backing.store.dir=/some/offset/backing/store/
+offset.flush.interval.ms=1234
+max.offset.flush.size=200
+max.queue.size=500
+max.batch.size=500
+poll.interval.ms=500
+schema.refresh.interval.ms=500
+cdc.dir.poll.interval.ms=500
+snapshot.scan.interval.ms=500
+field.blacklist=keyspace1.table1.column1,keyspace1.table1.column2
+tombstones.on.delete=true
+snapshot.mode=always
+commit.log.relocation.dir=/foo/bar
+commit.log.post.processing.enabled=false
+commit.log.transfer.class=io.debezium.connector.cassandra.BlackHoleCommitLogTransfer
+latest.commit.log.only=true
+----
 
 [[monitoring]]
 === Monitoring
