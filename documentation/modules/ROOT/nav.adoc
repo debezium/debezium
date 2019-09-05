@@ -1,4 +1,3 @@
-* xref:index.adoc[Welcome]
 * Getting Started
 ** xref:architecture.adoc[Architecture]
 ** xref:features.adoc[Features]

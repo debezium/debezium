@@ -1,4 +1,4 @@
-= Welcome to the Debezium documentation!
+= Debezium Documentation
 include::_attributes.adoc[]
 
 == What is it?
