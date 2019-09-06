@@ -170,6 +170,25 @@ If its been more than a day or so since you created your topic branch, we recomm
 
 If your changes are compatible with the latest changes on `master`, this will complete and there's nothing else to do. However, if your changes affect the same files/lines as other changes have since been merged into the `master` branch, then your changes conflict with the other recent changes on `master`, and you will have to resolve them. The git output will actually tell you you need to do (e.g., fix a particular file, stage the file, and then run `git rebase --continue`), but if you have questions consult Git or GitHub documentation or spend some time reading about Git rebase conflicts on the Internet.
 
+### Documentation
+
+When adding new features such as e.g. a connector or configuration options, they must be documented accordingly in the Debezium [reference documentation](https://debezium.io/documentation/).
+The same applies when changing existing behaviors, e.g. type mappings, removing options etc.
+
+The documentation is written using AsciiDoc/Antora and can be found in the Debezium [source code repository](https://github.com/debezium/debezium/tree/master/documentation).
+Any documentation update should be part of the pull request you submit for the code change.
+
+Generally, two versions of documentation are published on the website at a given time:
+
+* The documentation for the current _stable_ release (e.g. 0.9.5.Final at the time of writing)
+* The documentation for the current _development_ release (e.g. 0.10.0.Beta4)
+
+Documentation changes applying to the development release will be published on the website when the release containing the documented features is done.
+In order to apply immediate changes to the documentation without awaiting the next release,
+submit a pull request targeting the [development_docs](https://github.com/debezium/debezium/tree/development_docs/documentation) branch.
+This should only be done for critical fixes such as correcting wrong documentation; minor changes such as typo fixes should simply be done on the `master` branch.
+Upon each release, the `development_docs` branch is rebased to `master`, resulting in the publication of all doc changes done on the `master` branch since the last release.
+
 ### Creating a pull request
 
 Once you're finished making your changes, your topic branch should have your commit(s) and you should have verified that your branch builds successfully. At this point, you can shared your proposed changes and create a pull request. To do this, first push your topic branch (and its commits) to your fork repository (called `origin`) on GitHub:
@@ -224,5 +243,6 @@ Here's a quick check list for a good pull request (PR):
 * One commit per PR
 * One feature/change per PR
 * No changes to code not directly related to your change (e.g. no formatting changes or refactoring to existing code, if you want to refactor/improve existing code that's a separate discussion and separate JIRA issue)
+* New/changed features have been documented
 * A full build completes succesfully
 * Do a rebase on upstream `master`
