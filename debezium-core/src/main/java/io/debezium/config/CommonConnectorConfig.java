@@ -148,6 +148,14 @@ public abstract class CommonConnectorConfig {
             .withDescription("A version of the format of the publicly visible source part in the message")
             .withValidation(Field::isClassName);
 
+    public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
+            .withDisplayName("Sanitize field names to adhere to AVRO naming conventions")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Whether field names will be sanitized to AVRO naming conventions")
+            .withDefault(Boolean.FALSE);
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -158,6 +166,7 @@ public abstract class CommonConnectorConfig {
     private final Duration snapshotDelayMs;
     private final int snapshotFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
+    private final boolean sanitizeFieldNames;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -170,6 +179,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
+        this.sanitizeFieldNames = config.getBoolean(CommonConnectorConfig.SANITIZE_FIELD_NAMES);
     }
 
     /**
@@ -217,6 +227,10 @@ public abstract class CommonConnectorConfig {
     @SuppressWarnings("unchecked")
     public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker() {
         return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
+    }
+
+    public boolean getSanitizeFieldNames() {
+        return sanitizeFieldNames;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {

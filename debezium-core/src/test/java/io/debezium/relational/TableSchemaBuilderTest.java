@@ -111,13 +111,13 @@ public class TableSchemaBuilderTest {
 
     @Test(expected = NullPointerException.class)
     public void shouldFailToBuildTableSchemaFromNullTable() {
-        new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", null, null, null);
     }
 
     @Test
     public void shouldBuildTableSchemaFromTable() {
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
     }
@@ -126,7 +126,7 @@ public class TableSchemaBuilderTest {
     @FixFor("DBZ-1089")
     public void shouldBuildCorrectSchemaNames() {
         // table id with catalog and schema
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
         assertThat(schema.keySchema().name()).isEqualTo("schema.table.Key");
@@ -137,7 +137,7 @@ public class TableSchemaBuilderTest {
                 .tableId(new TableId("testDb", null, "testTable"))
                 .create();
 
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null);
 
         assertThat(schema).isNotNull();
@@ -149,7 +149,7 @@ public class TableSchemaBuilderTest {
                 .tableId(new TableId(null, "testSchema", "testTable"))
                 .create();
 
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null);
 
         assertThat(schema).isNotNull();
@@ -161,7 +161,7 @@ public class TableSchemaBuilderTest {
                 .tableId(new TableId(null, null, "testTable"))
                 .create();
 
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null);
 
         assertThat(schema).isNotNull();
@@ -172,7 +172,7 @@ public class TableSchemaBuilderTest {
     @Test
     public void shouldBuildTableSchemaFromTableWithoutPrimaryKey() {
         table = table.edit().setPrimaryKeyNames().create();
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build())
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
                 .create(prefix, "sometopic", table, null, null);
         assertThat(schema).isNotNull();
         // Check the keys ...
@@ -197,8 +197,16 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
         assertThat(values.field("C6").index()).isEqualTo(5);
         assertThat(values.field("C6").schema()).isEqualTo(SchemaBuilder.int16().build());
-        assertThat(values.field("_7C7").index()).isEqualTo(6); // Column starting with digit is prefixed with _
-        assertThat(values.field("C_8").index()).isEqualTo(7); // Column C-8 has - replaced with _
+
+        // Column starting with digit is left as-is
+        assertThat(values.field("7C7").name()).isEqualTo("7C7");
+        assertThat(values.field("7C7").index()).isEqualTo(6);
+        assertThat(values.field("7C7").schema()).isEqualTo(SchemaBuilder.string().build());
+
+        // Column C-8 has -, left as-is
+        assertThat(values.field("C-8").name()).isEqualTo("C-8");
+        assertThat(values.field("C-8").index()).isEqualTo(7);
+        assertThat(values.field("C-8").schema()).isEqualTo(SchemaBuilder.string().build());
 
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();
@@ -210,4 +218,59 @@ public class TableSchemaBuilderTest {
         assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
     }
 
+    @Test
+    @FixFor("DBZ-1044")
+    public void shouldSanitizeFieldNamesAndBuildTableSchemaFromTableWithoutPrimaryKey() {
+        table = table.edit().setPrimaryKeyNames().create();
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), true)
+                .create(prefix, "sometopic", table, null, null);
+        assertThat(schema).isNotNull();
+        // Check the keys ...
+        assertThat(schema.keySchema()).isNull();
+        assertThat(schema.keyFromColumnData(data)).isNull();
+        // Check the values ...
+        Schema values = schema.valueSchema();
+        assertThat(values).isNotNull();
+        assertThat(values.field("C1").name()).isEqualTo("C1");
+        assertThat(values.field("C1").index()).isEqualTo(0);
+        assertThat(values.field("C1").schema()).isEqualTo(SchemaBuilder.string().build());
+        assertThat(values.field("C2").name()).isEqualTo("C2");
+        assertThat(values.field("C2").index()).isEqualTo(1);
+        assertThat(values.field("C2").schema()).isEqualTo(Decimal.builder(3).parameter("connect.decimal.precision", "5").optional().build()); // scale of 3
+        assertThat(values.field("C3").name()).isEqualTo("C3");
+        assertThat(values.field("C3").index()).isEqualTo(2);
+        assertThat(values.field("C3").schema()).isEqualTo(Date.builder().optional().build()); // optional date
+        assertThat(values.field("C4").name()).isEqualTo("C4");
+        assertThat(values.field("C4").index()).isEqualTo(3);
+        assertThat(values.field("C4").schema()).isEqualTo(SchemaBuilder.int32().optional().build()); // JDBC INTEGER = 32 bits
+        assertThat(values.field("C5").index()).isEqualTo(4);
+        assertThat(values.field("C5").schema()).isEqualTo(SchemaBuilder.bytes().build()); // JDBC BINARY = bytes
+        assertThat(values.field("C6").index()).isEqualTo(5);
+        assertThat(values.field("C6").schema()).isEqualTo(SchemaBuilder.int16().build());
+
+        // Column starting with digit should be prefixed, original field should not exist
+        assertThat(values.field("7C7")).isNull();
+
+        // Column starting with digit is prefixed with _
+        assertThat(values.field("_7C7").name()).isEqualTo("_7C7");
+        assertThat(values.field("_7C7").index()).isEqualTo(6);
+        assertThat(values.field("_7C7").schema()).isEqualTo(SchemaBuilder.string().build());
+
+        // Column containing '-' should have '-' replaced with '_', field should not exist
+        assertThat(values.field("C-8")).isNull();
+
+        // Column C-8 has - replaced with _
+        assertThat(values.field("C_8").name()).isEqualTo("C_8");
+        assertThat(values.field("C_8").index()).isEqualTo(7);
+        assertThat(values.field("C_8").schema()).isEqualTo(SchemaBuilder.string().build());
+
+        Struct value = schema.valueFromColumnData(data);
+        assertThat(value).isNotNull();
+        assertThat(value.get("C1")).isEqualTo("c1value");
+        assertThat(value.get("C2")).isEqualTo(BigDecimal.valueOf(3.142d));
+        assertThat(value.get("C3")).isEqualTo(11626);
+        assertThat(value.get("C4")).isEqualTo(4);
+        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114}));
+        assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
+    }
 }
