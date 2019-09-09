@@ -27,6 +27,7 @@ import io.debezium.data.SchemaUtil;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
+import io.debezium.schema.FieldNameSelector;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
@@ -52,6 +53,7 @@ public class TableSchemaBuilder {
     private final SchemaNameAdjuster schemaNameAdjuster;
     private final ValueConverterProvider valueConverterProvider;
     private final Schema sourceInfoSchema;
+    private final FieldNameSelector fieldNameSelector;
 
     /**
      * Create a new instance of the builder.
@@ -60,10 +62,11 @@ public class TableSchemaBuilder {
      *            null
      * @param schemaNameAdjuster the adjuster for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, Schema sourceInfoSchema) {
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, Schema sourceInfoSchema, boolean sanitizeFieldNames) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.sourceInfoSchema = sourceInfoSchema;
+        this.fieldNameSelector = FieldNameSelector.defaultSelector(sanitizeFieldNames);
     }
 
     /**
@@ -278,7 +281,7 @@ public class TableSchemaBuilder {
         Field[] fields = new Field[columns.size()];
         AtomicInteger i = new AtomicInteger(0);
         columns.forEach(column -> {
-            Field field = schema.field(column.name()); // may be null if the field is unused ...
+            Field field = schema.field(fieldNameSelector.fieldNameFor(column)); // may be null if the field is unused ...
             fields[i.getAndIncrement()] = field;
         });
         return fields;
@@ -366,7 +369,7 @@ public class TableSchemaBuilder {
                 fieldBuilder.defaultValue(column.defaultValue());
             }
 
-            builder.field(santizeColumnName(column), fieldBuilder.build());
+            builder.field(fieldNameSelector.fieldNameFor(column), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
                              fieldBuilder.type(),
@@ -388,35 +391,5 @@ public class TableSchemaBuilder {
      */
     protected ValueConverter createValueConverterFor(Column column, Field fieldDefn) {
         return valueConverterProvider.converter(column, fieldDefn);
-    }
-
-    /**
-     * Sanitize column names that are illegal in Avro
-     * Must conform to https://avro.apache.org/docs/1.7.7/spec.html#Names
-     *  Legal characters are [a-zA-Z_] for the first character and [a-zA-Z0-9_] thereafter.
-     *
-     * @param column the column object containing the name to be sanitized
-     *
-     * @return the sanitized name.
-     */
-    protected String santizeColumnName(Column column) {
-        Character replacementCharacter = '_';
-        Character numberPrefix = '_';
-        StringBuilder sanitizedNameBuilder = new StringBuilder(column.name().length() + 1);
-        for(int i = 0; i < column.name().length(); i++) {
-            char c = column.name().charAt(i);
-            if ( i == 0 && Character.isDigit(c)) {
-                sanitizedNameBuilder.append(numberPrefix);
-                sanitizedNameBuilder.append(c);
-
-            }
-            else if ( ! ( c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')  || (c >= '0' && c <= '9') ) ) {
-                sanitizedNameBuilder.append(replacementCharacter);
-            }
-            else {
-                sanitizedNameBuilder.append(c);
-            }
-        }
-        return sanitizedNameBuilder.toString();
     }
 }
