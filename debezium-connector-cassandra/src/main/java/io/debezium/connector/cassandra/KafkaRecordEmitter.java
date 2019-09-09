@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.connect.storage.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,7 @@ import java.util.concurrent.Future;
 public class KafkaRecordEmitter implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
 
-    private final KafkaProducer<Struct, Struct> producer;
+    private final KafkaProducer<byte[], byte[]> producer;
     private final CassandraTopicSelector topicSelector;
     private final OffsetWriter offsetWriter;
     private final OffsetFlushPolicy offsetFlushPolicy;
@@ -33,26 +33,34 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private final Object lock = new Object();
     private long timeOfLastFlush;
     private long emitCount = 0;
+    private Converter keyConverter;
+    private Converter valueConverter;
 
-    public KafkaRecordEmitter(String kafkaTopicPrefix, Properties kafkaProperties, OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize) {
+    public KafkaRecordEmitter(String kafkaTopicPrefix, Properties kafkaProperties, OffsetWriter offsetWriter,
+                              Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
+                              Converter keyConverter, Converter valueConverter) {
         this.producer = new KafkaProducer<>(kafkaProperties);
         this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix);
         this.offsetWriter = offsetWriter;
         this.offsetFlushPolicy = offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize);
+        this.keyConverter = keyConverter;
+        this.valueConverter = valueConverter;
     }
 
     public void emit(Record record) {
         synchronized (lock) {
-            ProducerRecord<Struct, Struct> producerRecord = toProducerRecord(record);
+            ProducerRecord<byte[], byte[]> producerRecord = toProducerRecord(record);
             Future<RecordMetadata> future = producer.send(producerRecord);
             futures.put(record, future);
             maybeFlushAndMarkOffset();
         }
     }
 
-    private ProducerRecord<Struct, Struct> toProducerRecord(Record record) {
+    private ProducerRecord<byte[], byte[]> toProducerRecord(Record record) {
         String topic = topicSelector.topicNameFor(record.getSource().keyspaceTable);
-        return new ProducerRecord<>(topic, record.buildKey(), record.buildValue());
+        byte[] serializedKey = keyConverter.fromConnectData(topic, record.getKeySchema(), record.buildKey());
+        byte[] serializedValue = valueConverter.fromConnectData(topic, record.getValueSchema(), record.buildValue());
+        return new ProducerRecord<>(topic, serializedKey, serializedValue);
     }
 
     private void maybeFlushAndMarkOffset() {

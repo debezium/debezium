@@ -35,7 +35,9 @@ public class QueueProcessor extends AbstractProcessor {
                 context.getCassandraConnectorConfig().getKafkaConfigs(),
                 context.getOffsetWriter(),
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
-                context.getCassandraConnectorConfig().maxOffsetFlushSize()
+                context.getCassandraConnectorConfig().maxOffsetFlushSize(),
+                context.getCassandraConnectorConfig().getKeyConverter(),
+                context.getCassandraConnectorConfig().getValueConverter()
         ));
     }
 

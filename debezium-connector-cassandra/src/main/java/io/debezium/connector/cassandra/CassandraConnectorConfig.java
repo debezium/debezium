@@ -8,21 +8,26 @@ package io.debezium.connector.cassandra;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.apache.kafka.clients.producer.ProducerConfig;
-
-import com.datastax.driver.core.ConsistencyLevel;
-
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import com.datastax.driver.core.ConsistencyLevel;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.connect.storage.Converter;
 
 /**
  * All configs used by a Cassandra connector agent.
  */
 public class CassandraConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
+
     /**
      * The set of predefined SnapshotMode options.
      */
@@ -67,6 +72,26 @@ public class CassandraConnectorConfig {
      * The prefix prepended to all Kafka producer configurations, including schema registry
      */
     public static final String KAFKA_PRODUCER_CONFIG_PREFIX = "kafka.producer.";
+
+    /**
+     * The prefix prepended to all Kafka key converter configurations, including schema registry.
+     */
+    public static final String KEY_CONVERTER_PREFIX = "key.converter.";
+
+    /**
+     * The prefix prepended to all Kafka value converter configurations, including schema registry.
+     */
+    public static final String VALUE_CONVERTER_PREFIX = "value.converter.";
+
+    /**
+     * Required config for Kafka key converter.
+     */
+    public static final String KEY_CONVERTER_CLASS_CONFIG = "key.converter";
+
+    /**
+     * Required config for Kafka value converter.
+     */
+    public static final String VALUE_CONVERTER_CLASS_CONFIG = "value.converter";
 
     /**
      * Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the cassandra connector agent.
@@ -177,7 +202,7 @@ public class CassandraConnectorConfig {
      * are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be
      * larger than the maximum batch size specified in the max.batch.size property.
      * The capacity of the queue to hold deserialized {@link Record}
-     * before they are converted to Avro Records and emitted to Kafka.
+     * before they are converted to kafka connect Struct Records and emitted to Kafka.
      */
     public static final String MAX_QUEUE_SIZE = "max.queue.size";
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
@@ -257,8 +282,8 @@ public class CassandraConnectorConfig {
         Properties props = new Properties();
 
         // default configs
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
 
         configs.entrySet().stream()
                 .filter(entry -> entry.getKey().toString().startsWith(KAFKA_PRODUCER_CONFIG_PREFIX))
@@ -411,6 +436,42 @@ public class CassandraConnectorConfig {
     public boolean tombstonesOnDelete() {
         return configs.containsKey(TOMBSTONES_ON_DELETE) ?
                 Boolean.parseBoolean((String) configs.get(TOMBSTONES_ON_DELETE)) : DEFAULT_TOMBSTONES_ON_DELETE;
+    }
+
+    public Converter getKeyConverter() throws CassandraConnectorConfigException {
+        try {
+            Class keyConverterClass = Class.forName((String) configs.get(KEY_CONVERTER_CLASS_CONFIG));
+            Converter keyConverter = (Converter) keyConverterClass.newInstance();
+            HashMap<String, Object> keyConverterConfigs = keyValueConverterConfigs(KEY_CONVERTER_PREFIX);
+            keyConverter.configure(keyConverterConfigs, true);
+            return keyConverter;
+        } catch (Exception e) {
+            throw new CassandraConnectorConfigException(e);
+        }
+    }
+
+    public Converter getValueConverter() throws CassandraConnectorConfigException {
+        try {
+            Class valueConverterClass = Class.forName((String) configs.get(VALUE_CONVERTER_CLASS_CONFIG));
+            Converter valueConverter = (Converter) valueConverterClass.newInstance();
+            HashMap<String, Object> valueConverterConfigs = keyValueConverterConfigs(VALUE_CONVERTER_PREFIX);
+            valueConverter.configure(valueConverterConfigs, false);
+            return valueConverter;
+        } catch (Exception e) {
+            throw new CassandraConnectorConfigException(e);
+        }
+    }
+
+    private HashMap<String, Object> keyValueConverterConfigs(String converterPrefix) {
+        HashMap<String, Object> converterConfigs = new HashMap<> ();
+        configs.entrySet().stream()
+                .filter(entry -> entry.getKey().toString().startsWith(converterPrefix))
+                .forEach(entry -> {
+                    String k = entry.getKey().toString().replace(converterPrefix, "");
+                    Object v = entry.getValue();
+                    converterConfigs.put(k, v);
+                });
+        return converterConfigs;
     }
 
     @Override

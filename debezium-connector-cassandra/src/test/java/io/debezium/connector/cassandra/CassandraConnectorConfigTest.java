@@ -8,6 +8,7 @@ package io.debezium.connector.cassandra;
 import org.junit.Test;
 
 import java.util.Properties;
+import java.util.HashMap;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -126,6 +127,26 @@ public class CassandraConnectorConfigTest {
         String transferClazz = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
         config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_TRANSFER_CLASS, transferClazz);
         assertEquals(transferClazz, config.getCommitLogTransfer().getClass().getName());
+
+        String keyConverterClass = "io.confluent.connect.avro.AvroConverter";
+        HashMap<String, Object> keyConverterConfigs = new HashMap<> ();
+        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG, keyConverterClass);
+        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX+"schema.registry.url", "http://localhost:8081");
+        config = buildTaskConfigs(keyConverterConfigs);
+        assertEquals(keyConverterClass, config.getKeyConverter().getClass().getName());
+
+        String valueConverterClass = "org.apache.kafka.connect.json.JsonConverter";
+        config = buildTaskConfig(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG, valueConverterClass);
+        assertEquals(valueConverterClass, config.getValueConverter().getClass().getName());
+
+    }
+
+    private CassandraConnectorConfig buildTaskConfigs(HashMap<String, Object> map) {
+        Properties props = new Properties();
+        for (String key : map.keySet()) {
+            props.put(key, map.get(key));
+        }
+        return new CassandraConnectorConfig(props);
     }
 
     private CassandraConnectorConfig buildTaskConfig(String key, Object value) {

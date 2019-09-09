@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.cassandraunit.utils.CqlOperations;
@@ -174,7 +173,6 @@ public abstract class EmbeddedCassandraConnectorTestBase {
         props.put(CassandraConnectorConfig.CASSANDRA_PORT, String.valueOf(TEST_CASSANDRA_PORT));
         props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, Files.createTempDirectory("offset").toString());
         props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
-        props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, TEST_SCHEMA_REGISTRY_URL);
         props.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, Files.createTempDirectory("cdc_raw_relocation").toString());
         return props;
     }
