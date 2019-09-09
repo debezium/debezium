@@ -94,6 +94,7 @@ public class ExtractNewDocumentStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1442")
     public void shouldAddSourceFields() throws InterruptedException {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
