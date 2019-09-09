@@ -15,10 +15,7 @@ import java.nio.ByteBuffer;
 
 public class DurationTypeDeserializer extends BasicTypeDeserializer {
     /*
-     * According to the official spec, Avro has a duration type of (almost) the same format of the cassandra
-     * duration type, but sadly it's not actually represented in the code anywhere!
-     * issue: https://issues.apache.org/jira/browse/AVRO-2123
-     * So, for now at least, duration is serialized into a record with fields months, days, and nanos.
+     * Cassandra Duration type is serialized into a struct with fields months, days, and nanos.
      */
 
     public DurationTypeDeserializer() {

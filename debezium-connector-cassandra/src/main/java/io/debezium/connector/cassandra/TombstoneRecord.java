@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.avro.Schema;
+import org.apache.kafka.connect.data.Schema;
 
 /**
  * A TombstoneRecord is a record which has the same key as a delete event but has null value.

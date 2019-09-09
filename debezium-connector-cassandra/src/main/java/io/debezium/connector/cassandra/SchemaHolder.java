@@ -7,12 +7,11 @@ package io.debezium.connector.cassandra;
 
 import com.datastax.driver.core.TableMetadata;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
-import org.apache.avro.Schema;
+import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,19 +64,10 @@ public class SchemaHolder {
      * @return Schema
      */
     public static Schema getFieldSchema(String fieldName, Schema schema) {
-        if (schema.getType().equals(Schema.Type.UNION)) {
-            List<Schema> unionOfSchemas = schema.getTypes();
-            for (Schema innerSchema : unionOfSchemas) {
-                if (innerSchema.getName().equals(fieldName)) {
-                    return innerSchema;
-                }
-            }
-            throw new CassandraConnectorSchemaException("Union type does not contain field " + fieldName);
-        } else if (schema.getType().equals(Schema.Type.RECORD)) {
-            return schema.getField(fieldName).schema();
-        } else {
-            throw new CassandraConnectorSchemaException("Only UNION and RECORD types are supported for this method, but encountered " + schema.getType());
+        if (schema.type().equals(Schema.Type.STRUCT)) {
+            return schema.field(fieldName).schema();
         }
+        throw new CassandraConnectorSchemaException("Only STRUCT type is supported for this method, but encountered " + schema.type());
     }
 
     private void refreshSchema(KeyspaceTable keyspaceTable) {

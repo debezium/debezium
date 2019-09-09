@@ -5,22 +5,19 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
+import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.debezium.connector.cassandra.Record.SOURCE;
-
 /**
  * Metadata about the source of the change event
  */
-public class SourceInfo implements AvroRecord {
+public class SourceInfo {
     public static final String DEBEZIUM_VERSION_KEY = "version";
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
     public static final String CLUSTER_KEY = "cluster";
@@ -31,17 +28,15 @@ public class SourceInfo implements AvroRecord {
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String TIMESTAMP_KEY = "ts_micro";
 
-    public static final Schema SOURCE_SCHEMA = SchemaBuilder.builder().record(SOURCE).fields()
-            .requiredString(DEBEZIUM_VERSION_KEY)
-            .requiredString(DEBEZIUM_CONNECTOR_KEY)
-            .requiredString(CLUSTER_KEY)
-            .requiredString(COMMITLOG_FILENAME_KEY)
-            .requiredInt(COMMITLOG_POSITION_KEY)
-            .requiredBoolean(SNAPSHOT_KEY)
-            .requiredString(KEYSPACE_NAME_KEY)
-            .requiredString(TABLE_NAME_KEY)
-            .name(TIMESTAMP_KEY).type(CassandraTypeToAvroSchemaMapper.TIMESTAMP_MICRO_TYPE).noDefault()
-            .endRecord();
+    public static final Schema SOURCE_SCHEMA = SchemaBuilder.struct().name(Record.SOURCE)
+            .field(CLUSTER_KEY, Schema.STRING_SCHEMA)
+            .field(COMMITLOG_FILENAME_KEY, Schema.STRING_SCHEMA)
+            .field(COMMITLOG_POSITION_KEY, Schema.INT32_SCHEMA)
+            .field(SNAPSHOT_KEY, Schema.BOOLEAN_SCHEMA)
+            .field(KEYSPACE_NAME_KEY, Schema.STRING_SCHEMA)
+            .field(TABLE_NAME_KEY, Schema.STRING_SCHEMA)
+            .field(TIMESTAMP_KEY, CassandraTypeKafkaSchemaBuilders.TIMESTAMP_MICRO_TYPE)
+            .build();
 
     public final String version = Module.version();
     public final String connector = Module.name();
@@ -59,22 +54,18 @@ public class SourceInfo implements AvroRecord {
         this.snapshot = snapshot;
     }
 
-    @Override
-    public GenericRecord record(Schema schema) {
-        return new GenericRecordBuilder(schema)
-                .set(DEBEZIUM_VERSION_KEY, version)
-                .set(DEBEZIUM_CONNECTOR_KEY, connector)
-                .set(CLUSTER_KEY, cluster)
-                .set(COMMITLOG_FILENAME_KEY, offsetPosition.fileName)
-                .set(COMMITLOG_POSITION_KEY, offsetPosition.filePosition)
-                .set(SNAPSHOT_KEY, snapshot)
-                .set(KEYSPACE_NAME_KEY, keyspaceTable.keyspace)
-                .set(TABLE_NAME_KEY, keyspaceTable.table)
-                .set(TIMESTAMP_KEY, tsMicro)
-                .build();
+    public Struct record(Schema schema) {
+        return new Struct(schema)
+                .put(CLUSTER_KEY, cluster)
+                .put(COMMITLOG_FILENAME_KEY, offsetPosition.fileName)
+                .put(COMMITLOG_POSITION_KEY, offsetPosition.filePosition)
+                .put(SNAPSHOT_KEY, snapshot)
+                .put(KEYSPACE_NAME_KEY, keyspaceTable.keyspace)
+                .put(TABLE_NAME_KEY, keyspaceTable.table)
+                .put(TIMESTAMP_KEY, tsMicro);
+
     }
 
-    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -92,12 +83,10 @@ public class SourceInfo implements AvroRecord {
                 && tsMicro == that.tsMicro;
     }
 
-    @Override
     public int hashCode() {
         return Objects.hash(cluster, snapshot, offsetPosition, keyspaceTable, tsMicro);
     }
 
-    @Override
     public String toString() {
         Map<String, Object> map = new HashMap<>();
         map.put(DEBEZIUM_VERSION_KEY, version);

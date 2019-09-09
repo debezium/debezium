@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.avro.Schema;
+import org.apache.kafka.connect.data.Schema;
 
 /**
  * An internal representation of a create/update/delete event.

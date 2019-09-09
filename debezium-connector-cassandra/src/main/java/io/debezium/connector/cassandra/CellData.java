@@ -7,11 +7,10 @@ package io.debezium.connector.cassandra;
 
 import com.datastax.driver.core.ColumnMetadata;
 import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.cassandra.db.marshal.AbstractType;
 
 import java.util.Objects;
@@ -20,7 +19,7 @@ import java.util.Objects;
  * Cell-level data about the source event. Each cell contains the name, value and
  * type of a column in a Cassandra table.
  */
-public class CellData implements AvroRecord {
+public class CellData {
     /**
      * The type of a column in a Cassandra table
      */
@@ -63,30 +62,30 @@ public class CellData implements AvroRecord {
         return columnType == ColumnType.PARTITION || columnType == ColumnType.CLUSTERING;
     }
 
-    @Override
-    public GenericRecord record(Schema schema) {
-        return new GenericRecordBuilder(schema)
-                .set(CELL_VALUE_KEY, value)
-                .set(CELL_DELETION_TS_KEY, deletionTs)
-                .set(CELL_SET_KEY, true)
-                .build();
+    public Struct record(Schema schema) {
+        return new Struct(schema)
+                .put(CELL_VALUE_KEY, value)
+                .put(CELL_DELETION_TS_KEY, deletionTs)
+                .put(CELL_SET_KEY, true);
     }
 
-    static Schema cellSchema(ColumnMetadata cm) {
+    static Schema cellSchema(ColumnMetadata cm, boolean optional) {
         AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
-        Schema valueSchema = CassandraTypeToAvroSchemaMapper.getSchema(convertedType, true);
+        Schema valueSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).optional().build();
         if (valueSchema != null) {
-            return SchemaBuilder.builder().record(cm.getName()).fields()
-                    .name(CELL_VALUE_KEY).type(valueSchema).noDefault()
-                    .name(CELL_DELETION_TS_KEY).type(CassandraTypeToAvroSchemaMapper.nullable(CassandraTypeToAvroSchemaMapper.LONG_TYPE)).withDefault(null)
-                    .name(CELL_SET_KEY).type().booleanType().noDefault()
-                    .endRecord();
+            SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(cm.getName())
+                    .field(CELL_VALUE_KEY, valueSchema)
+                    .field(CELL_DELETION_TS_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                    .field(CELL_SET_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+            if (optional) {
+                schemaBuilder.optional();
+            }
+            return schemaBuilder.build();
         } else {
             return null;
         }
     }
 
-    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -101,12 +100,10 @@ public class CellData implements AvroRecord {
                 && columnType == that.columnType;
     }
 
-    @Override
     public int hashCode() {
         return Objects.hash(name, value, deletionTs, columnType);
     }
 
-    @Override
     public String toString() {
         return "{"
                 + "name=" + name

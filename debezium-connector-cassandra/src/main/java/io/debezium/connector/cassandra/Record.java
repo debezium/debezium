@@ -8,11 +8,10 @@ package io.debezium.connector.cassandra;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.TableMetadata;
 import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.cassandra.db.marshal.AbstractType;
 
 import java.util.List;
@@ -22,7 +21,7 @@ import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
 
 /**
  * An immutable data structure representing a change event, and can be converted
- * to a GenericRecord representing key/value of the change event.
+ * to a kafka connect Struct representing key/value of the change event.
  */
 public abstract class Record implements Event {
     static final String NAMESPACE = "io.debezium.connector.cassandra";
@@ -70,57 +69,56 @@ public abstract class Record implements Event {
         this.ts = ts;
     }
 
-    public GenericRecord buildKey() {
+    public Struct buildKey() {
         if (keySchema == null) {
             return null;
         }
 
         List<CellData> primary = rowData.getPrimary();
-        GenericRecordBuilder builder = new GenericRecordBuilder(keySchema);
+        Struct struct = new Struct(keySchema);
         for (CellData cellData : primary) {
-            builder.set(cellData.name, cellData.value);
+            struct.put(cellData.name, cellData.value);
         }
-        return builder.build();
+        return struct;
     }
 
-    public GenericRecord buildValue() {
+    public Struct buildValue() {
         if (valueSchema == null) {
             return null;
         }
 
-        return new GenericRecordBuilder(valueSchema)
-                .set(TIMESTAMP, ts)
-                .set(OPERATION, op.getValue())
-                .set(SOURCE, source.record(getFieldSchema(SOURCE, valueSchema)))
-                .set(AFTER, rowData.record(getFieldSchema(AFTER, valueSchema)))
-                .build();
+        return new Struct(valueSchema)
+                .put(TIMESTAMP, ts)
+                .put(OPERATION, op.getValue())
+                .put(SOURCE, source.record(getFieldSchema(SOURCE, valueSchema)))
+                .put(AFTER, rowData.record(getFieldSchema(AFTER, valueSchema)));
     }
 
     public static Schema keySchema(String connectorName, TableMetadata tm) {
         if (tm == null) {
             return null;
         }
-        SchemaBuilder.FieldAssembler assembler = SchemaBuilder.builder().record(getKeyName(connectorName, tm)).namespace(NAMESPACE).fields();
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(NAMESPACE+"."+getKeyName(connectorName, tm));
         for (ColumnMetadata cm : tm.getPrimaryKey()) {
             AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
-            Schema colSchema = CassandraTypeToAvroSchemaMapper.getSchema(convertedType, false);
+            Schema colSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).build();
             if (colSchema != null) {
-                assembler.name(cm.getName()).type(colSchema).noDefault();
+                schemaBuilder.field(cm.getName(), colSchema);
             }
         }
-        return (Schema) assembler.endRecord();
+        return schemaBuilder.build();
     }
 
     public static Schema valueSchema(String connectorName, TableMetadata tm) {
         if (tm == null) {
             return null;
         }
-        return SchemaBuilder.builder().record(getValueName(connectorName, tm)).namespace(NAMESPACE).fields()
-                .name(TIMESTAMP).type().longType().noDefault()
-                .name(OPERATION).type().stringType().noDefault()
-                .name(SOURCE).type(SourceInfo.SOURCE_SCHEMA).noDefault()
-                .name(AFTER).type(RowData.rowSchema(tm)).noDefault()
-                .endRecord();
+        return SchemaBuilder.struct().name(NAMESPACE+"."+getValueName(connectorName, tm))
+                .field(TIMESTAMP, Schema.INT64_SCHEMA)
+                .field(OPERATION, Schema.STRING_SCHEMA)
+                .field(SOURCE, SourceInfo.SOURCE_SCHEMA)
+                .field(AFTER, RowData.rowSchema(tm))
+                .build();
     }
 
     @Override

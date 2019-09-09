@@ -10,7 +10,7 @@ import com.datastax.driver.core.TableMetadata;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import org.apache.avro.Schema;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.LivenessInfo;

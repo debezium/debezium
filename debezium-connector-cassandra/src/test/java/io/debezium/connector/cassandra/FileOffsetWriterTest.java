@@ -6,7 +6,7 @@
 package io.debezium.connector.cassandra;
 
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
-import org.apache.avro.SchemaBuilder;
+import org.apache.kafka.connect.data.Schema;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -126,7 +126,7 @@ public class FileOffsetWriterTest {
 
     private ChangeRecord generateRecord(boolean markOffset, boolean isSnapshot, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         SourceInfo source = new SourceInfo("test-cluster", offsetPosition, keyspaceTable, isSnapshot, System.currentTimeMillis() * 1000);
-        return new ChangeRecord(source, new RowData(), SchemaBuilder.builder().intType(), SchemaBuilder.builder().intType(), Record.Operation.INSERT, markOffset);
+        return new ChangeRecord(source, new RowData(),  Schema.INT32_SCHEMA, Schema.INT32_SCHEMA, Record.Operation.INSERT, markOffset);
     }
 
     private boolean isProcessed(ChangeRecord record) {

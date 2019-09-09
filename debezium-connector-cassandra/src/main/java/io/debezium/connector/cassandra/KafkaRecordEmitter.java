@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -25,7 +25,7 @@ import java.util.concurrent.Future;
 public class KafkaRecordEmitter implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
 
-    private final KafkaProducer<GenericRecord, GenericRecord> producer;
+    private final KafkaProducer<Struct, Struct> producer;
     private final CassandraTopicSelector topicSelector;
     private final OffsetWriter offsetWriter;
     private final OffsetFlushPolicy offsetFlushPolicy;
@@ -43,14 +43,14 @@ public class KafkaRecordEmitter implements AutoCloseable {
 
     public void emit(Record record) {
         synchronized (lock) {
-            ProducerRecord<GenericRecord, GenericRecord> producerRecord = toProducerRecord(record);
+            ProducerRecord<Struct, Struct> producerRecord = toProducerRecord(record);
             Future<RecordMetadata> future = producer.send(producerRecord);
             futures.put(record, future);
             maybeFlushAndMarkOffset();
         }
     }
 
-    private ProducerRecord<GenericRecord, GenericRecord> toProducerRecord(Record record) {
+    private ProducerRecord<Struct, Struct> toProducerRecord(Record record) {
         String topic = topicSelector.topicNameFor(record.getSource().keyspaceTable);
         return new ProducerRecord<>(topic, record.buildKey(), record.buildValue());
     }

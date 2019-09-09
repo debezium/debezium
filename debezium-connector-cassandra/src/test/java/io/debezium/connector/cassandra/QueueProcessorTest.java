@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.kafka.connect.data.Schema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,7 +46,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         BlockingEventQueue<Event> queue = context.getQueue();
         for (int i = 0; i < recordSize; i++) {
             SourceInfo sourceInfo = new SourceInfo(DatabaseDescriptor.getClusterName(), new OffsetPosition("CommitLog-6-123.log", i), new KeyspaceTable(TEST_KEYSPACE, "cdc_table"), false, System.currentTimeMillis() * 1000);
-            Record record = new ChangeRecord(sourceInfo, new RowData(), CassandraTypeToAvroSchemaMapper.INT_TYPE,  CassandraTypeToAvroSchemaMapper.INT_TYPE, Record.Operation.INSERT, false);
+            Record record = new ChangeRecord(sourceInfo, new RowData(), Schema.INT32_SCHEMA,  Schema.INT32_SCHEMA, Record.Operation.INSERT, false);
             queue.enqueue(record);
         }
 
@@ -64,7 +64,7 @@ public class QueueProcessorTest extends EmbeddedCassandraConnectorTestBase {
         BlockingEventQueue<Event> queue = context.getQueue();
         for (int i = 0; i < recordSize; i++) {
             SourceInfo sourceInfo = new SourceInfo(DatabaseDescriptor.getClusterName(), new OffsetPosition("CommitLog-6-123.log", i), new KeyspaceTable(TEST_KEYSPACE, "cdc_table"), false, System.currentTimeMillis() * 1000);
-            Record record = new TombstoneRecord(sourceInfo, new RowData(), CassandraTypeToAvroSchemaMapper.INT_TYPE);
+            Record record = new TombstoneRecord(sourceInfo, new RowData(), Schema.INT32_SCHEMA);
             queue.enqueue(record);
         }
 
