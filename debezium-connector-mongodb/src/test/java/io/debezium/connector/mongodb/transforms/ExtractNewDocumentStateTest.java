@@ -130,6 +130,45 @@ public class ExtractNewDocumentStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1442")
+    public void shouldAddSourceFieldsForRewriteDeleteEvent() throws InterruptedException {
+        RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, false);
+
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("$set", new Document("name", "Sally"));
+
+        // given
+        Document event = new Document().append("o", obj)
+                .append("o2", objId)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", 12345678L)
+                .append("op", "d");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, 1002);
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        props.put(HANDLE_DELETES, "rewrite");
+        transformation.configure(props);
+
+        // when
+        SourceRecord transformed = transformation.apply(record);
+        Struct value = (Struct) transformed.value();
+
+        // assert source fields' value
+        assertThat(value.get("__h")).isEqualTo(12345678L);
+        assertThat(value.get("__ts_ms")).isEqualTo(1000000L);
+        assertThat(value.get("__ord")).isEqualTo(1);
+        assertThat(value.get("__db")).isEqualTo("dbA");
+        assertThat(value.get("__rs")).isEqualTo("rs0");
+    }
+
+    @Test
     @FixFor("DBZ-1430")
     public void shouldDropHeartbeatMessages() {
         Schema valueSchema = SchemaBuilder.struct()
