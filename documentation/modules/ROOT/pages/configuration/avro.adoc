@@ -116,6 +116,18 @@ docker run -it --rm --name avro-consumer \
       --topic db.myschema.mytable
 ----
 
+[[names]]
+== Naming
+
+As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[documentation], names must adhere to the following rules:
+
+* Start with `[A-Za-Z_]`
+* Subsequently contain only `[A-Za-z0-9_]` characters
+
+Debezium uses the column's name as the basis for the Avro field.
+This can lead to problems during serialization if the column name does not also adhere to the Avro naming rules above.
+Debezium provides a configuration option, `sanitize.field.names` that can be set to `true` if you have columns that do not adhere to the rule-set above, allowing those fields to be serialized without having to actually modify your schema.
+
 == Getting More Information
 
 link:/blog/2016/09/19/Serializing-Debezium-events-with-Avro/[This post] from the Debezium blog

@@ -748,4 +748,10 @@ Disabled by default.
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
+|`sanitize.field.names` +
+0.10.0.Beta4 and later
+|`false`
+|Whether field names will be sanitized to adhere to AVRO naming requirements.
+See xref:configuration/avro.adoc#names[Avro naming] for more details.
+
 |=======================

@@ -1940,6 +1940,13 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future Debezium version.
+
+|`sanitize.field.names` +
+0.10.0.Beta4 and later
+|`false`
+|Whether field names will be sanitized to adhere to AVRO naming requirements.
+See xref:configuration/avro.adoc#names[Avro naming] for more details.
+
 |=======================
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.

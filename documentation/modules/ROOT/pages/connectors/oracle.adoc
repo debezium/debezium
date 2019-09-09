@@ -1136,4 +1136,10 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
+|`sanitize.field.names` +
+0.10.0.Beta4 and later
+|`false`
+|Whether field names will be sanitized to adhere to AVRO naming requirements.
+See xref:configuration/avro.adoc#names[Avro naming] for more details.
+
 |=======================
