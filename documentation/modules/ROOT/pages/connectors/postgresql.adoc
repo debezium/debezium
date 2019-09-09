@@ -1666,6 +1666,12 @@ can for instance be used to enable server-side table filtering when using the wa
 Allowed values depend on the chosen plug-in are separated by semicolon,
 e.g. `add-tables=public.table,public.table2;include-lsn=true`.
 
+|`sanitize.field.names` +
+0.10.0.Beta4 and later
+|`false`
+|Whether field names will be sanitized to adhere to AVRO naming requirements.
+See xref:configuration/avro.adoc#names[Avro naming] for more details.
+
 |=======================
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer.
