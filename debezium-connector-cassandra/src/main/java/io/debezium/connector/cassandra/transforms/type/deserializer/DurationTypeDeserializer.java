@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecordBuilder;
+import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 
 import java.nio.ByteBuffer;
 
@@ -22,7 +22,7 @@ public class DurationTypeDeserializer extends BasicTypeDeserializer {
      */
 
     public DurationTypeDeserializer() {
-        super(CassandraTypeToAvroSchemaMapper.DURATION_TYPE);
+        super(CassandraTypeKafkaSchemaBuilders.DURATION_TYPE);
     }
 
     @Override
@@ -32,9 +32,10 @@ public class DurationTypeDeserializer extends BasicTypeDeserializer {
         int days = duration.getDays();
         long nanoSec = duration.getNanoseconds();
 
-        Schema durationSchema = getSchema(abstractType);
-        return new GenericRecordBuilder(durationSchema).set("months", months)
-                                                       .set("days", days)
-                                                       .set("nanos", nanoSec).build();
+        Schema durationSchema = getSchemaBuilder(abstractType).build();
+        return new Struct(durationSchema)
+                .put("months", months)
+                .put("days", days)
+                .put("nanos", nanoSec);
     }
 }

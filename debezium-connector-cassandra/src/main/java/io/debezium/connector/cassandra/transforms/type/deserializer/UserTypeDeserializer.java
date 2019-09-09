@@ -6,13 +6,12 @@
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.cassandra.cql3.UserTypes;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -26,30 +25,27 @@ public class UserTypeDeserializer extends TypeDeserializer {
         UserTypes.Value value = UserTypes.Value.fromSerialized(userTypeByteBuffer, userType);
         List<ByteBuffer> elements = value.getElements();
 
-        GenericRecordBuilder recordBuilder = new GenericRecordBuilder(getSchema(abstractType));
+        Struct struct = new Struct(getSchemaBuilder(abstractType).build());
 
         for (int i = 0; i < userType.fieldNames().size(); i++) {
             String fieldName = userType.fieldNameAsString(i);
             AbstractType<?> fieldType = userType.type(i);
-            recordBuilder.set(fieldName, CassandraTypeDeserializer.deserialize(fieldType, elements.get(i)));
+            struct.put(fieldName, CassandraTypeDeserializer.deserialize(fieldType, elements.get(i)));
         }
 
-        return recordBuilder.build();
+        return struct;
     }
 
     @Override
-    public Schema getSchema(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         UserType userType = (UserType) abstractType;
-        SchemaBuilder.FieldAssembler<Schema> schemaBuilder =
-                SchemaBuilder.record(userType.getNameAsString())
-                             .namespace(userType.keyspace)
-                             .fields();
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(userType.keyspace+"."+userType.getNameAsString());
         List<org.apache.cassandra.cql3.FieldIdentifier> fieldIdentifiers = userType.fieldNames();
         List<AbstractType<?>> fieldTypes = userType.fieldTypes();
         for (int i = 0; i < fieldIdentifiers.size(); i++) {
-            Schema fieldSchema = CassandraTypeToAvroSchemaMapper.getSchema(fieldTypes.get(i), false);
-            schemaBuilder.name(fieldIdentifiers.get(i).toString()).type(fieldSchema).noDefault();
+            Schema fieldSchema = CassandraTypeDeserializer.getSchemaBuilder(fieldTypes.get(i)).build();
+            schemaBuilder.field(fieldIdentifiers.get(i).toString(), fieldSchema);
         }
-        return schemaBuilder.endRecord();
+        return schemaBuilder;
     }
 }

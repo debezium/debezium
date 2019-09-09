@@ -5,30 +5,33 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericData;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.SetType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Values;
 
 import java.nio.ByteBuffer;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 
 public class SetTypeDeserializer extends TypeDeserializer {
 
     @Override
     @SuppressWarnings("unchecked")
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
-        Set<?> deserializedList = (Set<?>) super.deserialize(abstractType, bb);
-        return new GenericData.Array(getSchema(abstractType), deserializedList);
+        Set<?> deserializedSet = (Set<?>) super.deserialize(abstractType, bb);
+        List<?> deserializedList = (new ArrayList<> (deserializedSet));
+        return Values.convertToList(getSchemaBuilder(abstractType).build(), deserializedList);
     }
 
     @Override
-    public Schema getSchema(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         SetType<?> listType = (SetType<?>) abstractType;
         AbstractType<?> elementsType = listType.getElementsType();
-        Schema innerSchema = CassandraTypeToAvroSchemaMapper.getSchema(elementsType, false);
-        return SchemaBuilder.array().items(innerSchema);
+        Schema innerSchema = CassandraTypeDeserializer.getSchemaBuilder(elementsType).build();
+        return SchemaBuilder.array(innerSchema);
     }
 }

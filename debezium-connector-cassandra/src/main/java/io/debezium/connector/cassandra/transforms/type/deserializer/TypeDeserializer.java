@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import org.apache.avro.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.SchemaBuilder;
 
 import java.nio.ByteBuffer;
 
@@ -16,5 +16,5 @@ public abstract class TypeDeserializer {
         return abstractType.getSerializer().deserialize(bb);
     }
 
-    public abstract Schema getSchema(AbstractType<?> abstractType);
+    public abstract SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType);
 }

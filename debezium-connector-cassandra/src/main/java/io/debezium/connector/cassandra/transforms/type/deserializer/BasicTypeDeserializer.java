@@ -5,19 +5,19 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import org.apache.avro.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.SchemaBuilder;
 
 public class BasicTypeDeserializer extends TypeDeserializer {
 
-    private Schema schema;
+    private SchemaBuilder schemaBuilder;
 
-    public BasicTypeDeserializer(Schema schema) {
-        this.schema = schema;
+    public BasicTypeDeserializer(SchemaBuilder schemaBuilder) {
+        this.schemaBuilder = schemaBuilder;
     }
 
     @Override
-    public Schema getSchema(AbstractType<?> abstractType) {
-        return schema;
+    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
+        return schemaBuilder;
     }
 }

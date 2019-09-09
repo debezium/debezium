@@ -6,11 +6,10 @@
 package io.debezium.connector.cassandra.transforms;
 
 import com.datastax.driver.core.DataType;
-import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Values;
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.cql3.FieldIdentifier;
 import org.apache.cassandra.cql3.QueryOptions;
@@ -150,11 +149,11 @@ public class CassandraTypeDeserializerTest {
     public void testDurationType() {
         Duration sourceDuration = Duration.newInstance(1, 3, 500);
 
-        GenericData.Record expectedDurationRecord =
-                new GenericRecordBuilder(CassandraTypeToAvroSchemaMapper.DURATION_TYPE).set("months", sourceDuration.getMonths())
-                                                       .set("days", sourceDuration.getDays())
-                                                       .set("nanos", sourceDuration.getNanoseconds())
-                                                       .build();
+        Struct expectedDurationRecord =
+                new Struct(CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
+                        .put("months", sourceDuration.getMonths())
+                        .put("days", sourceDuration.getDays())
+                        .put("nanos", sourceDuration.getNanoseconds());
 
         ByteBuffer serializedDuration = DurationType.instance.decompose(sourceDuration);
 
@@ -258,9 +257,9 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedMap = mapType.decompose(sourceMap);
         Object deserializedMap = CassandraTypeDeserializer.deserialize(mapType, serializedMap);
 
-        Map<String, Float> expectedMap = new HashMap<>();
-        expectedMap.put("1", 1.5F);
-        expectedMap.put("2", 3.1414F);
+        Map<Integer, Float> expectedMap = new HashMap<>();
+        expectedMap.put(1, 1.5F);
+        expectedMap.put(2, 3.1414F);
 
         Assert.assertEquals(expectedMap, deserializedMap);
     }
@@ -335,7 +334,7 @@ public class CassandraTypeDeserializerTest {
     @Test
     public void testTimeUUIDType() {
         UUID timeUUID = UUID.randomUUID();
-        GenericData.Fixed expectedFixedUUID = new GenericData.Fixed(CassandraTypeToAvroSchemaMapper.UUID_TYPE, UuidUtil.asBytes(timeUUID));
+        String expectedFixedUUID = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(timeUUID));
 
         ByteBuffer serializedTimeUUID = TimeUUIDType.instance.decompose(timeUUID);
 
@@ -355,11 +354,14 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedTuple = tupleType.fromString(sourceTupleString);
 
         Object deserializedTuple = CassandraTypeDeserializer.deserialize(tupleType, serializedTuple);
+        Schema expectedSchema = SchemaBuilder.struct().name("AsciiShortTuple")
+                .field("field1", Schema.STRING_SCHEMA)
+                .field("field2", Schema.INT16_SCHEMA)
+                .build();
 
-        Schema expectedSchema = SchemaBuilder.record("AsciiShortTuple").fields().requiredString("field1").requiredInt("field2").endRecord();
-        GenericRecord expectedTuple = new GenericRecordBuilder(expectedSchema).set("field1", "foo")
-                                                                              .set("field2", (short) 1)
-                                                                              .build();
+        Struct expectedTuple = new Struct(expectedSchema)
+                .put("field1", "foo")
+                .put("field2", (short) 1);
 
         Assert.assertEquals(expectedTuple, deserializedTuple);
     }
@@ -384,28 +386,23 @@ public class CassandraTypeDeserializerTest {
                 expectedFieldTypes,
                 true);
 
-        Schema expectedUserTypeSchema = SchemaBuilder.record("FooType")
-                                                     .namespace("barspace")
-                                                     .fields()
-                                                     .requiredString("asciiField")
-                                                     .requiredDouble("doubleField")
-                                                     .name("durationField").type(CassandraTypeToAvroSchemaMapper.DURATION_TYPE).noDefault()
-                                                     .endRecord();
+        Schema expectedUserTypeSchema = SchemaBuilder.struct().name("barspace"+"."+"FooType")
+                .field("asciiField", Schema.STRING_SCHEMA)
+                .field("doubleField", Schema.FLOAT64_SCHEMA)
+                .field("durationField", CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
+                .build();
 
-        Assert.assertEquals(expectedUserTypeSchema, CassandraTypeDeserializer.getSchema(userType));
+        Assert.assertEquals(expectedUserTypeSchema, CassandraTypeDeserializer.getSchemaBuilder(userType).build());
 
-        // then, test for data correctness
-        GenericData.Record expectedDuration =
-                new GenericRecordBuilder(CassandraTypeToAvroSchemaMapper.DURATION_TYPE).set("months", 1)
-                                                       .set("days", 2)
-                                                       .set("nanos", 3L)
-                                                       .build();
+        Struct expectedDuration = new Struct(CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
+                .put("months", 1)
+                .put("days", 2)
+                .put("nanos", 3L);
 
-        GenericData.Record expectedUserTypeData =
-                new GenericRecordBuilder(expectedUserTypeSchema).set("asciiField", "foobar")
-                                                                .set("doubleField", 1.5d)
-                                                                .set("durationField", expectedDuration)
-                                                                .build();
+        Struct expectedUserTypeData = new Struct(expectedUserTypeSchema)
+                .put("asciiField", "foobar")
+                .put("doubleField", 1.5d)
+                .put("durationField", expectedDuration);
 
         Map<String, Object> jsonObject = new HashMap<>(3);
         jsonObject.put("\"asciiField\"", "foobar");
@@ -436,7 +433,7 @@ public class CassandraTypeDeserializerTest {
     @Test
     public void testUUIDType() {
         UUID uuid = UUID.randomUUID();
-        GenericData.Fixed expectedFixedUUID = new GenericData.Fixed(CassandraTypeToAvroSchemaMapper.UUID_TYPE, UuidUtil.asBytes(uuid));
+        String expectedFixedUUID = Values.convertToString(CassandraTypeKafkaSchemaBuilders.UUID_TYPE, UuidUtil.asBytes(uuid));
 
         ByteBuffer serializedUUID = UUIDType.instance.decompose(uuid);
 

@@ -6,13 +6,13 @@
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
 import io.debezium.connector.cassandra.transforms.UuidUtil;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.Values;
+import org.apache.kafka.connect.data.SchemaBuilder;
 
 import java.nio.ByteBuffer;
 
-import static io.debezium.connector.cassandra.transforms.CassandraTypeToAvroSchemaMapper.UUID_TYPE;
+import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.UUID_TYPE;
 
 public class TimeUUIDTypeDeserializer extends TypeDeserializer {
 
@@ -20,11 +20,11 @@ public class TimeUUIDTypeDeserializer extends TypeDeserializer {
     public Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         Object value = super.deserialize(abstractType, bb);
         byte[] bytes = UuidUtil.asBytes((java.util.UUID) value);
-        return new GenericData.Fixed(UUID_TYPE, bytes);
+        return Values.convertToString(getSchemaBuilder(abstractType).build(), bytes);
     }
 
     @Override
-    public Schema getSchema(AbstractType<?> abstractType) {
+    public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         return UUID_TYPE;
     }
 }

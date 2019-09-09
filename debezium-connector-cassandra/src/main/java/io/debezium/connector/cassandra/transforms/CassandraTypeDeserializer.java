@@ -18,7 +18,6 @@ import io.debezium.connector.cassandra.transforms.type.deserializer.TupleTypeDes
 import io.debezium.connector.cassandra.transforms.type.deserializer.TypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.UUIDTypeDeserializer;
 import io.debezium.connector.cassandra.transforms.type.deserializer.UserTypeDeserializer;
-import org.apache.avro.Schema;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
@@ -44,6 +43,8 @@ import org.apache.cassandra.db.marshal.TupleType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -56,29 +57,29 @@ public final class CassandraTypeDeserializer {
     private static final Map<Class<? extends AbstractType>, TypeDeserializer> typeMap = new HashMap<>();
 
     static {
-        typeMap.put(AsciiType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.STRING_TYPE));
-        typeMap.put(BooleanType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.BOOLEAN_TYPE));
-        typeMap.put(BytesType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.BYTES_TYPE));
-        typeMap.put(ByteType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.INT_TYPE));
-        typeMap.put(CounterColumnType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.LONG_TYPE));
-        typeMap.put(DecimalType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.DOUBLE_TYPE));
-        typeMap.put(DoubleType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.DOUBLE_TYPE));
+        typeMap.put(AsciiType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.STRING_TYPE));
+        typeMap.put(BooleanType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BOOLEAN_TYPE));
+        typeMap.put(BytesType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BYTES_TYPE));
+        typeMap.put(ByteType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.BYTE_TYPE));
+        typeMap.put(CounterColumnType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
+        typeMap.put(DecimalType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE));
+        typeMap.put(DoubleType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DOUBLE_TYPE));
         typeMap.put(DurationType.class, new DurationTypeDeserializer());
-        typeMap.put(FloatType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.FLOAT_TYPE));
+        typeMap.put(FloatType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.FLOAT_TYPE));
         typeMap.put(InetAddressType.class, new InetAddressDeserializer());
-        typeMap.put(Int32Type.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.INT_TYPE));
+        typeMap.put(Int32Type.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.INT_TYPE));
         typeMap.put(ListType.class, new ListTypeDeserializer());
-        typeMap.put(LongType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.LONG_TYPE));
+        typeMap.put(LongType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
         typeMap.put(MapType.class, new MapTypeDeserializer());
         typeMap.put(SetType.class, new SetTypeDeserializer());
-        typeMap.put(ShortType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.INT_TYPE));
-        typeMap.put(SimpleDateType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.DATE_TYPE));
-        typeMap.put(TimeType.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.LONG_TYPE));
+        typeMap.put(ShortType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.SHORT_TYPE));
+        typeMap.put(SimpleDateType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.DATE_TYPE));
+        typeMap.put(TimeType.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.LONG_TYPE));
         typeMap.put(TimestampType.class, new TimestampTypeDeserializer());
         typeMap.put(TimeUUIDType.class, new TimeUUIDTypeDeserializer());
         typeMap.put(TupleType.class, new TupleTypeDeserializer());
         typeMap.put(UserType.class, new UserTypeDeserializer());
-        typeMap.put(UTF8Type.class, new BasicTypeDeserializer(CassandraTypeToAvroSchemaMapper.STRING_TYPE));
+        typeMap.put(UTF8Type.class, new BasicTypeDeserializer(CassandraTypeKafkaSchemaBuilders.STRING_TYPE));
         typeMap.put(UUIDType.class, new UUIDTypeDeserializer());
     }
 
@@ -111,13 +112,13 @@ public final class CassandraTypeDeserializer {
     }
 
     /**
-     * Construct an Avro Schema object from a Cassandra data type
+     * Construct a kafka connect SchemaBuilder object from a Cassandra data type
      * @param abstractType implementation of Cassandra's AbstractType
-     * @return the Avro schema object
+     * @return the kafka connect SchemaBuilder object
      */
-    public static Schema getSchema(AbstractType<?> abstractType) {
+    public static SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         TypeDeserializer typeDeserializer = typeMap.get(abstractType.getClass());
-        return typeDeserializer.getSchema(abstractType);
+        return typeDeserializer.getSchemaBuilder(abstractType);
     }
 
 }
