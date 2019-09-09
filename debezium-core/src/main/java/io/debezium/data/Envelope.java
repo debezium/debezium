@@ -77,6 +77,10 @@ public final class Envelope {
          */
         public static final String AFTER = "after";
         /**
+         * The {@code patch} field is used to store the state of a record after an update operation.
+         */
+        public static final String PATCH = "patch";
+        /**
          * The {@code op} field is used to store the kind of operation on a record.
          */
         public static final String OPERATION = "op";

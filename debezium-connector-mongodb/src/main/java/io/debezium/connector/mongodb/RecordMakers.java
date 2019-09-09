@@ -138,7 +138,8 @@ public class RecordMakers {
             this.valueSchema = SchemaBuilder.struct()
                                             .name(adjuster.adjust(topicName + ".Envelope"))
                                             .field(FieldName.AFTER, Json.builder().optional().build())
-                                            .field("patch", Json.builder().optional().build())
+                                            .field(FieldName.PATCH, Json.builder().optional().build())
+                                            .field(FieldName.BEFORE, Json.builder().optional().build())
                                             .field(FieldName.SOURCE, source.schema())
                                             .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                                             .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -213,11 +214,11 @@ public class RecordMakers {
                 case UPDATE:
                     // The object is the idempotent patch document ...
                     String patchStr = valueTransformer.apply(fieldFilter.apply(objectValue));
-                    value.put("patch", patchStr);
+                    value.put(FieldName.PATCH, patchStr);
                     break;
                 case DELETE:
-                    // The delete event has nothing of any use, other than the _id which we already have in our key.
-                    // So put nothing in the 'after' or 'patch' fields ...
+                    String beforeStr = valueTransformer.apply(fieldFilter.apply(objectValue));
+                    value.put(FieldName.BEFORE, beforeStr);
                     break;
             }
             value.put(FieldName.SOURCE, source);

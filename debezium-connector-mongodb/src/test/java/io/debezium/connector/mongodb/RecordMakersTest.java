@@ -92,7 +92,8 @@ public class RecordMakersTest {
         assertThat(key.schema()).isSameAs(record.keySchema());
         assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
         assertThat(value.schema()).isSameAs(record.valueSchema());
-        // assertThat(value.getString(FieldName.BEFORE)).isNull();
+        assertThat(value.getString(FieldName.BEFORE)).isNull();
+        assertThat(value.getString(FieldName.PATCH)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isEqualTo(obj.toJson(WRITER_SETTINGS));
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
@@ -122,9 +123,9 @@ public class RecordMakersTest {
         assertThat(key.schema()).isSameAs(record.keySchema());
         assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(value.schema()).isSameAs(record.valueSchema());
-        // assertThat(value.getString(FieldName.BEFORE)).isNull();
+        assertThat(value.getString(FieldName.BEFORE)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isNull();
-        assertThat(value.getString("patch")).isEqualTo(obj.toJson(WRITER_SETTINGS));
+        assertThat(value.getString(FieldName.PATCH)).isEqualTo(obj.toJson(WRITER_SETTINGS));
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
@@ -154,7 +155,8 @@ public class RecordMakersTest {
         assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
         assertThat(value.schema()).isSameAs(record.valueSchema());
         assertThat(value.getString(FieldName.AFTER)).isNull();
-        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(FieldName.PATCH)).isNull();
+        assertThat(value.getString(FieldName.BEFORE)).isEqualTo(obj.toJson(WRITER_SETTINGS));
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
