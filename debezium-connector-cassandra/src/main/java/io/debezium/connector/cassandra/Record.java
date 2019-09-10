@@ -98,7 +98,7 @@ public abstract class Record implements Event {
         if (tm == null) {
             return null;
         }
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(NAMESPACE+"."+getKeyName(connectorName, tm));
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(NAMESPACE + "." + getKeyName(connectorName, tm));
         for (ColumnMetadata cm : tm.getPrimaryKey()) {
             AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
             Schema colSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).build();
@@ -113,7 +113,7 @@ public abstract class Record implements Event {
         if (tm == null) {
             return null;
         }
-        return SchemaBuilder.struct().name(NAMESPACE+"."+getValueName(connectorName, tm))
+        return SchemaBuilder.struct().name(NAMESPACE + "." + getValueName(connectorName, tm))
                 .field(TIMESTAMP, Schema.INT64_SCHEMA)
                 .field(OPERATION, Schema.STRING_SCHEMA)
                 .field(SOURCE, SourceInfo.SOURCE_SCHEMA)

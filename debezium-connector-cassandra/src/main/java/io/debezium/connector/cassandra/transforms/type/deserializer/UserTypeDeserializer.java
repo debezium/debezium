@@ -39,7 +39,7 @@ public class UserTypeDeserializer extends TypeDeserializer {
     @Override
     public SchemaBuilder getSchemaBuilder(AbstractType<?> abstractType) {
         UserType userType = (UserType) abstractType;
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(userType.keyspace+"."+userType.getNameAsString());
+        SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(userType.keyspace + "." + userType.getNameAsString());
         List<org.apache.cassandra.cql3.FieldIdentifier> fieldIdentifiers = userType.fieldNames();
         List<AbstractType<?>> fieldTypes = userType.fieldTypes();
         for (int i = 0; i < fieldIdentifiers.size(); i++) {

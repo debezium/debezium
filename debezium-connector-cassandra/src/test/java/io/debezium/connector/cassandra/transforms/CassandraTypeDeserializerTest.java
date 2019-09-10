@@ -8,7 +8,6 @@ package io.debezium.connector.cassandra.transforms;
 import com.datastax.driver.core.DataType;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Values;
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.cql3.FieldIdentifier;
