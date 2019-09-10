@@ -354,12 +354,8 @@ public class CassandraTypeDeserializerTest {
         ByteBuffer serializedTuple = tupleType.fromString(sourceTupleString);
 
         Object deserializedTuple = CassandraTypeDeserializer.deserialize(tupleType, serializedTuple);
-        Schema expectedSchema = SchemaBuilder.struct().name("AsciiShortTuple")
-                .field("field1", Schema.STRING_SCHEMA)
-                .field("field2", Schema.INT16_SCHEMA)
-                .build();
-
-        Struct expectedTuple = new Struct(expectedSchema)
+        Schema tupleSchema = CassandraTypeDeserializer.getSchemaBuilder(tupleType).build();
+        Struct expectedTuple = new Struct(tupleSchema)
                 .put("field1", "foo")
                 .put("field2", (short) 1);
 
@@ -386,20 +382,14 @@ public class CassandraTypeDeserializerTest {
                 expectedFieldTypes,
                 true);
 
-        Schema expectedUserTypeSchema = SchemaBuilder.struct().name("barspace"+"."+"FooType")
-                .field("asciiField", Schema.STRING_SCHEMA)
-                .field("doubleField", Schema.FLOAT64_SCHEMA)
-                .field("durationField", CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
-                .build();
-
-        Assert.assertEquals(expectedUserTypeSchema, CassandraTypeDeserializer.getSchemaBuilder(userType).build());
+        Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
 
         Struct expectedDuration = new Struct(CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
                 .put("months", 1)
                 .put("days", 2)
                 .put("nanos", 3L);
 
-        Struct expectedUserTypeData = new Struct(expectedUserTypeSchema)
+        Struct expectedUserTypeData = new Struct(userSchema)
                 .put("asciiField", "foobar")
                 .put("doubleField", 1.5d)
                 .put("durationField", expectedDuration);
