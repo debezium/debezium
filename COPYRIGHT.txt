@@ -26,6 +26,7 @@ Chris Cranford
 Chris Riccomini
 Christian Posta
 Cliff Wheadon
+Cyril Scetbon
 David Chen
 David Leibovic
 David Szabo
@@ -51,6 +52,7 @@ Ian Axelrod
 Ilia Bogdanov
 Ivan Kovbas
 Ivan Lorenz
+Ivan Luzyanin
 Ivan Vucina
 Jakub Cechacek
 Jiri Pechanec
