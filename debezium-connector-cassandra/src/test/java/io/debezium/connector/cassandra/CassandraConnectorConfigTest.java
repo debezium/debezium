@@ -15,6 +15,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 
 public class CassandraConnectorConfigTest {
     @Test
@@ -129,9 +130,9 @@ public class CassandraConnectorConfigTest {
         assertEquals(transferClazz, config.getCommitLogTransfer().getClass().getName());
 
         String keyConverterClass = "io.confluent.connect.avro.AvroConverter";
-        HashMap<String, Object> keyConverterConfigs = new HashMap<> ();
+        HashMap<String, Object> keyConverterConfigs = new HashMap<>();
         keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG, keyConverterClass);
-        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX+"schema.registry.url", "http://localhost:8081");
+        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX+AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         config = buildTaskConfigs(keyConverterConfigs);
         assertEquals(keyConverterClass, config.getKeyConverter().getClass().getName());
 

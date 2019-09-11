@@ -26,7 +26,7 @@ import org.apache.kafka.connect.storage.Converter;
  */
 public class CassandraConnectorConfig {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraConnectorConfig.class);
 
     /**
      * The set of predefined SnapshotMode options.
@@ -463,7 +463,7 @@ public class CassandraConnectorConfig {
     }
 
     private HashMap<String, Object> keyValueConverterConfigs(String converterPrefix) {
-        HashMap<String, Object> converterConfigs = new HashMap<> ();
+        HashMap<String, Object> converterConfigs = new HashMap<>();
         configs.entrySet().stream()
                 .filter(entry -> entry.getKey().toString().startsWith(converterPrefix))
                 .forEach(entry -> {
