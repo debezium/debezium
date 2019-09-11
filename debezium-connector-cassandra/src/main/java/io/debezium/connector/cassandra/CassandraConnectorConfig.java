@@ -442,7 +442,7 @@ public class CassandraConnectorConfig {
         try {
             Class keyConverterClass = Class.forName((String) configs.get(KEY_CONVERTER_CLASS_CONFIG));
             Converter keyConverter = (Converter) keyConverterClass.newInstance();
-            HashMap<String, Object> keyConverterConfigs = keyValueConverterConfigs(KEY_CONVERTER_PREFIX);
+            Map<String, Object> keyConverterConfigs = keyValueConverterConfigs(KEY_CONVERTER_PREFIX);
             keyConverter.configure(keyConverterConfigs, true);
             return keyConverter;
         } catch (Exception e) {
@@ -454,7 +454,7 @@ public class CassandraConnectorConfig {
         try {
             Class valueConverterClass = Class.forName((String) configs.get(VALUE_CONVERTER_CLASS_CONFIG));
             Converter valueConverter = (Converter) valueConverterClass.newInstance();
-            HashMap<String, Object> valueConverterConfigs = keyValueConverterConfigs(VALUE_CONVERTER_PREFIX);
+            Map<String, Object> valueConverterConfigs = keyValueConverterConfigs(VALUE_CONVERTER_PREFIX);
             valueConverter.configure(valueConverterConfigs, false);
             return valueConverter;
         } catch (Exception e) {
@@ -462,16 +462,10 @@ public class CassandraConnectorConfig {
         }
     }
 
-    private HashMap<String, Object> keyValueConverterConfigs(String converterPrefix) {
-        HashMap<String, Object> converterConfigs = new HashMap<>();
-        configs.entrySet().stream()
-                .filter(entry -> entry.getKey().toString().startsWith(converterPrefix))
-                .forEach(entry -> {
-                    String k = entry.getKey().toString().replace(converterPrefix, "");
-                    Object v = entry.getValue();
-                    converterConfigs.put(k, v);
-                });
-        return converterConfigs;
+    private Map<String, Object> keyValueConverterConfigs(String converterPrefix) {
+        return configs.entrySet().stream()
+                .filter(entry -> entry.toString().startsWith(converterPrefix))
+                .collect(Collectors.toMap(entry -> entry.getKey().toString().replace(converterPrefix, ""), entry -> entry.getValue()));
     }
 
     @Override
