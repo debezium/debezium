@@ -76,7 +76,7 @@ public class CellData {
             SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(cm.getName())
                     .field(CELL_VALUE_KEY, valueSchema)
                     .field(CELL_DELETION_TS_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                    .field(CELL_SET_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+                    .field(CELL_SET_KEY, Schema.BOOLEAN_SCHEMA);
             if (optional) {
                 schemaBuilder.optional();
             }

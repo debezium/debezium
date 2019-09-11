@@ -29,6 +29,8 @@ public class SourceInfo {
     public static final String TIMESTAMP_KEY = "ts_micro";
 
     public static final Schema SOURCE_SCHEMA = SchemaBuilder.struct().name(Record.SOURCE)
+            .field(DEBEZIUM_VERSION_KEY, Schema.STRING_SCHEMA)
+            .field(DEBEZIUM_CONNECTOR_KEY, Schema.STRING_SCHEMA)
             .field(CLUSTER_KEY, Schema.STRING_SCHEMA)
             .field(COMMITLOG_FILENAME_KEY, Schema.STRING_SCHEMA)
             .field(COMMITLOG_POSITION_KEY, Schema.INT32_SCHEMA)
@@ -56,6 +58,8 @@ public class SourceInfo {
 
     public Struct record(Schema schema) {
         return new Struct(schema)
+                .put(DEBEZIUM_VERSION_KEY, version)
+                .put(DEBEZIUM_CONNECTOR_KEY, connector)
                 .put(CLUSTER_KEY, cluster)
                 .put(COMMITLOG_FILENAME_KEY, offsetPosition.fileName)
                 .put(COMMITLOG_POSITION_KEY, offsetPosition.filePosition)

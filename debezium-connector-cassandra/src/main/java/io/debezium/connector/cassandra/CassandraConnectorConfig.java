@@ -26,8 +26,6 @@ import org.apache.kafka.connect.storage.Converter;
  */
 public class CassandraConnectorConfig {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CassandraConnectorConfig.class);
-
     /**
      * The set of predefined SnapshotMode options.
      */
