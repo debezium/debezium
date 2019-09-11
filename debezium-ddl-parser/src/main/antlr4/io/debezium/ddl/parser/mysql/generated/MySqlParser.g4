@@ -248,7 +248,7 @@ createView
 // details
 
 createDatabaseOption
-    : DEFAULT? (CHARACTER SET | CHARSET) '='? charsetName
+    : DEFAULT? (CHARACTER SET | CHARSET) '='? (charsetName | DEFAULT)
     | DEFAULT? COLLATE '='? collationName
     ;
 
@@ -408,7 +408,7 @@ tableOption
     : ENGINE '='? engineName                                        #tableOptionEngine
     | AUTO_INCREMENT '='? decimalLiteral                            #tableOptionAutoIncrement
     | AVG_ROW_LENGTH '='? decimalLiteral                            #tableOptionAverage
-    | DEFAULT? (CHARACTER SET | CHARSET) '='? charsetName           #tableOptionCharset
+    | DEFAULT? (CHARACTER SET | CHARSET) '='? (charsetName|DEFAULT) #tableOptionCharset
     | (CHECKSUM | PAGE_CHECKSUM) '='? boolValue=('0' | '1')         #tableOptionChecksum
     | DEFAULT? COLLATE '='? collationName                           #tableOptionCollate
     | COMMENT '='? STRING_LITERAL                                   #tableOptionComment
