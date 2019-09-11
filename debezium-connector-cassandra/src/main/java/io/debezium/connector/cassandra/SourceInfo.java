@@ -17,7 +17,7 @@ import java.util.Objects;
 /**
  * Metadata about the source of the change event
  */
-public class SourceInfo {
+public class SourceInfo implements KafkaRecord {
     public static final String DEBEZIUM_VERSION_KEY = "version";
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
     public static final String CLUSTER_KEY = "cluster";
@@ -56,6 +56,7 @@ public class SourceInfo {
         this.snapshot = snapshot;
     }
 
+    @Override
     public Struct record(Schema schema) {
         return new Struct(schema)
                 .put(DEBEZIUM_VERSION_KEY, version)
@@ -70,6 +71,7 @@ public class SourceInfo {
 
     }
 
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -87,10 +89,12 @@ public class SourceInfo {
                 && tsMicro == that.tsMicro;
     }
 
+    @Override
     public int hashCode() {
         return Objects.hash(cluster, snapshot, offsetPosition, keyspaceTable, tsMicro);
     }
 
+    @Override
     public String toString() {
         Map<String, Object> map = new HashMap<>();
         map.put(DEBEZIUM_VERSION_KEY, version);

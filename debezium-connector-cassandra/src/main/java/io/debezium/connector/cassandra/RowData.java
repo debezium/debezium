@@ -24,7 +24,7 @@ import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
  * Row-level data about the source event. Contains a map where the key is the table column
  * name and the value is the {@link CellData}.
  */
-public class RowData {
+public class RowData implements KafkaRecord {
     private final Map<String, CellData> cellMap = new LinkedHashMap<>();
 
     public void addCell(CellData cellData) {
@@ -41,6 +41,7 @@ public class RowData {
         return cellMap.containsKey(columnName);
     }
 
+    @Override
     public Struct record(Schema schema) {
         Struct struct = new Struct(schema);
         for (Field field : schema.fields()) {
@@ -83,10 +84,12 @@ public class RowData {
         return this.cellMap.values().stream().filter(CellData::isPrimary).collect(Collectors.toList());
     }
 
+    @Override
     public String toString() {
         return this.cellMap.toString();
     }
 
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -98,6 +101,7 @@ public class RowData {
         return Objects.equals(cellMap, rowData.cellMap);
     }
 
+    @Override
     public int hashCode() {
         return Objects.hash(cellMap);
     }

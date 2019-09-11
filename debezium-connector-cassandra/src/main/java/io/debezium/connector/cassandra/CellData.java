@@ -19,7 +19,7 @@ import java.util.Objects;
  * Cell-level data about the source event. Each cell contains the name, value and
  * type of a column in a Cassandra table.
  */
-public class CellData {
+public class CellData implements KafkaRecord {
     /**
      * The type of a column in a Cassandra table
      */
@@ -62,6 +62,7 @@ public class CellData {
         return columnType == ColumnType.PARTITION || columnType == ColumnType.CLUSTERING;
     }
 
+    @Override
     public Struct record(Schema schema) {
         return new Struct(schema)
                 .put(CELL_VALUE_KEY, value)
@@ -86,6 +87,7 @@ public class CellData {
         }
     }
 
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
@@ -100,10 +102,12 @@ public class CellData {
                 && columnType == that.columnType;
     }
 
+    @Override
     public int hashCode() {
         return Objects.hash(name, value, deletionTs, columnType);
     }
 
+    @Override
     public String toString() {
         return "{"
                 + "name=" + name
