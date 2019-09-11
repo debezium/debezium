@@ -12,6 +12,8 @@ create table child_table(id int unsigned auto_increment primary key, id_parent i
 create table `another some table $$` like `some table $$`;
 create table `actor` (`last_update` timestamp default CURRENT_TIMESTAMP, `birthday` datetime default CURRENT_TIMESTAMP ON UPDATE LOCALTIMESTAMP);
 create table boolean_table(c1 bool, c2 boolean default true);
+create table table_with_character_set_eq (id int, data varchar(50)) character set = default;
+create table table_with_character_set (id int, data varchar(50)) character set default;
 #end
 #begin
 -- Rename table
@@ -34,6 +36,8 @@ create schema if not exists myschema;
 create schema `select` default character set = utf8;
 create database if not exists `current_date` character set cp1251;
 create database super default character set utf8 collate = utf8_bin character set utf8 collate utf8_bin;
+create database db_with_character_set_eq character set = DEFAULT;
+create database db_with_character_set character set default;
 #end
 #begin
 -- Create event 1
