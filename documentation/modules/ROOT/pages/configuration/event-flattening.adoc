@@ -51,7 +51,7 @@ The downside of using the complex format is that other connectors or other parts
 }
 ----
 
-Debezium provides https://kafka.apache.org/documentation/#connect_transforms[a single message transformation] that crosses the bridge between the complex and simple formats, the https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/ExtractNewRecordState.java[ExtractNewRecordState] SMT.
+Debezium provides https://kafka.apache.org/documentation/#connect_transforms[a single message transformation] that crosses the bridge between the complex and simple formats, the https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/UnwrapFromEnvelope.java[UnwrapFromEnvelope] SMT.
 
 The SMT provides three main functions.
 It
@@ -70,7 +70,7 @@ The configuration is a part of source/sink task connector and is expressed in a 
 [source]
 ----
 transforms=unwrap,...
-transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+transforms.unwrap.type=io.debezium.transforms.UnwrapFromEnvelope
 transforms.unwrap.drop.tombstones=false
 transforms.unwrap.delete.handling.mode=rewrite
 transforms.unwrap.add.source.fields=table,lsn
