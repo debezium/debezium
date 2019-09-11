@@ -19,10 +19,6 @@
               <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
 
               <!-- Exclude connection drivers -->
-              <exclude>org.mongodb:mongodb-driver:*</exclude>
-              <exclude>org.mongodb:bson:*</exclude>
-              <exclude>org.mongodb:mongodb-driver-core:*</exclude>
-              <exclude>com.microsoft.sqlserver:mssql-jdbc:*</exclude>
 	      <exclude>${assembly.exclude.1}</exclude>
 	      <exclude>${assembly.exclude.2}</exclude>
 	      <exclude>${assembly.exclude.3}</exclude>
