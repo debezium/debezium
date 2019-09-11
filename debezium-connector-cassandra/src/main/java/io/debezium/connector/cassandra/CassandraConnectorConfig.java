@@ -8,12 +8,9 @@ package io.debezium.connector.cassandra;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import com.datastax.driver.core.ConsistencyLevel;
