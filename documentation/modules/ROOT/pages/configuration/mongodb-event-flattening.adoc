@@ -71,7 +71,7 @@ The configuration is a part of sink task connector and is expressed in a set of 
 [source]
 ----
 transforms=unwrap,...
-transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope
 transforms.unwrap.drop.tombstones=false
 transforms.unwrap.delete.handling.mode=drop
 transforms.unwrap.operation.header=true
@@ -87,7 +87,7 @@ To bypass this impedance mismatch it is possible to encode the array in two diff
 [source]
 ----
 transforms=unwrap,...
-transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope
 transforms.unwrap.array.encoding=<array|document>
 ----
 
@@ -148,7 +148,7 @@ To enable this feature the option `flatten.struct` must be set to `true`.
 [source]
 ----
 transforms=unwrap,...
-transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope
 transforms.unwrap.flatten.struct=<true|false>
 transforms.unwrap.flatten.struct.delimiter=<string>
 ----
@@ -216,7 +216,7 @@ To enable this feature the option `operation.header` must be set to `true`.
 [source]
 ----
 transforms=unwrap,...
-transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.UnwrapFromMongoDbEnvelope
 transforms.unwrap.operation.header=true
 ----
 
