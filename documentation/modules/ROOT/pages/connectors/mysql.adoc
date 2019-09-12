@@ -58,6 +58,11 @@ where:
 Running a MySQL server with binary logging enabled does slightly reduce performance of the MySQL server, but the benefits generally outweigh the costs. Each binlog reader will also place a small load on the server, so using Debezium is a great way to minimize this load while providing the change events to a large variety and number of consumers.
 ====
 
+[WARNING]
+====
+RDS MySQL manages directly the log_bin parameter through enabling/disabling product features like read replicas and automated backups. Make sure to enable one of them in any RDS MySQL node from where a connector consumes data. Otherwise, it will fail while performing a snapshot.
+====
+
 [[enabling-gtids]]
 [[enabling-gtids-optional]]
 === Enabling GTIDs (optional)
