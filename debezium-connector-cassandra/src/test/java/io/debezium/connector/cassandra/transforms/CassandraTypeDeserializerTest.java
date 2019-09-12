@@ -6,6 +6,7 @@
 package io.debezium.connector.cassandra.transforms;
 
 import com.datastax.driver.core.DataType;
+import io.debezium.time.MicroDuration;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Values;
@@ -148,17 +149,13 @@ public class CassandraTypeDeserializerTest {
     public void testDurationType() {
         Duration sourceDuration = Duration.newInstance(1, 3, 500);
 
-        Struct expectedDurationRecord =
-                new Struct(CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
-                        .put("months", sourceDuration.getMonths())
-                        .put("days", sourceDuration.getDays())
-                        .put("nanos", sourceDuration.getNanoseconds());
+        double expectedMicroDuration = MicroDuration.durationMicros(0, 1, 3, 0, 0, 0, 500/1000, 0.0D);
 
         ByteBuffer serializedDuration = DurationType.instance.decompose(sourceDuration);
 
         Object deserializedDuration = CassandraTypeDeserializer.deserialize(DurationType.instance, serializedDuration);
 
-        Assert.assertEquals(expectedDurationRecord, deserializedDuration);
+        Assert.assertEquals(expectedMicroDuration, deserializedDuration);
     }
 
     @Test
@@ -383,15 +380,12 @@ public class CassandraTypeDeserializerTest {
 
         Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
 
-        Struct expectedDuration = new Struct(CassandraTypeKafkaSchemaBuilders.DURATION_TYPE.build())
-                .put("months", 1)
-                .put("days", 2)
-                .put("nanos", 3L);
+        double expectedMicroDuration = MicroDuration.durationMicros(0, 1, 2, 0, 0, 0, (int) 3L/1000, 0.0D);
 
         Struct expectedUserTypeData = new Struct(userSchema)
                 .put("asciiField", "foobar")
                 .put("doubleField", 1.5d)
-                .put("durationField", expectedDuration);
+                .put("durationField", expectedMicroDuration);
 
         Map<String, Object> jsonObject = new HashMap<>(3);
         jsonObject.put("\"asciiField\"", "foobar");

@@ -6,16 +6,15 @@
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
 import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
+import io.debezium.time.MicroDuration;
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 import java.nio.ByteBuffer;
 
 public class DurationTypeDeserializer extends BasicTypeDeserializer {
     /*
-     * Cassandra Duration type is serialized into a struct with fields months, days, and nanos.
+     * Cassandra Duration type is serialized into micro seconds in double.
      */
 
     public DurationTypeDeserializer() {
@@ -28,11 +27,6 @@ public class DurationTypeDeserializer extends BasicTypeDeserializer {
         int months = duration.getMonths();
         int days = duration.getDays();
         long nanoSec = duration.getNanoseconds();
-
-        Schema durationSchema = getSchemaBuilder(abstractType).build();
-        return new Struct(durationSchema)
-                .put("months", months)
-                .put("days", days)
-                .put("nanos", nanoSec);
+        return MicroDuration.durationMicros(0, months, days, 0, 0, 0, (int) nanoSec/1000, 0.0D);
     }
 }

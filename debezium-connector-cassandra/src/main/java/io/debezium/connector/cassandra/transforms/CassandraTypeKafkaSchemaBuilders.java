@@ -7,11 +7,11 @@ package io.debezium.connector.cassandra.transforms;
 
 import com.datastax.driver.core.DataType;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Schema;
 import io.debezium.data.Uuid;
 import io.debezium.time.Date;
 import io.debezium.time.Timestamp;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.MicroDuration;
 
 
 /**
@@ -35,12 +35,6 @@ public final class CassandraTypeKafkaSchemaBuilders {
     public static final SchemaBuilder TIMESTAMP_MILLI_TYPE = Timestamp.builder();
     public static final SchemaBuilder TIMESTAMP_MICRO_TYPE = MicroTimestamp.builder();
     public static final SchemaBuilder UUID_TYPE = Uuid.builder();
-
-
-    // custom types
-    public static final SchemaBuilder DURATION_TYPE = SchemaBuilder.struct().name("duration")
-            .field("months", Schema.INT32_SCHEMA)
-            .field("days", Schema.INT32_SCHEMA)
-            .field("nanos", Schema.INT64_SCHEMA);
+    public static final SchemaBuilder DURATION_TYPE = MicroDuration.builder();
 
 }
