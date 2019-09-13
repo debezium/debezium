@@ -425,9 +425,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
 
         //check the records from the snapshot
         assertRecordsFromSnapshot(2, 1, 1);
+        waitForStreamingRunning();
 
         // insert 2 new records
         TestHelper.execute(INSERT_STMT);
@@ -443,6 +445,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
         assertConnectorIsRunning();
+        waitForStreamingRunning();
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics()).hasSize(1);
@@ -462,9 +465,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
 
         //check the records from the snapshot
         assertRecordsFromSnapshot(2, 1, 1);
+        waitForStreamingRunning();
 
         // insert 2 new records
         TestHelper.execute(INSERT_STMT);
@@ -480,6 +485,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
         assertConnectorIsRunning();
+        waitForStreamingRunning();
 
         SourceRecords actualRecords = consumeRecordsByTopic(2);
         assertThat(actualRecords.topics()).hasSize(2);
@@ -501,9 +507,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
 
         //check the records from the snapshot
         assertRecordsFromSnapshot(2, 1, 1);
+        waitForStreamingRunning();
 
         // insert 2 new records
         TestHelper.execute(INSERT_STMT);
@@ -520,6 +528,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         //but the 2 records that we were inserted while we were down will be retrieved
         start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
         assertConnectorIsRunning();
+        waitForStreamingRunning();
 
         assertRecordsAfterInsert(2, 3, 3);
 
@@ -1227,5 +1236,13 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(key.orderInGroup).isGreaterThan(0);
         assertThat(key.validator).isNull();
         assertThat(key.recommender).isNull();
+    }
+
+    private void waitForSnapshotToBeCompleted() throws InterruptedException {
+        waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
+    }
+
+    private void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
     }
 }
