@@ -262,11 +262,13 @@ public final class TestHelper {
     }
 
     protected static void dropPublication(String publicationName) {
-        try {
-            execute("DROP PUBLICATION " + publicationName);
-        }
-        catch (Exception e) {
-            LOGGER.debug("Error while dropping publication: '" + publicationName + "'", e);
+        if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
+            try {
+                execute("DROP PUBLICATION " + publicationName);
+            }
+            catch (Exception e) {
+                LOGGER.debug("Error while dropping publication: '" + publicationName + "'", e);
+            }
         }
     }
 
