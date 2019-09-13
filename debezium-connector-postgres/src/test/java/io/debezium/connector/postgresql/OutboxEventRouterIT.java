@@ -94,6 +94,9 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
     @Before
     public void beforeEach() throws InterruptedException {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
         outboxEventRouter = new EventRouter<>();
         outboxEventRouter.configure(Collections.emptyMap());
 
