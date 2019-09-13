@@ -13,7 +13,7 @@ See xref:configuration/mongodb-event-flattening.adoc[here] for the MongoDB equiv
 Debezium generates a data change in a form of a complex message structure.
 The message consists of three parts:
 
-* operation and metadata
+* metadata, comprising the type of operation, information on the event source and a timestamp
 * the row data before change
 * the row data after change
 
@@ -93,13 +93,33 @@ The original tombstone message can be passed on as is or also be dropped.
 The SMT by default filters out *both* delete records as widely used sink connectors do not support handling of tombstone messages at this point.
 ====
 
+=== Determine original operation
+
+When a message is flattened the final result won't show whether it was an insert, update or first read
+(deletions can be detected via tombstones or rewrites, see link:#configuration_options[Configuration options]).
+
+To solve this problem Debezium offers an option to propagate the original operation via a header added to the message.
+To enable this feature the option `operation.header` must be set to `true`.
+
+[source]
+----
+transforms=unwrap,...
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+transforms.unwrap.operation.header=true
+----
+
+The possible values are the ones from the `op` field of the original change event.
+
+
 === Adding source metadata fields
 
-The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__"). This functionality can be used to add things like the table from the change event, or connector specified fields like the Postgres LSN field. For more information on what's available in the source structure see xref:connectors/index.adoc[the documentation for each connector]
+The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__"). This functionality can be used to add things like the table from the change event, or connector-specific fields like the Postgres LSN field. For more information on what's available in the source structure see xref:connectors/index.adoc[the documentation for each connector].
 
 For example, the configuration
 
 ----
+transforms=unwrap,...
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 transforms.unwrap.add.source.fields=table,lsn
 ----
 
@@ -120,6 +140,10 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |Property
 |Default
 |Description
+
+|`operation.header`
+|`false`
+|The SMT adds the event operation (as obtained from the `op` field of the original record) as a message header.
 
 |`drop.tombstones`
 |`true`

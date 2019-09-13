@@ -107,7 +107,7 @@ Let's suppose an example source MongoDB document with array with heterogeneous t
     "a1": [
         {
             "a": 1,
-            "b", "none"
+            "b": "none"
         },
         {
             "a": "c",
@@ -125,7 +125,7 @@ This document will be encoded as
     "a1": {
         "_0": {
             "a": 1,
-            "b", "none"
+            "b": "none"
         },
         "_1": {
             "a": "c",
@@ -163,7 +163,7 @@ Let's suppose an example source MongoDB document with a field with a nested docu
     "_id": 1,
     "a": {
             "b": 1,
-            "c", "none"
+            "c": "none"
     },
     "d": 100
 }
@@ -222,6 +222,31 @@ transforms.unwrap.operation.header=true
 
 The possible values are the ones from the `op` field of xref:connectors/mongodb.adoc#change-events-value[MongoDB connector change events].
 
+=== Adding source metadata fields
+
+The SMT can optionally add metadata fields from the original change event's `source` structure to the final flattened record (prefixed with "__").
+This functionality can be used to add things like the collection from the change event, or connector-specific fields like the replica set name.
+For more information on what's available in the source structure see xref:connectors/mongodb.adoc[the documentation] for the MongoDB connector.
+
+For example, the configuration
+
+----
+transforms=unwrap,...
+transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocumentState
+transforms.unwrap.add.source.fields=rs,collection
+----
+
+will add
+
+----
+{ "__rs" : "rs0", "__collection" : "my-collection", ... }
+----
+
+to the final flattened record.
+
+For `DELETE` events, this option is only supported when the `delete.handling.mode` option is set to "rewrite".
+
+
 [[configuration_options]]
 == Configuration options
 [cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped"]
@@ -253,8 +278,11 @@ The possible values are the ones from the `op` field of xref:connectors/mongodb.
 |`delete.handling.mode`
 |`drop`
 |The SMT can `drop`, `rewrite` or pass delete records (`none`). The `rewrite` mode will add a `__deleted` field set to `true` or `false` depending on the represented operation.
-|=======================
 
+|`add.source.fields`
+|
+|Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record
+|=======================
 
 == Known limitations
 
