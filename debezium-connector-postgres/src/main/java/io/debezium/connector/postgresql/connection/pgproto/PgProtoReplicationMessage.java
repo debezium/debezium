@@ -29,6 +29,7 @@ import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
+import io.debezium.connector.postgresql.ToastedReplicationMessageColumn;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
@@ -106,6 +107,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     final Optional<PgProto.TypeInfo> typeInfo = Optional.ofNullable(hasTypeMetadata() && typeInfoList != null ? typeInfoList.get(index) : null);
                     final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
                     final PostgresType type = typeRegistry.get((int) datum.getColumnType());
+                    if (datum.hasDatumMissing()) {
+                        return new ToastedReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata());
+                    }
                     return new AbstractReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata()) {
 
                         @Override
@@ -141,8 +145,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
      */
     public Object getValue(PgProto.DatumMessage datumMessage, PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (datumMessage.hasDatumMissing()) {
-            LOGGER.trace("No value received for unchanged TOASTed column {}", datumMessage.getColumnName());
-            return null;
+            return ToastedReplicationMessageColumn.ToastedValue.TOAST;
         }
 
         int columnType = (int) datumMessage.getColumnType();
