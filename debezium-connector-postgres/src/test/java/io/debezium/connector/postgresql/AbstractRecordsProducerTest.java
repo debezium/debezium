@@ -1108,6 +1108,10 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         }
     }
 
+    protected void waitForSnapshotToBeCompleted() throws InterruptedException {
+        waitForSnapshotToBeCompleted("postgres", "test_server");
+    }
+
     protected void waitForStreamingToStart() throws InterruptedException {
         waitForStreamingRunning("postgres", "test_server");
     }
