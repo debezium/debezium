@@ -144,9 +144,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         // based on the replication message without toasted columns for now
         List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn)).collect(Collectors.toList());
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
+        Object[] values = new Object[schemaColumns.size()];
 
-        for (ReplicationMessage.Column column: columnsWithoutToasted) {
+        for (ReplicationMessage.Column column: columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             final String columnName = Strings.unquoteIdentifierPart(column.getName());
             final Column tableColumn = table.columnWithName(columnName);
