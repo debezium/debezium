@@ -772,7 +772,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                          .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
         // there shouldn't be any snapshot records
         assertNoRecordsToConsume();
 

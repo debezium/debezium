@@ -120,6 +120,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         buildWithStreamProducer(TestHelper.defaultConfig());
 
         TestConsumer consumer = testConsumer(2, "s1", "s2");
+        waitForSnapshotToBeCompleted();
 
         // first make sure we get the initial records from both schemas...
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
@@ -151,6 +152,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // start a new producer back up, take a new snapshot (we expect all the records to be read back)
         int expectedRecordsCount = 6;
         buildWithStreamProducer(TestHelper.defaultConfig());
+        waitForSnapshotToBeCompleted();
 
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -170,7 +172,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(insertStmt);
         consumer.expects(2);
 
-        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
         first = consumer.remove();
         VerifyRecord.isValidInsert(first, PK_FIELD, 4);
         assertRecordOffsetAndSnapshotSource(first, false, false);

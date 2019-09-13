@@ -131,6 +131,6 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
 
     private void executeAndWait(String statements) throws Exception {
         TestHelper.execute(statements);
-        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
     }
 }
