@@ -461,12 +461,15 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         Configuration.Builder configBuilder = getConfigurationBuilder(SnapshotMode.INITIAL);
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
 
         SourceRecords snapshotRecords = consumeRecordsByTopic(1);
         assertThat(snapshotRecords.allRecordsInOrder().size()).isEqualTo(1);
 
         List<SourceRecord> recordsFromOutbox = snapshotRecords.recordsForTopic(topicName("outboxsmtit.outbox"));
         assertThat(recordsFromOutbox.size()).isEqualTo(1);
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
     }
 
     private void startConnectorWithNoSnapshot() throws InterruptedException {
