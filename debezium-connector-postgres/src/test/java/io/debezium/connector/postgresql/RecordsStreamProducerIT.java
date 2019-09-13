@@ -1090,6 +1090,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-842")
     public void shouldNotPropagateUnchangedToastedData() throws Exception {
+        final String toastedValuePlaceholder = "__DEBEZIUM_TOASTED_VALUE__";
+
         startConnector(config -> config
                 .with(PostgresConnectorConfig.SCHEMA_REFRESH_MODE, PostgresConnectorConfig.SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST)
         );
@@ -1140,13 +1142,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, "")
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValuePlaceholder),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, toastedValuePlaceholder)
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, "")
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValuePlaceholder),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, toastedValuePlaceholder)
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
@@ -1155,13 +1157,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, "")
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValuePlaceholder),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, toastedValuePlaceholder)
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, "")
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValuePlaceholder),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, toastedValuePlaceholder)
         ), consumer.remove(), Envelope.FieldName.AFTER);
     }
 

@@ -123,16 +123,21 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private final JsonFactory jsonFactory;
 
+    private final String toastPlaceholderString;
+    private final byte[] toastPlaceholderBinary;
+
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
             TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
             BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
-            HStoreHandlingMode hStoreMode) {
+            HStoreHandlingMode hStoreMode, byte[] toastPlaceholder) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.databaseCharset = databaseCharset;
         this.jsonFactory = new JsonFactory();
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
         this.hStoreMode = hStoreMode;
+        this.toastPlaceholderBinary = toastPlaceholder;
+        this.toastPlaceholderString = new String(toastPlaceholder);
     }
 
     @Override
@@ -321,7 +326,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
-            return data -> super.convertString(column, fieldDefn, data);
+            return data -> convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
             case PgOid.MONEY:
@@ -788,9 +793,29 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
+        if (data instanceof ToastedReplicationMessageColumn.ToastedValue) {
+            return toastPlaceholderBinary;
+    }
         if (data instanceof PgArray) {
                 data = ((PgArray) data).toString();
         }
         return super.convertBinary(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+    }
+
+    /**
+     * Replaces toasted value with a placeholder
+     *
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a Kafka Connect type
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    @Override
+    protected Object convertString(Column column, Field fieldDefn, Object data) {
+        if (data instanceof ToastedReplicationMessageColumn.ToastedValue) {
+                return toastPlaceholderString;
+        }
+        return super.convertString(column, fieldDefn, data);
     }
 }
