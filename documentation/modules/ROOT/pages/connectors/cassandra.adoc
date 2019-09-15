@@ -628,15 +628,15 @@ The following table describes how the connector maps each of the Cassandra data 
 [cols="30%a, 30%a, 40%a",width=100,options="header,footer",role="table table-bordered table-striped"]
 |=======================
 |Cassandra Data Type
-|Avro Data Type
-|Avro Data Logical Type
+|Literal Type (Schema Type)
+|Semantic Type (Schema Name)
 
 |`ascii`
 |`string`
 |n/a
 
 |`bigint`
-|`long`
+|`int64`
 |n/a
 
 |`blob`
@@ -648,23 +648,23 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`counter`
-|`int`
+|`int64`
 |n/a
 
 |`date`
-|`int`
-|n/a
+|`int32`
+|`io.debezium.time.Date`
 
 |`decimal`
-|`double`
+|`float64`
 |n/a
 
 |`double`
-|`double`
+|`float64`
 |n/a
 
 |`float`
-|`float`
+|`float32`
 |n/a
 
 |`frozen`
@@ -676,7 +676,7 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`int`
-|`int`
+|`int32`
 |n/a
 
 |`list`
@@ -692,7 +692,7 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`smallint`
-|`int`
+|`int16`
 |n/a
 
 |`text`
@@ -700,19 +700,19 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`time`
-|`long`
+|`int64`
 |n/a
 
 |`timestamp`
-|`long`
-|n/a
+|`int64`
+|`io.debezium.time.Timestamp`
 
 |`timeuuid`
-|`bytes`
-|n/a
+|`string`
+|`io.debezium.data.Uuid`
 
 |`tinyint`
-|`byte`
+|`int8`
 |n/a
 
 |`tuple`
@@ -720,16 +720,20 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`uuid`
-|`bytes`
-|n/a
+|`string`
+|`io.debezium.data.Uuid`
 
 |`varchar`
 |`string`
 |n/a
 
 |`varint`
-|`long`
+|`int64`
 |n/a
+
+|`duration`
+|`float64`
+|`io.debezium.time.MicroDuration`
 
 |=======================
 
@@ -770,38 +774,33 @@ The Cassandra connector should be deployed each Cassandra node in a Cassandra cl
 [[example-configuration]]
 === Example configuration
 
-The following represents an example .properties configuration file for Cassandra Connector:
+The following represents an example .properties configuration file for running and testing the Cassandra Connector locally:
 
 [source,indent=0]
 ----
 connector.name=test_connector
+commit.log.relocation.dir=/Users/test_user/debezium-connector-cassandra/test_dir/relocation/
+http.port=8000
+
+cassandra.config=/usr/local/etc/cassandra/cassandra.yaml
+cassandra.hosts=127.0.0.1
+cassandra.port=9042
+
+kafka.producer.bootstrap.servers=127.0.0.1:9092
+kafka.producer.retries=3
+kafka.producer.retry.backoff.ms=1000
 kafka.topic.prefix=test_prefix
-snapshot.consistency=ALL
-http.port=1234
-cassandra.config=cassandra-unit.yaml
-cassandra.hosts=127.0.0.1,127.0.0.2
-cassandra.port=9412
-cassandra.username=test_user
-cassandra.password=test_pw
-cassandra.ssl.enabled=true
-cassandra.ssl.config.path=/some/path/
-kafka.producer.bootstrap.servers=host1,host2,host3
-kafka.producer.schema.registry=schema-registry-host
-offset.backing.store.dir=/some/offset/backing/store/
-offset.flush.interval.ms=1234
-max.offset.flush.size=200
-max.queue.size=500
-max.batch.size=500
-poll.interval.ms=500
-schema.refresh.interval.ms=500
-cdc.dir.poll.interval.ms=500
-snapshot.scan.interval.ms=500
-field.blacklist=keyspace1.table1.column1,keyspace1.table1.column2
-tombstones.on.delete=true
-snapshot.mode=always
-commit.log.relocation.dir=/foo/bar
-commit.log.post.processing.enabled=false
-commit.log.transfer.class=io.debezium.connector.cassandra.BlackHoleCommitLogTransfer
+
+key.converter=io.confluent.connect.avro.AvroConverter
+key.converter.schema.registry.url: http://localhost:8081
+value.converter=io.confluent.connect.avro.AvroConverter
+value.converter.schema.registry.url: http://localhost:8081
+
+offset.backing.store.dir=/Users/test_user/debezium-connector-cassandra/test_dir/
+
+snapshot.consistency=ONE
+snapshot.mode=ALWAYS
+
 latest.commit.log.only=true
 ----
 
@@ -1019,3 +1018,13 @@ kafka.consumer.ssl.key.password=test1234
 ----
 
 Be sure to consult the http://kafka.apache.org/documentation.html[Kafka documentation] for all of the configuration properties for Kafka producers.
+
+The connector supports the following Kafka Connect converters for key/value serialization:
+
+[source,indent=0]
+----
+io.confluent.connect.avro.AvroConverter
+org.apache.kafka.connect.storage.StringConverter
+org.apache.kafka.connect.json.JsonConverter
+com.blueapron.connect.protobuf.ProtobufConverter
+----
