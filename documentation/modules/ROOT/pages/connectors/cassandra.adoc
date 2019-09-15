@@ -628,15 +628,15 @@ The following table describes how the connector maps each of the Cassandra data 
 [cols="30%a, 30%a, 40%a",width=100,options="header,footer",role="table table-bordered table-striped"]
 |=======================
 |Cassandra Data Type
-|Avro Data Type
-|Avro Data Logical Type
+|Literal Type (Schema Type)
+|Semantic Type (Schema Name)
 
 |`ascii`
 |`string`
 |n/a
 
 |`bigint`
-|`long`
+|`int64`
 |n/a
 
 |`blob`
@@ -648,23 +648,23 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`counter`
-|`int`
+|`int64`
 |n/a
 
 |`date`
-|`int`
-|n/a
+|`int32`
+|io.debezium.time.Date
 
 |`decimal`
-|`double`
+|`float64`
 |n/a
 
 |`double`
-|`double`
+|`float64`
 |n/a
 
 |`float`
-|`float`
+|`float32`
 |n/a
 
 |`frozen`
@@ -676,7 +676,7 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`int`
-|`int`
+|`int32`
 |n/a
 
 |`list`
@@ -692,7 +692,7 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`smallint`
-|`int`
+|`int16`
 |n/a
 
 |`text`
@@ -700,19 +700,19 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`time`
-|`long`
+|`int64`
 |n/a
 
 |`timestamp`
-|`long`
-|n/a
+|`int64`
+|io.debezium.time.Timestamp
 
 |`timeuuid`
-|`bytes`
-|n/a
+|`string`
+|io.debezium.data.Uuid
 
 |`tinyint`
-|`byte`
+|`int8`
 |n/a
 
 |`tuple`
@@ -720,15 +720,15 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`uuid`
-|`bytes`
-|n/a
+|`string`
+|io.debezium.data.Uuid
 
 |`varchar`
 |`string`
 |n/a
 
 |`varint`
-|`long`
+|`int64`
 |n/a
 
 |=======================
