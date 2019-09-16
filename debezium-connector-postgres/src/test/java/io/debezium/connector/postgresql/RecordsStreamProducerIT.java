@@ -70,8 +70,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
 
-    private static final String TOASTED_VALUE_PLACEHOLDER = "__DEBEZIUM_TOASTED_VALUE__";
-
     @Before
     public void before() throws Exception {
         // ensure the slot is deleted for each test
@@ -1142,13 +1140,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER)
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER)
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
@@ -1157,13 +1155,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER)
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())
         ), consumer.remove(), Envelope.FieldName.AFTER);
         assertRecordSchemaAndValues(Arrays.asList(
                 new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 3),
-                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER),
-                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER)
+                new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder()),
+                new SchemaAndValueField("mandatory_text", SchemaBuilder.STRING_SCHEMA, DecoderDifferences.mandatoryToastedValuePlaceholder())
         ), consumer.remove(), Envelope.FieldName.AFTER);
     }
 
@@ -1406,7 +1404,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait("UPDATE test_table set not_toast = 20");
         SourceRecord updatedRecord = consumer.remove();
 
-        if (DecoderDifferences.areToastedValuesPresentInSchema()) {
+        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
             assertRecordSchemaAndValues(Arrays.asList(
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 10),
@@ -1415,7 +1413,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertRecordSchemaAndValues(Arrays.asList(
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, TOASTED_VALUE_PLACEHOLDER)
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder())
             ), updatedRecord, Envelope.FieldName.AFTER);
         }
         else {

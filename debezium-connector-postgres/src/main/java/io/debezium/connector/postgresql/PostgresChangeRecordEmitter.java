@@ -6,10 +6,12 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -44,6 +46,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresConnection connection;
     private final TableId tableId;
+    private final boolean isJsonPlugin;
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection, ReplicationMessage message) {
         super(offset, clock);
@@ -54,6 +57,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         this.connection = connection;
 
         this.tableId = PostgresSchema.parse(message.getTable());
+        this.isJsonPlugin = "wal2json".equals(connectorConfig.plugin().getPostgresPluginName());
         Objects.requireNonNull(tableId);
     }
 
@@ -144,31 +148,48 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         // based on the replication message without toasted columns for now
         List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn)).collect(Collectors.toList());
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[schemaColumns.size()];
+        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
 
+        final Set<String> undeliveredToastableColumns = new HashSet<>(schema.getToastableColumnsForTableId(table.id()));
         for (ReplicationMessage.Column column: columns) {
             //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             final String columnName = Strings.unquoteIdentifierPart(column.getName());
-            final Column tableColumn = table.columnWithName(columnName);
-            if (tableColumn == null) {
-                logger.warn(
-                        "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
-                        column.getName());
-                continue;
-            }
-            int position = tableColumn.position() - 1;
-            if (position < 0 || position >= values.length) {
-                logger.warn(
-                        "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
-                        column.getName());
-                continue;
-            }
-            values[position] = column.getValue(() -> (PgConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
-        }
+            undeliveredToastableColumns.remove(columnName);
 
+            int position = getPosition(columnName, table, values);
+            if (position != -1) {
+                values[position] = column.getValue(() -> (PgConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+            }
+        }
+        if (isJsonPlugin) {
+            for (String columnName: undeliveredToastableColumns) {
+                int position = getPosition(columnName, table, values);
+                if (position != -1) {
+                    values[position] = ToastedReplicationMessageColumn.ToastedValue.TOAST;
+                }
+            };
+        }
         return values;
     }
 
+    private int getPosition(String columnName, Table table, Object[] values) {
+        final Column tableColumn = table.columnWithName(columnName);
+
+        if (tableColumn == null) {
+            logger.warn(
+                    "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
+                    columnName);
+            return -1;
+        }
+        int position = tableColumn.position() - 1;
+        if (position < 0 || position >= values.length) {
+            logger.warn(
+                    "Internal schema is out-of-sync with incoming decoder events; column {} will be omitted from the change event.",
+                    columnName);
+            return -1;
+        }
+        return position;
+    }
     private Optional<DataCollectionSchema> newTable(TableId tableId) {
         logger.debug("Schema for table '{}' is missing", tableId);
         refreshTableFromDatabase(tableId);

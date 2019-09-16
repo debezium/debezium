@@ -331,8 +331,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             try {
                 s = startPgReplicationStream(startLsn,
                         plugin.forceRds()
-                                ? x -> messageDecoder.optionsWithoutMetadata(messageDecoder.tryOnceOptions(x))
-                                : x -> messageDecoder.optionsWithMetadata(messageDecoder.tryOnceOptions(x)));
+                                ? messageDecoder::optionsWithoutMetadata
+                                : messageDecoder::optionsWithMetadata);
                 messageDecoder.setContainsMetadata(plugin.forceRds() ? false : true);
             }
             catch (PSQLException e) {
