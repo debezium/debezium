@@ -1666,11 +1666,18 @@ can for instance be used to enable server-side table filtering when using the wa
 Allowed values depend on the chosen plug-in are separated by semicolon,
 e.g. `add-tables=public.table,public.table2;include-lsn=true`.
 
-|`sanitize.field.names` +
-0.10 and later
+|`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to AVRO naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
+
+|`slot.max.retries`
+|6
+|How many times to retry connecting to a replication slot when an attempt fails.
+
+|`slot.retry.delay.ms` +
+|10000 (10 seconds)
+|The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.
 
 |=======================
 

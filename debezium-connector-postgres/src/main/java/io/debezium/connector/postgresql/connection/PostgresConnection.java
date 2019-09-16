@@ -83,11 +83,18 @@ public class PostgresConnection extends JdbcConnection {
     public PostgresConnection(Configuration config) {
         super(config, FACTORY, PostgresConnection::validateServerVersion, PostgresConnection::defaultSettings);
 
+        Connection pgConnection = null;
         try {
-            typeRegistry = initTypeRegistry(connection());
+            pgConnection = connection();
+            typeRegistry = initTypeRegistry(pgConnection);
         }
         catch (SQLException e) {
-            throw new ConnectException("Could not initialize type registry", e);
+            if (pgConnection == null) {
+                throw new ConnectException("Could not create PG connection", e);
+            }
+            else {
+                throw new ConnectException("Could not initialize type registry", e);
+            }
         }
 
         databaseCharset = determineDatabaseCharset();

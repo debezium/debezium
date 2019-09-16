@@ -445,6 +445,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final int DEFAULT_PORT = 5_432;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
     protected static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
+    protected static final int DEFAULT_MAX_RETRIES = 6;
+    protected static final Duration DEFAULT_RETRY_DELAY = Duration.ofSeconds(10);
 
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
 
@@ -491,6 +493,22 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                         .withImportance(Importance.LOW)
                                                         .withDescription(
                                                                 "Any optional parameters used by logical decoding plugin. Semi-colon separated. E.g. 'add-tables=public.table,public.table2;include-lsn=true'");
+
+    public static final Field MAX_RETRIES = Field.create("slot.max.retries")
+            .withDisplayName("Retry count")
+            .withType(Type.INT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_MAX_RETRIES)
+            .withValidation(Field::isInteger)
+            .withDescription("How many times to retry connecting to a replication slot when an attempt fails.");
+
+    public static final Field RETRY_DELAY_MS = Field.create("slot.retry.delay.ms")
+            .withDisplayName("Retry delay")
+            .withType(Type.LONG)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_RETRY_DELAY.toMillis())
+            .withValidation(Field::isInteger)
+            .withDescription("The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.");
 
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
                                               .withDisplayName("Hostname")
@@ -732,7 +750,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS,
+    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS,
                                                      DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
                                                      CommonConnectorConfig.MAX_BATCH_SIZE,
                                                      CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -799,6 +817,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected String streamParams() {
         return getConfig().getString(STREAM_PARAMS);
+    }
+
+    protected int maxRetries() {
+        return getConfig().getInteger(MAX_RETRIES);
+    }
+
+    protected Duration retryDelay() {
+        return Duration.ofMillis(getConfig().getInteger(RETRY_DELAY_MS));
     }
 
     protected Duration statusUpdateInterval() {
@@ -871,7 +897,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PUBLICATION_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
                     USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, STREAM_PARAMS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
+                    DROP_SLOT_ON_STOP, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                     COLUMN_BLACKLIST, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                     CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,

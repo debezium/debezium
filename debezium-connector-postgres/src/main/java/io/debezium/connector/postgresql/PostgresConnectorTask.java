@@ -8,11 +8,13 @@ package io.debezium.connector.postgresql;
 
 import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import io.debezium.util.Metronome;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -113,19 +115,19 @@ public class PostgresConnectorTask extends BaseSourceTask {
             SlotCreationResult slotCreatedInfo = null;
             if (snapshotter.shouldStream()) {
                 boolean shouldExport = snapshotter.exportSnapshot();
-                try {
-                    replicationConnection = taskContext.createReplicationConnection(shouldExport);
-                    // we need to create the slot before we start streaming if it doesn't exist
-                    // otherwise we can't stream back changes happening while the snapshot is taking place
-                    if (slotInfo == null) {
+                replicationConnection = createReplicationConnection(this.taskContext, shouldExport,
+                        connectorConfig.maxRetries(), connectorConfig.retryDelay());
+
+                // we need to create the slot before we start streaming if it doesn't exist
+                // otherwise we can't stream back changes happening while the snapshot is taking place
+                if (slotInfo == null) {
+                    try {
                         slotCreatedInfo = replicationConnection.createReplicationSlot().orElse(null);
+                    } catch (SQLException ex) {
+                        throw new ConnectException(ex);
                     }
-                    else {
-                        slotCreatedInfo = null;
-                    }
-                }
-                catch (SQLException ex) {
-                    throw new ConnectException(ex);
+                } else {
+                    slotCreatedInfo = null;
                 }
             }
 
@@ -174,6 +176,34 @@ public class PostgresConnectorTask extends BaseSourceTask {
         finally {
             previousContext.restore();
         }
+    }
+
+    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean shouldExport,
+                                                             int maxRetries, Duration retryDelay) throws ConnectException {
+        final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
+        short retryCount = 0;
+        ReplicationConnection replicationConnection = null;
+        while(retryCount <= maxRetries) {
+            try {
+                return taskContext.createReplicationConnection(shouldExport);
+            } catch (SQLException ex) {
+                retryCount++;
+                if (retryCount > maxRetries){
+                    LOGGER.error(String.format("Too many errors connecting to server. All %s retries failed.", maxRetries));
+                    throw new ConnectException(ex);
+                }
+
+                LOGGER.warn(String.format("Error connecting to server; will attempt retry %s of %s after %s " +
+                        "seconds. Exception: %s", retryCount, maxRetries, retryDelay.getSeconds(), ex));
+                try {
+                    metronome.pause();
+                } catch (InterruptedException e) {
+                    LOGGER.warn("Connection retry sleep interrupted by exception: " + e);
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        return replicationConnection;
     }
 
     @Override
