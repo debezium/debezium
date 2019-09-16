@@ -310,6 +310,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
+        waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(recordCount);
         Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
 
