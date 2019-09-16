@@ -167,7 +167,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 if (position != -1) {
                     values[position] = ToastedReplicationMessageColumn.ToastedValue.TOAST;
                 }
-            };
+            }
         }
         return values;
     }
