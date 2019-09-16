@@ -653,7 +653,7 @@ The following table describes how the connector maps each of the Cassandra data 
 
 |`date`
 |`int32`
-|io.debezium.time.Date
+|`io.debezium.time.Date`
 
 |`decimal`
 |`float64`
@@ -705,11 +705,11 @@ The following table describes how the connector maps each of the Cassandra data 
 
 |`timestamp`
 |`int64`
-|io.debezium.time.Timestamp
+|`io.debezium.time.Timestamp`
 
 |`timeuuid`
 |`string`
-|io.debezium.data.Uuid
+|`io.debezium.data.Uuid`
 
 |`tinyint`
 |`int8`
@@ -721,7 +721,7 @@ The following table describes how the connector maps each of the Cassandra data 
 
 |`uuid`
 |`string`
-|io.debezium.data.Uuid
+|`io.debezium.data.Uuid`
 
 |`varchar`
 |`string`
