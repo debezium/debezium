@@ -62,6 +62,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final MessageDecoder messageDecoder;
     private final TypeRegistry typeRegistry;
     private final Properties streamParams;
+    private final int maxRetries;
+    private final Duration retryDelay;
 
     private long defaultStartingPos;
     private SlotCreationResult slotCreationInfo;
@@ -80,6 +82,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param typeRegistry registry with PostgreSQL types
      * @param streamParams additional parameters to pass to the replication stream
      * @param schema the schema; must not be null
+     * @param maxRetries The number of retries to make when failing to connect to replication slot
+     * @param retryDelay Duration to wait between retry attempts
      *
      * updates to the server
      */
@@ -92,7 +96,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                          Duration statusUpdateInterval,
                                          TypeRegistry typeRegistry,
                                          Properties streamParams,
-                                         PostgresSchema schema) {
+                                         PostgresSchema schema,
+                                         int maxRetries,
+                                         Duration retryDelay
+    ) {
         super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection :: defaultSettings);
 
         this.originalConfig = config;
@@ -107,6 +114,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
         this.hasInitedSlot = false;
+        this.maxRetries = maxRetries;
+        this.retryDelay = retryDelay;
     }
 
 
@@ -548,6 +557,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
         private Properties slotStreamParams = new Properties();
+        private int maxRetries;
+        private Duration retryDelay;
+
 
         protected ReplicationConnectionBuilder(Configuration config) {
             assert config != null;
@@ -616,7 +628,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, plugin, dropSlotOnClose, exportSnapshot,
-                    statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema);
+                    statusUpdateIntervalVal, typeRegistry, slotStreamParams, schema, maxRetries, retryDelay);
         }
 
         @Override
@@ -628,6 +640,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public Builder withSchema(PostgresSchema schema) {
             this.schema = schema;
+            return this;
+        }
+
+        @Override
+        public Builder maxRetries(int maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        @Override
+        public Builder retryDelay(Duration retryDelay) {
+            this.retryDelay = retryDelay;
             return this;
         }
     }

@@ -1666,6 +1666,15 @@ can for instance be used to enable server-side table filtering when using the wa
 Allowed values depend on the chosen plug-in are separated by semicolon,
 e.g. `add-tables=public.table,public.table2;include-lsn=true`.
 
+|`slot.max.retries` +
+10.0.0 and later
+|
+|How many times to retry connecting to a replication slot when an attempt fails.
+
+|`slot.retry.delay.ms` +
+10.0.0 and later
+|
+|The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.
 |=======================
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer.
