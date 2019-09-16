@@ -183,11 +183,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         return builder;
     }
 
-    @Override
-    public ChainedLogicalStreamBuilder tryOnceOptions(ChainedLogicalStreamBuilder builder) {
-        return builder;
-    }
-
     /**
      * Callback handler for the 'B' begin replication message.
      *

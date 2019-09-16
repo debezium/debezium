@@ -65,9 +65,4 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
         return builder;
     }
-
-    @Override
-    public ChainedLogicalStreamBuilder tryOnceOptions(ChainedLogicalStreamBuilder builder) {
-        return builder;
-    }
 }

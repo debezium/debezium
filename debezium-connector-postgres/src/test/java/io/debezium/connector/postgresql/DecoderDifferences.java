@@ -15,6 +15,7 @@ import java.util.function.Supplier;
  *
  */
 public class DecoderDifferences {
+    static final String TOASTED_VALUE_PLACEHOLDER = "__DEBEZIUM_TOASTED_VALUE__";
 
     /**
      * wal2json plugin does not send events for updates on tables that does not define primary key.
@@ -68,12 +69,20 @@ public class DecoderDifferences {
     }
 
     /**
-     * wal2json plugin nor pgoutput include toasted column in the update
+     * wal2json plugin include toasted column in the update
      *
      * @author Jiri Pechanec
      *
      */
     public static boolean areToastedValuesPresentInSchema() {
-        return !wal2Json() && !pgoutput();
+        return !wal2Json();
+    }
+
+    public static String optionalToastedValuePlaceholder() {
+        return TOASTED_VALUE_PLACEHOLDER;
+    }
+
+    public static String mandatoryToastedValuePlaceholder() {
+        return TOASTED_VALUE_PLACEHOLDER;
     }
 }

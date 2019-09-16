@@ -53,16 +53,6 @@ public interface MessageDecoder {
     ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder);
 
     /**
-     * Allows a message decoder to configure optional options that might or might not be present on the server-side LD
-     * plug-in. So these options will be tried once, and that causes an exception, the connection will be built without
-     * them.
-     *
-     * @param builder the builder to modify
-     * @return the amended builder instance
-     */
-    ChainedLogicalStreamBuilder tryOnceOptions(ChainedLogicalStreamBuilder builder);
-
-    /**
      * Signals to this decoder whether messages contain type metadata or not.
      */
     // TODO DBZ-508 Remove once we only support LD plug-ins always sending the metadata
