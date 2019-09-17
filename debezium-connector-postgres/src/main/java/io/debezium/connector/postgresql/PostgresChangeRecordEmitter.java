@@ -6,9 +6,11 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -47,6 +49,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresConnection connection;
     private final TableId tableId;
     private final boolean isJsonPlugin;
+    private Object[] cachedOldColumnValues;
+    private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection, ReplicationMessage message) {
         super(offset, clock);
@@ -83,19 +87,23 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     @Override
     protected Object[] getOldColumnValues() {
+        if (cachedOldColumnValues != null) {
+            return cachedOldColumnValues;
+        }
         try {
             switch (getOperation()) {
                 case CREATE:
                     return null;
                 case UPDATE:
-                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata());
+                    cachedOldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true);
                 default:
-                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata());
+                    cachedOldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false);
             }
         }
         catch (SQLException e) {
             throw new ConnectException(e);
         }
+        return cachedOldColumnValues;
     }
 
     @Override
@@ -103,9 +111,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         try {
             switch (getOperation()) {
                 case CREATE:
-                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false);
                 case UPDATE:
-                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata());
+                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false);
                 default:
                     return null;
             }
@@ -135,7 +143,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         return schema.schemaFor(tableId);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage)
+    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage, boolean sourceOfToasted)
             throws SQLException {
         if (columns == null || columns.isEmpty()) {
             return null;
@@ -158,14 +166,27 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
             int position = getPosition(columnName, table, values);
             if (position != -1) {
-                values[position] = column.getValue(() -> (PgConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+                Object value = column.getValue(() -> (PgConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+                if (sourceOfToasted) {
+                    cachedOldToastedValues.put(columnName, value);
+                }
+                else {
+                    if (value == ToastedReplicationMessageColumn.ToastedValue.TOAST) {
+                        final Object candidate = cachedOldToastedValues.get(columnName);
+                        if (candidate != null) {
+                            value = candidate;
+                        }
+                    }
+                }
+                values[position] = value;
             }
         }
         if (isJsonPlugin) {
             for (String columnName: undeliveredToastableColumns) {
                 int position = getPosition(columnName, table, values);
                 if (position != -1) {
-                    values[position] = ToastedReplicationMessageColumn.ToastedValue.TOAST;
+                    final Object candidate = cachedOldToastedValues.get(columnName);
+                    values[position] = candidate != null ? candidate : ToastedReplicationMessageColumn.ToastedValue.TOAST;
                 }
             }
         }
@@ -190,6 +211,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         }
         return position;
     }
+
     private Optional<DataCollectionSchema> newTable(TableId tableId) {
         logger.debug("Schema for table '{}' is missing", tableId);
         refreshTableFromDatabase(tableId);

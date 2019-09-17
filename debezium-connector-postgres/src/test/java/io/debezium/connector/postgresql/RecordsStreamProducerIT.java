@@ -1413,7 +1413,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertRecordSchemaAndValues(Arrays.asList(
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
-                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, DecoderDifferences.optionalToastedValuePlaceholder())
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)
             ), updatedRecord, Envelope.FieldName.AFTER);
         }
         else {
@@ -1425,6 +1425,27 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)
             ), updatedRecord, Envelope.FieldName.AFTER);
+        }
+
+        // DELETE
+        consumer.expects(2);
+        executeAndWait("DELETE FROM test_table");
+        final SourceRecord deletedRecord = consumer.remove();
+        final SourceRecord tmobstoneRecord = consumer.remove();
+        assertThat(tmobstoneRecord.value()).isNull();
+        assertThat(tmobstoneRecord.valueSchema()).isNull();
+        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20),
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, toastedValue)
+            ), deletedRecord, Envelope.FieldName.BEFORE);
+        }
+        else {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)
+            ), deletedRecord, Envelope.FieldName.BEFORE);
         }
     }
 
