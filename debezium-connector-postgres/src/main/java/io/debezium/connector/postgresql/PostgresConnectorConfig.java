@@ -182,7 +182,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return null;
             }
             value = value.trim();
-            for(SnapshotMode option: SnapshotMode.values()) {
+            for (SnapshotMode option: SnapshotMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }

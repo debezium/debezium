@@ -183,7 +183,7 @@ public class RecordMakers {
             return sourceOffset;
         }
         else {
-            for(Entry<String, ?> restartOffsetEntry : restartOffset.entrySet()){
+            for (Entry<String, ?> restartOffsetEntry : restartOffset.entrySet()){
                 sourceOffset.put(SourceInfo.RESTART_PREFIX + restartOffsetEntry.getKey(), restartOffsetEntry.getValue());
             }
 

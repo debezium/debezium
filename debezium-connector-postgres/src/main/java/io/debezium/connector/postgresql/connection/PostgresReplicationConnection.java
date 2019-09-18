@@ -585,12 +585,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         @Override
         public ReplicationConnectionBuilder streamParams(final String slotStreamParams) {
-            if(slotStreamParams != null && !slotStreamParams.isEmpty()) {
+            if (slotStreamParams != null && !slotStreamParams.isEmpty()) {
                 this.slotStreamParams = new Properties();
                 String[] paramsWithValues = slotStreamParams.split(";");
-                for(String paramsWithValue : paramsWithValues) {
+                for (String paramsWithValue : paramsWithValues) {
                     String[] paramAndValue = paramsWithValue.split("=");
-                    if(paramAndValue.length == 2) {
+                    if (paramAndValue.length == 2) {
                         this.slotStreamParams.setProperty(paramAndValue[0], paramAndValue[1]);
                     }
                     else {

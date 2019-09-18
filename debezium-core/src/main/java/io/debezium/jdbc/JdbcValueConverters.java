@@ -210,7 +210,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 }
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
-                if(adaptiveTimeMicrosecondsPrecisionMode) {
+                if (adaptiveTimeMicrosecondsPrecisionMode) {
                     return MicroTime.builder();
                 }
                 if (adaptiveTimePrecisionMode) {
@@ -413,7 +413,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
-        if(adaptiveTimeMicrosecondsPrecisionMode) {
+        if (adaptiveTimeMicrosecondsPrecisionMode) {
             return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
         }
         if (adaptiveTimePrecisionMode) {

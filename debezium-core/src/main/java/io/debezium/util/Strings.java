@@ -1060,7 +1060,7 @@ public final class Strings {
 
             List<String> parts = new ArrayList<>();
 
-            while(stream.hasNext()) {
+            while (stream.hasNext()) {
                 final String part = stream.consume();
                 if (part.length() == 0) {
                     continue;

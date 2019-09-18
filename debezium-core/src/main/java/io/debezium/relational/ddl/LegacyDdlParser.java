@@ -47,7 +47,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
 
         default void add(String firstToken, String... additionalTokens){
             add(firstToken);
-            for(String token: additionalTokens) {
+            for (String token: additionalTokens) {
                 add(token);
             }
         }
@@ -188,7 +188,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
         if (id != null) {
             ids.add(id);
         }
-        while(tokens.canConsume(',')){
+        while (tokens.canConsume(',')){
             id = parseQualifiedTableName(start);
             if (id != null) {
                 ids.add(id);

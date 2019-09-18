@@ -401,7 +401,7 @@ public final class Tables {
         }
 
         public void putAll(TablesById tablesByTableId) {
-            if(tableIdCaseInsensitive) {
+            if (tableIdCaseInsensitive) {
                 tablesByTableId.values.entrySet()
                     .forEach(e -> put(e.getKey().toLowercase(), e.getValue()));
             }

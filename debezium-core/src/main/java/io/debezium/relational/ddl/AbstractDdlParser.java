@@ -390,7 +390,7 @@ public abstract class AbstractDdlParser implements DdlParser {
                     if (foundDecimalPoint) {
                         ++scale;
                     }
-                    else{
+                    else {
                         ++precision;
                     }
                 }

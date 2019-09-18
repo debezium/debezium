@@ -50,7 +50,7 @@ public final class Joiner {
         if (firstValue != null) {
             joiner.add(firstValue);
         }
-        for(CharSequence value: additionalValues) {
+        for (CharSequence value: additionalValues) {
             if (value != null) {
                 joiner.add(value);
             }
@@ -76,7 +76,7 @@ public final class Joiner {
         if (nextValue != null) {
             joiner.add(nextValue);
         }
-        for(CharSequence value: additionalValues) {
+        for (CharSequence value: additionalValues) {
             if (value != null) {
                 joiner.add(value);
             }

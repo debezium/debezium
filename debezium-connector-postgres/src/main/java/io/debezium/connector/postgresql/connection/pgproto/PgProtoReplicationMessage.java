@@ -282,7 +282,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
-                if(type.getOid() == typeRegistry.hstoreOid()) {
+                if (type.getOid() == typeRegistry.hstoreOid()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
                 if (type.getOid() == typeRegistry.geometryArrayOid() ||

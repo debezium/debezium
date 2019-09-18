@@ -147,7 +147,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
                         String masterUuid = uuids.iterator().next();
                         variables.put("master_uuid", masterUuid);
                     }
-                    else if(uuids.isEmpty()) {
+                    else if (uuids.isEmpty()) {
                         // do nothing ...
                     }
                     else {

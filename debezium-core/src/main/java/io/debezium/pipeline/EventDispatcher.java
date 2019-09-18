@@ -166,7 +166,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     public void dispatchSchemaChangeEvent(T dataCollectionId, SchemaChangeEventEmitter schemaChangeEventEmitter) throws InterruptedException {
-        if(!filter.isIncluded(dataCollectionId)) {
+        if (!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Filtering schema change event for {}", dataCollectionId);
             return;
         }
@@ -245,7 +245,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
 
-            if(bufferedEvent != null) {
+            if (bufferedEvent != null) {
                 queue.enqueue(bufferedEvent.get());
             }
 
@@ -262,7 +262,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
         @Override
         public void completeSnapshot() throws InterruptedException {
-            if(bufferedEvent != null) {
+            if (bufferedEvent != null) {
                 // It is possible that the last snapshotted table was empty
                 // this way we ensure that the last event is always marked as last
                 // even if it originates form non-last table

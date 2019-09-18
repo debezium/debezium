@@ -274,7 +274,7 @@ final class SourceInfo extends AbstractSourceInfo {
         if (isSnapshotInEffect()) {
             map.put(SNAPSHOT_KEY, true);
         }
-        if(hasFilterInfo()) {
+        if (hasFilterInfo()) {
             map.put(DATABASE_WHITELIST_KEY, databaseWhitelist);
             map.put(DATABASE_BLACKLIST_KEY, databaseBlacklist);
             map.put(TABLE_WHITELIST_KEY, tableWhitelist);

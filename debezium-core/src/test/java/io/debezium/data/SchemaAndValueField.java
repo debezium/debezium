@@ -48,7 +48,7 @@ public class SchemaAndValueField {
         Assertions.assertThat(actualValue).as(fieldName + " is not present in the actual content").isNotNull();
 
         // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
-        if(actualValue instanceof List) {
+        if (actualValue instanceof List) {
             Assertions.assertThat(value).as("Incorrect value type for " + fieldName).isInstanceOf(List.class);
             final List<?> actualValueList = (List<?>) actualValue;
             final List<?> valueList = (List<?>) value;

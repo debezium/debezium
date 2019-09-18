@@ -205,7 +205,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
         Timer timer = Threads.timer(Clock.SYSTEM, snapshotDelay);
         Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
 
-        while(!timer.expired()) {
+        while (!timer.expired()) {
             if (!context.isRunning()) {
                 throw new InterruptedException("Interrupted while awaiting initial snapshot delay");
             }
@@ -446,7 +446,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
         ResultSetMetaData metaData = rs.getMetaData();
         Column[] columns = new Column[metaData.getColumnCount()];
 
-        for(int i = 0; i < columns.length; i++) {
+        for (int i = 0; i < columns.length; i++) {
             columns[i] = table.columnWithName(metaData.getColumnName(i + 1));
         }
 
@@ -471,7 +471,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     protected abstract void complete(SnapshotContext snapshotContext);
 
     private void rollbackTransaction(Connection connection) {
-        if(connection != null) {
+        if (connection != null) {
             try {
                 connection.rollback();
             }
