@@ -11,9 +11,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import com.puppycrawl.tools.checkstyle.api.FileText;
 
 public class Header extends com.puppycrawl.tools.checkstyle.checks.header.HeaderCheck {
 
@@ -26,12 +27,12 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
     public Header() {
     }
 
-    public void setExcludedFilesRegex( String excludedFilePattern ) {
+    public void setExcludedFilesRegex(String excludedFilePattern) {
         this.excludedFilesRegex = excludedFilePattern;
         this.excludedFilesPattern = Pattern.compile(this.excludedFilesRegex);
     }
 
-    public void setExcludedClasses( String excludedClasses ) {
+    public void setExcludedClasses(String excludedClasses) {
         this.excludedFileSet = new HashSet<>();
         if (excludedClasses != null) {
             for (String classname : excludedClasses.split(",")) {
@@ -43,8 +44,7 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
         }
     }
 
-    @Override
-    public void setHeaderFile( String aFileName ) {
+    public void setHeaderFile(String aFileName) {
         // Load the file from the file ...
         InputStream stream = this.getClass().getClassLoader().getResourceAsStream("debezium.header");
         if (stream == null) {
@@ -68,7 +68,7 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
         }
     }
 
-    protected boolean isExcluded( File file ) {
+    protected boolean isExcluded(File file) {
         // See whether this file is excluded ...
         String filename = file.getAbsolutePath().replace(File.separator, "/");
         if (filename.startsWith(workingDirPath)) filename = filename.substring(workingDirPathLength);
@@ -87,9 +87,8 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
     }
 
     @Override
-    protected void processFiltered( File aFile,
-                                    List<String> aLines ) {
+    protected void processFiltered(File aFile, FileText fileText) {
         if (isExcluded(aFile)) return;
-        super.processFiltered(aFile, aLines);
+        super.processFiltered(aFile, fileText);
     }
 }

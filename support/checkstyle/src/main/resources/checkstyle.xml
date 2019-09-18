@@ -20,8 +20,6 @@
     </module>
 
     <module name="TreeWalker">
-        <property name="cacheFile" value="${checkstyle.cache.file}" />
-
         <!-- Checks for imports -->
         <module name="AvoidStarImport" />
         <module name="RedundantImport" />
@@ -109,8 +107,21 @@
             <property name="message" value="Use the new org.junit.Assert class instead" />
         </module>
 
-        <!-- Required to get SuppressionCommentFilter to work -->
-        <module name="FileContentsHolder" />
+        <!--
+        Allow for suppressing sections of code using a starting and ending comment:
+        // CHECKSTYLE\:OFF
+        // CHECKSTYLE\:ON
+        -->
+        <module name="SuppressionCommentFilter" />
+
+        <!-- Allow for suppressing sections of code using just a leading comment:
+        // CHECKSTYLE IGNORE check FOR NEXT 2 LINES
+        -->
+        <module name="SuppressWithNearbyCommentFilter">
+            <property name="commentFormat" value="CHECKSTYLE IGNORE (\w+) FOR NEXT (\d+) LINES"/>
+            <property name="checkFormat" value="$1"/>
+            <property name="influenceFormat" value="$2"/>
+        </module>
 
         <!-- Checks that Debezium is expressly NOT using -->
         <!--module name="ModifiedControlVariable" /-->
@@ -147,22 +158,6 @@
     <!--  
     END: ModeShape doesn't current require these, though it would be nice to do so
     -->
-
-    <!-- 
-    Allow for suppressing sections of code using a starting and ending comment:
-    // CHECKSTYLE\:OFF
-    // CHECKSTYLE\:ON
-    -->
-    <module name="SuppressionCommentFilter" />
-
-    <!-- Allow for suppressing sections of code using just a leading comment:
-    // CHECKSTYLE IGNORE check FOR NEXT 2 LINES
-    -->
-    <module name="SuppressWithNearbyCommentFilter">
-        <property name="commentFormat" value="CHECKSTYLE IGNORE (\w+) FOR NEXT (\d+) LINES"/>
-        <property name="checkFormat" value="$1"/>
-        <property name="influenceFormat" value="$2"/>
-    </module>
 
     <!-- Allow for some code sanity rules to be violated by test code -->
     <module name="io.debezium.checkstyle.ExcludeTestPackages" />

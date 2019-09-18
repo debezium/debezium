@@ -25,7 +25,7 @@ public class ExcludeTestPackages implements Filter {
     private static final String MESSAGE_DISABLE_KEYWORD = "[not required for tests]";
 
     @Override
-    public boolean accept( AuditEvent aEvent ) {
+    public boolean accept(AuditEvent aEvent) {
         final String fileName = aEvent.getFileName();
         if (fileName != null && fileName.contains(SUB_PATH)) {
             return acceptTestfileEvent(aEvent);
@@ -33,7 +33,7 @@ public class ExcludeTestPackages implements Filter {
         return true;
     }
 
-    private boolean acceptTestfileEvent( AuditEvent aEvent ) {
+    private boolean acceptTestfileEvent(AuditEvent aEvent) {
         final String message = aEvent.getMessage();
         if (message != null && message.contains(MESSAGE_DISABLE_KEYWORD)) {
             return false;
