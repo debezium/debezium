@@ -27,7 +27,7 @@ public class TruncateStrings implements ColumnMapper {
      * @throws IllegalArgumentException if the {@code maxLength} is not positive
      */
     public TruncateStrings(int maxLength) {
-        if (maxLength <= 0){
+        if (maxLength <= 0) {
             throw new IllegalArgumentException("Maximum length must be positive");
         }
         this.converter = new TruncatingValueConverter(maxLength);

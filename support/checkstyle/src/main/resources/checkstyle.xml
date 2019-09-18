@@ -60,6 +60,11 @@
         <!-- Checks for whitespace after tokens -->
         <module name="WhitespaceAfter"/>
 
+        <module name="WhitespaceAround">
+            <property name="tokens" value="LCURLY,QUESTION,COLON,SLIST" />
+            <property name="allowEmptyLambdas" value="true" />
+        </module>
+
         <!-- Checks for blocks. You know, those {}'s -->
         <module name="LeftCurly">
             <property name="option" value="eol" />

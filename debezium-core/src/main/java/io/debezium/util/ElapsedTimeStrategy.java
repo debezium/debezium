@@ -101,7 +101,7 @@ public interface ElapsedTimeStrategy {
                 }
                 if (!elapsed) {
                     elapsed = stepFunction.getAsBoolean();
-                    if (elapsed){
+                    if (elapsed) {
                         delta = postStepDelayInMilliseconds;
                     }
                 }
@@ -127,7 +127,7 @@ public interface ElapsedTimeStrategy {
      * @return the strategy; never null
      */
     public static ElapsedTimeStrategy linear(Clock clock, long delayInMilliseconds) {
-        if (delayInMilliseconds <= 0){
+        if (delayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
         }
         return new ElapsedTimeStrategy() {

@@ -40,7 +40,7 @@ final class NullValue implements Value {
 
     @Override
     public int compareTo(Value that) {
-        if (this == that){
+        if (this == that) {
             return 0;
         }
         return -1;

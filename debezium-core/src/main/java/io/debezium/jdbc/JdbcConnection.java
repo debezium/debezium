@@ -578,7 +578,7 @@ public class JdbcConnection implements AutoCloseable {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
         try (ResultSet resultSet = statement.executeQuery();) {
-            if (resultConsumer != null){
+            if (resultConsumer != null) {
                 resultConsumer.accept(resultSet);
             }
         }
@@ -600,7 +600,7 @@ public class JdbcConnection implements AutoCloseable {
         final PreparedStatement statement = createPreparedStatement(preparedQueryString);
         preparer.accept(statement);
         try (ResultSet resultSet = statement.executeQuery();) {
-            if (resultConsumer != null){
+            if (resultConsumer != null) {
                 resultConsumer.accept(resultSet);
             }
         }

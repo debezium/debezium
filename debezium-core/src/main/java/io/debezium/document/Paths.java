@@ -38,7 +38,7 @@ final class Paths {
             return new SingleSegmentPath(parseSegment(segments[0], resolveJsonPointerEscapes));
         }
         if (resolveJsonPointerEscapes) {
-            for (int i = 0; i != segments.length; ++i){
+            for (int i = 0; i != segments.length; ++i) {
                 segments[i]=parseSegment(segments[i], true);
             }
         }
@@ -462,7 +462,7 @@ final class Paths {
             return ((InnerPath) path).copyInto(segments, start);
         }
         int i = start;
-        for (String segment : path){
+        for (String segment : path) {
             segments[i++]=segment;
         }
         return i;

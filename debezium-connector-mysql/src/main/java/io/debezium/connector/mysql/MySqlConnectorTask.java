@@ -328,14 +328,14 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     private Map<String, ?> getRestartOffset(Map<String, ?> storedOffset) {
         Map<String, Object> restartOffset = new HashMap<>();
         if (storedOffset != null) {
-            for (Entry<String, ?> entry : storedOffset.entrySet()){
+            for (Entry<String, ?> entry : storedOffset.entrySet()) {
                 if (entry.getKey().startsWith(SourceInfo.RESTART_PREFIX)) {
                     String newKey = entry.getKey().substring(SourceInfo.RESTART_PREFIX.length());
                     restartOffset.put(newKey, entry.getValue());
                 }
             }
         }
-        return restartOffset.isEmpty()? storedOffset : restartOffset;
+        return restartOffset.isEmpty() ? storedOffset : restartOffset;
     }
 
     private static MySqlTaskContext createAndStartTaskContext(Configuration config,

@@ -296,13 +296,13 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         return fields;
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreType(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreType() {
          final Map<String, String> expected = new HashMap<>();
          expected.put("key", "val");
         return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithMultipleValues() {
         final Map<String, String> expected = new HashMap<>();
         expected.put("key1", "val1");
         expected.put("key2", "val2");
@@ -321,14 +321,14 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         );
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithNullValues() {
         final Map<String, String> expected = new HashMap<>();
         expected.put("key1", "val1");
         expected.put("key2", null);
         return Arrays.asList(new SchemaAndValueField("hs", hstoreMapSchema(), expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForMapEncodedHStoreTypeWithSpecialCharacters() {
         final Map<String, String> expected = new HashMap<>();
         expected.put("key_#1", "val 1");
         expected.put("key 2", " ##123 78");
@@ -344,12 +344,12 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 .build();
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreType(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreType() {
         final String expected = "{\"key\":\"val\"}";
         return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithMultipleValues() {
         final String expected = "{\"key1\":\"val1\",\"key2\":\"val2\",\"key3\":\"val3\"}";
         final List<String> expectedArray = Arrays.asList(
                 "{\"key5\":null,\"key4\":\"val4\"}",
@@ -362,12 +362,12 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         );
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithNullValues() {
         final String expected = "{\"key1\":\"val1\",\"key2\":null}";
         return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }
 
-    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters(){
+    protected List<SchemaAndValueField> schemaAndValueFieldForJsonEncodedHStoreTypeWithSpcialCharacters() {
         final String expected = "{\"key_#1\":\"val 1\",\"key 2\":\" ##123 78\"}";
         return Arrays.asList(new SchemaAndValueField("hs", Json.builder().optional().build(), expected));
     }

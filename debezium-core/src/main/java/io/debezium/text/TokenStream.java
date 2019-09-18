@@ -843,7 +843,7 @@ public class TokenStream {
                     "No more content but was expecting one token of type " + Strings.join("|", typeOptions));
         }
         for (int typeOption : typeOptions) {
-            if (typeOption == ANY_TYPE || matches(typeOption)){
+            if (typeOption == ANY_TYPE || matches(typeOption)) {
                 return consume();
             }
         }
@@ -870,7 +870,7 @@ public class TokenStream {
                     "No more content but was expecting one token of " + String.join("|", options));
         }
         for (String option : options) {
-            if (option == ANY_VALUE || matches(option)){
+            if (option == ANY_VALUE || matches(option)) {
                 return consume();
             }
         }
@@ -1029,7 +1029,7 @@ public class TokenStream {
         Marker start = mark();
         int remaining = 0;
         while (hasNext()) {
-            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)){
+            if (skipMatchingTokens != null && matchesAnyOf(skipMatchingTokens)) {
                 ++remaining;
             }
             if (matches(expected)) {
@@ -1310,7 +1310,7 @@ public class TokenStream {
             return false;
         }
         Token token = iter.next();
-        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)){
+        if (currentExpected != ANY_VALUE && !token.matches(type, currentExpected)) {
             return false;
         }
         for (String nextExpected : expectedForNextTokens) {
@@ -1318,7 +1318,7 @@ public class TokenStream {
                 return false;
             }
             token = iter.next();
-            if (nextExpected == ANY_VALUE){
+            if (nextExpected == ANY_VALUE) {
                 continue;
             }
             if (!token.matches(type, nextExpected)) {
@@ -1820,7 +1820,7 @@ public class TokenStream {
      */
     public boolean matchesAnyOf(int type, String firstOption, String... additionalOptions)
             throws IllegalStateException {
-        if (completed){
+        if (completed) {
             return false;
         }
         Token current = currentToken();
@@ -1877,7 +1877,7 @@ public class TokenStream {
      * @throws IllegalStateException if this method was called before the stream was {@link #start() started}
      */
     public boolean matchesAnyOf(Iterable<String> options) throws IllegalStateException {
-        if (completed){
+        if (completed) {
             return false;
         }
         Token current = currentToken();
@@ -1900,7 +1900,7 @@ public class TokenStream {
     public boolean matchesAnyOf(int firstTypeOption,
                                 int... additionalTypeOptions)
             throws IllegalStateException {
-        if (completed){
+        if (completed) {
             return false;
         }
         Token current = currentToken();
@@ -2601,7 +2601,7 @@ public class TokenStream {
                 columnNumber = 0;
             }
             else if (result == '\n') {
-                if (!nextCharMayBeLineFeed){
+                if (!nextCharMayBeLineFeed) {
                     ++lineNumber;
                 }
                 columnNumber = 0;
@@ -2643,7 +2643,7 @@ public class TokenStream {
             if (nextIndex <= maxIndex) {
                 char nextChar = content[lastIndex + 1];
                 for (char c : characters) {
-                    if (c == nextChar){
+                    if (c == nextChar) {
                         return true;
                     }
                 }
@@ -2656,7 +2656,7 @@ public class TokenStream {
             int nextIndex = lastIndex + 1;
             if (nextIndex <= maxIndex) {
                 char nextChar = content[lastIndex + 1];
-                if (characters.indexOf(nextChar) != -1){
+                if (characters.indexOf(nextChar) != -1) {
                     return true;
                 }
             }
@@ -2857,7 +2857,7 @@ public class TokenStream {
                                 }
                             }
                             endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
-                            if (!foundLineTerminator){
+                            if (!foundLineTerminator) {
                                 ++endIndex; // must point beyond last char
                             }
                             if (c == '\r' && input.isNext('\n')) {

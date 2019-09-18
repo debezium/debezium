@@ -97,7 +97,7 @@ public class TypeRegistry {
             else if (TYPE_NAME_CITEXT.equals(type.getName())) {
                 citextOid = type.getOid();
             }
-            else if (TYPE_NAME_HSTORE.equals(type.getName())){
+            else if (TYPE_NAME_HSTORE.equals(type.getName())) {
                 hstoreOid = type.getOid();
             }
             else if (TYPE_NAME_HSTORE_ARRAY.equals(type.getName())) {
@@ -239,7 +239,7 @@ public class TypeRegistry {
      *
      * @return OID for {@code HSTORE} type of this PostgreSQL instance
      */
-    public int hstoreOid(){
+    public int hstoreOid() {
         return hstoreOid;
     }
 

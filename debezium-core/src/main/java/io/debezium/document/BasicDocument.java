@@ -146,7 +146,7 @@ final class BasicDocument implements Document {
      *         is less than, equal to, or greater than the specified object.
      */
     protected int compareNonNull(Value value1, Value value2) {
-        if (Value.isNull(value1) || Value.isNull(value2)){
+        if (Value.isNull(value1) || Value.isNull(value2)) {
             return 0;
         }
         return value1.comparable().compareTo(value2.comparable());

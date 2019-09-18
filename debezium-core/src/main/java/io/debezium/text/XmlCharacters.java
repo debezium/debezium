@@ -49,7 +49,7 @@ public class XmlCharacters {
         for (int i=0x20 ; i <=0xD7FF ; ++i) {
             MASKS[i]|=VALID_CHARACTER|CONTENT_CHARACTER;
         }
-        for (int i=0xE000 ; i<=0xFFFD ; ++i){
+        for (int i=0xE000 ; i<=0xFFFD ; ++i) {
             MASKS[i]|=VALID_CHARACTER|CONTENT_CHARACTER;
         }
         // Last range is bigger than our character array, so we'll handle in the 'isValid' method ...
@@ -165,13 +165,13 @@ public class XmlCharacters {
         MASKS[0x20] |= PUBID_CHARACTER;
         MASKS[0xA] |= PUBID_CHARACTER;
         MASKS[0xD] |= PUBID_CHARACTER;
-        for (int i='A'; i<='Z'; ++i){
+        for (int i='A'; i<='Z'; ++i) {
             MASKS[i]|=PUBID_CHARACTER;
         }
-        for (int i='a'; i<='z'; ++i){
+        for (int i='a'; i<='z'; ++i) {
             MASKS[i]|=PUBID_CHARACTER;
         }
-        for (int i='0'; i<='9'; ++i){
+        for (int i='0'; i<='9'; ++i) {
             MASKS[i]|=PUBID_CHARACTER;
         }
         MASKS['-'] |= PUBID_CHARACTER;
@@ -314,7 +314,7 @@ public class XmlCharacters {
      * @return true if the supplied name is indeed a valid XML NCName, or false otherwise
      */
     public static boolean isValidNcName( String name ) {
-        if (name == null || name.length() == 0){
+        if (name == null || name.length() == 0) {
             return false;
         }
         CharacterIterator iter = new StringCharacterIterator(name);

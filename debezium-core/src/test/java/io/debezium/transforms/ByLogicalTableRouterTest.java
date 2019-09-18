@@ -120,7 +120,7 @@ public class ByLogicalTableRouterTest {
     }
 
     @Test
-    public void testHeartbeatMessageTopicReplacementTopic(){
+    public void testHeartbeatMessageTopicReplacementTopic() {
         final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
         final Map<String, String> props = new HashMap<>();
         final String keyFieldName = "serverName";

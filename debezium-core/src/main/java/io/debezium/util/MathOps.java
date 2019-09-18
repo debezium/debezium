@@ -98,7 +98,7 @@ public final class MathOps {
 
     public static Number add(Short first, int second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
             return Short.valueOf((short) sum);
         }
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {
@@ -109,7 +109,7 @@ public final class MathOps {
 
     public static Number add(Short first, long second) {
         long sum = first.longValue() + second;
-        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum){
+        if (Short.MAX_VALUE >= sum && Short.MIN_VALUE <= sum) {
             return Short.valueOf((short) sum);
         }
         if (Integer.MAX_VALUE >= sum && Integer.MIN_VALUE <= sum) {

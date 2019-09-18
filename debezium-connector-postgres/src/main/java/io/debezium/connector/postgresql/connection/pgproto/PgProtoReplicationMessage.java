@@ -160,7 +160,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.MONEY:
                 return datumMessage.hasDatumInt64() ? datumMessage.getDatumInt64() : null;
             case PgOid.FLOAT4:
-                return datumMessage.hasDatumFloat()? datumMessage.getDatumFloat() : null;
+                return datumMessage.hasDatumFloat() ? datumMessage.getDatumFloat() : null;
             case PgOid.FLOAT8:
                 return datumMessage.hasDatumDouble() ? datumMessage.getDatumDouble() : null;
             case PgOid.NUMERIC:
@@ -311,7 +311,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
         // 3. For larger arrays and especially 64-bit integers and the like it is less efficient sending string
         //    representations over the wire.
         try {
-            byte[] data = datumMessage.hasDatumBytes()? datumMessage.getDatumBytes().toByteArray() : null;
+            byte[] data = datumMessage.hasDatumBytes() ? datumMessage.getDatumBytes().toByteArray() : null;
             if (data == null) {
                 return null;
             }

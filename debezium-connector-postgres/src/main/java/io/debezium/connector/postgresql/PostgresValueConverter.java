@@ -251,7 +251,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
                     return SchemaBuilder.array(Geometry.builder().optional().build());
                 }
-                else if (oidValue == typeRegistry.hstoreOid()){
+                else if (oidValue == typeRegistry.hstoreOid()) {
                     return hstoreSchema();
                 }
                 else if (oidValue == typeRegistry.hstoreArrayOid()) {
@@ -280,7 +280,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
     }
 
-    private SchemaBuilder hstoreSchema(){
+    private SchemaBuilder hstoreSchema() {
         if (hStoreMode == PostgresConnectorConfig.HStoreHandlingMode.JSON) {
             return Json.builder();
         }
@@ -479,14 +479,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(newDecimal), mode, column.name());
     }
 
-    protected Object convertHStore(Column column, Field fieldDefn, Object data, HStoreHandlingMode mode){
+    protected Object convertHStore(Column column, Field fieldDefn, Object data, HStoreHandlingMode mode) {
         if (mode == HStoreHandlingMode.JSON) {
             return convertHstoreToJsonString(column, fieldDefn, data);
         }
             return convertHstoreToMap(column, fieldDefn, data);
         }
 
-    private Object convertHstoreToMap(Column column, Field fieldDefn, Object data){
+    private Object convertHstoreToMap(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyMap(), (r) -> {
             if (data instanceof String) {
                 r.deliver(HStoreConverter.fromString((String) data));
@@ -509,7 +509,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return new String(data, databaseCharset);
     }
 
-    private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data){
+    private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
             logger.trace("in ANON: value from data object: *** {} ***", data);
             logger.trace("in ANON: object type is: *** {} ***", data.getClass());
@@ -528,7 +528,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    private String changePlainStringRepresentationToJsonStringRepresentation(String text){
+    private String changePlainStringRepresentationToJsonStringRepresentation(String text) {
         logger.trace("text value is: {}", text);
         try {
             Map<String, String> map = HStoreConverter.fromString(text);

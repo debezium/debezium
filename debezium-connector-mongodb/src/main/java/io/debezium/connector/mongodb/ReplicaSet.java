@@ -197,7 +197,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
             return 0;
         }
         if (str1 == null) {
-            return str2 == null?0:- 1;
+            return str2 == null ? 0 : -1;
         }
         if (str2 == null) {
             return 1;

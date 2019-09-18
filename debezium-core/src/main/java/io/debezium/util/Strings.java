@@ -618,7 +618,8 @@ public final class Strings {
                                     try {
                                         return new BigDecimal(value);
                                     }
-                                    catch (NumberFormatException e7) {}
+                                    catch (NumberFormatException e7) {
+                                    }
                                 }
                             }
                         }
@@ -641,7 +642,8 @@ public final class Strings {
             try {
                 return Integer.parseInt(value);
             }
-            catch (NumberFormatException e) {}
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }
@@ -658,7 +660,8 @@ public final class Strings {
             try {
                 return Long.parseLong(value);
             }
-            catch (NumberFormatException e) {}
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }
@@ -675,7 +678,8 @@ public final class Strings {
             try {
                 return Double.parseDouble(value);
             }
-            catch (NumberFormatException e) {}
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }
@@ -692,7 +696,8 @@ public final class Strings {
             try {
                 return Boolean.parseBoolean(value);
             }
-            catch (NumberFormatException e) {}
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValue;
     }

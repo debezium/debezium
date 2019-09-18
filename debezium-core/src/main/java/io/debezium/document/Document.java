@@ -341,7 +341,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Stream<Field> children(Path path) {
         Value parent = find(path).orElse(Value.create(Document.create()));
-        if (!parent.isDocument()){
+        if (!parent.isDocument()) {
             return Stream.empty();
         }
         return parent.asDocument().stream();
@@ -1122,7 +1122,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Document setDocument(CharSequence name,
                                  Document document) {
-        if (document == null){
+        if (document == null) {
             document = Document.create();
         }
         setValue(name, Value.create(document));
@@ -1149,7 +1149,7 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      */
     default Array setArray(CharSequence name,
                            Array array) {
-        if (array == null){
+        if (array == null) {
             array = Array.create();
         }
         setValue(name, Value.create(array));

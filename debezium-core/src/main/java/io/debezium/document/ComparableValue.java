@@ -219,7 +219,7 @@ final class ComparableValue implements Value {
         }
         if (value instanceof Long) {
             long raw = ((Long) value).longValue();
-            if (isValidInteger(raw)){
+            if (isValidInteger(raw)) {
                 return Integer.valueOf((int) raw);
             }
         }

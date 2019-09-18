@@ -67,7 +67,7 @@ final class ConvertingValue implements Value {
             return value.asBoolean();
         }
         if (value.isNumber()) {
-            return value.asNumber().intValue() == 0?Boolean.FALSE:Boolean.TRUE;
+            return value.asNumber().intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         if (value.isString()) {
             return Boolean.valueOf(asString());

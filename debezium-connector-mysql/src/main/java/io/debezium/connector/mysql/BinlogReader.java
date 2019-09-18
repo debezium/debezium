@@ -425,7 +425,7 @@ public class BinlogReader extends AbstractReader {
      * @return a copy of the last offset of this reader, or null if this reader has not completed a poll.
      */
     public Map<String, ?> getLastOffset() {
-        return lastOffset == null? null : new HashMap<>(lastOffset);
+        return lastOffset == null ? null : new HashMap<>(lastOffset);
     }
 
     @Override

@@ -61,7 +61,7 @@ public class Geometry {
      * @param srid the coordinate reference system identifier; may be null if unset/unknown
      * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
-    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid){
+    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid) {
         Struct result = new Struct(geomSchema);
         result.put(WKB_FIELD, wkb);
         if (srid != null) {

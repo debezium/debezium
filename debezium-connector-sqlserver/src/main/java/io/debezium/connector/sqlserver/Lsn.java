@@ -108,7 +108,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     @Override
-    public boolean equals(Object obj){
+    public boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }

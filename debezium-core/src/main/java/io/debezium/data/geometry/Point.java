@@ -101,7 +101,7 @@ public class Point extends Geometry {
      * @param y the Y coordinate of the point; may not be null
      * @return a {@link Struct} which represents a Connect value for this schema; never null
      */
-    public static Struct createValue(Schema geomSchema, double x, double y){
+    public static Struct createValue(Schema geomSchema, double x, double y) {
         // turn the specified points
         byte[] wkb = buildWKBPoint(x, y);
         Struct result = Geometry.createValue(geomSchema, wkb, null);

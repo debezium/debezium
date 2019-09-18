@@ -104,7 +104,7 @@ public class ReconcilingBinlogReader implements Reader {
 
     @Override
     public void stop() {
-        if (running.compareAndSet(true, false)){
+        if (running.compareAndSet(true, false)) {
             try {
                 LOGGER.info("Stopping the {} reader", reconcilingReader.name());
                 reconcilingReader.stop();
@@ -126,7 +126,7 @@ public class ReconcilingBinlogReader implements Reader {
     }
 
     private void completeSuccessfully() {
-        if (completed.compareAndSet(false, true)){
+        if (completed.compareAndSet(false, true)) {
             stop();
             setupUnifiedReader();
             LOGGER.info("Completed reconciliation of parallel readers.");
@@ -192,12 +192,12 @@ public class ReconcilingBinlogReader implements Reader {
 
     /*package private*/ BinlogReader getLeadingReader() {
         checkLaggingLeadingInfo();
-        return aReaderLeading? binlogReaderA : binlogReaderB;
+        return aReaderLeading ? binlogReaderA : binlogReaderB;
     }
 
     /*package private*/ BinlogReader getLaggingReader() {
         checkLaggingLeadingInfo();
-        return aReaderLeading? binlogReaderB : binlogReaderA;
+        return aReaderLeading ? binlogReaderB : binlogReaderA;
     }
 
     private void checkLaggingLeadingInfo() {

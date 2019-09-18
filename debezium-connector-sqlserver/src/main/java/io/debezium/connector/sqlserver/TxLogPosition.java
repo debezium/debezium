@@ -48,7 +48,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
     }
 
     @Override
-    public boolean equals(Object obj){
+    public boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }

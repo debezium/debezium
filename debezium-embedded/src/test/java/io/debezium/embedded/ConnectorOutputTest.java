@@ -824,7 +824,7 @@ public abstract class ConnectorOutputTest {
                     // And possibly hand it to the test's recorder ...
                     try {
                         Document jsonRecord = serializeSourceRecord(actualRecord, keyConverter, valueConverter);
-                        if (jsonRecord != null){
+                        if (jsonRecord != null) {
                             recorder.accept(jsonRecord);
                         }
                     }

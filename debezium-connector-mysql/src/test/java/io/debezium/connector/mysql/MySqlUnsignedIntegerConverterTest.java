@@ -17,31 +17,31 @@ import org.junit.Test;
 public class MySqlUnsignedIntegerConverterTest {
 
     @Test
-    public void shouldConvertSignedBinlogTinyintToUnsigned(){
+    public void shouldConvertSignedBinlogTinyintToUnsigned() {
         assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) -1));
         assertEquals((short) 255, MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) 255));
     }
 
     @Test
-    public void shouldConvertSignedBinlogSmallintToUnsigned(){
+    public void shouldConvertSignedBinlogSmallintToUnsigned() {
         assertEquals(65535, MySqlUnsignedIntegerConverter.convertUnsignedSmallint(-1));
         assertEquals(65535, MySqlUnsignedIntegerConverter.convertUnsignedSmallint(65535));
     }
 
     @Test
-    public void shouldConvertSignedBinlogMediumintToUnsigned(){
+    public void shouldConvertSignedBinlogMediumintToUnsigned() {
         assertEquals(16777215, MySqlUnsignedIntegerConverter.convertUnsignedMediumint(-1));
         assertEquals(16777215, MySqlUnsignedIntegerConverter.convertUnsignedMediumint(16777215));
     }
 
     @Test
-    public void shouldConvertSignedBinlogIntToUnsigned(){
+    public void shouldConvertSignedBinlogIntToUnsigned() {
         assertEquals(4294967295L, MySqlUnsignedIntegerConverter.convertUnsignedInteger(-1L));
         assertEquals(4294967295L, MySqlUnsignedIntegerConverter.convertUnsignedInteger(4294967295L));
     }
 
     @Test
-    public void shouldConvertSignedBinlogBigintToUnsigned(){
+    public void shouldConvertSignedBinlogBigintToUnsigned() {
         assertEquals(new BigDecimal("18446744073709551615"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("-1")));
         assertEquals(new BigDecimal("18446744073709551615"), MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal("18446744073709551615")));
     }
