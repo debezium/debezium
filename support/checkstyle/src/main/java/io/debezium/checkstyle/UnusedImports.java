@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.puppycrawl.tools.checkstyle.Utils;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.FileContents;
 import com.puppycrawl.tools.checkstyle.api.FullIdent;
@@ -21,7 +20,8 @@ import com.puppycrawl.tools.checkstyle.checks.imports.UnusedImportsCheck;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.InvalidJavadocTag;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocTag;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocTags;
-import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocUtils;
+import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
+import com.puppycrawl.tools.checkstyle.utils.JavadocUtil.JavadocTagType;
 
 /**
  * This is a specialization of the {@link UnusedImportsCheck} that fixes a couple of problems, including correctly processing
@@ -34,7 +34,7 @@ import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocUtils;
 public class UnusedImports extends UnusedImportsCheck {
 
     private static final String[] DEBUG_CLASSNAMES = {};// {"ModeShapeSingleUseTest"};
-    private static final Set<String> DEBUG_CLASSNAMES_SET = new HashSet<String>(Arrays.asList(DEBUG_CLASSNAMES));
+    private static final Set<String> DEBUG_CLASSNAMES_SET = new HashSet<>(Arrays.asList(DEBUG_CLASSNAMES));
 
     /**
      * A regular expression for finding the first word within a JavaDoc "@link" text.
@@ -43,7 +43,7 @@ public class UnusedImports extends UnusedImportsCheck {
      * (.*?)(?:\s+|#|\$)(.*)
      * </pre>
      */
-    private static final Pattern LINK_VALUE_IN_TEXT_PATTERN = Utils.createPattern("(.*?)(?:\\s+|#|\\$)(.*)");
+    private static final Pattern LINK_VALUE_IN_TEXT_PATTERN = CommonUtil.createPattern("(.*?)(?:\\s+|#|\\$)(.*)");
     /**
      * A regular expression for finding the class name (group 1) and the method parameters (group 2) within a JavaDoc "@link"
      * reference.
@@ -52,7 +52,7 @@ public class UnusedImports extends UnusedImportsCheck {
      * ([\w.]+)(?:\#?\w+)?(?:\(([^\)]+)\))?.*
      * </pre>
      */
-    private static final Pattern PARTS_OF_CLASS_OR_REFERENCE_PATTERN = Utils.createPattern(
+    private static final Pattern PARTS_OF_CLASS_OR_REFERENCE_PATTERN = CommonUtil.createPattern(
             "([\\w.]+)(?:\\#?\\w+)?(?:\\(([^\\)]+)\\))?.*");
     /**
      * A regular expression for finding the first classname referenced in a "@link" reference.
@@ -61,7 +61,7 @@ public class UnusedImports extends UnusedImportsCheck {
      * \{\@link\s+([^}]*)
      * </pre>
      */
-    private static final Pattern LINK_VALUE_PATTERN = Utils.createPattern("\\{\\@link\\s+([^}]*)");
+    private static final Pattern LINK_VALUE_PATTERN = CommonUtil.createPattern("\\{\\@link\\s+([^}]*)");
 
     private boolean collect = false;
     private boolean processJavaDoc = false;
@@ -73,13 +73,13 @@ public class UnusedImports extends UnusedImportsCheck {
     }
 
     @Override
-    public void setProcessJavadoc( boolean aValue ) {
+    public void setProcessJavadoc(boolean aValue) {
         super.setProcessJavadoc(aValue);
         processJavaDoc = aValue;
     }
 
     @Override
-    public void beginTree( DetailAST aRootAST ) {
+    public void beginTree(DetailAST aRootAST) {
         collect = false;
         imports.clear();
         referenced.clear();
@@ -87,7 +87,7 @@ public class UnusedImports extends UnusedImportsCheck {
     }
 
     @Override
-    public void visitToken( DetailAST aAST ) {
+    public void visitToken(DetailAST aAST) {
         if (aAST.getType() == TokenTypes.CLASS_DEF) {
             String classname = aAST.findFirstToken(TokenTypes.IDENT).getText();
             print = DEBUG_CLASSNAMES_SET.contains(classname);
@@ -95,13 +95,16 @@ public class UnusedImports extends UnusedImportsCheck {
         if (aAST.getType() == TokenTypes.IDENT) {
             super.visitToken(aAST);
             if (collect) processIdent(aAST);
-        } else if (aAST.getType() == TokenTypes.IMPORT) {
+        }
+        else if (aAST.getType() == TokenTypes.IMPORT) {
             super.visitToken(aAST);
             processImport(aAST);
-        } else if (aAST.getType() == TokenTypes.STATIC_IMPORT) {
+        }
+        else if (aAST.getType() == TokenTypes.STATIC_IMPORT) {
             super.visitToken(aAST);
             processStaticImport(aAST);
-        } else {
+        }
+        else {
             collect = true;
             if (processJavaDoc) {
                 processJavaDocLinkParameters(aAST);
@@ -115,7 +118,7 @@ public class UnusedImports extends UnusedImportsCheck {
      * 
      * @param aAST the IDENT node to process {@link ArrayList stuff}
      */
-    protected void processIdent( DetailAST aAST ) {
+    protected void processIdent(DetailAST aAST) {
         final int parentType = aAST.getParent().getType();
         if (((parentType != TokenTypes.DOT) && (parentType != TokenTypes.METHOD_DEF))
             || ((parentType == TokenTypes.DOT) && (aAST.getNextSibling() != null))) {
@@ -128,7 +131,7 @@ public class UnusedImports extends UnusedImportsCheck {
         final int lineNo = aAST.getLineNo();
         final TextBlock cmt = contents.getJavadocBefore(lineNo);
         if (cmt != null) {
-            final JavadocTags tags = JavaDocUtil.getJavadocTags(cmt, JavadocUtils.JavadocTagType.ALL);
+            final JavadocTags tags = JavaDocUtil.getJavadocTags(cmt, JavadocTagType.ALL);
             for (final JavadocTag tag : tags.getValidTags()) {
                 processJavaDocTag(tag);
             }
@@ -138,11 +141,11 @@ public class UnusedImports extends UnusedImportsCheck {
         }
     }
 
-    protected void processJavaDocTag( JavadocTag tag ) {
+    protected void processJavaDocTag(JavadocTag tag) {
         print("tag: ", tag);
 
         if (tag.canReferenceImports()) {
-            String identifier = tag.getArg1();
+            String identifier = tag.getFirstArg();
             print("Found identifier: ", identifier);
             referenced.add(identifier);
             // Find the link to classes or methods ...
@@ -157,7 +160,7 @@ public class UnusedImports extends UnusedImportsCheck {
                 processClassOrMethodReference(methodCall);
             }
         } else if (tag.isParamTag()) {
-            String paramText = tag.getArg1();
+            String paramText = tag.getFirstArg();
             print("Found parameter text: ", paramText);
             // Find the links to classe
             Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(paramText);
@@ -167,7 +170,7 @@ public class UnusedImports extends UnusedImportsCheck {
                 processClassOrMethodReference(linkValue);
             }
         } else if (tag.isReturnTag()) {
-            String returnText = tag.getArg1();
+            String returnText = tag.getFirstArg();
             print("Found return text: ", returnText);
             // Find the links to classe
             Matcher paramsMatcher = LINK_VALUE_PATTERN.matcher(returnText);
@@ -179,7 +182,7 @@ public class UnusedImports extends UnusedImportsCheck {
         }
     }
 
-    protected void processClassOrMethodReference( String text ) {
+    protected void processClassOrMethodReference(String text) {
         print("Adding referenced: ", text);
         referenced.add(text);
         // Look for all the identifiers within the parameters ...
@@ -209,7 +212,7 @@ public class UnusedImports extends UnusedImportsCheck {
      * 
      * @param aAST node containing the import details
      */
-    private void processImport( DetailAST aAST ) {
+    private void processImport(DetailAST aAST) {
         final FullIdent name = FullIdent.createFullIdentBelow(aAST);
         if ((name != null) && !name.getText().endsWith(".*")) {
             imports.add(name);
@@ -221,7 +224,7 @@ public class UnusedImports extends UnusedImportsCheck {
      * 
      * @param aAST node containing the static import details
      */
-    private void processStaticImport( DetailAST aAST ) {
+    private void processStaticImport(DetailAST aAST) {
         final FullIdent name = FullIdent.createFullIdent(aAST.getFirstChild().getNextSibling());
         if ((name != null) && !name.getText().endsWith(".*")) {
             imports.add(name);
@@ -232,8 +235,8 @@ public class UnusedImports extends UnusedImportsCheck {
     public void finishTree( DetailAST aRootAST ) {
         // loop over all the imports to see if referenced.
         for (final FullIdent imp : imports) {
-            if (!referenced.contains(Utils.baseClassname(imp.getText()))) {
-                print("imp.getText(): " + Utils.baseClassname(imp.getText()));
+            if (!referenced.contains(CommonUtil.baseClassName(imp.getText()))) {
+                print("imp.getText(): " + CommonUtil.baseClassName(imp.getText()));
                 print("referenced: " + referenced);
                 log(imp.getLineNo(), imp.getColumnNo(), "import.unused", imp.getText());
             }
