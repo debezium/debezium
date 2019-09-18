@@ -179,7 +179,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotDelayMs = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
-        this.sanitizeFieldNames = config.getBoolean(CommonConnectorConfig.SANITIZE_FIELD_NAMES);
+        this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
     }
 
     /**
@@ -246,6 +246,13 @@ public abstract class CommonConnectorConfig {
             ++count;
         }
         return count;
+    }
+
+    private static boolean isUsingAvroConverter(Configuration config) {
+        final String avroConverter = "io.confluent.connect.avro.AvroConverter";
+        final String keyConverter = config.getString("key.converter");
+        final String valueConverter = config.getString("value.converter");
+        return avroConverter.equals(keyConverter) || avroConverter.equals(valueConverter);
     }
 
     protected static int validateServerNameIsDifferentFromHistoryTopicName(Configuration config, Field field, ValidationOutput problems) {

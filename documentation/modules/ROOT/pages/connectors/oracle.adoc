@@ -1137,8 +1137,8 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
 |`sanitize.field.names` +
-0.10.0.Beta4 and later
-|`false`
+0.10 and later
+|`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to AVRO naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
