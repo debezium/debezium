@@ -71,7 +71,7 @@ public class KafkaServer {
      * @param port the desired port
      */
     public KafkaServer(Supplier<String> zookeeperConnection, int brokerId, int port) {
-        if (zookeeperConnection == null){
+        if (zookeeperConnection == null) {
             throw new IllegalArgumentException("The Zookeeper connection string supplier may not be null");
         }
         this.zkConnection = zookeeperConnection;
@@ -110,7 +110,7 @@ public class KafkaServer {
      * @throws IllegalStateException if the server is running when this method is called
      */
     public KafkaServer setProperty(String name, String value) {
-        if (server != null){
+        if (server != null) {
             throw new IllegalStateException("Unable to change the properties when already running");
         }
         if (!KafkaConfig.ZkConnectProp().equalsIgnoreCase(name)
@@ -130,7 +130,7 @@ public class KafkaServer {
      * @throws IllegalStateException if the server is running when this method is called
      */
     public KafkaServer setProperties( Properties properties ) {
-        if (server != null){
+        if (server != null) {
             throw new IllegalStateException("Unable to change the properties when already running");
         }
         properties.stringPropertyNames().forEach(propName -> {
@@ -189,7 +189,7 @@ public class KafkaServer {
      * @throws IllegalStateException if the server is already running
      */
     public synchronized KafkaServer startup() {
-        if (server != null){
+        if (server != null) {
             throw new IllegalStateException("" + this + " is already running");
         }
 
@@ -295,7 +295,7 @@ public class KafkaServer {
      */
     public void createTopics(int numPartitions, int replicationFactor, String... topics) {
         for (String topic : topics) {
-            if ( topic != null ){
+            if ( topic != null ) {
                 createTopic(topic, numPartitions, replicationFactor);
             }
         }

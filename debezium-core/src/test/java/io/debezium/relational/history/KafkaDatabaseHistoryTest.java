@@ -69,14 +69,14 @@ public class KafkaDatabaseHistoryTest {
     @After
     public void afterEach() {
         try {
-            if (history != null){
+            if (history != null) {
                 history.stop();
             }
         }
         finally {
             history = null;
             try {
-                if (kafka != null){
+                if (kafka != null) {
                     kafka.shutdown();
                 }
             }

@@ -154,7 +154,7 @@ public class SchemaUtil {
                 if (schema.version() != null) {
                     appendAdditional("version", schema.version());
                 }
-                switch(schema.type()){
+                switch(schema.type()) {
                 case STRUCT:
                     appendAdditional("fields", schema.fields());
                     break;

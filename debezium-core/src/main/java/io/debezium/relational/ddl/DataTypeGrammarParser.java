@@ -283,7 +283,7 @@ public class DataTypeGrammarParser {
 
         @Override
         public boolean determineFirstTokens(Consumer<String> tokens) {
-            if (!pattern1.determineFirstTokens(tokens)){
+            if (!pattern1.determineFirstTokens(tokens)) {
                 return false;
             }
             return pattern2.determineFirstTokens(tokens);
@@ -315,12 +315,13 @@ public class DataTypeGrammarParser {
             catch (ParsingException e) {
             }
             stream.rewind(marker);
-            try{
+            try {
                 if ( pattern2.match(stream, builder, error) ) {
                     return true;
                 }
             }
-            catch (ParsingException e) {}
+            catch (ParsingException e) {
+            }
             stream.rewind(marker);
             return false;
         }

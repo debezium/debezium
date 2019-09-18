@@ -176,7 +176,7 @@ public class MongoDataConverterTest {
 
     @Test
     @FixFor("DBZ-1315")
-    public void shouldProcessUnsupportedValue(){
+    public void shouldProcessUnsupportedValue() {
         val = BsonDocument.parse("{\n" +
                 "    \"_id\" : ObjectId(\"518cc94bc27cfa20d9693e5d\"),\n" +
                 "    \"name\" : undefined,\n" +

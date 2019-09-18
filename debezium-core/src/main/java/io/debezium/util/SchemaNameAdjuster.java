@@ -111,7 +111,7 @@ public interface SchemaNameAdjuster {
          * @return the new function; never null
          */
         default ReplacementOccurred andThen(ReplacementOccurred next) {
-            if (next == null){
+            if (next == null) {
                 return this;
             }
             return (original, replacement, conflictsWith) -> {

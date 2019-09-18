@@ -92,7 +92,7 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is running
      */
     public KafkaCluster deleteDataUponShutdown(boolean delete) {
-        if (running){
+        if (running) {
             throw new IllegalStateException("Unable to change cluster settings when running");
         }
         this.deleteDataUponShutdown = delete;
@@ -107,7 +107,7 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is running
      */
     public KafkaCluster deleteDataPriorToStartup(boolean delete) {
-        if (running){
+        if (running) {
             throw new IllegalStateException("Unable to change cluster settings when running");
         }
         this.deleteDataPriorToStartup = delete;
@@ -122,7 +122,7 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is running
      */
     public KafkaCluster addBrokers(int count) {
-        if (running){
+        if (running) {
             throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         }
         AtomicLong added = new AtomicLong();
@@ -130,13 +130,13 @@ public class KafkaCluster {
             kafkaServers.computeIfAbsent(Integer.valueOf(added.intValue() + 1), id -> {
                 added.incrementAndGet();
                 KafkaServer server = new KafkaServer(zkServer::getConnection, id);
-                if (dataDir != null){
+                if (dataDir != null) {
                     server.setStateDirectory(dataDir);
                 }
-                if (kafkaConfig != null){
+                if (kafkaConfig != null) {
                     server.setProperties(kafkaConfig);
                 }
-                if (startingKafkaPort >= 0){
+                if (startingKafkaPort >= 0) {
                     server.setPort((int) this.nextKafkaPort.getAndIncrement());
                 }
                 return server;
@@ -154,7 +154,7 @@ public class KafkaCluster {
      * @throws IllegalArgumentException if the supplied file is not a directory or not writable
      */
     public KafkaCluster usingDirectory(File dataDir) {
-        if (running){
+        if (running) {
             throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         }
         if (dataDir != null && dataDir.exists() && !dataDir.isDirectory() && !dataDir.canWrite() && !dataDir.canRead()) {
@@ -173,7 +173,7 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is running
      */
     public KafkaCluster withKafkaConfiguration(Properties properties) {
-        if (running){
+        if (running) {
             throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         }
         if (properties != null && !properties.isEmpty()) {
@@ -194,7 +194,7 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is running
      */
     public KafkaCluster withPorts(int zkPort, int firstKafkaPort) {
-        if (running){
+        if (running) {
             throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         }
         this.zkServer.setPort(zkPort);
@@ -302,7 +302,7 @@ public class KafkaCluster {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Creating topics: {}", Arrays.toString(topics));
         }
-        if (!running){
+        if (!running) {
             throw new IllegalStateException("The cluster must be running to create topics");
         }
         kafkaServers.values().stream().findFirst().ifPresent(server -> server.createTopics(topics));
@@ -330,7 +330,7 @@ public class KafkaCluster {
             LOGGER.debug("Creating topics with {} partitions and {} replicas each: {}", numPartitions, replicationFactor,
                          Arrays.toString(topics));
         }
-        if (!running){
+        if (!running) {
             throw new IllegalStateException("The cluster must be running to create topics");
         }
         kafkaServers.values().stream().findFirst().ifPresent(server -> server.createTopics(numPartitions, replicationFactor, topics));
@@ -356,7 +356,7 @@ public class KafkaCluster {
      */
     public void createTopic(String topic, int numPartitions, int replicationFactor) {
         LOGGER.debug("Creating topic '{}' with {} partitions and {} replicas", topic, numPartitions, replicationFactor);
-        if (!running){
+        if (!running) {
             throw new IllegalStateException("The cluster must be running to create topics");
         }
         kafkaServers.values().stream().findFirst().ifPresent(server -> server.createTopic(topic, numPartitions, replicationFactor));
@@ -411,7 +411,7 @@ public class KafkaCluster {
      * @throws IllegalStateException if the cluster is not running
      */
     public Usage useTo() {
-        if (!running){
+        if (!running) {
             throw new IllegalStateException("Unable to use the cluster it is not running");
         }
         return new Usage();
@@ -542,7 +542,7 @@ public class KafkaCluster {
          * @see #getProducerProperties(String)
          */
         public Properties getConsumerProperties(String groupId, String clientId, OffsetResetStrategy autoOffsetReset) {
-            if (groupId == null){
+            if (groupId == null) {
                 throw new IllegalArgumentException("The groupId is required");
             }
             Properties props = new Properties();
@@ -552,7 +552,7 @@ public class KafkaCluster {
             if (autoOffsetReset != null) {
                 props.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset.toString().toLowerCase());
             }
-            if (clientId != null){
+            if (clientId != null) {
                 props.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
             }
             return props;
@@ -569,7 +569,7 @@ public class KafkaCluster {
             Properties props = new Properties();
             props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList());
             props.setProperty(ProducerConfig.ACKS_CONFIG, Integer.toString(1));
-            if (clientId != null){
+            if (clientId != null) {
                 props.setProperty(ProducerConfig.CLIENT_ID_CONFIG, clientId);
             }
             return props;
@@ -784,7 +784,7 @@ public class KafkaCluster {
                     }
                 }
                 finally {
-                    if (completionCallback != null){
+                    if (completionCallback != null) {
                         completionCallback.run();
                     }
                     LOGGER.debug("Stopping producer {}", producerName);
@@ -935,7 +935,7 @@ public class KafkaCluster {
                     }
                 }
                 finally {
-                    if (completion != null){
+                    if (completion != null) {
                         completion.run();
                     }
                     LOGGER.debug("Stopping consumer {}", clientId);
@@ -1016,7 +1016,7 @@ public class KafkaCluster {
                            completion,
                            Collections.singleton(topicName),
                            record -> {
-                               if (consumer.test(record.key(), record.value())){
+                               if (consumer.test(record.key(), record.value())) {
                                    readCounter.incrementAndGet();
                                }
                            });
@@ -1039,7 +1039,7 @@ public class KafkaCluster {
                              completion,
                              Collections.singleton(topicName),
                              record -> {
-                                 if (consumer.test(record.key(), record.value())){
+                                 if (consumer.test(record.key(), record.value())) {
                                      readCounter.incrementAndGet();
                                  }
                              });
@@ -1062,7 +1062,7 @@ public class KafkaCluster {
                             completion,
                             Collections.singleton(topicName),
                             record -> {
-                                if (consumer.test(record.key(), record.value())){
+                                if (consumer.test(record.key(), record.value())) {
                                     readCounter.incrementAndGet();
                                 }
                             });
@@ -1113,7 +1113,7 @@ public class KafkaCluster {
 
                 @Override
                 public boolean getAsBoolean() {
-                    if (stopTime == 0L){
+                    if (stopTime == 0L) {
                         stopTime = System.currentTimeMillis() + unit.toMillis(timeout);
                     }
                     return continuation.getAsBoolean() && System.currentTimeMillis() <= stopTime;

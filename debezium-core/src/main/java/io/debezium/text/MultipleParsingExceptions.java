@@ -59,7 +59,7 @@ public class MultipleParsingExceptions extends RuntimeException {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(getMessage());
-        forEachError(e->{
+        forEachError(e-> {
             sb.append(System.lineSeparator()).append(e.toString());
         });
         return sb.toString();

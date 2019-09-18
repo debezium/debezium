@@ -104,7 +104,7 @@ final class TableEditorImpl implements TableEditor {
         Iterator<String> nameIter = this.pkColumnNames.iterator();
         while (nameIter.hasNext()) {
             String pkColumnName = nameIter.next();
-            if (!hasColumnWithName(pkColumnName)){
+            if (!hasColumnWithName(pkColumnName)) {
                 nameIter.remove();
             }
         }
@@ -259,7 +259,7 @@ final class TableEditorImpl implements TableEditor {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();
-        sortedColumns.values().forEach(column->{
+        sortedColumns.values().forEach(column-> {
             column = column.edit().charsetNameOfTable(defaultCharsetName).create();
             columns.add(column);
         });

@@ -176,7 +176,7 @@ public abstract class AbstractConnectorTest implements Testing {
                     Thread.currentThread().interrupt();
                 }
             }
-            if (callback != null){
+            if (callback != null) {
                 callback.accept(engine != null ? engine.isRunning() : false);
             }
         }

@@ -68,7 +68,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         private final String value;
 
-        HStoreHandlingMode(String value){
+        HStoreHandlingMode(String value) {
             this.value=value;
         }
 
@@ -83,7 +83,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @param value the configuration property value ; may not be null
          * @return the matching option, or null if the match is not found
          */
-        public static HStoreHandlingMode parse(String value){
+        public static HStoreHandlingMode parse(String value) {
             if (value == null) {
                 return null ;
             }
@@ -103,7 +103,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * @param defaultValue the default value ; may be null
          * @return the matching option or null if the match is not found and non-null default is invalid
          */
-        public static HStoreHandlingMode parse(String value, String defaultValue){
+        public static HStoreHandlingMode parse(String value, String defaultValue) {
             HStoreHandlingMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);

@@ -1180,7 +1180,8 @@ public interface Configuration {
             try {
                 return Integer.valueOf(value);
             }
-            catch (NumberFormatException e) {}
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsInt() : null;
     }
@@ -1201,7 +1202,8 @@ public interface Configuration {
             try {
                 return Long.valueOf(value);
             }
-            catch (NumberFormatException e) {}
+            catch (NumberFormatException e) {
+            }
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsLong() : null;
     }

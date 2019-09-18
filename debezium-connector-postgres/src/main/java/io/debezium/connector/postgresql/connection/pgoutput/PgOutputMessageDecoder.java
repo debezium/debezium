@@ -478,7 +478,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     private static String readString(ByteBuffer buffer) {
         StringBuilder sb = new StringBuilder();
         byte b = 0;
-        while ((b = buffer.get()) != 0){
+        while ((b = buffer.get()) != 0) {
             sb.append((char) b);
         }
         return sb.toString();

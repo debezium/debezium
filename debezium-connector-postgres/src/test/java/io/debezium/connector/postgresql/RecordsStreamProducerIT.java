@@ -1170,7 +1170,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1029")
-    public void shouldReceiveChangesForTableWithoutPrimaryKey() throws Exception{
+    public void shouldReceiveChangesForTableWithoutPrimaryKey() throws Exception {
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_table;",
                 "CREATE TABLE test_table (id SERIAL, text TEXT);",
@@ -1415,7 +1415,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         logger.info("Many tx duration = {} ms", stopwatch.durations().statistics().getTotal().toMillis());
     }
 
-    private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart) throws Exception{
+    private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart) throws Exception {
         if (tablesBeforeStart) {
             TestHelper.execute(
                     "DROP TABLE IF EXISTS test_table;",

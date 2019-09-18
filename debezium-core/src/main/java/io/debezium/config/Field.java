@@ -572,7 +572,7 @@ public final class Field {
         }
 
         // Do the same for any dependents ...
-        dependents.forEach(name->{
+        dependents.forEach(name-> {
             Field dependentField = fieldSupplier.apply(name);
             if ( dependentField != null ) {
                 dependentField.validate(config, fieldSupplier, results);
@@ -1113,11 +1113,12 @@ public final class Field {
             return 0;
         }
         try {
-            if (Integer.parseInt(value) > 0){
+            if (Integer.parseInt(value) > 0) {
                 return 0;
             }
         }
-        catch (Throwable e) {}
+        catch (Throwable e) {
+        }
         problems.accept(field, value, "A positive integer is expected");
         return 1;
     }
@@ -1132,7 +1133,8 @@ public final class Field {
                 return 0;
             }
         }
-        catch (Throwable e) {}
+        catch (Throwable e) {
+        }
         problems.accept(field, value, "An non-negative integer is expected");
         return 1;
     }
@@ -1162,7 +1164,8 @@ public final class Field {
                 return 0;
             }
         }
-        catch (Throwable e) {}
+        catch (Throwable e) {
+        }
         problems.accept(field, value, "A positive long value is expected");
         return 1;
     }
@@ -1177,7 +1180,8 @@ public final class Field {
                 return 0;
             }
         }
-        catch (Throwable e) {}
+        catch (Throwable e) {
+        }
         problems.accept(field, value, "A non-negative long value is expected");
         return 1;
     }

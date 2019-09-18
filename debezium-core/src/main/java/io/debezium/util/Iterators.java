@@ -353,7 +353,7 @@ public class Iterators {
      * @return the peeking iterator; may be null if {@code iter} is null
      */
     public static <T> PreviewIterator<T> preview(Iterator<T> iter) {
-        if (iter == null){
+        if (iter == null) {
             return null;
         }
         if (iter instanceof PreviewIterator) {

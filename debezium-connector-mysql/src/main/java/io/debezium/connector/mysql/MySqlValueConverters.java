@@ -563,7 +563,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @return the converted value, or null if the conversion could not be made and the column allows nulls
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertPoint(Column column, Field fieldDefn, Object data){
+    protected Object convertPoint(Column column, Field fieldDefn, Object data) {
         final MySqlGeometry empty = MySqlGeometry.createEmpty();
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             if (data instanceof byte[]) {
@@ -626,7 +626,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertUnsignedTinyint(Column column, Field fieldDefn, Object data){
+    protected Object convertUnsignedTinyint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, (short) 0, (r) -> {
             if (data instanceof Short) {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint((short) data));
@@ -652,7 +652,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertUnsignedSmallint(Column column, Field fieldDefn, Object data){
+    protected Object convertUnsignedSmallint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             if (data instanceof Integer) {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint((int) data));
@@ -678,7 +678,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertUnsignedMediumint(Column column, Field fieldDefn, Object data){
+    protected Object convertUnsignedMediumint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             if (data instanceof Integer) {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint((int) data));
@@ -704,7 +704,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertUnsignedInt(Column column, Field fieldDefn, Object data){
+    protected Object convertUnsignedInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             if (data instanceof Long) {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger((long) data));
@@ -730,7 +730,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
-    protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data){
+    protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             if (data instanceof BigDecimal) {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data));

@@ -465,7 +465,7 @@ public class SnapshotReaderIT {
     }
 
     @Test
-    public void shouldSnapshotTablesInOrderSpecifiedInTablesWhitelist() throws Exception{
+    public void shouldSnapshotTablesInOrderSpecifiedInTablesWhitelist() throws Exception {
         config = simpleConfig()
                 .with(MySqlConnectorConfig.TABLE_WHITELIST, "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
                 .build();
@@ -492,7 +492,7 @@ public class SnapshotReaderIT {
     }
 
     @Test
-    public void shouldSnapshotTablesInLexicographicalOrder() throws Exception{
+    public void shouldSnapshotTablesInLexicographicalOrder() throws Exception {
         config = simpleConfig()
                 .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
@@ -520,7 +520,7 @@ public class SnapshotReaderIT {
     }
 
     private Function<SourceRecord, String> getTableNameFromSourceRecord = sourceRecord -> ((Struct) sourceRecord.value()).getStruct("source").getString("table");
-    private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String ... tables){
+    private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String ... tables) {
         LinkedHashSet<String> tablesInOrderExpected = new LinkedHashSet<>();
         for (String table : tables) {
             tablesInOrderExpected.add(table);

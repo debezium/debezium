@@ -315,7 +315,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
      */
     protected abstract SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws Exception;
 
-    private void createDataEvents(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws InterruptedException{
+    private void createDataEvents(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws InterruptedException {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotContext.offset.preSnapshotStart();
 

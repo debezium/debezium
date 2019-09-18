@@ -250,7 +250,7 @@ public class IoUtil {
         }
         InputStream result = null;
         if (result == null) {
-            try{
+            try {
                 // Try absolute path ...
                 Path filePath = FileSystems.getDefault().getPath(resourcePath).toAbsolutePath();
                 File f        = filePath.toFile();
@@ -325,7 +325,7 @@ public class IoUtil {
     public static File createDirectory(Path path) {
         File dir = path.toAbsolutePath().toFile();
         if (dir.exists() && dir.canRead() && dir.canWrite()) {
-            if (dir.isDirectory()){
+            if (dir.isDirectory()) {
                 return dir;
             }
             throw new IllegalStateException("Expecting '" + path + "' to be a directory but found a file");
@@ -387,7 +387,7 @@ public class IoUtil {
      * @throws IOException if there is a problem deleting the file at the given path
      */
     public static void delete(String path) throws IOException {
-        if (path != null){
+        if (path != null) {
             delete(Paths.get(path));
         }
     }

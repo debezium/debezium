@@ -519,11 +519,11 @@ public class VerifyRecord {
     }
 
     private static String schemaName(Schema schema) {
-        if (schema == null){
+        if (schema == null) {
             return null;
         }
         String name = schema.name();
-        if (name != null){
+        if (name != null) {
             name = name.trim();
         }
         return name == null || name.isEmpty() ? null : name;
@@ -534,11 +534,11 @@ public class VerifyRecord {
                                        Predicate<String> ignoreFields,
                                        Map<String, RecordValueComparator> comparatorsByName,
                                        Map<String, RecordValueComparator> comparatorsBySchemaName) {
-        if (o1 == o2){
+        if (o1 == o2) {
             return;
         }
         if (o1 == null) {
-            if (o2 == null){
+            if (o2 == null) {
                 return;
             }
             fail(nameOf(keyOrValue, field) + " was null but expected " + SchemaUtil.asString(o2));
@@ -812,7 +812,7 @@ public class VerifyRecord {
             if (avroValueWithSchema != null) {
                 Testing.print("  value to/from Avro: " + SchemaUtil.asString(avroValueWithSchema.value()));
             }
-            if (t instanceof AssertionError){
+            if (t instanceof AssertionError) {
                 throw t;
             }
             fail("error " + msg + ": " + t.getMessage());
@@ -820,7 +820,7 @@ public class VerifyRecord {
     }
 
     protected static void validateSchemaNames(Schema schema) {
-        if (schema == null){
+        if (schema == null) {
             return;
         }
         String schemaName = schema.name();
@@ -835,7 +835,7 @@ public class VerifyRecord {
     }
 
     protected static void validateSubSchemaNames(Schema parentSchema, Field field) {
-        if (field == null){
+        if (field == null) {
             return;
         }
         Schema subSchema = field.schema();
@@ -915,10 +915,10 @@ public class VerifyRecord {
 
     @SuppressWarnings("unchecked")
     protected static boolean equals(Object o1, Object o2) {
-        if (o1 == o2){
+        if (o1 == o2) {
             return true;
         }
-        if (o1 == null){
+        if (o1 == null) {
             return o2 == null ? true : false;
         }
         if (o2 == null) {
@@ -1003,14 +1003,14 @@ public class VerifyRecord {
     }
 
     private static boolean deepEquals(Object[] a1, Object[] a2) {
-        if (a1 == a2){
+        if (a1 == a2) {
             return true;
         }
-        if (a1 == null || a2 == null){
+        if (a1 == null || a2 == null) {
             return false;
         }
         int length = a1.length;
-        if (a2.length != length){
+        if (a2.length != length) {
             return false;
         }
 
@@ -1035,7 +1035,7 @@ public class VerifyRecord {
         return true;
     }
 
-    private static boolean deepEquals0(Object e1, Object e2){
+    private static boolean deepEquals0(Object e1, Object e2) {
         assert e1!=null;
         boolean eq;
         if (e1 instanceof Object[]&&e2 instanceof Object[]) {

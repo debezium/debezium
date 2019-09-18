@@ -613,7 +613,7 @@ public class DdlParserSql2003 extends LegacyDdlParser {
 
         if ( columnNames != null ) {
             // We know nothing other than the names ...
-            columnNames.forEach(name->{
+            columnNames.forEach(name-> {
                 table.addColumn(Column.editor().name(name).create());
             });
         }

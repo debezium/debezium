@@ -72,7 +72,7 @@ public abstract class AbstractReader implements Reader {
         this.maxBatchSize = context.getConnectorConfig().getMaxBatchSize();
         this.pollInterval = context.getConnectorConfig().getPollInterval();
         this.metronome = Metronome.parker(pollInterval, Clock.SYSTEM);
-        this.acceptAndContinue = acceptAndContinue == null? new AcceptAllPredicate() : acceptAndContinue;
+        this.acceptAndContinue = acceptAndContinue == null ? new AcceptAllPredicate() : acceptAndContinue;
         this.changeEventQueueMetrics = new ChangeEventQueueMetrics() {
 
             @Override

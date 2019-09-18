@@ -61,12 +61,12 @@ public interface Testing {
         }
     }
 
-    public static void print(int length, String leader, Object message){
-        if (message!=null&&Print.enabled){
+    public static void print(int length, String leader, Object message) {
+        if (message!=null&&Print.enabled) {
             int len=leader.length();
             System.out.print(leader);
-            if (len<length){
-                for (int i=len; i!=length; ++i){
+            if (len<length) {
+                for (int i=len; i!=length; ++i) {
                     System.out.print(" ");
                 }
             }
@@ -275,7 +275,7 @@ public interface Testing {
          * @param path the path to the file or folder in the target directory
          */
         public static void delete(String path) {
-            if (path != null){
+            if (path != null) {
                 delete(Paths.get(path));
             }
         }
@@ -287,7 +287,7 @@ public interface Testing {
          * @param fileOrFolder the file or folder in the target directory
          */
         public static void delete(File fileOrFolder) {
-            if (fileOrFolder != null){
+            if (fileOrFolder != null) {
                 delete(fileOrFolder.toPath());
             }
         }
@@ -375,7 +375,7 @@ public interface Testing {
             sw.start();
             try {
                 sws.time(repeat, runnable, result -> {
-                    if (cleanup != null){
+                    if (cleanup != null) {
                         cleanup.accept(result);
                     }
                 });

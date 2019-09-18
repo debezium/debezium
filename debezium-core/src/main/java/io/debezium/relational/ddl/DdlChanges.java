@@ -68,7 +68,7 @@ public class DdlChanges implements DdlParserListener {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
             final StringBuilder statements = new StringBuilder();
             final Set<TableId> tables = new HashSet<>();
-            eventList.forEach(event->{
+            eventList.forEach(event-> {
                 statements.append(event.statement());
                 statements.append(terminator);
                 addTable(tables, event);

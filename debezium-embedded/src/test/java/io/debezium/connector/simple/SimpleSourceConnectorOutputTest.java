@@ -89,7 +89,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, which are read in one step.
      */
     @Test
-    public void shouldRunConnectorFromFilesInOneStep(){
+    public void shouldRunConnectorFromFilesInOneStep() {
         runConnector("simple-test-a", "src/test/resources/simple/test/a");
     }
 
@@ -97,7 +97,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, which are read in two steps.
      */
     @Test
-    public void shouldRunConnectorFromFilesInTwoSteps(){
+    public void shouldRunConnectorFromFilesInTwoSteps() {
         runConnector("simple-test-b", "src/test/resources/simple/test/b");
     }
 
@@ -105,7 +105,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * Run the connector with connector configuration and expected results files, but find a mismatch in the results.
      */
     @Test(expected = AssertionError.class)
-    public void shouldRunConnectorFromFilesAndFindMismatch(){
+    public void shouldRunConnectorFromFilesAndFindMismatch() {
         // Testing.Debug.enable();
         Testing.Print.disable();
         runConnector("simple-test-c", "src/test/resources/simple/test/c");
@@ -117,7 +117,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
      * However, this test filters out the timestamps from the matching logic.
      */
     @Test
-    public void shouldRunConnectorFromFilesInOneStepWithTimestamps(){
+    public void shouldRunConnectorFromFilesInOneStepWithTimestamps() {
         // Testing.Debug.enable();
         runConnector("simple-test-d", "src/test/resources/simple/test/d");
     }

@@ -64,7 +64,7 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
             return 0;
         }
         int diff = Strings.compareTo(this.getName(), that.getName());
-        if ( diff != 0 ){
+        if ( diff != 0 ) {
             return diff;
         }
         return Value.compareTo(this.getValue(), that.getValue());

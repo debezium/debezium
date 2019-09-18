@@ -45,7 +45,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     protected static interface TokenSet {
         void add(String token);
 
-        default void add(String firstToken, String... additionalTokens){
+        default void add(String firstToken, String... additionalTokens) {
             add(firstToken);
             for (String token: additionalTokens) {
                 add(token);
@@ -188,7 +188,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
         if (id != null) {
             ids.add(id);
         }
-        while (tokens.canConsume(',')){
+        while (tokens.canConsume(',')) {
             id = parseQualifiedTableName(start);
             if (id != null) {
                 ids.add(id);
@@ -849,7 +849,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
         if (tokens.canConsume("ON")) {
             try {
                 parseSchemaQualifiedName(start);
-                while (tokens.canConsume(DdlTokenizer.SYMBOL)) {}
+                while (tokens.canConsume(DdlTokenizer.SYMBOL)) {
+                }
                 parseSchemaQualifiedName(start);
                 return true;
             }

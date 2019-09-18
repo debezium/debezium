@@ -150,7 +150,7 @@ public class ParallelSnapshotReader implements Reader {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         // the old tables reader is a raw BinlogReader and will throw an exception of poll is called when it is not running.
-        List<SourceRecord> allRecords = oldTablesReader.isRunning()? oldTablesReader.poll() : null;
+        List<SourceRecord> allRecords = oldTablesReader.isRunning() ? oldTablesReader.poll() : null;
         List<SourceRecord> newTablesRecords = newTablesReader.poll();
         if (newTablesRecords != null) {
             if (allRecords == null) {
