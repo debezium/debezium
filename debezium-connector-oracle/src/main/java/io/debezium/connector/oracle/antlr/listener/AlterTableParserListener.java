@@ -107,7 +107,8 @@ public class AlterTableParserListener extends BaseParserListener {
                 if (columnEditors.size() > parsingColumnIndex) {
                     // assign next column editor to parse another column definition
                     columnDefinitionParserListener.setColumnEditor(columnEditors.get(parsingColumnIndex++));
-                } else {
+                }
+                else {
                     // all columns parsed
                     // reset global variables for next parsed statement
                     columnEditors.forEach(columnEditor -> tableEditor.addColumn(columnEditor.create()));

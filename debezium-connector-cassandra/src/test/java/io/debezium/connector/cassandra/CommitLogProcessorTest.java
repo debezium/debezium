@@ -84,10 +84,12 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
                 assertFalse(record.getSource().snapshot);
                 assertEquals(record.getSource().keyspaceTable.name(), keyspaceTable("cdc_table"));
                 assertTrue(record.getSource().offsetPosition.fileName.contains(String.valueOf(CommitLog.instance.getCurrentPosition().segmentId)));
-            } else if (event instanceof EOFEvent) {
+            }
+            else if (event instanceof EOFEvent) {
                 EOFEvent eofEvent = (EOFEvent) event;
                 assertTrue(eofEvent.success);
-            } else {
+            }
+            else {
                 throw new Exception("unexpected event type");
             }
         }

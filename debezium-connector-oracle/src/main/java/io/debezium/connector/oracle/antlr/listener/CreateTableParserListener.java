@@ -68,7 +68,8 @@ public class CreateTableParserListener extends BaseParserListener {
                 // todo: this explicit call is for the first column, should it be fixed?
                 columnDefinitionParserListener.enterColumn_definition(ctx);
                 listeners.add(columnDefinitionParserListener);
-            } else {
+            }
+            else {
                 columnDefinitionParserListener.setColumnEditor(columnEditor);
             }
         }, tableEditor);

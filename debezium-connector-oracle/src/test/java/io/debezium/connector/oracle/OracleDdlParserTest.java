@@ -87,7 +87,8 @@ public class OracleDdlParserTest {
         ddl = "alter table " + TABLE_NAME + " add col23 varchar2(20);";
         try {
             parser.parse(ddl, tables);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // Although parenthesis are optional for Oracle, but must be presented to be parsed, Antlr source error?
             assertThat(e.getMessage().contains("no viable alternative at input"));
         }

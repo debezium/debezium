@@ -16,7 +16,8 @@ class BaseParserListener extends PlSqlParserBaseListener {
     String getTableName(final PlSqlParser.Tableview_nameContext tableview_name) {
         if (tableview_name.id_expression() != null) {
             return tableview_name.id_expression().getText();
-        } else {
+        }
+        else {
             return tableview_name.identifier().id_expression().getText();
         }
     }

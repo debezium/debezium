@@ -26,7 +26,8 @@ public class CassandraConnectorTaskHealthCheck extends HealthCheck {
     protected Result check() throws Exception {
         if (isHealthy()) {
             return Result.healthy(getMessage());
-        } else {
+        }
+        else {
             return Result.unhealthy(getMessage());
         }
     }

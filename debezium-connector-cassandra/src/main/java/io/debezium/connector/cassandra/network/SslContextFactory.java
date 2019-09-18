@@ -55,7 +55,8 @@ public class SslContextFactory {
                 KeyStore keyStore = KeyStore.getInstance(config.keyStoreType());
                 try (FileInputStream is = new FileInputStream(config.keyStoreLocation())) {
                     keyStore.load(is, config.keyStorePassword().toCharArray());
-                } catch (IOException ex) {
+                }
+                catch (IOException ex) {
                     LOGGER.error("failed to load the key store: location=" + config.keyStoreLocation() + " type=" + config.keyStoreType());
                     throw ex;
                 }
@@ -65,7 +66,8 @@ public class SslContextFactory {
                 builder = SslContextBuilder.forClient();
                 builder.keyManager(keyManagerFactory);
 
-            } else {
+            }
+            else {
                 LOGGER.error("KeyStoreLocation was not specified. Building SslContext without certificate. This is not suitable for PRODUCTION");
                 final SelfSignedCertificate ssc = new SelfSignedCertificate();
 
@@ -76,7 +78,8 @@ public class SslContextFactory {
                 KeyStore trustStore = KeyStore.getInstance(config.trustStoreType());
                 try (FileInputStream is = new FileInputStream(config.trustStoreLocation())) {
                     trustStore.load(is, config.trustStorePassword().toCharArray());
-                } catch (IOException ex) {
+                }
+                catch (IOException ex) {
                     LOGGER.error("failed to load the trust store: location=" + config.trustStoreLocation() + " type=" + config.trustStoreType());
                     throw ex;
                 }
@@ -85,14 +88,16 @@ public class SslContextFactory {
 
                 builder.trustManager(trustManagerFactory);
 
-            } else {
+            }
+            else {
                 LOGGER.error("TrustStoreLocation was not specified. Building SslContext using InsecureTrustManagerFactory. This is not suitable for PRODUCTION");
                 builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
             }
 
             return builder.build();
 
-        } catch (GeneralSecurityException | IOException e) {
+        }
+        catch (GeneralSecurityException | IOException e) {
             LOGGER.error("Failed to create SslContext", e);
             throw e;
         }

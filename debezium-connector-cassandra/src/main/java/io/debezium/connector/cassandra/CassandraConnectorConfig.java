@@ -366,7 +366,8 @@ public class CassandraConnectorConfig {
             CommitLogTransfer transfer = (CommitLogTransfer) Class.forName(clazz).newInstance();
             transfer.init(commitLogTransferConfigs());
             return transfer;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new CassandraConnectorConfigException(e);
         }
     }
@@ -440,7 +441,8 @@ public class CassandraConnectorConfig {
             Map<String, Object> keyConverterConfigs = keyValueConverterConfigs(KEY_CONVERTER_PREFIX);
             keyConverter.configure(keyConverterConfigs, true);
             return keyConverter;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new CassandraConnectorConfigException(e);
         }
     }
@@ -452,7 +454,8 @@ public class CassandraConnectorConfig {
             Map<String, Object> valueConverterConfigs = keyValueConverterConfigs(VALUE_CONVERTER_PREFIX);
             valueConverter.configure(valueConverterConfigs, false);
             return valueConverter;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new CassandraConnectorConfigException(e);
         }
     }

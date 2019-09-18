@@ -82,7 +82,8 @@ public class CellData implements KafkaRecord {
                 schemaBuilder.optional();
             }
             return schemaBuilder.build();
-        } else {
+        }
+        else {
             return null;
         }
     }

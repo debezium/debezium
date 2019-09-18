@@ -67,7 +67,8 @@ public class CassandraTopicSelector {
                 char c = topicName.charAt(i);
                 if (isValidTopicNameCharacter(c)) {
                     sanitizedNameBuilder.append(c);
-                } else {
+                }
+                else {
                     sanitizedNameBuilder.append(REPLACEMENT_CHAR);
                     changed = true;
                 }
@@ -77,7 +78,8 @@ public class CassandraTopicSelector {
                 String sanitizedName = sanitizedNameBuilder.toString();
                 LOGGER.warn("Topic '{}' name isn't a valid topic, replacing it with '{}'", topicName, sanitizedName);
                 return sanitizedName;
-            } else {
+            }
+            else {
                 return topicName;
             }
         }

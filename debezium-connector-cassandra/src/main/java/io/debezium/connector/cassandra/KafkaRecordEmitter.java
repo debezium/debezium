@@ -86,7 +86,8 @@ public class KafkaRecordEmitter implements AutoCloseable {
                 emitCount = 0;
             }
             return true;
-        } catch (ExecutionException | InterruptedException e) {
+        }
+        catch (ExecutionException | InterruptedException e) {
             LOGGER.error("Failed to emit record {}", recordEntry.getKey(), e);
             return false;
         }

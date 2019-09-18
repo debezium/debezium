@@ -55,7 +55,8 @@ public class CommitLogUtilTest {
         for (int i = 0; i < 10; i++) {
             if (i % 2 == 0) {
                 assertTrue(new File(dir.toString(), "CommitLog-6-" + i + ".log").createNewFile());
-            } else {
+            }
+            else {
                 assertTrue(new File(dir.toString(), "Not-CommitLog-6-" + i + ".log").createNewFile());
             }
         }

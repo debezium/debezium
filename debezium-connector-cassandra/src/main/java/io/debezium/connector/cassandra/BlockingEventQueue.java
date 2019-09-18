@@ -35,7 +35,8 @@ public class BlockingEventQueue<T> {
     public void enqueue(T event) {
         try {
             queue.put(event);
-        }  catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             LOGGER.error("Interruption while enqueuing event {}", event);
             throw new CassandraConnectorTaskException("Enqueuing has been interrupted: ", e);
         }

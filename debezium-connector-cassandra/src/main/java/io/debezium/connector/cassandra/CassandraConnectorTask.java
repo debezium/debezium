@@ -87,7 +87,8 @@ public class CassandraConnectorTask {
             while (processorGroup.isRunning()) {
                 Thread.sleep(1000);
             }
-        } finally {
+        }
+        finally {
             stopAll();
         }
     }
@@ -198,11 +199,13 @@ public class CassandraConnectorTask {
                     try {
                         processor.initialize();
                         processor.start();
-                    } catch (Exception e) {
+                    }
+                    catch (Exception e) {
                         LOGGER.error("Encountered exception while running {}; stopping all processors in {}", processor.getName(), getName(), e);
                         try {
                             stopProcessors();
-                        } catch (Exception e2) {
+                        }
+                        catch (Exception e2) {
                             LOGGER.error("Encountered exceptions while stopping all processors in {}", getName(), e2);
                         }
                     }

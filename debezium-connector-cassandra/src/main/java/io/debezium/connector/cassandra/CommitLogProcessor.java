@@ -106,7 +106,8 @@ public class CommitLogProcessor extends AbstractProcessor {
             commitLogReader.readCommitLogSegment(commitLogReadHandler, file, false);
             queue.enqueue(new EOFEvent(file, true));
             LOGGER.info("Successfully processed commit log {}", file.getName());
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             queue.enqueue(new EOFEvent(file, false));
             LOGGER.warn("Error occurred while processing commit log " + file.getName(), e);
         }
@@ -128,7 +129,8 @@ public class CommitLogProcessor extends AbstractProcessor {
 
         if (lastModified != null) {
             processCommitLog(lastModified);
-        } else {
+        }
+        else {
             LOGGER.info("No commit logs found in {}", DatabaseDescriptor.getCommitLogLocation());
         }
     }

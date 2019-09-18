@@ -38,7 +38,8 @@ public final class CommitLogUtil {
             }
 
             Files.move(file.toPath(), toDir.resolve(file.getName()), REPLACE_EXISTING);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.error("Failed to move the file {} from {}", file.getName(), toDir.getFileName(), e);
         }
     }
@@ -55,7 +56,8 @@ public final class CommitLogUtil {
 
             Files.delete(file.toPath());
             LOGGER.debug("Deleted commit log {} in cdc directory", file.getName());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.error("Failed to delete the file {} from cdc directory: ", file.getName(), e);
         }
     }

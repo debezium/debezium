@@ -109,15 +109,20 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         public static PartitionType getPartitionType(PartitionUpdate pu) {
             if (pu.metadata().isCounter()) {
                 return COUNTER;
-            } else if (pu.metadata().isView()) {
+            }
+            else if (pu.metadata().isView()) {
                 return MATERIALIZED_VIEW;
-            } else if (pu.metadata().isIndex()) {
+            }
+            else if (pu.metadata().isIndex()) {
                 return SECONDARY_INDEX;
-            } else if (isPartitionDeletion(pu) && hasClusteringKeys(pu)) {
+            }
+            else if (isPartitionDeletion(pu) && hasClusteringKeys(pu)) {
                 return PARTITION_AND_CLUSTERING_KEY_ROW_DELETION;
-            } else if (isPartitionDeletion(pu) && !hasClusteringKeys(pu)) {
+            }
+            else if (isPartitionDeletion(pu) && !hasClusteringKeys(pu)) {
                 return PARTITION_KEY_ROW_DELETION;
-            } else {
+            }
+            else {
                 return ROW_LEVEL_MODIFICATION;
             }
         }
@@ -171,13 +176,16 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         public static RowType getRowType(Unfiltered unfiltered) {
             if (unfiltered.isRangeTombstoneMarker()) {
                 return RANGE_TOMBSTONE;
-            } else if (unfiltered.isRow()) {
+            }
+            else if (unfiltered.isRow()) {
                 Row row = (Row) unfiltered;
                 if (isDelete(row)) {
                     return DELETE;
-                } else if (isInsert(row)) {
+                }
+                else if (isInsert(row)) {
                     return INSERT;
-                } else if (isUpdate(row)) {
+                }
+                else if (isUpdate(row)) {
                     return UPDATE;
                 }
             }
@@ -234,7 +242,8 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     public boolean shouldSkipSegmentOnError(CommitLogReadException exception) throws IOException {
         if (exception.permissible) {
             LOGGER.error("Encountered a permissible exception during log replay: {}", exception);
-        } else {
+        }
+        else {
             LOGGER.error("Encountered a non-permissible exception during log replay: {}", exception);
         }
         return false;
@@ -328,7 +337,8 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             }
 
             recordMaker.delete(source, after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.error("Fail to delete partition at {}. Reason: {}", offsetPosition, e);
         }
     }
@@ -409,7 +419,8 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 after.addCell(cellData);
             }
 
-        } else if (rowType == DELETE) {
+        }
+        else if (rowType == DELETE) {
             // For row-level deletions, row.columns() will result in an empty list and does not contain
             // the column definitions for the deleted columns. In order to differentiate deleted columns from
             // unmodified columns, we populate the deleted columns with null value and timestamps.
@@ -443,7 +454,8 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             values.add(value);
 
         // composite partition key
-        } else {
+        }
+        else {
             ByteBuffer keyBytes = pu.partitionKey().getKey().duplicate();
 
             // 0xFFFF is reserved to encode "static column", skip if it exists at the start

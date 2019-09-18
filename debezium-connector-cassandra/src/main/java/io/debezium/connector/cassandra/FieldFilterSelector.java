@@ -44,7 +44,8 @@ public class FieldFilterSelector {
                 }
                 return copy;
             };
-        } else {
+        }
+        else {
             return rowData -> rowData;
         }
     }

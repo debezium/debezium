@@ -72,7 +72,8 @@ public class CommitLogPostProcessor extends AbstractProcessor {
                     }
                 }
             }
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             if (!executor.isTerminated()) {
                 executor.shutdownNow();
             }
