@@ -177,7 +177,8 @@ public class JdbcConnection implements AutoCloseable {
                 Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
                 java.sql.Driver driver = driverClazz.newInstance();
                 conn = driver.connect(url, props);
-            } catch (ClassNotFoundException|IllegalAccessException|InstantiationException e) {
+            }
+            catch (ClassNotFoundException|IllegalAccessException|InstantiationException e) {
                 throw new SQLException(e);
             }
             LOGGER.debug("Connected to {} with {}", url, props);
@@ -705,7 +706,8 @@ public class JdbcConnection implements AutoCloseable {
                 sb.setLength(0);
             }
             lines.accept(delimiter(columnCount, columnSizes));
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -815,7 +817,8 @@ public class JdbcConnection implements AutoCloseable {
                 statementCache.clear();
                 LOGGER.trace("Closing database connection");
                 conn.close();
-            } finally {
+            }
+            finally {
                 conn = null;
             }
         }

@@ -56,7 +56,8 @@ public interface DelayStrategy {
             }
             try {
                 Thread.sleep(delayInMilliseconds);
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
             return true;
@@ -88,7 +89,8 @@ public interface DelayStrategy {
                 ++misses;
                 try {
                     Thread.sleep(misses * delayInMilliseconds);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
                 return true;
@@ -140,14 +142,16 @@ public interface DelayStrategy {
                 // Compute how long to delay ...
                 if (previousDelay == 0) {
                     previousDelay = initialDelayInMilliseconds;
-                } else {
+                }
+                else {
                     long nextDelay = (long) (previousDelay * backOffMultiplier);
                     previousDelay = Math.min(nextDelay, maxDelayInMilliseconds);
                 }
                 // We expect to sleep ...
                 try {
                     Thread.sleep(previousDelay);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
                 return true;

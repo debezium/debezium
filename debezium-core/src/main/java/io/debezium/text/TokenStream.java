@@ -594,7 +594,8 @@ public class TokenStream {
             int result = Integer.parseInt(value);
             moveToNextToken(newTokens);
             return result;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             Position position = currentToken().position();
             throw new ParsingException(position,
                     "Expecting integer at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
@@ -618,7 +619,8 @@ public class TokenStream {
             long result = Long.parseLong(value);
             moveToNextToken();
             return result;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             Position position = currentToken().position();
             throw new ParsingException(position,
                     "Expecting long at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
@@ -642,7 +644,8 @@ public class TokenStream {
             boolean result = Boolean.parseBoolean(value);
             moveToNextToken();
             return result;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             Position position = currentToken().position();
             throw new ParsingException(position,
                     "Expecting boolean at line " + position.line() + ", column " + position.column() + " but found '" + value + "'");
@@ -1084,7 +1087,8 @@ public class TokenStream {
             moveToNextToken();
             consumer.accept(result);
             return true;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return false;
         }
     }
@@ -1109,7 +1113,8 @@ public class TokenStream {
             moveToNextToken();
             consumer.accept(result);
             return true;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return false;
         }
     }
@@ -1134,7 +1139,8 @@ public class TokenStream {
             moveToNextToken();
             consumer.accept(result);
             return true;
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             return false;
         }
     }
@@ -1977,7 +1983,8 @@ public class TokenStream {
         if (!tokenIterator.hasNext()) {
             completed = true;
             currentToken = null;
-        } else {
+        }
+        else {
             currentToken = tokenIterator.next();
         }
     }
@@ -2592,12 +2599,14 @@ public class TokenStream {
                 nextCharMayBeLineFeed = true;
                 ++lineNumber;
                 columnNumber = 0;
-            } else if (result == '\n') {
+            }
+            else if (result == '\n') {
                 if (!nextCharMayBeLineFeed){
                     ++lineNumber;
                 }
                 columnNumber = 0;
-            } else if (nextCharMayBeLineFeed) {
+            }
+            else if (nextCharMayBeLineFeed) {
                 nextCharMayBeLineFeed = false;
             }
             return result;
@@ -2792,9 +2801,11 @@ public class TokenStream {
                             c = input.next();
                             if (c == '\\' && input.isNext('"')) {
                                 c = input.next(); // consume the " character since it is escaped \"
-                            } else if (c == '"' && input.isNext('"')) {
+                            }
+                            else if (c == '"' && input.isNext('"')) {
                                 c = input.next(); // consume the " character since it is escaped ""
-                            } else if (c == '"') {
+                            }
+                            else if (c == '"') {
                                 foundClosingQuote = true;
                                 break;
                             }
@@ -2815,9 +2826,11 @@ public class TokenStream {
                             c = input.next();
                             if (c == '\\' && input.isNext('\'')) {
                                 c = input.next(); // consume the ' character since it is escaped \'
-                            } else if (c == '\'' && input.isNext('\'')) {
+                            }
+                            else if (c == '\'' && input.isNext('\'')) {
                                     c = input.next(); // consume the ' character since it is escaped ''
-                            } else if (c == '\'') {
+                            }
+                            else if (c == '\'') {
                                 foundClosingQuote = true;
                                 break;
                             }
@@ -2853,7 +2866,8 @@ public class TokenStream {
                             if (useComments) {
                                 tokens.addToken(startingPosition, startIndex, endIndex, COMMENT);
                             }
-                        } else if (input.isNext('*')) {
+                        }
+                        else if (input.isNext('*')) {
                             // Multi-line comment ...
                             while (input.hasNext() && !input.isNext('*', '/')) {
                                 c = input.next();
@@ -2868,7 +2882,8 @@ public class TokenStream {
                                 endIndex = input.index() + 1; // the token will include the '/' and '*' characters
                                 tokens.addToken(startingPosition, startIndex, endIndex, COMMENT);
                             }
-                        } else {
+                        }
+                        else {
                             // just a regular slash ...
                             tokens.addToken(startingPosition, startIndex, startIndex + 1, SYMBOL);
                         }

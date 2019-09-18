@@ -38,7 +38,8 @@ public class ArraySerdes implements Serializer<Array>, Deserializer<Array> {
     public Array deserialize(String topic, byte[] data) {
         try {
             return ARRAY_READER.readArray(bytesToString(data));
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             // Should never see this, but shit if we do ...
             throw new RuntimeException(e);
         }

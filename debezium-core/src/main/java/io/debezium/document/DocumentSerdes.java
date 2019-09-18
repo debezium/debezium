@@ -40,7 +40,8 @@ public class DocumentSerdes implements Serializer<Document>, Deserializer<Docume
     public Document deserialize(String topic, byte[] data) {
         try {
             return DOCUMENT_READER.read(bytesToString(data));
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             // Should never see this, but shit if we do ...
             throw new RuntimeException(e);
         }

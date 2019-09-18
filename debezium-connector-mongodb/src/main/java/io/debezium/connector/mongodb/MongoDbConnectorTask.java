@@ -125,15 +125,18 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                         taskContext.configureLoggingContext(replicaSet.replicaSetName());
                         // Run the replicator, which should run forever until it is stopped ...
                         replicator.run();
-                    } finally {
+                    }
+                    finally {
                         try {
                             replicators.remove(replicator);
-                        } finally {
+                        }
+                        finally {
                             if (stillRunning.decrementAndGet() == 0) {
                                 // we are the last one, so clean up ...
                                 try {
                                     executor.shutdown();
-                                } finally {
+                                }
+                                finally {
                                     taskContext.getConnectionContext().shutdown();
                                 }
                             }
@@ -142,7 +145,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                 });
             });
             logger.info("Successfully started MongoDB connector task with {} thread(s) for replica sets {}", numThreads, replicaSets);
-        } finally {
+        }
+        finally {
             previousLogContext.restore();
         }
     }
@@ -173,9 +177,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                 }
                 logger.info("Stopped MongoDB replication task by stopping {} replicator threads", counter);
             }
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             logger.error("Unexpected error shutting down the MongoDB replication task", e);
-        } finally {
+        }
+        finally {
             previousLogContext.restore();
         }
     }
@@ -219,7 +225,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                         logger.info("{} records sent for replica set '{}', last offset: {}",
                                     summary.recordCount(), rsName, summary.lastOffset());
                     });
-                } finally {
+                }
+                finally {
                     prevContext.restore();
                 }
             }

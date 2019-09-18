@@ -304,10 +304,12 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables());
-        } catch (ParsingException | MultipleParsingExceptions e) {
+        }
+        catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDDL) {
                 logger.warn("Ignoring unparseable DDL statement '{}': {}", ddlStatements, e);
-            } else {
+            }
+            else {
                 throw e;
             }
         }
@@ -336,7 +338,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                             statementConsumer.consume(dbName, tables, ddl);
                         }
                     });
-                } else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
+                }
+                else if (filters.databaseFilter().test(databaseName) || databaseName == null || "".equals(databaseName)) {
                     if (databaseName == null) {
                         databaseName = "";
                     }

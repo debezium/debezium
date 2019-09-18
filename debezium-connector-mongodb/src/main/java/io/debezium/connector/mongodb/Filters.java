@@ -36,9 +36,11 @@ public final class Filters {
         String dbBlacklist = config.getString(MongoDbConnectorConfig.DATABASE_BLACKLIST);
         if (dbWhitelist != null && !dbWhitelist.trim().isEmpty()) {
             databaseFilter = Predicates.includes(dbWhitelist);
-         } else if (dbBlacklist != null && !dbBlacklist.trim().isEmpty()) {
+        }
+        else if (dbBlacklist != null && !dbBlacklist.trim().isEmpty()) {
             databaseFilter = Predicates.excludes(dbBlacklist);
-        } else {
+        }
+        else {
             databaseFilter = (db)->true;
         }
 
@@ -47,9 +49,11 @@ public final class Filters {
         final Predicate<CollectionId> collectionFilter;
         if (collectionWhitelist != null && !collectionWhitelist.trim().isEmpty()) {
             collectionFilter = Predicates.includes(collectionWhitelist, CollectionId::namespace);
-        } else if (collectionBlacklist != null && !collectionBlacklist.trim().isEmpty()) {
+        }
+        else if (collectionBlacklist != null && !collectionBlacklist.trim().isEmpty()) {
             collectionFilter = Predicates.excludes(collectionBlacklist, CollectionId::namespace);
-        } else {
+        }
+        else {
             collectionFilter = (id) -> true;
         }
         Predicate<CollectionId> isNotBuiltIn = this::isNotBuiltIn;

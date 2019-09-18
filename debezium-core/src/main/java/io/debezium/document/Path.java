@@ -34,7 +34,8 @@ public interface Path extends Iterable<String> {
         public static Optional<Integer> asInteger(String segment) {
             try {
                 return Optional.of(Integer.valueOf(segment));
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
                 return Optional.empty();
             }
         }

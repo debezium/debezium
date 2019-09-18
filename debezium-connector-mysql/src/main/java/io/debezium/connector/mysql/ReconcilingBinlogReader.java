@@ -109,7 +109,8 @@ public class ReconcilingBinlogReader implements Reader {
                 LOGGER.info("Stopping the {} reader", reconcilingReader.name());
                 reconcilingReader.stop();
                 reconcilingReader.context.shutdown();
-            } catch (Throwable t) {
+            }
+            catch (Throwable t) {
                 LOGGER.error("Unexpected error stopping the {} reader", reconcilingReader.name());
             }
         }
@@ -168,9 +169,11 @@ public class ReconcilingBinlogReader implements Reader {
         // in this case, it must the be the lagging reader.
         if (aOffset == null) {
             aReaderLeading = false;
-        } else if (bOffset == null) {
+        }
+        else if (bOffset == null) {
             aReaderLeading = true;
-        } else {
+        }
+        else {
             Document aDocument = SourceInfo.createDocumentFromOffset(aOffset);
             Document bDocument = SourceInfo.createDocumentFromOffset(bOffset);
 
@@ -181,7 +184,8 @@ public class ReconcilingBinlogReader implements Reader {
 
         if (aReaderLeading) {
             LOGGER.info("old tables leading; reading only from new tables");
-        } else {
+        }
+        else {
             LOGGER.info("new tables leading; reading only from old tables");
         }
     }

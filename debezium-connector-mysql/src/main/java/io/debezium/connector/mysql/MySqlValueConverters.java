@@ -101,7 +101,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
             int year = temporal.get(ChronoField.YEAR);
             if (0 <= year && year <= 69) {
                 temporal = temporal.plus(2000, ChronoUnit.YEARS);
-            } else if (70 <= year && year <= 99) {
+            }
+            else if (70 <= year && year <= 99) {
                 temporal = temporal.plus(1900, ChronoUnit.YEARS);
             }
         }
@@ -323,10 +324,12 @@ public class MySqlValueConverters extends JdbcValueConverters {
         String encoding = CharsetMapping.getJavaEncodingForMysqlCharset(mySqlCharsetName);
         if (encoding == null) {
             logger.warn("Column uses MySQL character set '{}', which has no mapping to a Java character set", mySqlCharsetName);
-        } else {
+        }
+        else {
             try {
                 return Charset.forName(encoding);
-            } catch (IllegalCharsetNameException e) {
+            }
+            catch (IllegalCharsetNameException e) {
                 logger.error("Unable to load Java charset '{}' for column with MySQL character set '{}'", encoding, mySqlCharsetName);
             }
         }
@@ -354,7 +357,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 else {
                     try {
                         r.deliver(JsonBinary.parseAsString((byte[]) data));
-                    } catch (IOException e) {
+                    }
+                    catch (IOException e) {
                         throw new ConnectException("Failed to parse and read a JSON value on " + column + ": " + e.getMessage(), e);
                     }
                 }
@@ -532,12 +536,14 @@ public class MySqlValueConverters extends JdbcValueConverters {
             if (indexes % 2L != 0) {
                 if (first) {
                     first = false;
-                } else {
+                }
+                else {
                     sb.append(',');
                 }
                 if (index < optionLen) {
                     sb.append(options.get(index));
-                } else {
+                }
+                else {
                     logger.warn("Found unexpected index '{}' on column {}", index, column);
                 }
             }
@@ -566,7 +572,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 MySqlGeometry mySqlGeometry = MySqlGeometry.fromBytes((byte[]) data);
                 if (mySqlGeometry.isPoint()) {
                     r.deliver(io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), mySqlGeometry.getWkb(), mySqlGeometry.getSrid()));
-                } else {
+                }
+                else {
                     throw new ConnectException("Failed to parse and read a value of type POINT on " + column);
                 }
             }
@@ -761,7 +768,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 if (data instanceof Duration) {
                     r.deliver(((Duration) data).toNanos() / 1_000);
                 }
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }

@@ -100,7 +100,8 @@ final class JacksonReader implements DocumentReader, ArrayReader {
     private Document parse(JsonParser parser) throws IOException {
         try {
             return parseDocument(parser, false);
-        } finally {
+        }
+        finally {
             parser.close();
         }
     }

@@ -275,7 +275,8 @@ public class SnapshotReader extends AbstractReader {
                         lockAcquired = clock.currentTimeInMillis();
                         metrics.globalLockAcquired();
                         isLocked = true;
-                    } catch (SQLException e) {
+                    }
+                    catch (SQLException e) {
                         logger.info("Step 1: unable to flush and acquire global read lock, will use table read locks after reading table names");
                         // Continue anyway, since RDS (among others) don't allow setting a global lock
                         assert !isLocked;
@@ -356,19 +357,22 @@ public class SnapshotReader extends AbstractReader {
                                 if (shouldRecordTableSchema) {
                                     knownTableIds.add(id);
                                     logger.info("\t including '{}' among known tables", id);
-                                } else {
+                                }
+                                else {
                                     logger.info("\t '{}' is not added among known tables", id);
                                 }
                                 if (filters.tableFilter().test(id)) {
                                     capturedTableIds.add(id);
                                     logger.info("\t including '{}' for further processing", id);
-                                } else {
+                                }
+                                else {
                                     logger.info("\t '{}' is filtered out of capturing", id);
                                 }
                             }
                         });
                         readableDatabaseNames.add(dbName);
-                    } catch (SQLException e) {
+                    }
+                    catch (SQLException e) {
                         // We were unable to execute the query or process the results, so skip this ...
                         logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
                     }
@@ -494,7 +498,8 @@ public class SnapshotReader extends AbstractReader {
                         // https://dev.mysql.com/doc/refman/5.7/en/flush.html
                         logger.info("Step {}: tables were locked explicitly, but to get a consistent snapshot we cannot "
                                 + "release the locks until we've read all tables.", step++);
-                    } else {
+                    }
+                    else {
                         // We are doing minimal blocking via a global read lock, so we should release the global read lock now.
                         // All subsequent SELECT should still use the MVCC snapshot obtained when we started our transaction
                         // (since we started it "...with consistent snapshot"). So, since we're only doing very simple SELECT
@@ -564,7 +569,8 @@ public class SnapshotReader extends AbstractReader {
                                         statementFactory = this::createStatement;
                                     }
                                     rowCountStr.set(numRows.toString());
-                                } catch (SQLException e) {
+                                }
+                                catch (SQLException e) {
                                     // Log it, but otherwise just use large result set by default ...
                                     logger.debug("Error while getting number of rows in table {}: {}", tableId, e.getMessage(), e);
                                 }
@@ -619,7 +625,8 @@ public class SnapshotReader extends AbstractReader {
                                             }
                                             metrics.rowsScanned(tableId, rowNum.get());
                                         }
-                                    } catch (InterruptedException e) {
+                                    }
+                                    catch (InterruptedException e) {
                                         Thread.currentThread().interrupt();
                                         // We were not able to finish all rows in all tables ...
                                         logger.info("Step {}: Stopping the snapshot due to thread interruption", stepNum);
@@ -653,7 +660,8 @@ public class SnapshotReader extends AbstractReader {
                             logger.info("Step {}: scanned {} rows in {} tables in {}",
                                         step, totalRowCount, capturedTableIds.size(), Strings.duration(stop - startScan));
                         }
-                    } catch (InterruptedException e) {
+                    }
+                    catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         // We were not able to finish all rows in all tables ...
                         if (logger.isInfoEnabled()) {
@@ -662,11 +670,13 @@ public class SnapshotReader extends AbstractReader {
                         }
                         interrupted.set(true);
                     }
-                } else {
+                }
+                else {
                     logger.info("Step {}: encountered only schema based snapshot, skipping data snapshot", step);
                 }
                 step++;
-            } finally {
+            }
+            finally {
                 // No matter what, we always want to do these steps if necessary ...
                 boolean rolledBack = false;
                 // ------
@@ -701,7 +711,8 @@ public class SnapshotReader extends AbstractReader {
                 if (isLocked && !rolledBack) {
                     if (tableLocks) {
                         logger.info("Step {}: releasing table read locks to enable MySQL writes", step++);
-                    } else {
+                    }
+                    else {
                         logger.info("Step {}: releasing global read lock to enable MySQL writes", step++);
                     }
                     sql.set("UNLOCK TABLES");
@@ -712,7 +723,8 @@ public class SnapshotReader extends AbstractReader {
                     if (logger.isInfoEnabled()) {
                         if (tableLocks) {
                             logger.info("Writes to MySQL prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
-                        } else {
+                        }
+                        else {
                             logger.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
                         }
                     }
@@ -728,11 +740,13 @@ public class SnapshotReader extends AbstractReader {
                         long stop = clock.currentTimeInMillis();
                         logger.info("Stopped snapshot after {} but before completing", Strings.duration(stop - ts));
                     }
-                } finally {
+                }
+                finally {
                     // and since there's no more work to do clean up all resources ...
                     cleanupResources();
                 }
-            } else {
+            }
+            else {
                 // We completed the snapshot...
                 try {
                     // Mark the source as having completed the snapshot. This will ensure the `source` field on records
@@ -745,7 +759,8 @@ public class SnapshotReader extends AbstractReader {
                                 context.getConnectorConfig().getLogicalName()
                         )
                         .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
-                } finally {
+                }
+                finally {
                     // Set the completion flag ...
                     completeSuccessfully();
                     if (logger.isInfoEnabled()) {
@@ -754,7 +769,8 @@ public class SnapshotReader extends AbstractReader {
                     }
                 }
             }
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             if (isLocked) {
                 try {
                     sql.set("UNLOCK TABLES");
@@ -794,7 +810,8 @@ public class SnapshotReader extends AbstractReader {
                 throw new IllegalStateException("Could not find existing binlog information while attempting schema only recovery snapshot");
             }
             source.startSnapshot();
-        } else {
+        }
+        else {
             logger.info("Step {}: read binlog position of MySQL master", step);
             String showMasterStmt = "SHOW MASTER STATUS";
             sql.set(showMasterStmt);
@@ -809,11 +826,13 @@ public class SnapshotReader extends AbstractReader {
                         source.setCompletedGtidSet(gtidSet);
                         logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
                                     gtidSet);
-                    } else {
+                    }
+                    else {
                         logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
                     }
                     source.startSnapshot();
-                } else {
+                }
+                else {
                     throw new IllegalStateException("Cannot read the binlog filename and position via '" + showMasterStmt
                             + "'. Make sure your server is correctly configured");
                 }
@@ -833,7 +852,8 @@ public class SnapshotReader extends AbstractReader {
             // if we are snapshotting new tables in parallel, we need to make sure all the tables in the configuration
             // are created.
             return new Filters.Builder(context.config()).build();
-        } else {
+        }
+        else {
             return filters;
         }
     }
@@ -886,7 +906,8 @@ public class SnapshotReader extends AbstractReader {
                                 Strings.pad(rs.getString(2), 45, ' '));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             logger.info("Cannot determine MySql server version", e);
         }
     }
@@ -904,11 +925,13 @@ public class SnapshotReader extends AbstractReader {
                         "If tables are missing or are empty, ensure connector is configured with the correct MySQL user " +
                         "and/or ensure that the MySQL user has the required privileges.",
                             mysql.username());
-            } else {
+            }
+            else {
                 logger.info("Snapshot is using user '{}' with these MySQL grants:", mysql.username());
                 grants.forEach(grant -> logger.info("\t{}", grant));
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             logger.info("Cannot determine the privileges for '{}' ", mysql.username(), e);
         }
     }

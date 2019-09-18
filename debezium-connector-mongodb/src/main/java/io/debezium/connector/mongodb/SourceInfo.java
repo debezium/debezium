@@ -343,7 +343,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         }
         try {
             return Integer.parseInt(obj.toString());
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to an integer");
         }
     }
@@ -358,7 +359,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         }
         try {
             return Long.parseLong(obj.toString());
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
     }

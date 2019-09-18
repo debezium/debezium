@@ -51,7 +51,8 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -105,13 +106,17 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             if (record.topic().endsWith("dbz_228_int_unsigned")) {
                 assertIntUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_tinyint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_tinyint_unsigned")) {
                 assertTinyintUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_smallint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_smallint_unsigned")) {
                 assertSmallUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
                 assertBigintUnsignedPrecise(value);
             }
         });
@@ -203,13 +208,17 @@ public class MySqlUnsignedIntegerIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             if (record.topic().endsWith("dbz_228_int_unsigned")) {
                 assertIntUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_tinyint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_tinyint_unsigned")) {
                 assertTinyintUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_smallint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_smallint_unsigned")) {
                 assertSmallUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_mediumint_unsigned")) {
                 assertMediumUnsigned(value);
-            } else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
+            }
+            else if (record.topic().endsWith("dbz_228_bigint_unsigned")) {
                 assertBigintUnsignedLong(value);
             }
         });

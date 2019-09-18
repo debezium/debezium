@@ -79,7 +79,8 @@ public class ReplicaSets {
             rsSpecs.forEach(replicaSet -> {
                 if (replicaSet.hasReplicaSetName()) {
                     replicaSetsByName.put(replicaSet.replicaSetName(), replicaSet);
-                } else {
+                }
+                else {
                     nonReplicaSets.add(replicaSet);
                 }
             });

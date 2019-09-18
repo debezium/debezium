@@ -185,7 +185,8 @@ public interface Testing {
         public static String readResourceAsString(String pathOnClasspath) {
             try (InputStream stream = readResourceAsStream(pathOnClasspath)) {
                 return IoUtil.read(stream);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 Fail.fail("Unable to read '" + pathOnClasspath + "'", e);
                 return null;
             }
@@ -303,10 +304,12 @@ public interface Testing {
                 if (inTestDataDir(path)) {
                     try {
                         IoUtil.delete(path);
-                    } catch (IOException e) {
+                    }
+                    catch (IOException e) {
                         printError("Unable to remove '" + path.toAbsolutePath() + "'", e);
                     }
-                } else {
+                }
+                else {
                     printError("Will not remove directory that is outside test data area: " + path);
                 }
             }
@@ -376,7 +379,8 @@ public interface Testing {
                         cleanup.accept(result);
                     }
                 });
-            } catch (Throwable t) {
+            }
+            catch (Throwable t) {
                 t.printStackTrace();
                 fail(t.getMessage());
             }

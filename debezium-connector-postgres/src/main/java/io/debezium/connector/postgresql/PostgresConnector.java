@@ -104,7 +104,8 @@ public class PostgresConnector extends SourceConnector {
                     connection.execute("SELECT version()");
                     logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                                 connection.username());
-                } catch (SQLException e) {
+                }
+                catch (SQLException e) {
                     logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(),
                                 connection.username());
                     hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());

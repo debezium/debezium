@@ -147,7 +147,8 @@ public class RecordMakers {
         try {
             consumer.accept(record);
             return 1;
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             return 0;
         }
     }
@@ -296,7 +297,8 @@ public class RecordMakers {
                                 keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts));
                         consumer.accept(record);
                         ++count;
-                    } else {
+                    }
+                    else {
                         // The key has not changed, so a simple update is fine ...
                         SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
                                 keySchema, key, envelope.schema(), envelope.update(valueBefore, valueAfter, origin, ts));

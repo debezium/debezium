@@ -51,7 +51,8 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
                         message.getNewTypeinfoCount()));
             }
             processor.process(new PgProtoReplicationMessage(message, typeRegistry));
-        } catch (InvalidProtocolBufferException e) {
+        }
+        catch (InvalidProtocolBufferException e) {
             throw new ConnectException(e);
         }
     }

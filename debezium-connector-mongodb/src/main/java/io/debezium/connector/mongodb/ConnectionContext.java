@@ -85,7 +85,8 @@ public class ConnectionContext implements AutoCloseable {
             // Closing all connections ...
             logger().info("Closing all connections to {}", replicaSets);
             pool.clear();
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             logger().error("Unexpected error shutting down the MongoDB clients", e);
         }
     }
@@ -168,7 +169,8 @@ public class ConnectionContext implements AutoCloseable {
         return primaryClientFor(replicaSet, (attempts, remaining, error) -> {
             if (error == null) {
                 logger().info("Unable to connect to primary node of '{}' after attempt #{} ({} remaining)", replicaSet, attempts, remaining);
-            } else {
+            }
+            else {
                 logger().error("Error while attempting to connect to primary node of '{}' after attempt #{} ({} remaining): {}", replicaSet,
                              attempts, remaining, error.getMessage(), error);
             }
@@ -197,7 +199,8 @@ public class ConnectionContext implements AutoCloseable {
                     if (primary != null) {
                         break;
                     }
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     handler.failed(attempts, maxAttempts - attempts, t);
                 }
                 if (attempts > maxAttempts) {
@@ -274,7 +277,8 @@ public class ConnectionContext implements AutoCloseable {
                 try {
                     operation.accept(primary);
                     return;
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     errorHandler.accept(desc, t);
                     if (!isRunning()) {
                         throw new ConnectException("Operation failed and MongoDB primary termination requested", t);

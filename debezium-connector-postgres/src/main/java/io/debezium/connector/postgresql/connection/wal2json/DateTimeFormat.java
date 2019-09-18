@@ -131,7 +131,8 @@ public interface DateTimeFormat {
         private <T> T format(final String pattern, final String s, final Supplier<T> value) {
             try {
                 return value.get();
-            } catch (final DateTimeParseException e) {
+            }
+            catch (final DateTimeParseException e) {
                 LOGGER.error("Cannot parse time/date value '{}', expected format '{}'", s, pattern);
                 throw new ConnectException(e);
             }

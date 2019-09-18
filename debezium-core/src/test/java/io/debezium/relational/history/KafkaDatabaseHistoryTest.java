@@ -72,13 +72,15 @@ public class KafkaDatabaseHistoryTest {
             if (history != null){
                 history.stop();
             }
-        } finally {
+        }
+        finally {
             history = null;
             try {
                 if (kafka != null){
                     kafka.shutdown();
                 }
-            } finally {
+            }
+            finally {
                 kafka = null;
             }
         }

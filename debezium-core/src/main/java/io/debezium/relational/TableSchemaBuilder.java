@@ -189,7 +189,8 @@ public class TableSchemaBuilder {
                         value = converter.convert(value);
                         try {
                             result.put(fields[i], value);
-                        } catch (DataException e) {
+                        }
+                        catch (DataException e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert key value for '{}.{}' of type {} for row {}:",
                                          columnSetName, col.name(), col.typeName(), row, e);
@@ -256,11 +257,13 @@ public class TableSchemaBuilder {
                         try {
                             value = converter.convert(value);
                             result.put(fields[i], value);
-                        } catch (DataException|IllegalArgumentException e) {
+                        }
+                        catch (DataException|IllegalArgumentException e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
                                          tableId, col.name(), col.typeName(), row, e);
-                        } catch (final Exception e) {
+                        }
+                        catch (final Exception e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
                                          tableId, col.name(), col.typeName(), row, e);
@@ -380,7 +383,8 @@ public class TableSchemaBuilder {
                              fieldBuilder.type(),
                              column);
             }
-        } else {
+        }
+        else {
             LOGGER.warn("Unexpected JDBC type '{}' for column '{}' that will be ignored", column.jdbcType(), column.name());
         }
     }

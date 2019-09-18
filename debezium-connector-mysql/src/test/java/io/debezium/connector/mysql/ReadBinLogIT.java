@@ -91,13 +91,15 @@ public class ReadBinLogIT implements Testing {
             if (client != null) {
                 client.disconnect();
             }
-        } finally {
+        }
+        finally {
             client = null;
             try {
                 if (conn != null) {
                     conn.close();
                 }
-            } finally {
+            }
+            finally {
                 conn = null;
             }
         }
@@ -557,7 +559,8 @@ public class ReadBinLogIT implements Testing {
                     if (condition.test(nextEvent)) {
                         --eventsRemaining;
                         consumedEvents.accept(nextEvent);
-                    } else {
+                    }
+                    else {
                         ignoredEvents.accept(nextEvent);
                     }
                 }

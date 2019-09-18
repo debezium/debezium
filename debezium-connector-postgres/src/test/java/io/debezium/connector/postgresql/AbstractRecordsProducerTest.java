@@ -966,9 +966,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
             if (actualValue instanceof byte[]) {
                 assertArrayEquals("Values don't match for " + fieldName, (byte[]) value, (byte[]) actualValue);
-            } else if (actualValue instanceof Struct) {
+            }
+            else if (actualValue instanceof Struct) {
                 assertStruct((Struct) value, (Struct) actualValue);
-            } else {
+            }
+            else {
                 assertEquals("Values don't match for field '" + fieldName + "'", value, actualValue);
             }
         }
@@ -985,9 +987,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 assertEquals("Incorrect value type for " + fieldName, expectedValue.getClass(), actualValue.getClass());
                 if (actualValue instanceof byte[]) {
                     assertArrayEquals("Values don't match for " + fieldName, (byte[]) expectedValue, (byte[]) actualValue);
-                } else if (actualValue instanceof Struct) {
+                }
+                else if (actualValue instanceof Struct) {
                     assertStruct((Struct) expectedValue, (Struct) actualValue);
-                } else {
+                }
+                else {
                     assertEquals("Values don't match for " + fieldName, expectedValue, actualValue);
                 }
             });

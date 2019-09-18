@@ -258,9 +258,11 @@ public class IoUtil {
                     result = new BufferedInputStream(new FileInputStream(f));
                 }
                 logMessage(result, logger, resourceDesc, "on filesystem at " + filePath);
-            } catch(InvalidPathException e) {
+            }
+            catch(InvalidPathException e) {
                 // just continue ...
-            } catch(FileNotFoundException e) {
+            }
+            catch(FileNotFoundException e) {
                 // just continue ...
             }
         }
@@ -274,9 +276,11 @@ public class IoUtil {
                     result = new BufferedInputStream(new FileInputStream(f));
                 }
                 logMessage(result, logger, resourceDesc, "on filesystem relative to '" + current + "' at '" + absolute + "'");
-            } catch (InvalidPathException e) {
+            }
+            catch (InvalidPathException e) {
                 // just continue ...
-            } catch (FileNotFoundException e) {
+            }
+            catch (FileNotFoundException e) {
                 // just continue ...
             }
         }
@@ -300,9 +304,11 @@ public class IoUtil {
                 URL url = new URL(resourcePath);
                 result = url.openStream();
                 logMessage(result, logger, resourceDesc, "at URL " + url.toExternalForm());
-            } catch (MalformedURLException e) {
+            }
+            catch (MalformedURLException e) {
                 // just continue ...
-            } catch (IOException err) {
+            }
+            catch (IOException err) {
                 // just continue ...
             }
         }
@@ -345,7 +351,8 @@ public class IoUtil {
         file.getParentFile().mkdirs();
         try {
             Files.createFile(path);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new IllegalStateException("Unable to create the file '" + path + "': " + e.getMessage(), e);
         }
         return file;
@@ -456,7 +463,8 @@ public class IoUtil {
     public static int getAvailablePort() {
         try (ServerSocket socket = new ServerSocket(0)) {
             return socket.getLocalPort();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new IllegalStateException("Cannot find available port: " + e.getMessage(), e);
         }
     }
@@ -481,7 +489,8 @@ public class IoUtil {
             Properties props = new Properties();
             props.load(stream);
             return props;
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new IllegalStateException("Unable to find or read the '" + classpathResource + "' file using the " +
                     classLoader + " class loader", e);
         }

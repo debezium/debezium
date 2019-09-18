@@ -46,7 +46,8 @@ public class MongoClientsIT {
         if (clients != null) {
             try {
                 clients.clear();
-            } finally {
+            }
+            finally {
                 clients = null;
             }
         }

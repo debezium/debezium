@@ -213,7 +213,8 @@ public class MySqlDefaultValueConverter  {
     private Object convertToBit(String value) {
         try {
             return Short.parseShort(value) != 0;
-        } catch (NumberFormatException ignore) {
+        }
+        catch (NumberFormatException ignore) {
             return Boolean.parseBoolean(value);
         }
     }
@@ -239,7 +240,8 @@ public class MySqlDefaultValueConverter  {
     private Object convertToBoolean(String value) {
         try {
             return Integer.parseInt(value) != 0;
-        } catch (NumberFormatException ignore) {
+        }
+        catch (NumberFormatException ignore) {
             return Boolean.parseBoolean(value);
         }
     }

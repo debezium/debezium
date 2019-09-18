@@ -217,7 +217,8 @@ public interface ElapsedTimeStrategy {
                                 long multiple = 1 + (current - nextTimestamp) / maxDelayInMilliseconds;
                                 nextTimestamp += multiple * maxDelayInMilliseconds;
                             }
-                        } else {
+                        }
+                        else {
                             previousDelay = nextDelay;
                         }
                         nextTimestamp += previousDelay;

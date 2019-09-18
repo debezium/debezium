@@ -44,7 +44,8 @@ final class  BasicArray implements Array {
     BasicArray(Value[] values) {
         if (values == null || values.length == 0) {
             this.values = new ArrayList<>();
-        } else {
+        }
+        else {
             this.values = new ArrayList<>(values.length);
             for (Value value : values) {
                 this.values.add(value != null ? value : Value.nullValue());
@@ -129,10 +130,12 @@ final class  BasicArray implements Array {
         if (isValidIndex(index)) {
             // The index is in bounds ...
             values.set(index, value);
-        } else if (isValidIndex(index - 1)) {
+        }
+        else if (isValidIndex(index - 1)) {
             // The index is the next valid one, so go ahead and add it ...
             values.add(value);
-        } else {
+        }
+        else {
             // The index is invalid ...
             throw new IllegalArgumentException("The index " + index + " is too large for this array, which has only " + size() + " values");
         }

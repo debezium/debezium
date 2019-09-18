@@ -86,7 +86,8 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             try {
                 return Integer.valueOf(asString());
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
             }
         }
         return null;
@@ -103,7 +104,8 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             try {
                 return Long.valueOf(asString());
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
             }
         }
         return null;
@@ -120,7 +122,8 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             try {
                 return Float.valueOf(asString());
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
             }
         }
         return null;
@@ -137,7 +140,8 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             try {
                 return Double.valueOf(asString());
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
             }
         }
         return null;
@@ -174,7 +178,8 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             try {
                 return new BigInteger(asString());
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
             }
         }
         return null;
@@ -197,7 +202,8 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             try {
                 return new BigDecimal(asString());
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
             }
         }
         return null;

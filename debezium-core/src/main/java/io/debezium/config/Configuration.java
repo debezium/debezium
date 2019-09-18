@@ -889,7 +889,8 @@ public interface Configuration {
             Properties properties = new Properties();
             properties.load(stream);
             return from(properties);
-        } finally {
+        }
+        finally {
             stream.close();
         }
     }
@@ -906,7 +907,8 @@ public interface Configuration {
             Properties properties = new Properties();
             properties.load(reader);
             return from(properties);
-        } finally {
+        }
+        finally {
             reader.close();
         }
     }
@@ -1177,7 +1179,8 @@ public interface Configuration {
         if (value != null) {
             try {
                 return Integer.valueOf(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {}
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsInt() : null;
     }
@@ -1197,7 +1200,8 @@ public interface Configuration {
         if (value != null) {
             try {
                 return Long.valueOf(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {}
         }
         return defaultValueSupplier != null ? defaultValueSupplier.getAsLong() : null;
     }
@@ -1839,12 +1843,14 @@ public interface Configuration {
         return validate(fields, (f, v, problem) -> {
             if (v == null) {
                 problems.accept("The '" + f.name() + "' value is invalid: " + problem);
-            } else {
+            }
+            else {
                 String valueStr = v.toString();
                 if (v instanceof CharSequence) {
                     if (PASSWORD_PATTERN.matcher((CharSequence) v).matches()) {
                         valueStr = "********"; // mask any fields that we know are passwords
-                    } else {
+                    }
+                    else {
                         valueStr = "'" + valueStr + "'";
                     }
                 }
@@ -1945,7 +1951,8 @@ public interface Configuration {
         BiFunction<String, String, Integer> extractor = (fieldName, strValue) -> {
             try {
                 return Integer.valueOf(strValue);
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
                 LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
                                                           strValue, fieldName, regex);
                 return null;
@@ -1992,7 +1999,8 @@ public interface Configuration {
         BiFunction<String, String, Boolean> extractor = (fieldName, strValue) -> {
             try {
                 return Boolean.parseBoolean(strValue);
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
                 LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
                                                           strValue, fieldName, regex);
                 return null;

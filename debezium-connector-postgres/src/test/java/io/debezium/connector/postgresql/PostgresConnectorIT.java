@@ -199,7 +199,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         });
         if (TestHelper.shouldSSLConnectionFail()) {
             assertConnectorNotRunning();
-        } else {
+        }
+        else {
             assertConnectorIsRunning();
             Thread.sleep(10000);
             stopConnector();
@@ -647,7 +648,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         EmbeddedEngine.CompletionCallback completionCallback = (success, message, error) -> {
             if (error != null) {
                 latch.countDown();
-            } else {
+            }
+            else {
                 fail("A controlled exception was expected....");
             }
         };
@@ -1003,7 +1005,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         try {
             value.get(fieldName);
             fail("field should not be present");
-        } catch (DataException e) {
+        }
+        catch (DataException e) {
             //expected
         }
     }
@@ -1237,7 +1240,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         if (expectedValue == null) {
             assertThat(actualValue).isNull();
-        } else {
+        }
+        else {
             if (expectedValue instanceof EnumeratedValue) {
                 assertThat(((EnumeratedValue) expectedValue).getValue()).isEqualTo(actualValue.toString());
             }

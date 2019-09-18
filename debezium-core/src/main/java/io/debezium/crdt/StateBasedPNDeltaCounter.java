@@ -90,7 +90,8 @@ import io.debezium.annotation.NotThreadSafe;
             DeltaCount that = (DeltaCount) other;
             this.delta.merge(that.getChanges());
             super.merge(that.getChanges());
-        } else {
+        }
+        else {
             super.merge(other);
         }
         return this;

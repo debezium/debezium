@@ -54,7 +54,8 @@ public class MySqlSchemaTest {
         if (mysql != null) {
             try {
                 mysql.shutdown();
-            } finally {
+            }
+            finally {
                 mysql = null;
             }
         }
@@ -228,7 +229,8 @@ public class MySqlSchemaTest {
         try (InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource);) {
             assertThat(stream).isNotNull();
             return IoUtil.read(stream);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             fail("Unable to read '" + classpathResource + "'");
         }
         assert false : "should never get here";

@@ -131,7 +131,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
             if (operationString.isEmpty() || operation == null) {
                 LOGGER.warn("Unknown operation thus unable to add the operation header into the message");
-            } else {
+            }
+            else {
                 record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, operation.code());
             }
         }
@@ -152,7 +153,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 default:
                     return newRecord;
             }
-        } else {
+        }
+        else {
             // Add on any requested source fields from the original record to the new unwrapped record
             newRecord = addSourceFields(addSourceFields, record, newRecord);
 

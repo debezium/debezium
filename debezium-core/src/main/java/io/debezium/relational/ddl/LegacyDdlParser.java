@@ -233,10 +233,12 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
                 // Consume the statement terminator if it is still there ...
                 tokens.canConsume(DdlTokenizer.STATEMENT_TERMINATOR);
             }
-        } catch (ParsingException e) {
+        }
+        catch (ParsingException e) {
             ddlContent.rewind(marker);
             throw new ParsingException(e.getPosition(), "Failed to parse statement '" + ddlContent.getInputString() + "'", e);
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             parsingFailed(ddlContent.hasNext() ? ddlContent.nextPosition() : null, "Unexpected exception while parsing statement " + ddlContent.getInputString(), t);
         }
     }
@@ -250,13 +252,17 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
     protected void parseNextStatement(Marker marker) {
         if (tokens.matches(DdlTokenizer.COMMENT)) {
             parseComment(marker);
-        } else if (tokens.matches("CREATE")) {
+        }
+        else if (tokens.matches("CREATE")) {
             parseCreate(marker);
-        } else if (tokens.matches("ALTER")) {
+        }
+        else if (tokens.matches("ALTER")) {
             parseAlter(marker);
-        } else if (tokens.matches("DROP")) {
+        }
+        else if (tokens.matches("DROP")) {
             parseDrop(marker);
-        } else {
+        }
+        else {
             parseUnknownStatement(marker);
         }
     }
@@ -490,7 +496,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             }
             if (tokens.matchesWord("BEGIN")) {
                 consumeBeginStatement(tokens.mark());
-            } else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
+            }
+            else if (tokens.matches(DdlTokenizer.STATEMENT_TERMINATOR)) {
                 tokens.consume();
                 break;
             }
@@ -665,12 +672,14 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
         while (true) {
             if (tokens.matches(DdlTokenizer.COMMENT)) {
                 parseComment(start);
-            } else if (tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING, DdlTokenizer.DOUBLE_QUOTED_STRING)) {
+            }
+            else if (tokens.matchesAnyOf(DdlTokenizer.SINGLE_QUOTED_STRING, DdlTokenizer.DOUBLE_QUOTED_STRING)) {
                 if (sb.length() != 0) {
                     sb.append(' ');
                 }
                 sb.append(tokens.consume());
-            } else {
+            }
+            else {
                 break;
             }
         }
@@ -735,7 +744,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             if (tableAlias == null) {
                 // The column was not qualified with a table, so there should be a single table ...
                 column = singleTable == null ? null : singleTable.columnWithName(columnName);
-            } else {
+            }
+            else {
                 // The column was qualified with a table, so look it up ...
                 Table table = fromTablesByAlias.get(tableAlias);
                 column = table == null ? null : table.columnWithName(columnName);
@@ -782,7 +792,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             String columnName = null;
             if (tokens.canConsume('.')) {
                 columnName = tokens.consume();
-            } else {
+            }
+            else {
                 // Just an unqualified column name ...
                 columnName = tableName;
                 tableName = null;
@@ -793,7 +804,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
             }
             columnNameByAliases.put(alias, columnName);
             tableAliasByColumnAliases.put(alias, tableName);
-        } catch (ParsingException e) {
+        }
+        catch (ParsingException e) {
             // do nothing, and don't rewind ...
         }
     }
@@ -815,7 +827,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
                     parseAliasedTableInFrom(start, tablesByAlias);
                     canConsumeJoinCondition(start);
                 }
-            } catch (ParsingException e) {
+            }
+            catch (ParsingException e) {
                 // do nothing ...
             }
         }
@@ -839,7 +852,8 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
                 while (tokens.canConsume(DdlTokenizer.SYMBOL)) {}
                 parseSchemaQualifiedName(start);
                 return true;
-            } catch (ParsingException e) {
+            }
+            catch (ParsingException e) {
                 // do nothing
             }
         }

@@ -75,7 +75,8 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
                 writeDocument(document, jsonGenerator);
             }
             return stream.toByteArray();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -119,12 +120,14 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
                 try {
                     generator.writeFieldName(field.getName().toString());
                     writeValue(field.getValue(), generator);
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new WritingError(e);
                 }
             });
             generator.writeEndObject();
-        } catch (WritingError e) {
+        }
+        catch (WritingError e) {
             throw e.wrapped();
         }
     }
@@ -135,12 +138,14 @@ final class JacksonWriter implements DocumentWriter, ArrayWriter {
             array.streamValues().forEach((value) -> {
                 try {
                     writeValue(value, generator);
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new WritingError(e);
                 }
             });
             generator.writeEndArray();
-        } catch (WritingError e) {
+        }
+        catch (WritingError e) {
             throw e.wrapped();
         }
     }

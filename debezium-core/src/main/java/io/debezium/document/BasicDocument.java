@@ -103,7 +103,8 @@ final class BasicDocument implements Document {
             if (thatIter.hasNext()) {
                 return - 1;
             }
-        } else {
+        }
+        else {
             // We don't care about order, so just go through by this Document's fields ...
             for (Map.Entry<CharSequence, Value> entry : fields.entrySet()) {
                 CharSequence key = entry.getKey();
@@ -231,7 +232,8 @@ final class BasicDocument implements Document {
                 Value updated = Value.create(MathOps.add(current, increment.asNumber()));
                 setValue(name, Value.create(updated));
             }
-        } else {
+        }
+        else {
             setValue(name, increment);
         }
         return this;
@@ -264,7 +266,8 @@ final class BasicDocument implements Document {
     public String toString() {
         try {
             return DocumentWriter.prettyWriter().write(this);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

@@ -105,7 +105,8 @@ public final class Conversions {
             Long value = ((Duration) obj).toNanos();
             if (value >= 0 && value <= NANOSECONDS_PER_DAY) {
                 return LocalTime.ofNanoOfDay(value);
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Time values must use number of milliseconds greater than 0 and less than 86400000000000");
             }
         }

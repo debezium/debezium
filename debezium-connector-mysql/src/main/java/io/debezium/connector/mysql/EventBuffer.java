@@ -90,16 +90,21 @@ class EventBuffer {
             String sql = command.getSql().trim();
             if (sql.equalsIgnoreCase("BEGIN")) {
                 beginTransaction(event);
-            } else if (sql.equalsIgnoreCase("COMMIT")) {
+            }
+            else if (sql.equalsIgnoreCase("COMMIT")) {
                 completeTransaction(true, event);
-            } else if (sql.equalsIgnoreCase("ROLLBACK")) {
+            }
+            else if (sql.equalsIgnoreCase("ROLLBACK")) {
                 rollbackTransaction();
-            } else {
+            }
+            else {
                 consumeEvent(event);
             }
-        } else if (event.getHeader().getEventType() == EventType.XID) {
+        }
+        else if (event.getHeader().getEventType() == EventType.XID) {
             completeTransaction(true, event);
-        } else {
+        }
+        else {
             consumeEvent(event);
         }
     }
@@ -129,7 +134,8 @@ class EventBuffer {
         }
         if (buffer.size() == capacity) {
             switchToBufferFullMode();
-        } else {
+        }
+        else {
             buffer.add(event);
         }
     }
@@ -151,7 +157,8 @@ class EventBuffer {
     private void consumeEvent(Event event) {
         if (txStarted) {
             addToBuffer(event);
-        } else {
+        }
+        else {
             reader.handleEvent(event);
         }
     }
@@ -160,7 +167,8 @@ class EventBuffer {
         if (txStarted) {
             LOGGER.warn("New transaction started but the previous was not completed, processing the buffer");
             completeTransaction(false, null);
-        } else {
+        }
+        else {
             txStarted = true;
         }
         addToBuffer(event);

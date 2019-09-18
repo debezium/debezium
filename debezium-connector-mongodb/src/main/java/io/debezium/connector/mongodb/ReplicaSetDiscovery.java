@@ -76,7 +76,8 @@ public class ReplicaSetDiscovery {
             logger.error("Interrupted while reading the '{}' collection in the '{}' database: {}",
                          shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
             Thread.currentThread().interrupt();
-        } catch (MongoException e) {
+        }
+        catch (MongoException e) {
             logger.error("Error while reading the '{}' collection in the '{}' database: {}",
                          shardsCollection, CONFIG_DATABASE_NAME, e.getMessage(), e);
         }
@@ -89,7 +90,8 @@ public class ReplicaSetDiscovery {
                 String addressStr = Strings.join(",", client.getServerAddressList());
                 String replicaSetName = rsStatus.getName();
                 replicaSetSpecs.add(new ReplicaSet(addressStr, replicaSetName, null));
-            } else {
+            }
+            else {
                 logger.debug("Found standalone MongoDB replica set at {}", seedAddresses);
                 // We aren't connecting to it as a replica set (likely not using auto-discovery of members),
                 // but we can't monitor standalone servers unless they really are replica sets. We already know

@@ -111,14 +111,17 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                     try {
                         historyWriter.append(line);
                         historyWriter.newLine();
-                    } catch (IOException e) {
+                    }
+                    catch (IOException e) {
                         logger.error("Failed to add record to history at {}: {}", path, record, e);
                         return;
                     }
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new DatabaseHistoryException("Unable to create writer for history file " + path + ": " + e.getMessage(), e);
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 logger.error("Failed to convert record to string: {}", record, e);
             }
         });
@@ -141,7 +144,8 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
                         }
                     }
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 logger.error("Failed to add recover records from history at {}", path, e);
             }
         });

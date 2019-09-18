@@ -75,11 +75,13 @@ public class BinlogReaderIT {
         if (reader != null) {
             try {
                 reader.stop();
-            } finally {
+            }
+            finally {
                 if (context != null) {
                     try {
                         context.shutdown();
-                    } finally {
+                    }
+                    finally {
                         context = null;
                         Testing.Files.delete(DB_HISTORY_PATH);
                     }
@@ -508,7 +510,8 @@ public class BinlogReaderIT {
     private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
         if (mode == null) {
             config = simpleConfig().build();
-        } else {
+        }
+        else {
             config = simpleConfig()
                     .with(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE, mode)
                     .build();

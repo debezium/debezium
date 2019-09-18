@@ -65,7 +65,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             if (context != null) {
                 context.getConnectionContext().shutdown();
             }
@@ -406,7 +407,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isTrue();
             Struct value = (Struct) record.value();
             assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("true");
-        } else {
+        }
+        else {
             // Only the last record in the initial sync should be marked as not being part of the initial sync ...
             assertThat(foundLast.getAndSet(true)).isFalse();
             Struct value = (Struct) record.value();
@@ -474,7 +476,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                 assertThat(doc.size()).isGreaterThan(0);
                 results.add(doc);
             });
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
         }
         return results;

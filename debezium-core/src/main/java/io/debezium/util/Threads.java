@@ -220,7 +220,8 @@ public class Threads {
             while (elapsedTime.getAsLong() < timeoutInMillis) {
                 try {
                     Thread.sleep(sleepTimeInMillis);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     // awoke from sleep
                     Thread.currentThread().interrupt();
                     return;

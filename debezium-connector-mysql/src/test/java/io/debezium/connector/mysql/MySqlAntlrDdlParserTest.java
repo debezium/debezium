@@ -2293,7 +2293,8 @@ public class MySqlAntlrDdlParserTest {
         String actualValue = parser.systemVariables().getVariable(name);
         if (expectedValue == null) {
             assertThat(actualValue).isNull();
-        } else {
+        }
+        else {
             assertThat(actualValue).isEqualToIgnoringCase(expectedValue);
         }
     }
@@ -2302,7 +2303,8 @@ public class MySqlAntlrDdlParserTest {
         String actualValue = parser.systemVariables().getVariable(name, scope);
         if (expectedValue == null) {
             assertThat(actualValue).isNull();
-        } else {
+        }
+        else {
             assertThat(actualValue).isEqualToIgnoringCase(expectedValue);
         }
     }
@@ -2327,7 +2329,8 @@ public class MySqlAntlrDdlParserTest {
         try (InputStream stream = getClass().getClassLoader().getResourceAsStream(classpathResource);) {
             assertThat(stream).isNotNull();
             return IoUtil.read(stream);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             fail("Unable to read '" + classpathResource + "'");
         }
         assert false : "should never get here";
@@ -2354,7 +2357,8 @@ public class MySqlAntlrDdlParserTest {
                 sb.append(System.lineSeparator());
             });
             return sb.toString();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             fail("Unable to read '" + classpathResource + "'");
         }
         assert false : "should never get here";

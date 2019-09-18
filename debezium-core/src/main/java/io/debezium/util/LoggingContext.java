@@ -108,7 +108,8 @@ public class LoggingContext {
         try {
             forConnector(connectorType, connectorName, contextName);
             operation.run();
-        } finally {
+        }
+        finally {
             previous.restore();
         }
     }

@@ -185,10 +185,12 @@ public class DataTypeGrammarParser {
         if (stream.canConsume(".", ".", ".")) {
             // This is a list pattern ...
             result = new AndPattern(result, new ListPattern());
-        } else if (stream.canConsumeAnyOf("L", "M", "P", "N")) {
+        }
+        else if (stream.canConsumeAnyOf("L", "M", "P", "N")) {
             // specifies length, mantissa, precision, or number ...
             result = new AndPattern(result, new LengthPattern());
-        } else {
+        }
+        else {
             // This should be at least one literal ...
             Pattern literal = parseLengthLiteral(stream);
             while (stream.canConsume('|')) {
@@ -201,7 +203,8 @@ public class DataTypeGrammarParser {
         Pattern scale = null;
         if (stream.matches(',')) {
             scale = parseScale(stream);
-        } else if (stream.matches('[')) {
+        }
+        else if (stream.matches('[')) {
             scale = parseOptional(stream, this::parseScale);
         }
         if (scale != null) {
@@ -218,7 +221,8 @@ public class DataTypeGrammarParser {
         if (stream.canConsume('S') || stream.canConsume('D')) { // "scale" or "decimal"
             // This is a length pattern ...
             result = new AndPattern(result, new ScalePattern());
-        } else {
+        }
+        else {
             // This should be at least one literal ...
             Pattern literal = parseScaleLiteral(stream);
             while (stream.canConsume('|')) {
@@ -270,7 +274,8 @@ public class DataTypeGrammarParser {
                 if (pattern1.match(stream, builder, error) && pattern2.match(stream, builder, error)) {
                     return true;
                 }
-            } catch (ParsingException e) {
+            }
+            catch (ParsingException e) {
                 stream.rewind(marker);
             }
             return false;
@@ -306,14 +311,16 @@ public class DataTypeGrammarParser {
                 if ( pattern1.match(stream, builder, error) ) {
                     return true;
                 }
-            } catch(ParsingException e){
+            }
+            catch (ParsingException e) {
             }
             stream.rewind(marker);
             try{
                 if ( pattern2.match(stream, builder, error) ) {
                     return true;
                 }
-            } catch (ParsingException e) {}
+            }
+            catch (ParsingException e) {}
             stream.rewind(marker);
             return false;
         }
@@ -448,7 +455,8 @@ public class DataTypeGrammarParser {
                     if (!pattern.match(stream, builder, error)) {
                         stream.rewind(marker);
                     }
-                } catch (ParsingException e) {
+                }
+                catch (ParsingException e) {
                     error.accept(e);
                     stream.rewind(marker);
                 }

@@ -242,7 +242,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                     for (Entry<String, BsonValue> keyValuesForSetSchemaEntry : keyValuesForSetSchema) {
                         converter.addFieldSchema(keyValuesForSetSchemaEntry, valueSchemaBuilder);
                     }
-                } else {
+                }
+                else {
                     converter.addFieldSchema(valuePairsForSchema, valueSchemaBuilder);
                 }
             }
@@ -260,7 +261,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
                     for (Entry<String, BsonValue> keyValueForSetStructEntry : keyValueForSetStruct) {
                         converter.convertRecord(keyValueForSetStructEntry, finalValueSchema, finalValueStruct);
                     }
-                } else {
+                }
+                else {
                     converter.convertRecord(valuePairsForStruct, finalValueSchema, finalValueStruct);
                 }
             }

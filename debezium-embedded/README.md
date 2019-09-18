@@ -129,7 +129,8 @@ The engine's connector will stop reading information from the source system, for
         while (!connector.await(30, TimeUnit.SECONDS)) {
             logger.info("Wating another 30 seconds for the embedded enging to shut down");            
         }
-    } catch ( InterruptedException e ) {
+    } 
+    catch ( InterruptedException e ) {
         Thread.currentThread().interrupt();
     }
 

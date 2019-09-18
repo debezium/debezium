@@ -46,7 +46,8 @@ public class MySqlUnsignedIntegerConverter {
     public static short convertUnsignedTinyint(short originalNumber){
         if (originalNumber < 0) {
             return (short) (originalNumber + TINYINT_CORRECTION);
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -61,7 +62,8 @@ public class MySqlUnsignedIntegerConverter {
     public static int convertUnsignedSmallint(int originalNumber){
         if (originalNumber < 0) {
             return originalNumber + SMALLINT_CORRECTION;
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -76,7 +78,8 @@ public class MySqlUnsignedIntegerConverter {
     public static int convertUnsignedMediumint(int originalNumber){
         if (originalNumber < 0) {
             return originalNumber + MEDIUMINT_CORRECTION;
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -91,7 +94,8 @@ public class MySqlUnsignedIntegerConverter {
     public static long convertUnsignedInteger(long originalNumber){
         if (originalNumber < 0) {
             return originalNumber + INT_CORRECTION;
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }
@@ -106,7 +110,8 @@ public class MySqlUnsignedIntegerConverter {
     public static BigDecimal convertUnsignedBigint(BigDecimal originalNumber) {
         if (originalNumber.compareTo(BigDecimal.ZERO) == -1) {
             return originalNumber.add(BIGINT_CORRECTION);
-        } else {
+        }
+        else {
             return originalNumber;
         }
     }

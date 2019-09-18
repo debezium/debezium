@@ -50,7 +50,8 @@ public class MysqlDefaultValueAllZeroTimeIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }

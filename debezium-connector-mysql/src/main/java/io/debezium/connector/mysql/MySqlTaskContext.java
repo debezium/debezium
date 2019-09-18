@@ -77,7 +77,8 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
         if (tableIdCaseInsensitive == null) {
             this.tableIdCaseInsensitive = !"0".equals(connectionContext.readMySqlSystemVariables().get(MySqlSystemVariables.LOWER_CASE_TABLE_NAMES));
-        } else {
+        }
+        else {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
         }
 
@@ -254,9 +255,11 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
             // Flush and stop the database history ...
             LOGGER.debug("Stopping database history");
             dbSchema.shutdown();
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             LOGGER.error("Unexpected error shutting down the database history", e);
-        } finally {
+        }
+        finally {
             connectionContext.shutdown();
         }
     }

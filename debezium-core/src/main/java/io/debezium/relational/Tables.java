@@ -186,7 +186,8 @@ public final class Tables {
             TableImpl updated = new TableImpl(table);
             try {
                 return tablesByTableId.put(updated.id(), updated);
-            } finally {
+            }
+            finally {
                 changes.add(updated.id());
             }
         });
@@ -227,7 +228,8 @@ public final class Tables {
                                               existing.primaryKeyColumnNames(), existing.defaultCharsetName());
             try {
                 return tablesByTableId.put(updated.id(), updated);
-            } finally {
+            }
+            finally {
                 changes.add(existingTableId);
                 changes.add(updated.id());
             }

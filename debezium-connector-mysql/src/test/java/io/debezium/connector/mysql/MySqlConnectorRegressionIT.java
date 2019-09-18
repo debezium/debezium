@@ -67,7 +67,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -126,18 +127,23 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 String c2 = after.getString("c2");
                 if (c1.equals("a")) {
                     assertThat(c2).isEqualTo("a,b,c");
-                } else if (c1.equals("b")) {
+                }
+                else if (c1.equals("b")) {
                     assertThat(c2).isEqualTo("a,b");
-                } else if (c1.equals("c")) {
+                }
+                else if (c1.equals("c")) {
                     assertThat(c2).isEqualTo("a");
-                } else {
+                }
+                else {
                     fail("c1 didn't match expected value");
                 }
-            } else if (record.topic().endsWith("dbz_102_charsettest")) {
+            }
+            else if (record.topic().endsWith("dbz_102_charsettest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 String text = after.getString("text");
                 assertThat(text).isEqualTo("产品");
-            } else if (record.topic().endsWith("dbz_85_fractest")) {
+            }
+            else if (record.topic().endsWith("dbz_85_fractest")) {
                 // The microseconds of all three should be exactly 780
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
@@ -187,7 +193,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
                 assertTimestamp(c4);
-            } else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
+            }
+            else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
                 // c2 TIME(2),
@@ -241,7 +248,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
-            } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
+            }
+            else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 BIT, // 1 bit
@@ -270,13 +278,15 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4[5]).isEqualTo((byte) 0);
                 assertThat(c4[6]).isEqualTo((byte) 0);
                 assertThat(c4[7]).isEqualTo((byte) 0);
-            } else if (record.topic().endsWith("dbz_147_decimalvalues")) {
+            }
+            else if (record.topic().endsWith("dbz_147_decimalvalues")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
                 assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
-            } else if (record.topic().endsWith("dbz_342_timetest")) {
+            }
+            else if (record.topic().endsWith("dbz_342_timetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
                 // '517:51:04.777'
@@ -403,18 +413,23 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 String c2 = after.getString("c2");
                 if (c1.equals("a")) {
                     assertThat(c2).isEqualTo("a,b,c");
-                } else if (c1.equals("b")) {
+                }
+                else if (c1.equals("b")) {
                     assertThat(c2).isEqualTo("a,b");
-                } else if (c1.equals("c")) {
+                }
+                else if (c1.equals("c")) {
                     assertThat(c2).isEqualTo("a");
-                } else {
+                }
+                else {
                     fail("c1 didn't match expected value");
                 }
-            } else if (record.topic().endsWith("dbz_102_charsettest")) {
+            }
+            else if (record.topic().endsWith("dbz_102_charsettest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 String text = after.getString("text");
                 assertThat(text).isEqualTo("产品");
-            } else if (record.topic().endsWith("dbz_85_fractest")) {
+            }
+            else if (record.topic().endsWith("dbz_85_fractest")) {
                 // The microseconds of all three should be exactly 780
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
@@ -456,7 +471,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
                 assertTimestamp(c4);
-            } else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
+            }
+            else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
                 // c2 TIME(2),
@@ -510,7 +526,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getMinute()).isEqualTo(0);
                 assertThat(c4DateTime.getSecond()).isEqualTo(0);
                 assertThat(c4DateTime.getNano()).isEqualTo(0);
-            } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
+            }
+            else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 BIT, // 1 bit
@@ -539,7 +556,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4[5]).isEqualTo((byte) 0);
                 assertThat(c4[6]).isEqualTo((byte) 0);
                 assertThat(c4[7]).isEqualTo((byte) 0);
-            } else if (record.topic().endsWith("dbz_147_decimalvalues")) {
+            }
+            else if (record.topic().endsWith("dbz_147_decimalvalues")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
@@ -603,18 +621,23 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 String c2 = after.getString("c2");
                 if (c1.equals("a")) {
                     assertThat(c2).isEqualTo("a,b,c");
-                } else if (c1.equals("b")) {
+                }
+                else if (c1.equals("b")) {
                     assertThat(c2).isEqualTo("a,b");
-                } else if (c1.equals("c")) {
+                }
+                else if (c1.equals("c")) {
                     assertThat(c2).isEqualTo("a");
-                } else {
+                }
+                else {
                     fail("c1 didn't match expected value");
                 }
-            } else if (record.topic().endsWith("dbz_102_charsettest")) {
+            }
+            else if (record.topic().endsWith("dbz_102_charsettest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 String text = after.getString("text");
                 assertThat(text).isEqualTo("产品");
-            } else if (record.topic().endsWith("dbz_85_fractest")) {
+            }
+            else if (record.topic().endsWith("dbz_85_fractest")) {
                 // The microseconds of all three should be exactly 780
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 DATE,
@@ -683,7 +706,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                         .toOffsetDateTime();
 
                 assertThat(c4DateTime).isEqualTo(expected);
-            } else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
+            }
+            else if (record.topic().endsWith("dbz_123_bitvaluetest")) {
                 // All row events should have the same values ...
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 // c1 BIT, // 1 bit
@@ -712,25 +736,30 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4[5]).isEqualTo((byte) 0);
                 assertThat(c4[6]).isEqualTo((byte) 0);
                 assertThat(c4[7]).isEqualTo((byte) 0);
-            } else if (record.topic().endsWith("dbz_147_decimalvalues")) {
+            }
+            else if (record.topic().endsWith("dbz_147_decimalvalues")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 Object decimalValue = after.get("decimal_value");
                 assertThat(decimalValue).isInstanceOf(BigDecimal.class);
                 BigDecimal bigValue = (BigDecimal) decimalValue;
                 assertThat(bigValue.doubleValue()).isEqualTo(12345.67, Delta.delta(0.01));
-            } else if (record.topic().endsWith("dbz_195_numvalues")) {
+            }
+            else if (record.topic().endsWith("dbz_195_numvalues")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
                 Object searchVersion = after.get("search_version_read");
                 assertThat(searchVersion).isInstanceOf(Integer.class);
                 Integer intValue = (Integer) searchVersion;
                 if (intValue.intValue() < 0) {
                     assertThat(intValue.intValue()).isEqualTo(-2147483648);
-                } else if (intValue.intValue() > 0) {
+                }
+                else if (intValue.intValue() > 0) {
                     assertThat(intValue.intValue()).isEqualTo(2147483647);
-                } else {
+                }
+                else {
                     assertThat(intValue.intValue()).isEqualTo(0);
                 }
-            }  else if (record.topic().endsWith("dbz_342_timetest")) {
+            }
+            else if (record.topic().endsWith("dbz_342_timetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
 
                 // '517:51:04.777'

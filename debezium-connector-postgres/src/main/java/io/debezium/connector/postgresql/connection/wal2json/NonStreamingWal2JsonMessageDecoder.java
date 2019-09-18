@@ -69,7 +69,8 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
                     processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
                 }
             }
-        } catch (final IOException e) {
+        }
+        catch (final IOException e) {
             throw new ConnectException(e);
         }
     }
