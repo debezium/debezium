@@ -171,7 +171,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
     private R addSourceFields(String[] addSourceFields, R originalRecord, R unwrappedRecord) {
         // Return if no source fields to add
-        if(addSourceFields == null) {
+        if (addSourceFields == null) {
             return unwrappedRecord;
         }
         
@@ -186,7 +186,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
             updatedValue.put(field.name(), value.get(field));
         }
-        for(String sourceField : addSourceFields) {
+        for (String sourceField : addSourceFields) {
             updatedValue.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, source.get(sourceField));
         }
 
@@ -207,8 +207,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             builder.field(field.name(), field.schema());
         }
         // Add the requested source fields, throw exception if a specified source field is not part of the source schema
-        for(String sourceField: addSourceFields) {
-            if(sourceSchema.field(sourceField) == null) {
+        for (String sourceField: addSourceFields) {
+            if (sourceSchema.field(sourceField) == null) {
                 throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
             }
             builder.field(

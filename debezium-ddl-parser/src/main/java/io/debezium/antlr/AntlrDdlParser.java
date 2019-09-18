@@ -344,7 +344,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     private void throwParsingException(Collection<ParsingException> errors) {
-        if(errors.size() == 1) {
+        if (errors.size() == 1) {
             throw errors.iterator().next();
         }
         else {

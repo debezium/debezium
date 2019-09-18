@@ -227,7 +227,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                     return rs.getString(columnIndex);
                 default:
                     Object x = rs.getObject(columnIndex);
-                    if(x != null) {
+                    if (x != null) {
                         LOGGER.trace("rs getobject returns class: {}; rs getObject value is: {}", x.getClass(), x);
                     }
                     return x;

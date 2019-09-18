@@ -46,10 +46,10 @@ public class XmlCharacters {
         MASKS[0x9] |= VALID_CHARACTER | CONTENT_CHARACTER;
         MASKS[0xA] |= VALID_CHARACTER | CONTENT_CHARACTER;
         MASKS[0xD] |= VALID_CHARACTER | CONTENT_CHARACTER;
-        for(int i=0x20 ; i <=0xD7FF ; ++i) {
+        for (int i=0x20 ; i <=0xD7FF ; ++i) {
             MASKS[i]|=VALID_CHARACTER|CONTENT_CHARACTER;
         }
-        for(int i=0xE000 ; i<=0xFFFD ; ++i){
+        for (int i=0xE000 ; i<=0xFFFD ; ++i){
             MASKS[i]|=VALID_CHARACTER|CONTENT_CHARACTER;
         }
         // Last range is bigger than our character array, so we'll handle in the 'isValid' method ...
@@ -86,43 +86,43 @@ public class XmlCharacters {
         int nameStartMask = NAME_START_CHARACTER | NCNAME_START_CHARACTER | NAME_CHARACTER | NCNAME_CHARACTER;
         MASKS[':'] |= nameStartMask;
         MASKS['_'] |= nameStartMask;
-        for(int i = 'A'; i <= 'Z'; ++ i) {
+        for (int i = 'A'; i <= 'Z'; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 'a'; i <= 'z'; ++ i) {
+        for (int i = 'a'; i <= 'z'; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0xC0; i <= 0xD6; ++ i) {
+        for (int i = 0xC0; i <= 0xD6; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0xD8; i <= 0xF6; ++ i) {
+        for (int i = 0xD8; i <= 0xF6; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0xF8; i <= 0x2FF; ++ i) {
+        for (int i = 0xF8; i <= 0x2FF; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x370; i <= 0x37D; ++ i) {
+        for (int i = 0x370; i <= 0x37D; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x37F; i <= 0x1FFF;  ++ i) {
+        for (int i = 0x37F; i <= 0x1FFF;  ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x200C; i <= 0x200D; ++ i) {
+        for (int i = 0x200C; i <= 0x200D; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x2070; i <= 0x218F; ++ i) {
+        for (int i = 0x2070; i <= 0x218F; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x2C00; i <= 0x2FEF; ++ i) {
+        for (int i = 0x2C00; i <= 0x2FEF; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x3001; i <= 0xD7FF; ++ i) {
+        for (int i = 0x3001; i <= 0xD7FF; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0xF900; i <= 0xFDCF; ++ i) {
+        for (int i = 0xF900; i <= 0xFDCF; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0xFDF0; i <= 0xFFFD; ++ i) {
+        for (int i = 0xFDF0; i <= 0xFFFD; ++ i) {
             MASKS[i] |= nameStartMask;
         }
         // Last range is bigger than our character array ...
@@ -139,13 +139,13 @@ public class XmlCharacters {
         MASKS['-'] |= nameMask;
         MASKS['.'] |= nameMask;
         MASKS[0xB7] |= nameMask;
-        for(int i = '0'; i <= '9'; ++ i) {
+        for (int i = '0'; i <= '9'; ++ i) {
             MASKS[i] |= nameMask;
         }
-        for(int i = 0x0300; i <= 0x036F; ++ i) {
+        for (int i = 0x0300; i <= 0x036F; ++ i) {
             MASKS[i] |= nameStartMask;
         }
-        for(int i = 0x203F; i <= 0x2040; ++ i) {
+        for (int i = 0x203F; i <= 0x2040; ++ i) {
             MASKS[i] |= nameStartMask;
         }
 
@@ -165,13 +165,13 @@ public class XmlCharacters {
         MASKS[0x20] |= PUBID_CHARACTER;
         MASKS[0xA] |= PUBID_CHARACTER;
         MASKS[0xD] |= PUBID_CHARACTER;
-        for(int i='A'; i<='Z'; ++i){
+        for (int i='A'; i<='Z'; ++i){
             MASKS[i]|=PUBID_CHARACTER;
         }
-        for(int i='a'; i<='z'; ++i){
+        for (int i='a'; i<='z'; ++i){
             MASKS[i]|=PUBID_CHARACTER;
         }
-        for(int i='0'; i<='9'; ++i){
+        for (int i='0'; i<='9'; ++i){
             MASKS[i]|=PUBID_CHARACTER;
         }
         MASKS['-'] |= PUBID_CHARACTER;

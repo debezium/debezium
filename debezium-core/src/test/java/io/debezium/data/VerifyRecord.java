@@ -357,7 +357,7 @@ public class VerifyRecord {
      * @param expected expected value stored on the source record
      */
     public static void assertSameValue(Object actual, Object expected) {
-        if(expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
+        if (expected instanceof Double || expected instanceof Float || expected instanceof BigDecimal) {
             // Value should be within 1%
             double expectedNumericValue = ((Number) expected).doubleValue();
             double actualNumericValue = ((Number) actual).doubleValue();
@@ -1014,21 +1014,21 @@ public class VerifyRecord {
             return false;
         }
 
-        for (int i = 0; i < length; i++){
+        for (int i = 0; i < length; i++) {
             Object e1=a1[i];
             Object e2=a2[i];
 
-            if(e1==e2){
+            if (e1==e2) {
                 continue;
             }
-            if(e1==null){
+            if (e1==null) {
                 return false;
             }
 
             // Figure out whether the two elements are equal
             boolean eq = deepEquals0(e1, e2);
 
-            if(!eq){
+            if (!eq) {
                 return false;
             }
         }
@@ -1038,34 +1038,34 @@ public class VerifyRecord {
     private static boolean deepEquals0(Object e1, Object e2){
         assert e1!=null;
         boolean eq;
-        if(e1 instanceof Object[]&&e2 instanceof Object[]){
+        if (e1 instanceof Object[]&&e2 instanceof Object[]) {
             eq = deepEquals((Object[]) e1, (Object[]) e2);
         }
-        else if(e1 instanceof byte[]&&e2 instanceof byte[]){
+        else if (e1 instanceof byte[]&&e2 instanceof byte[]) {
             eq = Arrays.equals((byte[]) e1, (byte[]) e2);
             }
-        else if(e1 instanceof short[]&&e2 instanceof short[]){
+        else if (e1 instanceof short[]&&e2 instanceof short[]) {
                 eq = Arrays.equals((short[]) e1, (short[]) e2);
                 }
-        else if(e1 instanceof int[]&&e2 instanceof int[]){
+        else if (e1 instanceof int[]&&e2 instanceof int[]) {
                     eq = Arrays.equals((int[]) e1, (int[]) e2);
                     }
-        else if (e1 instanceof long[] && e2 instanceof long[]){
+        else if (e1 instanceof long[] && e2 instanceof long[]) {
                         eq = Arrays.equals((long[]) e1, (long[]) e2);
                     }
-        else if (e1 instanceof char[] && e2 instanceof char[]){
+        else if (e1 instanceof char[] && e2 instanceof char[]) {
                             eq = Arrays.equals((char[]) e1, (char[]) e2);
                         }
-        else if (e1 instanceof float[] && e2 instanceof float[]){
+        else if (e1 instanceof float[] && e2 instanceof float[]) {
                                 eq = Arrays.equals((float[]) e1, (float[]) e2);
                             }
-        else if (e1 instanceof double[] && e2 instanceof double[]){
+        else if (e1 instanceof double[] && e2 instanceof double[]) {
                                     eq = Arrays.equals((double[]) e1, (double[]) e2);
                                 }
-        else if (e1 instanceof boolean[] && e2 instanceof boolean[]){
+        else if (e1 instanceof boolean[] && e2 instanceof boolean[]) {
                                         eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
                                     }
-        else{
+        else {
                                         eq = equals(e1, e2);
                                     }
         return eq;
@@ -1119,7 +1119,7 @@ public class VerifyRecord {
             return false;
         }
 
-        for(int i = 0; i < fields1.size(); i++) {
+        for (int i = 0; i < fields1.size(); i++) {
             Field field1 = fields1.get(i);
             Field field2 = fields2.get(i);
 

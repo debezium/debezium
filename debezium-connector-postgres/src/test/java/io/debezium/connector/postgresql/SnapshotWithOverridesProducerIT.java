@@ -94,7 +94,9 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         for (int i = 0; i < expectedRecordsCount; i++) {
             final SourceRecord record = consumer.remove();
             recordsByTopic.putIfAbsent(record.topic(), new ArrayList<SourceRecord>());
-            recordsByTopic.compute(record.topic(), (k, v) -> { v.add(record); return v; });
+            recordsByTopic.compute(record.topic(), (k, v) -> {
+                v.add(record);
+                return v; });
         }
         return recordsByTopic;
     }

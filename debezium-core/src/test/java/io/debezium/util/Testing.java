@@ -62,11 +62,11 @@ public interface Testing {
     }
 
     public static void print(int length, String leader, Object message){
-        if(message!=null&&Print.enabled){
+        if (message!=null&&Print.enabled){
             int len=leader.length();
             System.out.print(leader);
-            if(len<length){
-                for(int i=len; i!=length; ++i){
+            if (len<length){
+                for (int i=len; i!=length; ++i){
                     System.out.print(" ");
                 }
             }

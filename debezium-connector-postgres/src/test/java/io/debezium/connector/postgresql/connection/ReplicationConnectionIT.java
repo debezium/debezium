@@ -344,7 +344,7 @@ public class ReplicationConnectionIT {
         Metronome metronome = Metronome.sleeper(Duration.ofMillis(50), Clock.SYSTEM);
         Future<?> result = executorService.submit(() -> {
             while (!Thread.interrupted()) {
-                for(;;) {
+                for (;;) {
                     List<ReplicationMessage> message = new ArrayList<>();
                     stream.read(x -> message.add(x));
                     if (message.isEmpty()) {

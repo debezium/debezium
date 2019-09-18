@@ -782,7 +782,8 @@ public class KafkaCluster {
                         producer.flush();
                         LOGGER.debug("Producer {}: sent message {}", producerName, record);
                     }
-                } finally {
+                }
+                finally {
                     if (completionCallback != null){
                         completionCallback.run();
                     }
@@ -932,7 +933,8 @@ public class KafkaCluster {
                             }
                         });
                     }
-                } finally {
+                }
+                finally {
                     if (completion != null){
                         completion.run();
                     }

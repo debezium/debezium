@@ -948,7 +948,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             Object actualValue = content.get(fieldName);
 
             // assert the value type; for List all implementation types (e.g. immutable ones) are acceptable
-            if(actualValue instanceof List) {
+            if (actualValue instanceof List) {
                 assertTrue("Incorrect value type for " + fieldName, value instanceof List);
                 final List<?> actualValueList = (List<?>) actualValue;
                 final List<?> valueList = (List<?>) value;

@@ -250,7 +250,7 @@ public class BinlogReader extends AbstractReader {
                     header.setTimestamp(edde.getEventHeader().getTimestamp());
                     header.setServerId(edde.getEventHeader().getServerId());
 
-                    if(edde.getEventHeader() instanceof EventHeaderV4) {
+                    if (edde.getEventHeader() instanceof EventHeaderV4) {
                         header.setEventLength(((EventHeaderV4) edde.getEventHeader()).getEventLength());
                         header.setNextPosition(((EventHeaderV4) edde.getEventHeader()).getNextPosition());
                         header.setFlags(((EventHeaderV4) edde.getEventHeader()).getFlags());
@@ -589,7 +589,7 @@ public class BinlogReader extends AbstractReader {
             EventHeaderV4 eventHeader = (EventHeaderV4) data.getCause().getEventHeader(); // safe cast, instantiated that ourselves
 
             // logging some additional context but not the exception itself, this will happen in handleEvent()
-            if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+            if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 logger.error(
                         "Error while deserializing binlog event at offset {}.{}" +
                         "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
@@ -602,7 +602,7 @@ public class BinlogReader extends AbstractReader {
 
                 throw new RuntimeException(data.getCause());
             }
-            else if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+            else if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 logger.warn(
                         "Error while deserializing binlog event at offset {}.{}" +
                         "This exception will be ignored and the event be skipped.{}" +
@@ -1062,12 +1062,12 @@ public class BinlogReader extends AbstractReader {
 
         @Override
         public void onEventDeserializationFailure(BinaryLogClient client, Exception ex) {
-            if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
+            if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.FAIL) {
                 logger.debug("A deserialization failure event arrived", ex);
                 logReaderState();
                 BinlogReader.this.failed(ex);
             }
-            else if(eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
+            else if (eventDeserializationFailureHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 logger.warn("A deserialization failure event arrived", ex);
                 logReaderState(Level.WARN);
             }

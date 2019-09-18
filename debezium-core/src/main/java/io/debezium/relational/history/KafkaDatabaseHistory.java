@@ -283,7 +283,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
 
         // The end offset should never change during recovery; doing this check here just as - a rather weak - attempt
         // to spot other connectors that share the same history topic accidentally
-        if(previousEndOffset != null && !previousEndOffset.equals(endOffset)) {
+        if (previousEndOffset != null && !previousEndOffset.equals(endOffset)) {
             throw new IllegalStateException("Detected changed end offset of database history topic (previous: "
                     + previousEndOffset + ", current: " + endOffset
                     + "). Make sure that the same history topic isn't shared by multiple connector instances."

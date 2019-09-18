@@ -187,7 +187,7 @@ public class SchemaUtil {
             else if (obj instanceof ByteBuffer) {
                 append((ByteBuffer) obj);
             }
-            else if(obj instanceof byte[]) {
+            else if (obj instanceof byte[]) {
                     append((byte[]) obj);
             }
             else if (obj instanceof Map<?, ?>) {

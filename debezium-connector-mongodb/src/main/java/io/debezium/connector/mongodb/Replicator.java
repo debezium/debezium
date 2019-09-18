@@ -400,7 +400,7 @@ public class Replicator {
         Threads.Timer timer = Threads.timer(Clock.SYSTEM, delay);
         Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
 
-        while(!timer.expired()) {
+        while (!timer.expired()) {
             if (!running.get()) {
                 throw new InterruptedException("Interrupted while awaiting initial snapshot delay");
             }
