@@ -121,7 +121,7 @@ docker run -it --rm --name avro-consumer \
 
 As stated in the Avro link:https://avro.apache.org/docs/current/spec.html#names[documentation], names must adhere to the following rules:
 
-* Start with `[A-Za-Z_]`
+* Start with `[A-Za-z_]`
 * Subsequently contain only `[A-Za-z0-9_]` characters
 
 Debezium uses the column's name as the basis for the Avro field.
