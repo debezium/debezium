@@ -770,7 +770,7 @@ The Cassandra connector should be deployed each Cassandra node in a Cassandra cl
 [[example-configuration]]
 === Example configuration
 
-The following represents an example .properties configuration file for running and testing Cassandra Connector locally:
+The following represents an example .properties configuration file for running and testing the Cassandra Connector locally:
 
 [source,indent=0]
 ----
