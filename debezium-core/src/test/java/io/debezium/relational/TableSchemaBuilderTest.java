@@ -11,14 +11,18 @@ import static org.junit.Assert.fail;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
+import java.util.Collections;
+import java.util.HashMap;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.time.Date;
@@ -26,9 +30,13 @@ import io.debezium.util.SchemaNameAdjuster;
 
 public class TableSchemaBuilderTest {
 
+    private static final String AVRO_UNSUPPORTED_NAME = "9-`~!@#$%^&*()+=[]{}\\|;:\"'<>,.?/";
+    private static final String AVRO_UNSUPPORTED_NAME_CONVERTED = "_9_______________________________";
+
     private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
-    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null, "c7value", "c8value" };
+    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null, "c7value", "c8value", "c9value" };
+    private final Object[] keyData = new Object[] { "c1value", 3.142d };
     private Table table;
     private Column c1;
     private Column c2;
@@ -38,6 +46,7 @@ public class TableSchemaBuilderTest {
     private Column c6;
     private Column c7;
     private Column c8;
+    private Column c9;
 
     private TableSchema schema;
     private SchemaNameAdjuster adjuster;
@@ -84,7 +93,11 @@ public class TableSchemaBuilderTest {
                                  Column.editor().name("C-8") // test invalid Avro name ( contains dash )
                                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
                                        .optional(false)
-                                       .create())
+                                       .create(),
+                                 Column.editor().name(AVRO_UNSUPPORTED_NAME)
+                                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                        .optional(false)
+                                        .create())
                      .setPrimaryKeyNames("C1", "C2")
                      .create();
         c1 = table.columnWithName("C1");
@@ -95,6 +108,7 @@ public class TableSchemaBuilderTest {
         c6 = table.columnWithName("C6");
         c7 = table.columnWithName("7C7");
         c8 = table.columnWithName("C-8");
+        c9 = table.columnWithName(AVRO_UNSUPPORTED_NAME);
     }
 
     @Test
@@ -107,6 +121,7 @@ public class TableSchemaBuilderTest {
         assertThat(c6).isNotNull();
         assertThat(c7).isNotNull();
         assertThat(c8).isNotNull();
+        assertThat(c9).isNotNull();
     }
 
     @Test(expected = NullPointerException.class)
@@ -208,6 +223,11 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C-8").index()).isEqualTo(7);
         assertThat(values.field("C-8").schema()).isEqualTo(SchemaBuilder.string().build());
 
+        // Column AVRO_UNSUPPORTED_NAME contains all invalid characters, left as-is
+        assertThat(values.field(AVRO_UNSUPPORTED_NAME).name()).isEqualTo(AVRO_UNSUPPORTED_NAME);
+        assertThat(values.field(AVRO_UNSUPPORTED_NAME).index()).isEqualTo(8);
+        assertThat(values.field(AVRO_UNSUPPORTED_NAME).schema()).isEqualTo(SchemaBuilder.string().build());
+
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();
         assertThat(value.get("C1")).isEqualTo("c1value");
@@ -264,6 +284,11 @@ public class TableSchemaBuilderTest {
         assertThat(values.field("C_8").index()).isEqualTo(7);
         assertThat(values.field("C_8").schema()).isEqualTo(SchemaBuilder.string().build());
 
+        // Column AVRO_UNSUPPORTED_NAME should be all underscroes
+        assertThat(values.field(AVRO_UNSUPPORTED_NAME_CONVERTED).name()).isEqualTo(AVRO_UNSUPPORTED_NAME_CONVERTED);
+        assertThat(values.field(AVRO_UNSUPPORTED_NAME_CONVERTED).index()).isEqualTo(8);
+        assertThat(values.field(AVRO_UNSUPPORTED_NAME_CONVERTED).schema()).isEqualTo(SchemaBuilder.string().build());
+
         Struct value = schema.valueFromColumnData(data);
         assertThat(value).isNotNull();
         assertThat(value.get("C1")).isEqualTo("c1value");
@@ -272,5 +297,24 @@ public class TableSchemaBuilderTest {
         assertThat(value.get("C4")).isEqualTo(4);
         assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114}));
         assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
+
+        TableSchema tableSchema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
+                .create(prefix, "sometopic", table, null, null);
+
+        Struct key = new Struct(tableSchema.keySchema()).put("C1", "c1").put("C2", "c2");
+        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "sometopic", tableSchema.keySchema(), key, null, null);
+    }
+
+    @Test
+    @FixFor("DBZ-1044")
+    public void shouldSanitizeFieldNamesAndValidateSerialization() {
+        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), true)
+                .create(prefix, "sometopic", table, null, null);
+
+        Struct key = (Struct) schema.keyFromColumnData(keyData);
+        Struct value = schema.valueFromColumnData(data);
+
+        SourceRecord record = new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "sometopic", schema.keySchema(), key, schema.valueSchema(), value);
+        VerifyRecord.isValid(record);
     }
 }

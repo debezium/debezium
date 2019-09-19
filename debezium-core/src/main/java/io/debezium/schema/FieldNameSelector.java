@@ -19,24 +19,8 @@ import io.debezium.util.BoundedConcurrentHashMap.Eviction;
  */
 public class FieldNameSelector {
 
-    private final FieldNamer fieldNamer;
-
-    private FieldNameSelector(boolean sanitizeFieldNames) {
-        this.fieldNamer = new FieldNameCache(new FieldNameSanitizer(sanitizeFieldNames, Column::name));
-    }
-
-    public static FieldNameSelector defaultSelector(boolean sanitizeFieldNames) {
-        return new FieldNameSelector(sanitizeFieldNames);
-    }
-
-    /**
-     * Returns the name ofthe field for a given column.
-     *
-     * @param column the column, never {@code null}
-     * @return the name of the field, never {@code null}
-     */
-    public String fieldNameFor(Column column) {
-        return fieldNamer.fieldNameFor(column);
+    public static FieldNamer defaultSelector(boolean sanitizeFieldNames) {
+        return sanitizeFieldNames ? new FieldNameCache(new FieldNameSanitizer(Column::name)) : Column::name;
     }
 
     /**
@@ -57,17 +41,15 @@ public class FieldNameSelector {
         private static final String NUMBER_PREFIX = "_";
 
         private final FieldNamer delegate;
-        private final boolean sanitizeFieldNames;
 
-        public FieldNameSanitizer(boolean sanitizeFieldNames, FieldNamer delegate) {
-            this.sanitizeFieldNames = sanitizeFieldNames;
+        public FieldNameSanitizer(FieldNamer delegate) {
             this.delegate = delegate;
         }
 
         @Override
         public String fieldNameFor(Column column) {
             String fieldName = delegate.fieldNameFor(column);
-            return sanitizeFieldNames ? sanitizeColumnName(fieldName) : fieldName;
+            return sanitizeColumnName(fieldName);
         }
 
         /**

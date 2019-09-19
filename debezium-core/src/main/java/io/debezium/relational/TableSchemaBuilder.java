@@ -28,6 +28,7 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.util.SchemaNameAdjuster;
 import io.debezium.util.Strings;
 
@@ -53,7 +54,7 @@ public class TableSchemaBuilder {
     private final SchemaNameAdjuster schemaNameAdjuster;
     private final ValueConverterProvider valueConverterProvider;
     private final Schema sourceInfoSchema;
-    private final FieldNameSelector fieldNameSelector;
+    private final FieldNamer fieldNamer;
 
     /**
      * Create a new instance of the builder.
@@ -66,7 +67,7 @@ public class TableSchemaBuilder {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.sourceInfoSchema = sourceInfoSchema;
-        this.fieldNameSelector = FieldNameSelector.defaultSelector(sanitizeFieldNames);
+        this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
     }
 
     /**
@@ -281,7 +282,7 @@ public class TableSchemaBuilder {
         Field[] fields = new Field[columns.size()];
         AtomicInteger i = new AtomicInteger(0);
         columns.forEach(column -> {
-            Field field = schema.field(fieldNameSelector.fieldNameFor(column)); // may be null if the field is unused ...
+            Field field = schema.field(fieldNamer.fieldNameFor(column)); // may be null if the field is unused ...
             fields[i.getAndIncrement()] = field;
         });
         return fields;
@@ -369,7 +370,7 @@ public class TableSchemaBuilder {
                 fieldBuilder.defaultValue(column.defaultValue());
             }
 
-            builder.field(fieldNameSelector.fieldNameFor(column), fieldBuilder.build());
+            builder.field(fieldNamer.fieldNameFor(column), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
                              fieldBuilder.type(),
