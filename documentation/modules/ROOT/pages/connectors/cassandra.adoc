@@ -731,6 +731,10 @@ The following table describes how the connector maps each of the Cassandra data 
 |`int64`
 |n/a
 
+|`duration`
+|`float64`
+|`io.debezium.time.MicroDuration`
+
 |=======================
 
 #TODO: add logical types
