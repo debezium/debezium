@@ -297,12 +297,6 @@ public class TableSchemaBuilderTest {
         assertThat(value.get("C4")).isEqualTo(4);
         assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114}));
         assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
-
-        TableSchema tableSchema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
-                .create(prefix, "sometopic", table, null, null);
-
-        Struct key = new Struct(tableSchema.keySchema()).put("C1", "c1").put("C2", "c2");
-        SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "sometopic", tableSchema.keySchema(), key, null, null);
     }
 
     @Test
