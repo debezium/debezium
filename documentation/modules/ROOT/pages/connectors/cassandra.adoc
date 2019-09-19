@@ -774,7 +774,7 @@ The Cassandra connector should be deployed each Cassandra node in a Cassandra cl
 [[example-configuration]]
 === Example configuration
 
-The following represents an example .properties configuration file for running and testing Cassandra Connector locally:
+The following represents an example .properties configuration file for running and testing the Cassandra Connector locally:
 
 [source,indent=0]
 ----
@@ -1013,7 +1013,7 @@ kafka.consumer.ssl.key.password=test1234
 
 Be sure to consult the http://kafka.apache.org/documentation.html[Kafka documentation] for all of the configuration properties for Kafka producers.
 
-The connect supports the following kafka connect converters for key/value serialization:
+The connector supports the following Kafka Connect converters for key/value serialization:
 
 [source,indent=0]
 ----
