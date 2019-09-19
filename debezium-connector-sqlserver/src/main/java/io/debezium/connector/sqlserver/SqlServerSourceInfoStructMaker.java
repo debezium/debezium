@@ -23,6 +23,7 @@ public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMake
                 .field(SourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.CHANGE_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.COMMIT_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.EVENT_SERIAL_NO_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
     }
 
@@ -42,6 +43,9 @@ public class SqlServerSourceInfoStructMaker extends AbstractSourceInfoStructMake
         }
         if (sourceInfo.getCommitLsn() != null && sourceInfo.getCommitLsn().isAvailable()) {
             ret.put(SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
+        }
+        if (sourceInfo.getEventSerialNo() != null) {
+            ret.put(SourceInfo.EVENT_SERIAL_NO_KEY, sourceInfo.getEventSerialNo());
         }
         return ret;
     }

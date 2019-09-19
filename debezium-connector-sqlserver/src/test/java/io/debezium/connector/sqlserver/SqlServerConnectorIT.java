@@ -335,6 +335,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertRecord(deleteValueB.getStruct("before"), expectedDeleteRowB);
         assertRecord(deletekeyB, expectedDeleteKeyB);
         assertNull(deleteValueB.get("after"));
+        assertThat(deleteValueB.getStruct("source").getInt64("event_serial_no")).isEqualTo(1L);
 
         final Struct tombstonekeyB = (Struct) tombstoneRecordB.key();
         final Struct tombstoneValueB = (Struct) tombstoneRecordB.value();
@@ -346,6 +347,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertRecord(insertValueB.getStruct("after"), expectedInsertRowB);
         assertRecord(insertkeyB, expectedInsertKeyB);
         assertNull(insertValueB.get("before"));
+        assertThat(insertValueB.getStruct("source").getInt64("event_serial_no")).isEqualTo(2L);
 
         stopConnector();
     }
