@@ -22,7 +22,6 @@ public class SqlServerOffsetContext implements OffsetContext {
 
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
-    private static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
 
     private final Schema sourceInfoSchema;
     private final SourceInfo sourceInfo;
@@ -75,7 +74,7 @@ public class SqlServerOffsetContext implements OffsetContext {
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
                     SourceInfo.CHANGE_LSN_KEY,
                         sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
-                    EVENT_SERIAL_NO_KEY, eventSerialNo
+                    SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo
             );
         }
     }
@@ -107,6 +106,7 @@ public class SqlServerOffsetContext implements OffsetContext {
         }
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
+        sourceInfo.setEventSerialNo(eventSerialNo);
     }
 
     @Override
@@ -155,7 +155,7 @@ public class SqlServerOffsetContext implements OffsetContext {
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
             // only introduced in 0.10.Beta1, so it might be not present when upgrading from earlier versions
-            Long eventSerialNo = ((Long) offset.get(EVENT_SERIAL_NO_KEY));
+            Long eventSerialNo = ((Long) offset.get(SourceInfo.EVENT_SERIAL_NO_KEY));
             if (eventSerialNo == null) {
                 eventSerialNo = Long.valueOf(0);
             }

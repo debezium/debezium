@@ -36,6 +36,7 @@ public class SourceInfoTest {
         source.setSnapshot(SnapshotRecord.TRUE);
         source.setSourceTime(Instant.ofEpochMilli(3000));
         source.setTableId(new TableId("c", "s", "t"));
+        source.setEventSerialNo(30L);
     }
 
     @Test
@@ -61,6 +62,11 @@ public class SourceInfoTest {
     @Test
     public void commitLsnIsPresent() {
         assertThat(source.struct().getString(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte [] { 0x02 }).toString());
+    }
+
+    @Test
+    public void eventSerialNoIsPresent() {
+        assertThat(source.struct().getInt64(SourceInfo.EVENT_SERIAL_NO_KEY)).isEqualTo(30L);
     }
 
     @Test
@@ -94,6 +100,7 @@ public class SourceInfoTest {
                 .field("table", Schema.STRING_SCHEMA)
                 .field("change_lsn", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("commit_lsn", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("event_serial_no", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
         assertThat(source.struct().schema()).isEqualTo(schema);
