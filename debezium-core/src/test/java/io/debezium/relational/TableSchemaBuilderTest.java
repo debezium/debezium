@@ -12,7 +12,6 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Types;
 import java.util.Collections;
-import java.util.HashMap;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
