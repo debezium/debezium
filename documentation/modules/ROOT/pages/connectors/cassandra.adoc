@@ -1009,7 +1009,7 @@ kafka.consumer.ssl.key.password=test1234
 
 Be sure to consult the http://kafka.apache.org/documentation.html[Kafka documentation] for all of the configuration properties for Kafka producers.
 
-The connect supports the following kafka connect converters for key/value serialization:
+The connector supports the following Kafka Connect converters for key/value serialization:
 
 [source,indent=0]
 ----
