@@ -484,7 +484,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                       .withImportance(Importance.MEDIUM)
                                                       .withDefault(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME)
                                                       .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin." +
-                                                                       "Defaults to 'dbz_publication'");
+                                                                       "Defaults to '" + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + "'");
 
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
                                                         .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
