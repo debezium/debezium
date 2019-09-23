@@ -622,7 +622,19 @@ public abstract class ConnectorOutputTest {
      * @return the test specification; never null
      */
     protected TestSpecification usingSpec(String name, String directory) {
-        return usingSpec(name, Paths.get(directory));
+        String version = System.getProperty("java.version");
+        String modulePath = "";
+        /**
+         * Java 11 seems to have issues finding the file when tests are invoked from the root directory. However, running
+         * the tests directory from the module directory work, so we only need to mess with the path when we are invoking
+         * the tests from the root.
+         */
+        if (!version.startsWith("1.")) {
+            if (!Paths.get(directory).toAbsolutePath().toString().contains("debezium-embedded")) {
+                modulePath = "debezium-embedded/";
+            }
+        }
+        return usingSpec(name, Paths.get(modulePath + directory));
     }
 
     /**

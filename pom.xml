@@ -19,7 +19,7 @@
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
-      <tag>HEAD</tag>
+        <tag>HEAD</tag>
     </scm>
     <issueManagement>
         <system>jira</system>
@@ -53,17 +53,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <release>8</release>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>2.3.1</version.kafka>
         <version.kafka.scala>2.12</version.kafka.scala>
-        <version.curator>2.11.0</version.curator>
+        <version.curator>4.2.0</version.curator>
         <version.zookeeper>3.4.14</version.zookeeper>
         <version.jackson>2.10.0</version.jackson>
         <version.org.slf4j>1.7.26</version.org.slf4j>
         <version.log4j>1.2.17</version.log4j>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>5.1.2</version.confluent.platform>
+        <version.confluent.platform>5.3.1</version.confluent.platform>
 
         <!-- Databases -->
         <version.postgresql.driver>42.2.8</version.postgresql.driver>
@@ -78,28 +79,35 @@
         <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
 
         <!-- ANTLR -->
-        <antlr.version>4.7</antlr.version>
+        <antlr.version>4.7.2</antlr.version>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
         <version.jmh>1.21</version.jmh>
-        <version.mockito>2.13.0</version.mockito>
+        <version.mockito>3.0.0</version.mockito>
         <version.awaitility>3.1.6</version.awaitility>
 
         <!-- Maven Plugins -->
-        <version.resources.plugin>2.7</version.resources.plugin>
-        <version.dependency.plugin>2.10</version.dependency.plugin>
-        <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>
+        <version.compiler.plugin>3.8.1</version.compiler.plugin>
+        <version.resources.plugin>3.1.0</version.resources.plugin>
+        <version.filtering.plugin>3.1.1</version.filtering.plugin>
+        <version.dependency.plugin>3.1.1</version.dependency.plugin>
+        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
+
         <version.jar.plugin>3.0.2</version.jar.plugin>
-        <version.source.plugin>3.0.1</version.source.plugin>
-        <version.assembly.plugin>2.4</version.assembly.plugin>
+        <version.source.plugin>3.1.0</version.source.plugin>
+        <version.assembly.plugin>3.1.1</version.assembly.plugin>
         <version.war.plugin>2.5</version.war.plugin>
-        <version.google.formatter.plugin>0.3.1</version.google.formatter.plugin>
-        <version.docker.maven.plugin>0.26.0</version.docker.maven.plugin>
-        <version.staging.plugin>1.6.3</version.staging.plugin>
+        <version.google.formatter.plugin>0.4</version.google.formatter.plugin>
+        <version.docker.maven.plugin>0.31.0</version.docker.maven.plugin>
+        <version.staging.plugin>1.6.8</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
+        <version.javadoc.plugin>3.1.1</version.javadoc.plugin>
         <version.code.formatter>2.8.1</version.code.formatter>
+        <version.surefire.plugin>3.0.0-M3</version.surefire.plugin>
+        <version.checkstyle.plugin>3.0.0</version.checkstyle.plugin>
+        <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.2.0</version.impsort>
 
         <!-- Dockerfiles -->
@@ -107,6 +115,13 @@
 
         <!--Skip long running tests by default-->
         <skipLongRunningTests>true</skipLongRunningTests>
+
+        <!--Configure forking for surefire plugin, jdk11 needs
+        different settings per
+        https://stackoverflow.com/questions/53437819/maven-surefire-and-jdk-11
+        https://winterbe.com/posts/2018/08/29/migrate-maven-projects-to-java-11-jigsaw/-->
+        <forkCount>2</forkCount>
+        <reuseForks>true</reuseForks>
 
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
@@ -119,16 +134,19 @@
         <format.imports.goal>sort</format.imports.goal>
 
         <!-- No debug options by default -->
-        <debug.argline />
+        <debug.argline/>
 
         <!-- No modules options by default -->
-        <modules.argline />
+        <modules.argline/>
 
         <!-- No test options by default -->
-        <test.argline />
+        <test.argline/>
 
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
+
+        <!-- Needed for pre jdk 9 -->
+        <useSystemClassLoader>true</useSystemClassLoader>
     </properties>
 
     <modules>
@@ -170,7 +188,7 @@
         </repository>
         <repository>
             <id>ossrh</id>
-            <name>OSS Sonatype Nexus </name>
+            <name>OSS Sonatype Nexus</name>
             <url>https://oss.sonatype.org/content/groups/public/</url>
             <releases>
                 <enabled>true</enabled>
@@ -219,7 +237,7 @@
                 <version>${version.kafka}</version>
             </dependency>
 
-           <!-- Kafka -->
+            <!-- Kafka -->
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
@@ -404,6 +422,11 @@
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
+            <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>2.3.1</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>
@@ -463,6 +486,11 @@
                     <version>${version.resources.plugin}</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.shared</groupId>
+                    <artifactId>maven-filtering</artifactId>
+                    <version>${version.filtering.plugin}</version>
+                </plugin>
+                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
                     <version>${version.dependency.plugin}</version>
@@ -478,6 +506,7 @@
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
                         <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                        <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -626,7 +655,7 @@
                         <configuration>
                             <rules>
                                 <requireMavenVersion>
-                                    <version>3.0.0</version>
+                                    <version>3.0.5</version>
                                 </requireMavenVersion>
                             </rules>
                         </configuration>
@@ -672,6 +701,9 @@
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>
+                    <forkCount>${forkCount}</forkCount>
+                    <reuseForks>${reuseForks}</reuseForks>
+                    <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                 </configuration>
             </plugin>
             <plugin>
@@ -821,12 +853,20 @@
             </build>
         </profile>
         <profile>
-            <id>jdk9</id>
+            <id>jdk11</id>
             <activation>
-                <jdk>9</jdk>
+                <jdk>11</jdk>
             </activation>
             <properties>
-                <modules.argline>--add-modules java.xml.bind</modules.argline>
+                <modules.argline>--add-modules java.xml.bind --illegal-access=permit</modules.argline>
+                <forkCount>0</forkCount>
+                <reuseForks>false</reuseForks>
+                <useSystemClassLoader>false</useSystemClassLoader>
+                <!-- When using this profile the following warning pops up,
+                [WARNING] bootstrap class path not set in conjunction with -source 8 -->
+                <maven.compiler.source>11</maven.compiler.source>
+                <maven.compiler.target>11</maven.compiler.target>
+                <release>11</release>
             </properties>
         </profile>
     </profiles>

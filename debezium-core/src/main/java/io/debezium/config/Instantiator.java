@@ -30,7 +30,7 @@ class Instantiator {
                     : Configuration.class.getClassLoader();
             try {
                 Class<? extends T> clazz = (Class<? extends T>) classloader.loadClass(className);
-                return configuration == null ? clazz.newInstance()
+                return configuration == null ? clazz.getDeclaredConstructor().newInstance()
                         : clazz.getConstructor(Configuration.class).newInstance(configuration);
             }
             catch (ClassNotFoundException e) {

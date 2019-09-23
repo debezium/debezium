@@ -5,6 +5,7 @@
  */
 package io.debezium.jdbc;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -176,10 +177,10 @@ public class JdbcConnection implements AutoCloseable {
                     driverClassLoader = JdbcConnection.class.getClassLoader();
                 }
                 Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
-                java.sql.Driver driver = driverClazz.newInstance();
+                java.sql.Driver driver = driverClazz.getDeclaredConstructor().newInstance();
                 conn = driver.connect(url, props);
             }
-            catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+            catch (ClassNotFoundException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
                 throw new SQLException(e);
             }
             LOGGER.debug("Connected to {} with {}", url, props);

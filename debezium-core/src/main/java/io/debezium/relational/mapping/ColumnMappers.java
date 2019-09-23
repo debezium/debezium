@@ -275,7 +275,7 @@ public class ColumnMappers {
 
     protected static ColumnMapper instantiateMapper(Class<ColumnMapper> clazz, Configuration config) {
         try {
-            ColumnMapper mapper = clazz.newInstance();
+            ColumnMapper mapper = clazz.getDeclaredConstructor().newInstance();
             if (config != null) {
                 mapper.initialize(config);
             }

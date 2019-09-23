@@ -5,6 +5,7 @@
  */
 package io.debezium.junit;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.function.Supplier;
 
 import org.junit.Assert;
@@ -27,7 +28,7 @@ public class ConditionalFail extends AnnotationBasedTestRule {
             return base;
         }
         try {
-            Supplier<Boolean> condition = conditionClass.value().newInstance();
+            Supplier<Boolean> condition = conditionClass.value().getDeclaredConstructor().newInstance();
             return new Statement() {
                 @Override
                 public void evaluate() throws Throwable {
@@ -50,7 +51,7 @@ public class ConditionalFail extends AnnotationBasedTestRule {
                 }
             };
         }
-        catch (final InstantiationException | IllegalAccessException e) {
+        catch (final InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             throw new IllegalStateException(e);
         }
     }
