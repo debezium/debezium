@@ -17,10 +17,12 @@ public class MessageDecoderConfig {
 
     private final Configuration configuration;
     private final PostgresSchema schema;
+    private final String publicationName;
 
-    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema) {
+    public MessageDecoderConfig(Configuration configuration, PostgresSchema schema, String publicationName) {
         this.configuration = configuration;
         this.schema = schema;
+        this.publicationName = publicationName;
     }
 
     public Configuration getConfiguration() {
@@ -29,5 +31,9 @@ public class MessageDecoderConfig {
 
     public PostgresSchema getSchema() {
         return schema;
+    }
+
+    public String getPublicationName() {
+        return publicationName;
     }
 }

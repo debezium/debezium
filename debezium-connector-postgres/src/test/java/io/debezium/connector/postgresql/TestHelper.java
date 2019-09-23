@@ -13,6 +13,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Set;
@@ -270,6 +271,25 @@ public final class TestHelper {
                 LOGGER.debug("Error while dropping publication: '" + publicationName + "'", e);
             }
         }
+    }
+
+    protected static boolean publicationExists() {
+        return publicationExists(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
+    }
+
+    protected static boolean publicationExists(String publicationName) {
+        if(decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
+            try(PostgresConnection connection = create()) {
+                String query = String.format("SELECT pubname FROM pg_catalog.pg_publication WHERE pubname = '%s'", publicationName);
+                try {
+                    return connection.queryAndMap(query, ResultSet::next);
+                }
+                catch (SQLException e) {
+                    // ignored
+                }
+            }
+        }
+        return false;
     }
 
     protected static void waitForDefaultReplicationSlotBeActive() {
