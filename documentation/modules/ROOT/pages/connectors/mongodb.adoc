@@ -637,18 +637,15 @@ The following configuration properties are _required_ unless a default value is 
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring; any collection not included in the blacklist will be monitored. Each identifier is of the form _databaseName_._collectionName_. May not be used with `collection.whitelist`.
 
-|`snapshot.mode` +
-0.9.2 and later
+|`snapshot.mode`
 |`initial`
 |Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
-|`field.blacklist` +
-0.9.0 and later
+|`field.blacklist`
 |_empty string_
 |An optional comma-separated list of the fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters.
 
-|`field.renames` +
-0.9.0 and later
+|`field.renames`
 |_empty string_
 |An optional comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change event message values. Fully-qualified replacements for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_:__newNestedFieldName__, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters, the colon character (:) is used to determine rename mapping of field. The next field replacement is applied to the result of the previous field replacement in the list, so keep this in mind when renaming multiple fields that are in the same path.
 
@@ -660,21 +657,18 @@ The following configuration properties are _required_ unless a default value is 
 |`1`
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
-|`tombstones.on.delete` +
-0.7.3 and later
+|`tombstones.on.delete`
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|`snapshot.delay.ms` +
-0.9.0 and later
+|`snapshot.delay.ms`
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|`snapshot.fetch.size` +
-0.9.5 and later
+|`snapshot.fetch.size`
 |`0`
 |Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
 The connector will read the collection contents in multiple batches of this size. +
@@ -719,8 +713,7 @@ The following _advanced_ configuration properties have good defaults that will w
 |`true`
 |Boolean value that specifies whether the addresses in 'mongodb.hosts' are seeds that should be used to discover all members of the cluster or replica set (`true`), or whether the address(es) in `mongodb.hosts` should be used as is (`false`). The default is `true` and should be used in all cases except where MongoDB is link:#mongodb-replicaset[fronted by a proxy].
 
-|`source.struct.version` +
-0.10 and later
+|`source.struct.version`
 |v2
 |Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
@@ -728,8 +721,7 @@ all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future Debezium version.
 
-|`heartbeat.interval.ms` +
-0.10 and later
+|`heartbeat.interval.ms`
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -742,8 +734,7 @@ This will cause the oplog files to be rotated out but connector will not notice 
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|`heartbeat.topics.prefix` +
-0.10 and later
+|`heartbeat.topics.prefix`
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
