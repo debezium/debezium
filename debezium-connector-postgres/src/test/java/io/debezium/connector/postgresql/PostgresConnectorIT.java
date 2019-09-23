@@ -1121,6 +1121,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'")).isTrue());
+        assertTrue(TestHelper.publicationExists("cdc"));
     }
 
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {

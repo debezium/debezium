@@ -175,7 +175,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
         return builder.withSlotOption("proto_version", 1)
-                .withSlotOption("publication_names", "dbz_publication");
+                .withSlotOption("publication_names", config.getPublicationName());
     }
 
     @Override

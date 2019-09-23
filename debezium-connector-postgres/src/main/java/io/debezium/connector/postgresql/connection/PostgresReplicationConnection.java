@@ -103,7 +103,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.dropSlotOnClose = dropSlotOnClose;
         this.statusUpdateInterval = statusUpdateInterval;
         this.exportSnapshot = exportSnapshot;
-        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema));
+        this.messageDecoder = plugin.messageDecoder(new MessageDecoderConfig(config, schema, publicationName));
         this.typeRegistry = typeRegistry;
         this.streamParams = streamParams;
         this.slotCreationInfo = null;
@@ -134,7 +134,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                             //      For situations where no publication exists, we likely cannot create it for all tables.
                             //      This is because postgres requires certain super user permissions to use "ALL TABLES".
                             //      We should restrict this to the configured tables here.
-                            stmt.execute("CREATE PUBLICATION dbz_publication FOR ALL TABLES;");
+                            stmt.execute(String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName));
                         }
                         else {
                             LOGGER.trace(
