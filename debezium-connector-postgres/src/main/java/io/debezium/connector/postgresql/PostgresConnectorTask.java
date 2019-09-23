@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import io.debezium.util.Metronome;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -37,6 +36,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 
 /**
  * Kafka connect source task which uses Postgres logical decoding over a streaming replication connection to process DB changes.
@@ -186,18 +186,20 @@ public class PostgresConnectorTask extends BaseSourceTask {
         while(retryCount <= maxRetries) {
             try {
                 return taskContext.createReplicationConnection(shouldExport);
-            } catch (SQLException ex) {
+            }
+            catch (SQLException ex) {
                 retryCount++;
                 if (retryCount > maxRetries){
-                    LOGGER.error(String.format("Too many errors connecting to server. All %s retries failed.", maxRetries));
+                    LOGGER.error("Too many errors connecting to server. All {} retries failed.", maxRetries);
                     throw new ConnectException(ex);
                 }
 
-                LOGGER.warn(String.format("Error connecting to server; will attempt retry %s of %s after %s " +
-                        "seconds. Exception: %s", retryCount, maxRetries, retryDelay.getSeconds(), ex));
+                LOGGER.warn("Error connecting to server; will attempt retry {} of {} after {} " +
+                        "seconds. Exception message: {}", retryCount, maxRetries, retryDelay.getSeconds(), ex.getMessage());
                 try {
                     metronome.pause();
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     LOGGER.warn("Connection retry sleep interrupted by exception: " + e);
                     Thread.currentThread().interrupt();
                 }

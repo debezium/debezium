@@ -6,15 +6,16 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.doc.FixFor;
+import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.time.Duration;
+
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.nio.charset.Charset;
-import java.sql.SQLException;
-import java.time.Duration;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.doc.FixFor;
 
 /**
  * Integration test for {@link PostgresConnectorTask} class.

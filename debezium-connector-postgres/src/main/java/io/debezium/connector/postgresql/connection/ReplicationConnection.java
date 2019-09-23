@@ -188,22 +188,6 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder exportSnapshotOnCreate(final boolean exportSnapshot);
 
         /**
-         * How many times to retry connecting to a replication slot when an attempt fails.
-         * @param maxRetries The number of retries to make.
-         * @return this instance
-         */
-        Builder maxRetries(final int maxRetries);
-
-
-        /**
-         * The number of seconds to wait between retry attempts when the connector fails to connect to a replication slot.
-         * @param retryDelay Duration to wait between retry attempts.
-         * @return this instance
-         */
-        Builder retryDelay(final Duration retryDelay);
-
-
-        /**
          * Creates a new {@link ReplicationConnection} instance
          * @return a connection, never null
          */
