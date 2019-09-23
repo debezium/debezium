@@ -246,6 +246,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${version.assembly.plugin}</version>
                         <dependencies>
                             <dependency>
                                 <groupId>io.debezium</groupId>

@@ -18,12 +18,11 @@
     <properties>
         <!-- Instruct the build to use only UTF-8 encoding for source code -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
 
-        <version.enforcer.plugin>3.0.0-M1</version.enforcer.plugin>
+        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
         <version.jar.plugin>3.0.2</version.jar.plugin>
-        <version.source.plugin>3.0.1</version.source.plugin>
+        <version.source.plugin>3.1.0</version.source.plugin>
+        <version.checkstyle.plugin>3.0.0</version.checkstyle.plugin>
     </properties>
    <!--
    This module is referenced by Debezium's parent POM, so it needs to be built before the parent
@@ -35,6 +34,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.compiler.plugin}</version>
                 <configuration>
                     <showDeprecation>false</showDeprecation>
                     <showWarnings>false</showWarnings>
@@ -43,6 +43,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${version.checkstyle.plugin}</version>
             </plugin>
             <!-- 
             This is not deployed into a Maven repository. It is merely installed into the local Maven repository
@@ -53,6 +54,17 @@
                 <artifactId>maven-deploy-plugin</artifactId>
                 <configuration>
                     <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <configuration>
+                    <rules>
+                        <requireMavenVersion>
+                            <version>3.0.5</version>
+                        </requireMavenVersion>
+                    </rules>
                 </configuration>
             </plugin>
         </plugins>
