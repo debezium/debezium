@@ -1691,7 +1691,7 @@ The following configuration properties are _required_ unless a default value is 
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|`column.propagate.source.type` 0.8.0 and later
+|`column.propagate.source.type`
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
@@ -1702,13 +1702,11 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 |`adaptive_time{zwsp}_microseconds`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; `adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See <<temporal-values>>.
 
-|`decimal.handling.mode` +
-`string` in 0.7.4 and later
+|`decimal.handling.mode`
 |`precise`
 | Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
 
-|`bigint.unsigned.handling.mode` +
-0.6.1 and later
+|`bigint.unsigned.handling.mode`
 |`long`
 | Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values can't be conveyed using `long`. See <<data-types>>.
 
@@ -1722,8 +1720,7 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from the snapshot process. +
 WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
 
-|`event.deserialization{zwsp}.failure.handling.mode` +
-0.6.2 and later
+|`event.deserialization{zwsp}.failure.handling.mode`
 |`fail`
 | Specifies how the connector should react to exceptions during deserialization of binlog events.
 `fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
@@ -1731,8 +1728,7 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 (make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
 `ignore` will cause problematic event will be skipped.
 
-|`inconsistent.schema.handling.mode` +
-0.7.3 and later
+|`inconsistent.schema.handling.mode`
 |`fail`
 | Specifies how the connector should react to binlog events that relate to tables that are not present in internal schema representation (i.e. internal representation is not consistent with database)
 `fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
@@ -1764,27 +1760,15 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 |
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used. May not be used with `gtid.source.includes`.
 
-|`gtid.new.channel.position` +
-0.9.0 and later
+|`gtid.new.channel.position`
 |`latest`
 | When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest`, the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where Debezium is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before Debezium is connected. These writes would be lost when using `latest`.
 
-|`tombstones.on.delete` +
-0.7.3 and later
+|`tombstones.on.delete`
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
-
-|`ddl.parser.mode` +
-0.8.0 to 0.9.x
-|`antlr`
-| Controls which parser should be used for parsing DDL statements when building up the meta-model of the captured database structure. +
-Can be one of `legacy` (for the legacy hand-written parser implementation) or `antlr` (for new Antlr based implementation introduced in Debezium 0.8.0). +
-While the legacy parser remains the default for Debezium 0.8.x, please try out the new implementation and report back any issues you encounter. +
-The new parser is the default as of 0.9.
-
-The legacy parser as well as this configuration property has been removed as of 0.10.
 
 |=======================
 
@@ -1819,8 +1803,7 @@ The following _advanced_ configuration properties have good defaults that will w
 The safe default is `false`.
 Skipping should be used only with care as it can lead to data loss or mangling when binlog is processed.
 
-|`database.history.store.only.monitored.tables.ddl` +
-0.7.2 and later
+|`database.history.store.only.monitored.tables.ddl`
 |`false`
 |Boolean value that specifies if connector should should record all DDL statements or (when `true`) only those that are relevant to tables that are monitored by Debezium (via filter configuration).
 The safe default is `false`.
@@ -1838,8 +1821,7 @@ The `verify_ca` option behaves like `required` but additionally it verifies the 
 
 The `verify_identity` option behaves like `verify_ca` but additionally verifies that the server certificate matches the host of the remote connection.
 
-|`binlog.buffer.size` +
-0.7.0 and later
+|`binlog.buffer.size`
 |0
 |The size of a look-ahead buffer used by the binlog reader. +
 Under specific conditions it is possible that MySQL binlog contains uncommitted data finished by a `ROLLBACK` statement.
@@ -1856,8 +1838,7 @@ _Note:_ This feature should be considered an incubating one. We need a feedback 
 
 `schema_only_recovery` is a recovery option for an existing connector to recover a corrupted or lost database history topic, or to periodically "clean up" a database history topic (which requires infinite retention) that may be growing unexpectedly.
 
-|`snapshot.locking.mode` +
-_0.7.3 and later_
+|`snapshot.locking.mode`
 |`minimal`
 |Controls if and how long the connector holds onto the global MySQL read lock (preventing any updates to the database) while it is performing a snapshot.  There are three possible values `minimal`, `extended`, and `none`. +
 
@@ -1867,20 +1848,7 @@ _0.7.3 and later_
 
 `none` Will prevent the connector from acquiring any table locks during the snapshot process. This value can be used with all snapshot modes but it is safe to use if and _only_ if no schema changes are happening while the snapshot is taken. Note that for tables defined with MyISAM engine, the tables would still be locked despite this property being set as MyISAM acquires a table lock. This behaviour is unlike InnoDB engine which acquires row level locks.
 
-|`snapshot.minimal.locks` +
-_deprecated since 0.7.3_ +
-_removed since 0.10_
-|`true`
-|Controls how long the connector holds onto the global MySQL read lock (preventing any updates to the database) while it is performing a snapshot. The default is `true`, meaning the connector holds the global read lock for just the initial portion of the snapshot while the connector reads the database schemas and other metadata. The remaining work in a snapshot involves selecting all rows from each table, and this can be done in a consistent fashion using the `REPEATABLE READ` transaction even when the global read lock is no longer held and while other
-MySQL clients are updating the database. However, in some cases where clients are submitting operations that MySQL excludes from `REPEATABLE READ` semantics, it may be desirable to _block all writes_ for the entire duration of the snapshot. In only such cases, set this property to `false`. +
-_Deprecated:_ This option has been deprecated and replaced with the `snapshot.locking.mode` configuration option. This option will be removed in a future release. +
-
-A `snapshot.minimal.locks` value of `true` should be replaced with `snapshot.locking.mode` set to `minimal`. +
-
-A `snapshot.minimal.locks` value of `false` should be replaced with `snapshot.locking.mode` set to `extended`.
-
-|`snapshot.select.statement.overrides` +
-0.7.0 and later
+|`snapshot.select.statement.overrides`
 |
 |Controls which rows from tables will be included in snapshot. +
 This property contains a comma-separated list of fully-qualified tables _(DB_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
@@ -1890,41 +1858,35 @@ This property contains a comma-separated list of fully-qualified tables _(DB_NAM
 |`1000`
 |During a snapshot operation, the connector will query each included table to produce a read event for all rows in that table. This parameter determines whether the MySQL connection will pull all results for a table into memory (which is fast but requires large amounts of memory), or whether the results will instead be streamed (can be slower, but will work for very large tables). The value specifies the minimum number of rows a table must contain before the connector will stream results, and defaults to 1,000. Set this parameter to '0' to skip all table size checks and always stream all results during a snapshot.
 
-|`heartbeat.interval.ms` +
-0.7.3 and later
+|`heartbeat.interval.ms`
 |`0`
 |Controls how frequently the heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends heartbeat messages into a heartbeat topic.
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|`heartbeat.topics.prefix` +
-0.7.3 and later
+|`heartbeat.topics.prefix`
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|`database.initial.statements` +
-0.8.0 and later
+|`database.initial.statements`
 |
 |A semicolon separated list of SQL statements to be executed when a JDBC connection (not the transaction log reading connection) to the database is established.
 Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter. +
 _Note: The connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, but not for executing DML statements._
 
-|`snapshot.delay.ms` +
-0.8.0 and later
+|`snapshot.delay.ms`
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|`snapshot.fetch.size` +
-0.9.5 and later
+|`snapshot.fetch.size`
 |
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size.
 
-|`enable.time.adjuster` +
-0.9.3 and later
+|`enable.time.adjuster`
 |
 |MySQL allows user to insert year value as either 2-digit or 4-digit.
 In case of two digits the value is automatically mapped to 1970 - 2069 range.
@@ -1932,8 +1894,7 @@ This is usually done by database. +
 Set to `true` (the default) when Debezium should do the conversion. +
 Set to `false` when conversion is fully delegated to the database.
 
-|`source.struct.version` +
-0.10 and later
+|`source.struct.version`
 |v2
 |Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across

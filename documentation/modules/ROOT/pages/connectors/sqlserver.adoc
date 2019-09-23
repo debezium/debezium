@@ -1218,8 +1218,7 @@ Note that primary key columns are always included in the event's key, also if bl
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#temporal-values[temporal values].
 
-|`tombstones.on.delete` +
-0.10.0 and later
+|`tombstones.on.delete`
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
@@ -1286,27 +1285,23 @@ Disabled by default.
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|`snapshot.delay.ms` +
-0.9.0 and later
+|`snapshot.delay.ms`
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|`snapshot.fetch.size` +
-0.9.5 and later
+|`snapshot.fetch.size`
 |`2000`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size. Defaults to 2000.
 
-|`snapshot.select.statement.overrides` +
-0.10.0 and later
+|`snapshot.select.statement.overrides`
 |
 |Controls which rows from tables will be included in snapshot. +
 This property contains a comma-separated list of fully-qualified tables _(SCHEMA_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
 *Note*: This setting has impact on snapshots only. Events captured during log reading are not affected by it.
 
-|`source.struct.version` +
-0.10 and later
+|`source.struct.version`
 |v2
 |Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
