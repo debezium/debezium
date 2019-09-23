@@ -349,6 +349,11 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-assembly-plugin</artifactId>
+              <version>${version.assembly.plugin}</version>
+            </plugin>
         </plugins>
         <resources>
             <!-- Apply the properties set in the POM to the resource files -->
@@ -433,6 +438,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
                         <configuration>
                             <skipTests>${skipITs}</skipTests>
                             <enableAssertions>true</enableAssertions>

@@ -78,7 +78,7 @@
                 <!-- https://github.com/antlr/antlr4test-maven-plugin -->
                 <groupId>com.khubla.antlr</groupId>
                 <artifactId>antlr4test-maven-plugin</artifactId>
-                <version>1.10</version>
+                <version>1.11</version>
                 <configuration>
                     <verbose>false</verbose>
                     <showTree>false</showTree>

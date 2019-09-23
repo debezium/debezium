@@ -707,7 +707,7 @@ public final class EmbeddedEngine implements Runnable {
                 try {
                     @SuppressWarnings("unchecked")
                     Class<? extends SourceConnector> connectorClass = (Class<SourceConnector>) classLoader.loadClass(connectorClassName);
-                    connector = connectorClass.newInstance();
+                    connector = connectorClass.getDeclaredConstructor().newInstance();
                 }
                 catch (Throwable t) {
                     fail("Unable to instantiate connector class '" + connectorClassName + "'", t);
@@ -720,7 +720,7 @@ public final class EmbeddedEngine implements Runnable {
                 try {
                     @SuppressWarnings("unchecked")
                     Class<? extends OffsetBackingStore> offsetStoreClass = (Class<OffsetBackingStore>) classLoader.loadClass(offsetStoreClassName);
-                    offsetStore = offsetStoreClass.newInstance();
+                    offsetStore = offsetStoreClass.getDeclaredConstructor().newInstance();
                 }
                 catch (Throwable t) {
                     fail("Unable to instantiate OffsetBackingStore class '" + offsetStoreClassName + "'", t);
@@ -771,7 +771,7 @@ public final class EmbeddedEngine implements Runnable {
                     Class<? extends Task> taskClass = connector.taskClass();
                     task = null;
                     try {
-                        task = (SourceTask) taskClass.newInstance();
+                        task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
                     }
                     catch (IllegalAccessException | InstantiationException t) {
                         fail("Unable to instantiate connector's task class '" + taskClass.getName() + "'", t);
