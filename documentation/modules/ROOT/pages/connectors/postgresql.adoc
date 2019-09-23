@@ -1668,7 +1668,7 @@ e.g. `add-tables=public.table,public.table2;include-lsn=true`.
 
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Whether field names will be sanitized to adhere to AVRO naming requirements.
+|Whether field names will be sanitized to adhere to Avro naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
 |`slot.max.retries`

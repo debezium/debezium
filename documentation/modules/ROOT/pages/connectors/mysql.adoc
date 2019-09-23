@@ -1941,10 +1941,9 @@ all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future Debezium version.
 
-|`sanitize.field.names` +
-0.10 and later
+|`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
-|Whether field names will be sanitized to adhere to AVRO naming requirements.
+|Whether field names will be sanitized to adhere to Avro naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
 |=======================

@@ -149,11 +149,11 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isClassName);
 
     public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
-            .withDisplayName("Sanitize field names to adhere to AVRO naming conventions")
+            .withDisplayName("Sanitize field names to adhere to Avro naming conventions")
             .withType(Type.BOOLEAN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withDescription("Whether field names will be sanitized to AVRO naming conventions")
+            .withDescription("Whether field names will be sanitized to Avro naming conventions")
             .withDefault(Boolean.FALSE);
 
     private final Configuration config;
