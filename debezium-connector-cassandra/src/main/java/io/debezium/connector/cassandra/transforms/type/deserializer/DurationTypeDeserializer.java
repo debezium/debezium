@@ -5,12 +5,13 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
-import io.debezium.time.MicroDuration;
+import java.nio.ByteBuffer;
+
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.db.marshal.AbstractType;
 
-import java.nio.ByteBuffer;
+import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
+import io.debezium.time.NanoDuration;
 
 public class DurationTypeDeserializer extends BasicTypeDeserializer {
     /*
@@ -27,6 +28,6 @@ public class DurationTypeDeserializer extends BasicTypeDeserializer {
         int months = duration.getMonths();
         int days = duration.getDays();
         long nanoSec = duration.getNanoseconds();
-        return MicroDuration.durationMicros(0, months, days, 0, 0, 0, (int) nanoSec/1000, 0.0D);
+        return NanoDuration.durationNanos(0, months, days, 0, 0, 0, nanoSec);
     }
 }

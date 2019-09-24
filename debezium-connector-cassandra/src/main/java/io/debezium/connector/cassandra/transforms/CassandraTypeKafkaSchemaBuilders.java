@@ -5,17 +5,18 @@
  */
 package io.debezium.connector.cassandra.transforms;
 
-import com.datastax.driver.core.DataType;
 import org.apache.kafka.connect.data.SchemaBuilder;
+
+import com.datastax.driver.core.DataType;
+
 import io.debezium.data.Uuid;
 import io.debezium.time.Date;
-import io.debezium.time.Timestamp;
 import io.debezium.time.MicroTimestamp;
-import io.debezium.time.MicroDuration;
-
+import io.debezium.time.NanoDuration;
+import io.debezium.time.Timestamp;
 
 /**
- * Class that maps Cassandra's {@link DataType} to its corresponding kafka connect {@link SchemaBuilder}.
+ * Class that maps Cassandra's {@link DataType} to its corresponding Kafka Connect {@link SchemaBuilder}.
  */
 public final class CassandraTypeKafkaSchemaBuilders {
 
@@ -35,6 +36,5 @@ public final class CassandraTypeKafkaSchemaBuilders {
     public static final SchemaBuilder TIMESTAMP_MILLI_TYPE = Timestamp.builder();
     public static final SchemaBuilder TIMESTAMP_MICRO_TYPE = MicroTimestamp.builder();
     public static final SchemaBuilder UUID_TYPE = Uuid.builder();
-    public static final SchemaBuilder DURATION_TYPE = MicroDuration.builder();
-
+    public static final SchemaBuilder DURATION_TYPE = NanoDuration.builder();
 }

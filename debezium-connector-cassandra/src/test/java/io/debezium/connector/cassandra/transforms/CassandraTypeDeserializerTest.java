@@ -5,11 +5,22 @@
  */
 package io.debezium.connector.cassandra.transforms;
 
-import com.datastax.driver.core.DataType;
-import io.debezium.time.MicroDuration;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Values;
+import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 import org.apache.cassandra.cql3.Duration;
 import org.apache.cassandra.cql3.FieldIdentifier;
 import org.apache.cassandra.cql3.QueryOptions;
@@ -39,23 +50,13 @@ import org.apache.cassandra.db.marshal.TupleType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.UUIDType;
 import org.apache.cassandra.db.marshal.UserType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Values;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.math.BigDecimal;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import com.datastax.driver.core.DataType;
 
 /**
  * This class ONLY tests the {@link CassandraTypeDeserializer#deserialize(AbstractType, ByteBuffer)}
@@ -149,13 +150,13 @@ public class CassandraTypeDeserializerTest {
     public void testDurationType() {
         Duration sourceDuration = Duration.newInstance(1, 3, 500);
 
-        double expectedMicroDuration = MicroDuration.durationMicros(0, 1, 3, 0, 0, 0, 500/1000, 0.0D);
+        long expectedNanoDuration = (30 + 3) * ChronoUnit.DAYS.getDuration().toNanos() + 500;
 
         ByteBuffer serializedDuration = DurationType.instance.decompose(sourceDuration);
 
         Object deserializedDuration = CassandraTypeDeserializer.deserialize(DurationType.instance, serializedDuration);
 
-        Assert.assertEquals(expectedMicroDuration, deserializedDuration);
+        Assert.assertEquals(expectedNanoDuration, deserializedDuration);
     }
 
     @Test
@@ -269,7 +270,7 @@ public class CassandraTypeDeserializerTest {
         // non-frozen
         SetType<Float> nonFrozenSetType = SetType.getInstance(FloatType.instance, true);
         ByteBuffer serializedSet = nonFrozenSetType.decompose(sourceSet);
-        Collection<?> deserializedSet = (Collection) CassandraTypeDeserializer.deserialize(nonFrozenSetType, serializedSet);
+        Collection<?> deserializedSet = (Collection<?>) CassandraTypeDeserializer.deserialize(nonFrozenSetType, serializedSet);
         // order may be different in the resulting collection.
         Assert.assertTrue(sourceSet.containsAll(deserializedSet));
         Assert.assertTrue(deserializedSet.containsAll(sourceSet));
@@ -277,7 +278,7 @@ public class CassandraTypeDeserializerTest {
         // frozen
         SetType<Float> frozenSetType = SetType.getInstance(FloatType.instance, false);
         serializedSet = frozenSetType.decompose(sourceSet);
-        deserializedSet = (Collection) CassandraTypeDeserializer.deserialize(frozenSetType, serializedSet);
+        deserializedSet = (Collection<?>) CassandraTypeDeserializer.deserialize(frozenSetType, serializedSet);
         Assert.assertTrue(sourceSet.containsAll(deserializedSet));
         Assert.assertTrue(deserializedSet.containsAll(sourceSet));
     }
@@ -380,12 +381,12 @@ public class CassandraTypeDeserializerTest {
 
         Schema userSchema = CassandraTypeDeserializer.getSchemaBuilder(userType).build();
 
-        double expectedMicroDuration = MicroDuration.durationMicros(0, 1, 2, 0, 0, 0, (int) 3L/1000, 0.0D);
+        long expectedNanoDuration = (30 + 2) * ChronoUnit.DAYS.getDuration().toNanos() + 3;
 
         Struct expectedUserTypeData = new Struct(userSchema)
                 .put("asciiField", "foobar")
                 .put("doubleField", 1.5d)
-                .put("durationField", expectedMicroDuration);
+                .put("durationField", expectedNanoDuration);
 
         Map<String, Object> jsonObject = new HashMap<>(3);
         jsonObject.put("\"asciiField\"", "foobar");
