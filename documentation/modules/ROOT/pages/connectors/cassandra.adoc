@@ -732,8 +732,8 @@ The following table describes how the connector maps each of the Cassandra data 
 |n/a
 
 |`duration`
-|`float64`
-|`io.debezium.time.MicroDuration`
+|`int64`
+|`io.debezium.time.NanoDuration` (an approximate representation of the duration value in nano-seconds)
 
 |=======================
 
