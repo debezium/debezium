@@ -132,6 +132,17 @@ gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -We
 /usr/bin/install -c -m 755  wal2json.so '/usr/pgsql-9.6/lib/'
 ----
 
+[[fedora-rpm]]
+=== Installation on Fedora 30+
+Debezium provides https://apps.fedoraproject.org/packages/postgres-decoderbufs[RPM package] for Fedora operating system too.
+The package is updated always after a final Debezium release is done.
+To use the RPM in question just issue the standard Fedora installation command:
+[source,bash]
+----
+$ sudo dnf -y install postgres-decoderbufs
+----
+The rest of the configuration is same as described below for `wal2json` plugin.
+
 [[postgresql-server-configuration]]
 === PostgreSQL Server Configuration
 
