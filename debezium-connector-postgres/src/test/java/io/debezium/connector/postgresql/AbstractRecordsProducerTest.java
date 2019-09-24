@@ -99,7 +99,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected static final String INSERT_DATE_TIME_TYPES_STMT = "INSERT INTO time_table(ts, tsneg, ts_ms, ts_us, tz, date, ti, tip, ttf, ttz, tptz, it, ts_large, ts_large_us, ts_large_ms, tz_large) " +
                                                                 "VALUES ('2016-11-04T13:51:30.123456'::TIMESTAMP, '1936-10-25T22:10:12.608'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456'::TIMESTAMP, '2016-11-04T13:51:30.123456+02:00'::TIMESTAMPTZ, " +
                                                                 "'2016-11-04'::DATE, '13:51:30'::TIME, '13:51:30.123'::TIME, '24:00:00'::TIME, '13:51:30.123789+02:00'::TIMETZ, '13:51:30.123+02:00'::TIMETZ, " +
-                                                                "'P1Y2M3DT4H5M0S'::INTERVAL," +
+                                                                "'P1Y2M3DT4H5M6.78S'::INTERVAL," +
                                                                 "'21016-11-04T13:51:30.123456'::TIMESTAMP, '21016-11-04T13:51:30.123457'::TIMESTAMP, '21016-11-04T13:51:30.124'::TIMESTAMP," +
                                                                 "'21016-11-04T13:51:30.123456+07:00'::TIMESTAMPTZ)";
     protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv) " +
@@ -558,7 +558,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         long expectedTtf = TimeUnit.DAYS.toNanos(1) / 1_000;
         String expectedTtz = "11:51:30.123789Z";  //time is stored with TZ, should be read back at GMT
         String expectedTtzPrecision = "11:51:30.123Z";
-        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
+        long expectedInterval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, 780000, MicroDuration.DAYS_PER_MONTH_AVG);
 
         long expectedTsLarge = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000 + 123456;
         long expectedTsLargeUs = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000 + 123457;
@@ -577,7 +577,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                              new SchemaAndValueField("ttf", MicroTime.builder().optional().build(), expectedTtf),
                              new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
                              new SchemaAndValueField("tptz", ZonedTime.builder().optional().build(), expectedTtzPrecision),
-                             new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval),
+                             new SchemaAndValueField("it", MicroDuration.builder().optional().build(), expectedInterval),
                              new SchemaAndValueField("ts_large", MicroTimestamp.builder().optional().build(), expectedTsLarge),
                              new SchemaAndValueField("ts_large_us", MicroTimestamp.builder().optional().build(), expectedTsLargeUs),
                              new SchemaAndValueField("ts_large_ms", Timestamp.builder().optional().build(), expectedTsLargeMs),
@@ -593,7 +593,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         int expectedDate = Date.toEpochDay(LocalDate.parse("2016-11-04"), null);
         long expectedTi = LocalTime.parse("13:51:30").toNanoOfDay() / 1_000;
         String expectedTtz = "11:51:30.123789Z";  //time is stored with TZ, should be read back at GMT
-        double interval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 0, MicroDuration.DAYS_PER_MONTH_AVG);
+        long expectedInterval = MicroDuration.durationMicros(1, 2, 3, 4, 5, 6.78, MicroDuration.DAYS_PER_MONTH_AVG);
 
         long expectedTsLarge = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000 + 123456;
         long expectedTsLargeUs = OffsetDateTime.of(21016, 11, 4, 13, 51, 30, 0, ZoneOffset.UTC).toInstant().toEpochMilli() * 1000 + 123457;
@@ -607,7 +607,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("date", Date.builder().optional().build(), expectedDate),
                 new SchemaAndValueField("ti", MicroTime.builder().optional().build(), expectedTi),
                 new SchemaAndValueField("ttz", ZonedTime.builder().optional().build(), expectedTtz),
-                new SchemaAndValueField("it", MicroDuration.builder().optional().build(), interval),
+                new SchemaAndValueField("it", MicroDuration.builder().optional().build(), expectedInterval),
                 new SchemaAndValueField("ts_large", MicroTimestamp.builder().optional().build(), expectedTsLarge),
                 new SchemaAndValueField("ts_large_us", MicroTimestamp.builder().optional().build(), expectedTsLargeUs),
                 new SchemaAndValueField("ts_large_ms", Timestamp.builder().optional().build(), expectedTsLargeMs)
@@ -969,7 +969,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             } else if (actualValue instanceof Struct) {
                 assertStruct((Struct) value, (Struct) actualValue);
             } else {
-                assertEquals("Values don't match for " + fieldName, value, actualValue);
+                assertEquals("Values don't match for field '" + fieldName + "'", value, actualValue);
             }
         }
 

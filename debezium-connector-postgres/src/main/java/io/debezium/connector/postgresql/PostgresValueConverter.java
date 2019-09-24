@@ -591,10 +591,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, NumberConversions.DOUBLE_FALSE, (r) -> {
+        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
             if (data instanceof Number) {
-                // we expect to get back from the plugin a double value
-                r.deliver(((Number) data).doubleValue());
+                r.deliver(((Number) data).longValue());
             }
             if (data instanceof PGInterval) {
                 PGInterval interval = (PGInterval) data;

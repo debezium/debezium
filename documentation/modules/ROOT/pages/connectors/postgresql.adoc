@@ -912,9 +912,9 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 | A string representation of a time value with timezone information, where the timezone is GMT
 
 |`INTERVAL [P]`
-|`FLOAT64`
+|`INT64`
 |`io.debezium.time.MicroDuration`
-|The number of micro seconds for a time interval using the `365.25 / 12.0` formula for days per month average
+|The approximate number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average
 
 |`BYTEA`
 |`BYTES`
