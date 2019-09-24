@@ -360,6 +360,11 @@ Let's look at what a _create_ event value might look like for our `customers` ta
             "type": "string",
             "optional": true,
             "field": "commit_lsn"
+          },
+          {
+            "type": "int64",
+            "optional": true,
+            "field": "event_serial_no"
           }
         ],
         "optional": false,
@@ -398,7 +403,8 @@ Let's look at what a _create_ event value might look like for our `customers` ta
       "schema": "dbo",
       "table": "customers",
       "change_lsn": "00000027:00000758:0003",
-      "commit_lsn": "00000027:00000758:0005"
+      "commit_lsn": "00000027:00000758:0005",
+      "event_serial_no": "1"
     },
     "op": "c",
     "ts_ms": 1559729471739
@@ -455,7 +461,8 @@ Here's an example:
       "schema": "dbo",
       "table": "customers",
       "change_lsn": "00000027:00000ac0:0002",
-      "commit_lsn": "00000027:00000ac0:0007"
+      "commit_lsn": "00000027:00000ac0:0007",
+      "event_serial_no": "2"
     },
     "op": "u",
     "ts_ms": 1559729998706
@@ -469,6 +476,9 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 * The `before` field now has the state of the row with the values before the database commit
 * The `after` field now has the updated state of the row, and here was can see that the `email` value is now `noreply@example.org`.
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the transaction log.
+* The `event_serial_no` field has value `2`.
+That is due to the update event composed of two events behind the scenes and we are exposing only the second one.
+If you are interested in details please check the https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation] and refer to the field `$operation`.
 * The `ts_ms` shows the timestamp that Debezium processed this event.
 
 There are several things we can learn by just looking at this `payload` section. We can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
@@ -508,7 +518,8 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
       "schema": "dbo",
       "table": "customers",
       "change_lsn": "00000027:00000db0:0005",
-      "commit_lsn": "00000027:00000db0:0007"
+      "commit_lsn": "00000027:00000db0:0007",
+      "event_serial_no": "1"
     },
     "op": "d",
     "ts_ms": 1559730450205

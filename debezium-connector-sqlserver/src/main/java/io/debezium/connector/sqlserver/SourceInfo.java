@@ -62,7 +62,7 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     /**
-     * @param eventSerialNo - order of the change with the same value of commit and change LSN
+     * @param eventSerialNo order of the change with the same value of commit and change LSN
      */
     public void setEventSerialNo(Long eventSerialNo) {
         this.eventSerialNo = eventSerialNo;
