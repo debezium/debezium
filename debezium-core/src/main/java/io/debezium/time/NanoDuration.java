@@ -6,8 +6,8 @@
 
 package io.debezium.time;
 
-import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -61,13 +61,13 @@ public class NanoDuration {
      * @param minutes a number of minutes
      * @param seconds a number of seconds
      * @param nanos a number of nanoseconds
-     * @return a {@link BigDecimal} value which contains the number of nanoseconds, never {@code null}
+     * @return Approximate representation of the given interval as a number of nanoseconds
      */
-    public static double durationNanos(int years, int months, int days, int hours, int minutes, double seconds, long nanos) {
+    public static long durationNanos(int years, int months, int days, int hours, int minutes, long seconds, long nanos) {
         long daysPerMonthAvg = ChronoUnit.MONTHS.getDuration().toDays();
-        double numberOfDays = ((years * 12) + months) * daysPerMonthAvg + days;
-        double numberOfSeconds = (((numberOfDays * 24 + hours) * 60) + minutes) * 60 + seconds;
-        return numberOfSeconds * 1e9 + nanos;
+        long numberOfDays = ((years * 12) + months) * daysPerMonthAvg + days;
+        long numberOfSeconds = (((numberOfDays * 24 + hours) * 60) + minutes) * 60 + seconds;
+        return numberOfSeconds * ChronoUnit.SECONDS.getDuration().toNanos() + nanos;
     }
 
     /**
@@ -79,10 +79,9 @@ public class NanoDuration {
      * @param hours a number of hours
      * @param minutes a number of minutes
      * @param seconds a number of seconds
-     * from {@link ChronoUnit#MONTHS} is used.
-     * @return a {@link BigDecimal} value which contains the number of nanoseconds, never {@code null}
+     * @return Approximate representation of the given interval as a number of nanoseconds
      */
-    public static double durationNanos(int years, int months, int days, int hours, int minutes, double seconds) {
+    public static long durationNanos(int years, int months, int days, int hours, int minutes, long seconds) {
         return durationNanos(years, months, days, hours, minutes, seconds, 0);
     }
 }
