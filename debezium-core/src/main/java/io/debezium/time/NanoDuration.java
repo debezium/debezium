@@ -12,24 +12,17 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
- * A utility representing a duration into a corresponding {@link SchemaBuilder#float64() FLOAT64}
+ * A utility representing a duration into a corresponding {@link SchemaBuilder#int64() INT64}
  * number of <em>nanosecond</em>, and for defining a Kafka Connect {@link Schema} for duration values.
  *
- * The duration is amount is stored in floating point as opposed to an integer because certain DBs (e.g. Postgres) will store
- * this amount internally into more than 8 bytes.
  **/
 public class NanoDuration {
-
-    /**
-     * The approximation used by the plugins when converting a duration to nanos
-     */
-    public static final double DAYS_PER_MONTH_AVG = 365.25 / 12.0d;
 
     public static final String SCHEMA_NAME = "io.debezium.time.NanoDuration";
 
     /**
      * Returns a {@link SchemaBuilder} for a {@link NanoDuration}. The resulting schema will describe a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#float64()} FLOAT64} for the literal
+     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64()} ()} INT64} for the literal
      * type storing the number of <em>nanoseconds</em> for that duration.
      * <p>
      * You can use the resulting SchemaBuilder to set or override additional schema settings such as required/optional, default
@@ -38,14 +31,14 @@ public class NanoDuration {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaBuilder.float64()
+        return SchemaBuilder.int64()
                 .name(SCHEMA_NAME)
                 .version(1);
     }
 
     /**
      * Returns a Schema for a {@link NanoDuration} but with all other default Schema settings. The schema describes a field
-     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#float64()} FLOAT64} for the literal
+     * with the {@value #SCHEMA_NAME} as the {@link Schema#name() name} and {@link SchemaBuilder#int64()} ()} INT64} for the literal
      * type storing the number of <em>nanoseconds</em>.
      *
      * @return the schema
@@ -68,15 +61,10 @@ public class NanoDuration {
      * @param minutes a number of minutes
      * @param seconds a number of seconds
      * @param nanos a number of nanoseconds
-     * @param daysPerMonthAvg an optional value representing a days per month average; if null, the default duration
-     * from {@link ChronoUnit#MONTHS} is used.
      * @return a {@link BigDecimal} value which contains the number of nanoseconds, never {@code null}
      */
-    public static double durationNanos(int years, int months, int days, int hours, int minutes, double seconds,
-                                        int nanos, Double daysPerMonthAvg) {
-        if (daysPerMonthAvg == null) {
-            daysPerMonthAvg = (double) ChronoUnit.MONTHS.getDuration().toDays();
-        }
+    public static double durationNanos(int years, int months, int days, int hours, int minutes, double seconds, long nanos) {
+        long daysPerMonthAvg = ChronoUnit.MONTHS.getDuration().toDays();
         double numberOfDays = ((years * 12) + months) * daysPerMonthAvg + days;
         double numberOfSeconds = (((numberOfDays * 24 + hours) * 60) + minutes) * 60 + seconds;
         return numberOfSeconds * 1e9 + nanos;
@@ -91,12 +79,10 @@ public class NanoDuration {
      * @param hours a number of hours
      * @param minutes a number of minutes
      * @param seconds a number of seconds
-     * @param daysPerMonthAvg an optional value representing a days per month average; if null, the default duration
      * from {@link ChronoUnit#MONTHS} is used.
      * @return a {@link BigDecimal} value which contains the number of nanoseconds, never {@code null}
      */
-    public static double durationNanos(int years, int months, int days, int hours, int minutes, double seconds,
-                                        Double daysPerMonthAvg) {
-        return durationNanos(years, months, days, hours, minutes, seconds, 0, daysPerMonthAvg);
+    public static double durationNanos(int years, int months, int days, int hours, int minutes, double seconds) {
+        return durationNanos(years, months, days, hours, minutes, seconds, 0);
     }
 }
