@@ -835,6 +835,20 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Start the connector ...
         start(MySqlConnector.class, config);
 
+        // Wait for streaming to start
+        // During the snapshot phase, 11 events in total should be generated
+        // 4 drop tables, 4 create tables
+        // 1 drop database, 1 create database, and 1 use database
+        //
+        // Prior to this being added, it was possible that the following code would create the migration_test
+        // table prior to the snapshot actually starting, which would mean that a drop and create table event
+        // would be emitted plus the create index, yielding 14 events total.  But if snapshot started quicker
+        // then we could observe 13 events emitted since the migration_table creation and its index would
+        // only be seen by streaming phase.
+        //
+        // For consistency, this wait gurantees 11 events during snapshot and 2 during streaming.
+        waitForStreamingRunning(DATABASE.getServerName());
+
         // Consume the first records due to startup and initialization of the database ...
         // Testing.Print.enable();
 
@@ -853,7 +867,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(migrationTestRecords.size()).isEqualTo(1);
         final SourceRecord record = migrationTestRecords.get(0);
         assertThat(((Struct) record.key()).getString("mgb_no")).isEqualTo("2");
-        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(14);
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(13);
 
         stopConnector();
     }
@@ -1849,6 +1863,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isFalse());
+    }
+
+    private void waitForStreamingRunning(String serverName) throws InterruptedException {
+        waitForStreamingRunning("mysql", serverName, "binlog");
     }
 
     private List<SourceRecord> recordsForTopicForRoProductsTable(SourceRecords records) {

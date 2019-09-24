@@ -773,6 +773,10 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
+        waitForStreamingRunning(connector, server, "streaming");
+    }
+
+    public static void waitForStreamingRunning(String connector, String server, String contextName) throws InterruptedException {
         int waitForSeconds = 60;
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
         final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
@@ -782,7 +786,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 Assert.fail("Streaming was not started on time");
             }
             try {
-                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=streaming,server=" + server), "Connected");
+                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + contextName + ",server=" + server), "Connected");
                 if (completed) {
                     break;
                 }
