@@ -117,7 +117,6 @@ public class ChangeEventSourceCoordinator {
         running = false;
 
         executor.shutdown();
-        Thread.currentThread().interrupt();
         boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
         if (!isShutdown) {
@@ -128,6 +127,7 @@ public class ChangeEventSourceCoordinator {
         }
         snapshotMetrics.unregister(LOGGER);
         streamingMetrics.unregister(LOGGER);
+        Thread.currentThread().interrupt();
     }
 
     private class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
