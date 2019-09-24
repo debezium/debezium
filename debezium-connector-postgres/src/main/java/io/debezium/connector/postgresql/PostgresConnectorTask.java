@@ -247,7 +247,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
         }
         catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             LOGGER.error("Interrupted while stopping coordinator", e);
             throw new ConnectException("Interrupted while stopping coordinator, failing the task");
         }
@@ -258,7 +258,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
         }
         catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             LOGGER.error("Interrupted while stopping", e);
         }
 
