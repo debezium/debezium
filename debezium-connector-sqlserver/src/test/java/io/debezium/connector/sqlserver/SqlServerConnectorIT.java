@@ -206,6 +206,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
+        // Testing.Print.enable();
         // Wait for snapshot completion
         consumeRecordsByTopic(1);
 
