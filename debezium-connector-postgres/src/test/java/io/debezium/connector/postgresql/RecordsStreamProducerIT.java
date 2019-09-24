@@ -469,7 +469,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // without PK and with REPLICA IDENTITY DEFAULT we will get nothing
         TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT;");
         consumer.expects(0);
-        executeAndWait("UPDATE test_table SET text = 'no_pk_and_default' WHERE pk = 1;");
+        executeAndWaitForNoRecords("UPDATE test_table SET text = 'no_pk_and_default' WHERE pk = 1;");
         assertThat(consumer.isEmpty()).isTrue();
     }
 
@@ -1504,5 +1504,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     private void executeAndWait(String statements) throws Exception {
         TestHelper.execute(statements);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+    }
+
+    private void executeAndWaitForNoRecords(String statements) throws Exception {
+        TestHelper.execute(statements);
+        consumer.await(5, TimeUnit.SECONDS);
     }
 }
