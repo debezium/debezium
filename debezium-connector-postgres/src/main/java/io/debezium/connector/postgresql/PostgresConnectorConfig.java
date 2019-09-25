@@ -921,7 +921,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected byte[] toastedValuePlaceholder() {
         final String placeholder = getConfig().getString(TOASTED_VALUE_PLACEHOLDER);
         if (placeholder.startsWith("hex:")) {
-            Strings.hexStringToByteArray(placeholder.substring(4));
+            return Strings.hexStringToByteArray(placeholder.substring(4));
         }
         return placeholder.getBytes();
     }
