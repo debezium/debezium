@@ -240,6 +240,7 @@ The payload section of every change event value produced by the SQL Server conne
 Also a field `event_serial_no` is present during streaming.
 This is used to differentiate among events that have the same commit and change LSN.
 There are mostly two situations when you can see it present with value different from `1`:
++
 ** update events will have the value set to `2`, this is because the update generates two events in the CDC change table of SQL Server (https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation]).
 The first one contains the old values and the second one contains new values.
 So the first one is dropped and the values from it are used with the second one to create the Debezium change event.
