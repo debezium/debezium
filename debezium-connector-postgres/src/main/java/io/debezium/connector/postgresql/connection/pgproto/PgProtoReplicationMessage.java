@@ -29,7 +29,7 @@ import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
-import io.debezium.connector.postgresql.ToastedReplicationMessageColumn;
+import io.debezium.connector.postgresql.UnchangedToastedReplicationMessageColumn;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
@@ -108,7 +108,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
                     final PostgresType type = typeRegistry.get((int) datum.getColumnType());
                     if (datum.hasDatumMissing()) {
-                        return new ToastedReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata());
+                        return new UnchangedToastedReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata());
                     }
                     return new AbstractReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata()) {
 
@@ -145,7 +145,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
      */
     public Object getValue(PgProto.DatumMessage datumMessage, PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (datumMessage.hasDatumMissing()) {
-            return ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
+            return UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
         }
 
         int columnType = (int) datumMessage.getColumnType();

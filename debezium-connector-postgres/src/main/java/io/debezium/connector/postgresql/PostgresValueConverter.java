@@ -793,7 +793,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data) {
-        if (data == ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+        if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
             return toastPlaceholderBinary;
     }
         if (data instanceof PgArray) {
@@ -813,7 +813,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     @Override
     protected Object convertString(Column column, Field fieldDefn, Object data) {
-        if (data == ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+        if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
                 return toastPlaceholderString;
         }
         return super.convertString(column, fieldDefn, data);

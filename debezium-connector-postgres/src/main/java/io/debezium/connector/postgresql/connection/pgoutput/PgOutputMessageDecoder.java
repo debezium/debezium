@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
-import io.debezium.connector.postgresql.ToastedReplicationMessageColumn;
+import io.debezium.connector.postgresql.UnchangedToastedReplicationMessageColumn;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
@@ -541,7 +541,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             }
             else if (type == 'u') {
                 columns.add(
-                        new ToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional, true) {
+                        new UnchangedToastedReplicationMessageColumn(columnName, columnType, typeExpression, optional, true) {
                             @Override
                             public String toString() {
                                 return columnName + "(" + typeExpression + ") - Unchanged toasted column";

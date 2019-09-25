@@ -166,7 +166,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                     cachedOldToastedValues.put(columnName, value);
                 }
                 else {
-                    if (value == ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+                    if (value == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
                         final Object candidate = cachedOldToastedValues.get(columnName);
                         if (candidate != null) {
                             value = candidate;
@@ -181,7 +181,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 int position = getPosition(columnName, table, values);
                 if (position != -1) {
                     final Object candidate = cachedOldToastedValues.get(columnName);
-                    values[position] = candidate != null ? candidate : ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
+                    values[position] = candidate != null ? candidate : UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
                 }
             }
         }

@@ -16,11 +16,14 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
  *
  * @author Chris Cranford
  */
-public class ToastedReplicationMessageColumn extends AbstractReplicationMessageColumn {
+public class UnchangedToastedReplicationMessageColumn extends AbstractReplicationMessageColumn {
 
+    /**
+     * Marker value indicating an unchanged TOAST column value.
+     */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
 
-    public ToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional, boolean hasMetadata) {
+    public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional, boolean hasMetadata) {
         super(columnName, type, typeWithModifiers, optional, hasMetadata);
     }
 
