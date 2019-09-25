@@ -322,6 +322,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public String getPostgresPluginName() {
                 return "wal2json";
             }
+
+            @Override
+            public boolean hasUnchangedToastColumnMarker() {
+                return false;
+            }
         },
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
@@ -338,6 +343,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public String getPostgresPluginName() {
                 return "wal2json";
             }
+
+            @Override
+            public boolean hasUnchangedToastColumnMarker() {
+                return false;
+            }
         },
         WAL2JSON("wal2json") {
             @Override
@@ -348,6 +358,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             @Override
             public String getPostgresPluginName() {
                 return "wal2json";
+            }
+
+            @Override
+            public boolean hasUnchangedToastColumnMarker() {
+                return false;
             }
         },
         WAL2JSON_RDS("wal2json_rds") {
@@ -365,6 +380,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public String getPostgresPluginName() {
                 return "wal2json";
             }
+
+            @Override
+            public boolean hasUnchangedToastColumnMarker() {
+                return false;
+            }
         };
 
         private final String decoderName;
@@ -377,6 +397,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         public boolean forceRds() {
             return false;
+        }
+
+        public boolean hasUnchangedToastColumnMarker() {
+            return true;
         }
 
         public static LogicalDecoder parse(String s) {

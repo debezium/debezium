@@ -48,7 +48,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresConnectorConfig connectorConfig;
     private final PostgresConnection connection;
     private final TableId tableId;
-    private final boolean isJsonPlugin;
+    private final boolean unchangedToastColumnMarkerMissing;
     private Object[] cachedOldColumnValues;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
@@ -61,7 +61,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         this.connection = connection;
 
         this.tableId = PostgresSchema.parse(message.getTable());
-        this.isJsonPlugin = "wal2json".equals(connectorConfig.plugin().getPostgresPluginName());
+        this.unchangedToastColumnMarkerMissing = !connectorConfig.plugin().hasUnchangedToastColumnMarker();
         Objects.requireNonNull(tableId);
     }
 
@@ -181,7 +181,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 values[position] = value;
             }
         }
-        if (isJsonPlugin) {
+        if (unchangedToastColumnMarkerMissing) {
             for (String columnName: undeliveredToastableColumns) {
                 int position = getPosition(columnName, table, values);
                 if (position != -1) {
