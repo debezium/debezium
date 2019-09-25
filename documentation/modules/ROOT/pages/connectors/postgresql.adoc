@@ -1301,6 +1301,18 @@ Debezium copies the old value into the new value.
 ** `UPDATE` and `DELETE` messages does not contain toasted value thata were not updated.
 As Debezium cannot safely provide the value it returns a placeholder value defined in configuration option `toasted.value.placeholder`.
 
+[IMPORTANT]
+====
+There is a specific problem related to Amazon RDS instances.
+`wal2json` plugin has evolved over the time and there were releases that provided out-of-band toasted values.
+Amazon supports different versions of the plugin for different PostgreSQL versions.
+Please consult Amazon's https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html[documentation] to obtain version to version mapping.
+For consistent toasted values handling we recommend to
+
+* use `pgoutput` plugin for PostgreSQL 10+ instances
+* set `include-unchanged-toast=0` for older versions of `wal2json` plugin using `slot.stream.params` configuration option
+====
+
 [[fault-tolerance]]
 [[when-things-go-wrong]]
 === When Things Go Wrong
