@@ -13,6 +13,8 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Types;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -2225,7 +2227,8 @@ public class MySqlAntlrDdlParserTest {
                 "columnC VARCHAR(10) NULL DEFAULT 'C'," +
                 "columnD VARCHAR(10) NULL DEFAULT NULL," +
                 "columnE VARCHAR(10) NOT NULL," +
-                "my_date datetime NOT NULL DEFAULT '2018-04-27 13:28:43');";
+                "my_dateA datetime NOT NULL DEFAULT '2018-04-27 13:28:43'," +
+                "my_dateB datetime NOT NULL DEFAULT '9999-12-31');";
         parser.parse(ddl, tables);
         Table table = tables.forTable(new TableId(null, null, "tmp"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
@@ -2234,6 +2237,8 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table.columnWithName("columnC").defaultValue()).isEqualTo("C");
         assertThat(table.columnWithName("columnD").defaultValue()).isEqualTo(null);
         assertThat(table.columnWithName("columnE").defaultValue()).isEqualTo(null);
+        assertThat(table.columnWithName("my_dateA").defaultValue()).isEqualTo(LocalDateTime.of(2018, 4, 27, 13, 28, 43).toEpochSecond(ZoneOffset.UTC) * 1_000);
+        assertThat(table.columnWithName("my_dateB").defaultValue()).isEqualTo(LocalDateTime.of(9999, 12, 31, 0, 0, 0).toEpochSecond(ZoneOffset.UTC) * 1_000);
     }
 
     @Test
