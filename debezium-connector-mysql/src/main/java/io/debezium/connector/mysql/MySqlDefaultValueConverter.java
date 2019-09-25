@@ -246,7 +246,14 @@ public class MySqlDefaultValueConverter  {
 
     private DateTimeFormatter timestampFormat(int length) {
         final DateTimeFormatterBuilder dtf = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd HH:mm:ss");
+                .appendPattern("yyyy-MM-dd")
+                .optionalStart()
+                .appendLiteral(" ")
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
+                .optionalEnd()
+                .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0);
         if (length > 0) {
             dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
         }
