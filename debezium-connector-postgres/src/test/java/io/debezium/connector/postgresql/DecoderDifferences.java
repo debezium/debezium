@@ -15,7 +15,7 @@ import java.util.function.Supplier;
  *
  */
 public class DecoderDifferences {
-    static final String TOASTED_VALUE_PLACEHOLDER = "__DEBEZIUM_TOASTED_VALUE__";
+    static final String TOASTED_VALUE_PLACEHOLDER = "__debezium_unavailable_value";
 
     /**
      * wal2json plugin does not send events for updates on tables that does not define primary key.
