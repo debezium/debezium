@@ -145,7 +145,7 @@ class PgProtoReplicationMessage implements ReplicationMessage {
      */
     public Object getValue(PgProto.DatumMessage datumMessage, PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
         if (datumMessage.hasDatumMissing()) {
-            return ToastedReplicationMessageColumn.ToastedValue.TOAST;
+            return ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
         }
 
         int columnType = (int) datumMessage.getColumnType();

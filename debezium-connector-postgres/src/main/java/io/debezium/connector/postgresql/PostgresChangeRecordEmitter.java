@@ -49,12 +49,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresConnection connection;
     private final TableId tableId;
     private final boolean unchangedToastColumnMarkerMissing;
-    /**
-     * The column values from the old (original) part of the replication message.
-     * When missing TOASTed value is hit in the new part of the message then it is consumed
-     * from this temporary storage if available.
-     */
-    private Object[] oldColumnValues;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection, ReplicationMessage message) {
@@ -92,23 +86,19 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     @Override
     protected Object[] getOldColumnValues() {
-        if (oldColumnValues != null) {
-            return oldColumnValues;
-        }
         try {
             switch (getOperation()) {
                 case CREATE:
                     return null;
                 case UPDATE:
-                    oldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true);
+                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true);
                 default:
-                    oldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false);
+                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false);
             }
         }
         catch (SQLException e) {
             throw new ConnectException(e);
         }
-        return oldColumnValues;
     }
 
     @Override
@@ -176,7 +166,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                     cachedOldToastedValues.put(columnName, value);
                 }
                 else {
-                    if (value == ToastedReplicationMessageColumn.ToastedValue.TOAST) {
+                    if (value == ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
                         final Object candidate = cachedOldToastedValues.get(columnName);
                         if (candidate != null) {
                             value = candidate;
@@ -191,7 +181,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 int position = getPosition(columnName, table, values);
                 if (position != -1) {
                     final Object candidate = cachedOldToastedValues.get(columnName);
-                    values[position] = candidate != null ? candidate : ToastedReplicationMessageColumn.ToastedValue.TOAST;
+                    values[position] = candidate != null ? candidate : ToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
                 }
             }
         }

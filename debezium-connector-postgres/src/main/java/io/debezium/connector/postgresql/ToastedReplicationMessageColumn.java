@@ -18,9 +18,7 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
  */
 public class ToastedReplicationMessageColumn extends AbstractReplicationMessageColumn {
 
-    public static enum ToastedValue {
-        TOAST
-    };
+    public static final Object UNCHANGED_TOAST_VALUE = new Object();
 
     public ToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional, boolean hasMetadata) {
         super(columnName, type, typeWithModifiers, optional, hasMetadata);
@@ -33,6 +31,6 @@ public class ToastedReplicationMessageColumn extends AbstractReplicationMessageC
 
     @Override
     public Object getValue(PostgresStreamingChangeEventSource.PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-        return ToastedValue.TOAST;
+        return UNCHANGED_TOAST_VALUE;
     }
 }
