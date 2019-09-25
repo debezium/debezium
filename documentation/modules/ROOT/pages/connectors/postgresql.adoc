@@ -1287,19 +1287,16 @@ Please see http://www.opengeospatial.org/standards/sfa[Open Geospatial Consortiu
 [[toasted-values]]
 ==== Toasted values
 PostgreSQL has a hard limit on the page size.
-This means that values larger than cca 8 KB needs to be stored using https://www.postgresql.org/docs/current/storage-toast.html[TOAST storage].
-This impacts replication messages coming from database as the values that were stored using TOAST mechanism and have not been changed are not included in the message in new value section.
-There is no safe way for Debezium to read the missing value out-of-bands directly from database as this would lead into race condition.
-Debezium thus follows these rules to handle the toasted values
+This means that values larger than ca. 8 KB need to be stored using https://www.postgresql.org/docs/current/storage-toast.html[TOAST storage].
+This impacts replication messages coming from database, as the values that were stored using the TOAST mechanism and have not been changed are not included in the message, unless they are part of the table's replica identity.
+There is no safe way for Debezium to read the missing value out-of-bands directly from database, as this would lead into race conditions potentially.
+Debezium thus follows these rules to handle the toasted values:
 
-* tables with `REPLICA IDENTITY FULL`
-** `INSERT` and `DELETE` messages contain unchanged toasted values
-** `UPDATE` messages contain original toasted value in part with old values and nothing in new values.
-Debezium copies the old value into the new value.
-* tables with `REPLICA IDENTITY DEFAULT`
-** `INSERT` messages contain unchanged toasted values
-** `UPDATE` and `DELETE` messages does not contain toasted value thata were not updated.
-As Debezium cannot safely provide the value it returns a placeholder value defined in configuration option `toasted.value.placeholder`.
+* tables with `REPLICA IDENTITY FULL`: TOAST column values are part of the `before` and `after` blocks of change events as any other column
+* tables with `REPLICA IDENTITY DEFAULT`: when receiving an `UPDATE` event from the database,
+any unchanged TOAST column value which is not part of the replica identity will not be part of that event;
+similarly, when receiving a `DELETE` event, any such TOAST column will not be part of the `before` block.
+As Debezium cannot safely provide the column value in this case, it returns a placeholder value defined in configuration option `toasted.value.placeholder`.
 
 [IMPORTANT]
 ====
