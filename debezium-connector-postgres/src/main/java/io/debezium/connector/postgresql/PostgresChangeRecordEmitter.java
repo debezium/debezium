@@ -49,7 +49,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresConnection connection;
     private final TableId tableId;
     private final boolean unchangedToastColumnMarkerMissing;
-    private Object[] cachedOldColumnValues;
+    /**
+     * The column values from the old (original) part of the replication message.
+     * When missing TOASTed value is hit in the new part of the message then it is consumed
+     * from this temporary storage if available.
+     */
+    private Object[] oldColumnValues;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection, ReplicationMessage message) {
@@ -87,23 +92,23 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     @Override
     protected Object[] getOldColumnValues() {
-        if (cachedOldColumnValues != null) {
-            return cachedOldColumnValues;
+        if (oldColumnValues != null) {
+            return oldColumnValues;
         }
         try {
             switch (getOperation()) {
                 case CREATE:
                     return null;
                 case UPDATE:
-                    cachedOldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true);
+                    oldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true);
                 default:
-                    cachedOldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false);
+                    oldColumnValues = columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false);
             }
         }
         catch (SQLException e) {
             throw new ConnectException(e);
         }
-        return cachedOldColumnValues;
+        return oldColumnValues;
     }
 
     @Override
