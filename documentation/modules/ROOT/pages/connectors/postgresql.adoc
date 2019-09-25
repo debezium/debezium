@@ -1284,6 +1284,23 @@ Please see http://www.opengeospatial.org/standards/sfa[Open Geospatial Consortiu
 
 |=======================
 
+[[toasted-values]]
+==== Toasted values
+PostgreSQL has a hard limit on the page size.
+This means that values larger than cca 8 KB needs to be stored using https://www.postgresql.org/docs/current/storage-toast.html[TOAST storage].
+This impacts replication messages coming from database as the values that were stored using TOAST mechanism and have not been changed are not included in the message in new value section.
+There is no safe way for Debezium to read the missing value out-of-bands directly from database as this would lead into race condition.
+Debezium thus follows these rules to handle the toasted values
+
+* tables with `REPLICA IDENTITY FULL`
+** `INSERT` and `DELETE` messages contain unchanged toasted values
+** `UPDATE` messages contain original toasted value in part with old values and nothing in new values.
+Debezium copies the old value into the new value.
+* tables with `REPLICA IDENTITY DEFAULT`
+** `INSERT` messages contain unchanged toasted values
+** `UPDATE` and `DELETE` messages does not contain toasted value thata were not updated.
+As Debezium cannot safely provide the value it returns a placeholder value defined in configuration option `toasted.value.placeholder`.
+
 [[fault-tolerance]]
 [[when-things-go-wrong]]
 === When Things Go Wrong
@@ -1658,6 +1675,12 @@ See xref:configuration/avro.adoc#names[Avro naming] for more details.
 |`slot.retry.delay.ms` +
 |10000 (10 seconds)
 |The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.
+
+|`toasted.value.placeholder`
+|`__DEBEZIUM_TOASTED_VALUE__`
+|Specify the constant that will be provided by Debezium to indicate that the original value is a toasted value not provided by the database.
+If starts with `hex:` prefix it is expected that the rest of the string repesents hexadecimally encoded octets.
+See link:#toasted-values[section] with additional details.
 
 |=======================
 
