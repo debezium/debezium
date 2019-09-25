@@ -235,7 +235,15 @@ The payload section of every change event value produced by the SQL Server conne
 * `before` is an optional field that if present contains the state of the row _before_ the event occurred. The structure will be described by the `server1.dbo.customers.Value` Kafka Connect schema, which the `server1` connector uses for all rows in the `dbo.customers` table.
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.dbo.customers.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the Debezium version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting)
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the Debezium version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting).
+Also field `event_serial_no` is present in case of streaming.
+This is used to differentiate among events that have the same commit and change LSN.
+There are mostly two sitations when you can see it present with value different from `1`
+** update event wil have the value set to `2`, this is beacuse the update generates two events in the CDC change table (https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation]).
+The first one contains the old values and the second one contains new values.
+So the first one is dropped and the values from it are used with the second one to create the Debezium change event.
+** when primary key is updated then SQL Server emits two records - `delete` to remove the record with old primary key value and `insert` to create the record with new primary key.
+Both operations share the same commit and change LSN and their event numbers are `1` and `2`.
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
