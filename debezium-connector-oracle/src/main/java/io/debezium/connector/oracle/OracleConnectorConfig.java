@@ -101,6 +101,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
             RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
             RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
+            RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
             CommonConnectorConfig.POLL_INTERVAL_MS,
             CommonConnectorConfig.MAX_BATCH_SIZE,
             CommonConnectorConfig.MAX_QUEUE_SIZE,
@@ -140,6 +141,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
         Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
+                RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
         );
