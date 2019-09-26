@@ -57,6 +57,7 @@ Ivan Luzyanin
 Ivan Vucina
 Jakub Cechacek
 Jaromir Hamala
+Javier Holguera
 Jiri Pechanec
 Jon Casstevens
 Jordan Bragg
