@@ -24,7 +24,6 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -61,8 +60,8 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, Charset databaseCharset,
             TopicSelector<TableId> topicSelector) {
         super(config, topicSelector, new Filters(config).tableFilter(),
-                new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false, 
-                CustomKeyMapper.getInstance(config.keyMapper()));
+                new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false,
+                config.getKeyMapper());
 
         this.typeRegistry = typeRegistry;
         this.tableIdToToastableColumns = new HashMap<>();

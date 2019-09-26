@@ -24,7 +24,6 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
-import io.debezium.relational.Key.CustomKeyMapper;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -278,7 +277,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final ColumnNameFilter columnFilter;
-    private final CustomKeyMapper customKeysMapper;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table());
@@ -287,7 +285,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
-        this.customKeysMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS));
     }
 
     private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
@@ -317,10 +314,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public ColumnNameFilter getColumnFilter() {
         return columnFilter;
-    }
-    
-    public CustomKeyMapper keyMapper() {
-        return customKeysMapper;
     }
 
     @Override

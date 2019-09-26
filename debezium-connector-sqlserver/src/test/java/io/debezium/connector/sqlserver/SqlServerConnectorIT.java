@@ -1035,11 +1035,11 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         stopConnector();
     }
-    
+
     @Test
     @FixFor("DBZ-1015")
     public void shouldRewriteIdentityKey() throws InterruptedException, SQLException {
-        
+
         connection.execute(
                 "CREATE TABLE keyless (id int, name varchar(30))",
                 "INSERT INTO keyless VALUES(1, 'k')"
@@ -1060,10 +1060,10 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         assertThat(recordsForTopic.get(0).key()).isNotNull();
         Struct key = (Struct) recordsForTopic.get(0).key();
         Assertions.assertThat(key.get("id")).isNotNull();
-        
+
         stopConnector();
     }
-    
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }

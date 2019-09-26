@@ -22,6 +22,8 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.Key.CustomKeyMapper;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
@@ -31,6 +33,7 @@ import io.debezium.relational.Tables.TableFilter;
  * @author Gunnar Morling
  */
 public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorConfig {
+
     private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
@@ -174,16 +177,19 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("");
-    
+
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(RelationalDatabaseConnectorConfig::validateMessageKeyColumnsField)
-            .withDescription("A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. "
-                    + "Each item must match the fully-qualified table.':'.a comma-separated list of columns representing the custom key. "
-                    + "Fully-qualified tables could be defined as (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the specific connector");
+            .withDescription("A semicolon-separated list of expressions that match fully-qualified tables and column(s) to be used as message key. "
+                    + "Each expression must match the pattern '<fully-qualified table name>:<key columns>',"
+                    + "where the table names could be defined as (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the specific connector,"
+                    + "and the key columns are a comma-separated list of columns representing the custom key. "
+                    + "For any table without an explicit key configuration the table's primary key column(s) will be used as message key."
+                    + "Example: dbserver1.inventory.orderlines:orderId,orderLineId;dbserver1.inventory.orders:id");
 
     public static final Field DECIMAL_HANDLING_MODE = Field.create("decimal.handling.mode")
             .withDisplayName("Decimal Handling")
@@ -245,12 +251,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
+    private final KeyMapper keyMapper;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
+        this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS));
+
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
         }
@@ -280,6 +289,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      */
     public TemporalPrecisionMode getTemporalPrecisionMode() {
         return temporalPrecisionMode;
+    }
+
+    public KeyMapper getKeyMapper() {
+        return keyMapper;
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
@@ -325,7 +338,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
         return 0;
     }
-    
+
     private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
         String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
         if (msgKeyColumns != null && !MSG_KEY_COLUMNS_PATTERN.asPredicate().test(msgKeyColumns)) {

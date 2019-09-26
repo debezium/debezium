@@ -1865,7 +1865,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(NO_MONITORED_TABLES_WARNING)).isFalse());
     }
-    
+
     @Test
     @FixFor("DBZ-1015")
     public void shouldRewriteIdentityKey() throws InterruptedException, SQLException {
@@ -1888,13 +1888,13 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final SourceRecords records = consumeRecordsByTopic(9);
         // Parse through the source record for the query value.
         final List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable(tableName));
-        
+
         recordsForTopic.forEach(record -> {
             Struct key = (Struct) record.key();
             Assertions.assertThat(key.get("id")).isNotNull();
             Assertions.assertThat(key.get("name")).isNotNull();
         });
-        
+
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {
