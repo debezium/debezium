@@ -390,10 +390,10 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, NumberConversions.DOUBLE_FALSE, (r) -> {
+        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
             if (data instanceof Number) {
                 // we expect to get back from the plugin a double value
-                r.deliver(((Number) data).doubleValue());
+                r.deliver(((Number) data).longValue());
             }
             else if (data instanceof INTERVALYM) {
                 final String interval = ((INTERVALYM) data).stringValue();
@@ -416,10 +416,10 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, NumberConversions.DOUBLE_FALSE, (r) -> {
+        return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
             if (data instanceof Number) {
                 // we expect to get back from the plugin a double value
-                r.deliver(((Number) data).doubleValue());
+                r.deliver(((Number) data).longValue());
             }
             else if (data instanceof INTERVALDS) {
                 final String interval = ((INTERVALDS) data).stringValue();
