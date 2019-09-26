@@ -22,6 +22,8 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.Key.CustomKeyMapper;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
 import io.debezium.relational.Tables.TableFilter;
 
@@ -174,7 +176,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("");
-    
+
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
             .withType(Type.STRING)
@@ -245,12 +247,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
+    private final KeyMapper keyMapper;
 
     protected RelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter,
                                                 TableIdToStringMapper tableIdMapper, int defaultSnapshotFetchSize) {
         super(config, logicalName, defaultSnapshotFetchSize);
 
         this.temporalPrecisionMode = TemporalPrecisionMode.parse(config.getString(TIME_PRECISION_MODE));
+        this.keyMapper = CustomKeyMapper.getInstance(config.getString(MSG_KEY_COLUMNS));
+
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper);
         }
@@ -280,6 +285,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      */
     public TemporalPrecisionMode getTemporalPrecisionMode() {
         return temporalPrecisionMode;
+    }
+
+    public KeyMapper getKeyMapper() {
+        return keyMapper;
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
@@ -325,7 +334,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
         return 0;
     }
-    
+
     private static int validateMessageKeyColumnsField(Configuration config, Field field, Field.ValidationOutput problems) {
         String msgKeyColumns = config.getString(MSG_KEY_COLUMNS);
         if (msgKeyColumns != null && !MSG_KEY_COLUMNS_PATTERN.asPredicate().test(msgKeyColumns)) {

@@ -1201,8 +1201,4 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     public TemporalPrecisionMode getTemporalPrecisionMode() {
         return temporalPrecisionMode;
     }
-    
-    protected String keyMapper() {
-        return getConfig().getString(MSG_KEY_COLUMNS);
-    }
 }

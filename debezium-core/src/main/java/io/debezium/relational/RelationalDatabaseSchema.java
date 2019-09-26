@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.relational.Key.CustomKeyMapper;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.mapping.ColumnMappers;
@@ -35,7 +35,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final TableFilter tableFilter;
     private final ColumnNameFilter columnFilter;
     private final ColumnMappers columnMappers;
-    private final CustomKeyMapper customKeysMapper;
+    private final KeyMapper customKeysMapper;
 
     private final String schemaPrefix;
     private final SchemasByTableId schemasByTableId;
@@ -43,7 +43,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
 
     protected RelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
             TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-            boolean tableIdCaseInsensitive, CustomKeyMapper customKeysMapper) {
+            boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
 
         this.topicSelector = topicSelector;
         this.schemaBuilder = schemaBuilder;
