@@ -5,9 +5,9 @@ cache:
 
 env:
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly -Dversion.postgres.server=10-dev"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder -Dversion.postgres.server=10-dev"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder -Dversion.postgres.server=10-dev -Ddebezium.test.records.waittime=5"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-mongodb -am -Passembly"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-sqlserver -am -Passembly"'
 
