@@ -1770,11 +1770,11 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|`message.key.columns` 0.10.0 and later
+|`message.key.columns`
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
-Fully-qualified tables could be defined as `DB_NAME.TABLE_NAME` or `SCHEMA_NAME.TABLE_NAME`, depending on the specific connector. 
+Fully-qualified tables could be defined as `DB_NAME.TABLE_NAME` or `SCHEMA_NAME.TABLE_NAME`, depending on the specific connector.
 
 |=======================
 
