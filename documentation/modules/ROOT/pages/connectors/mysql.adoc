@@ -1773,7 +1773,7 @@ Emitting the tombstone event (the default behavior) allows Kafka to completely d
 |`message.key.columns` 0.10.0 and later
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
-Each item (regular expression) must match the fully-qualified `table`.`:`.`a comma-separated list of columns` representing the custom key. +
+Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as `DB_NAME.TABLE_NAME` or `SCHEMA_NAME.TABLE_NAME`, depending on the specific connector. 
 
 |=======================
