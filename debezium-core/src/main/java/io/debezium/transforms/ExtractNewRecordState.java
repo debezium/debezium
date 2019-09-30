@@ -118,6 +118,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             return record;
         }
 
+        if (record.valueSchema() == null ||
+                record.valueSchema().name() == null ||
+                !record.valueSchema().name().endsWith(ENVELOPE_SCHEMA_NAME_SUFFIX)) {
+            LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
+            return record;
+        }
+
         if (addOperationHeader) {
             String operationString = ((Struct) record.value()).getString("op");
             operation = Envelope.Operation.forCode(operationString);
@@ -129,12 +136,6 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             }
         }
 
-        if (record.valueSchema() == null ||
-                record.valueSchema().name() == null ||
-                !record.valueSchema().name().endsWith(ENVELOPE_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
-            return record;
-        }
         R newRecord = afterDelegate.apply(record);
         if (newRecord.value() == null) {
             // Handling delete records
