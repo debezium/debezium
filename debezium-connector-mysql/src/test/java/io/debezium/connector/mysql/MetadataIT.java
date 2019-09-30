@@ -10,6 +10,7 @@ import static org.junit.Assert.assertFalse;
 
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -115,7 +116,9 @@ public class MetadataIT implements Testing {
             assertThat(tables.size()).isEqualTo(2);
             Table product = tables.forTable(DATABASE.getDatabaseName(), null, "product");
             assertThat(product).isNotNull();
-            assertThat(product.filterColumnNames(Column::isAutoIncremented)).containsOnly("id");
+            List<Column> autoIncColumns = product.filterColumns(Column::isAutoIncremented);
+            assertThat(autoIncColumns).hasSize(1);
+            assertThat(autoIncColumns.get(0).name()).isEqualTo("id");
             assertThat(product.primaryKeyColumnNames()).containsOnly("id");
             assertThat(product.retrieveColumnNames()).containsExactly("id", "createdByDate", "modifiedDate");
             assertThat(product.columnWithName("id").name()).isEqualTo("id");

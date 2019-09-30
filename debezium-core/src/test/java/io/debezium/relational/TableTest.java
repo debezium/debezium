@@ -5,12 +5,12 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.Types;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 public class TableTest {
 
@@ -87,11 +87,6 @@ public class TableTest {
     }
 
     @Test
-    public void shouldHaveColumnsThatAreNotPartOfThePrimaryKey() {
-        assertThat(table.nonPrimaryKeyColumns()).containsExactly(c3, c4);
-    }
-
-    @Test
     public void shouldFindColumnsByNameWithExactCase() {
         assertThat(table.columnWithName("C1")).isSameAs(c1);
         assertThat(table.columnWithName("C2")).isSameAs(c2);
@@ -154,7 +149,7 @@ public class TableTest {
         assertThat(table.isAutoIncremented("C4")).isTrue();
         assertThat(table.isAutoIncremented("non-existant")).isFalse();
     }
-    
+
     @Test
     public void shouldDetermineIfColumnIsOptionalUsingColumnName() {
         assertThat(table.isOptional("C1")).isFalse();
