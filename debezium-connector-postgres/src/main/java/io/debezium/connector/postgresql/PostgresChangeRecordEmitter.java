@@ -6,6 +6,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -345,7 +346,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 })
                 .collect(Collectors.toList())
             );
-        final List<String> pkCandidates = table.filterColumnNames(c -> table.isPrimaryKeyColumn(c.name()));
+        final List<String> pkCandidates = new ArrayList<>(table.primaryKeyColumnNames());
         final Iterator<String> itPkCandidates = pkCandidates.iterator();
         while (itPkCandidates.hasNext()) {
             final String candidateName = itPkCandidates.next();
