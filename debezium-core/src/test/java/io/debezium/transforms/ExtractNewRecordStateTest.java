@@ -353,4 +353,20 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
         }
     }
+
+    @Test
+    @FixFor("DBZ-1517")
+    public void testSchemaChangeEventWithOperationHeader() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(OPERATION_HEADER, "true");
+            transform.configure(props);
+
+            final SourceRecord unknownRecord = createUnknownRecord();
+            assertThat(transform.apply(unknownRecord)).isEqualTo(unknownRecord);
+
+            final SourceRecord unnamedSchemaRecord = createUnknownUnnamedSchemaRecord();
+            assertThat(transform.apply(unnamedSchemaRecord)).isEqualTo(unnamedSchemaRecord);
+        }
+    }
 }
