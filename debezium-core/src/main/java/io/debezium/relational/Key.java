@@ -80,12 +80,7 @@ public class Key {
     private static class IdentityKeyMapper {
 
         public static KeyMapper getInstance() {
-            return (table) -> {
-                return table.columns()
-                        .stream()
-                        .filter(c -> table.isPrimaryKeyColumn(c.name()))
-                        .collect(Collectors.toList());
-            };
+            return (table) -> table.primaryKeyColumns();
         }
     }
 

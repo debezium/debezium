@@ -43,7 +43,7 @@ public interface Table {
      * @return the list of columns that make up the primary key; never null but possibly empty
      */
     default List<Column> primaryKeyColumns() {
-        return filterColumns(col->isPrimaryKeyColumn(col.name()));
+        return primaryKeyColumnNames().stream().map(this::columnWithName).collect(Collectors.toList());
     }
 
     /**
