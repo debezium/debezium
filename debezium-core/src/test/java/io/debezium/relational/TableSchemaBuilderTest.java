@@ -395,4 +395,31 @@ public class TableSchemaBuilderTest {
         assertThat(key2.fields()).hasSize(1);
         assertThat(key2.field("C1").name()).isEqualTo("C1");
     }
+
+    @Test
+    @FixFor("DBZ-1507")
+    public void defaultKeyMapperShouldOrderKeyColumnsBasedOnPrimaryKeyColumnNamesOrder() {
+        TableId id2 = new TableId("catalog", "schema", "info");
+        Table table2 = Table.editor()
+                .tableId(id2)
+                .addColumns(Column.editor().name("t1ID")
+                                    .type("INT").jdbcType(Types.INTEGER)
+                                    .optional(false)
+                                    .create(),
+                            Column.editor().name("t2ID")
+                                    .type("INT").jdbcType(Types.INTEGER)
+                                    .optional(false)
+                                    .create())
+                .setPrimaryKeyNames("t2ID", "t1ID")
+                .create();
+
+        TableSchema schema2 = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, SchemaBuilder.struct().build(), false)
+                .create(prefix, "sometopic", table2, null, null, null);
+
+        Schema key2 = schema2.keySchema();
+        assertThat(key2).isNotNull();
+        assertThat(key2.fields()).hasSize(2);
+        assertThat(key2.fields().get(0).name()).isEqualTo("t2ID");
+        assertThat(key2.fields().get(1).name()).isEqualTo("t1ID");
+    }
 }
