@@ -35,6 +35,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresStreamingChangeEventSource.class);
 
+    // PGOUTPUT decoder sends the messages with larger time gaps than other decoders
+    // We thus try to read the message multiple times before we make poll pause
+    private static final int THROTTLE_NO_MESSAGE_BEFORE_PAUSE = 5;
+
     private final PostgresConnection connection;
     private final EventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -91,6 +95,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             final ReplicationStream stream = this.replicationStream.get();
             while (context.isRunning()) {
+                int noMessageIterations = 0;
                 if (!stream.readPending(message -> {
                     final Long lsn = stream.lastReceivedLsn();
                     if (message == null) {
@@ -123,7 +128,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     if (offsetContext.hasCompletelyProcessedPosition()) {
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
                     }
-                    pauseNoMessage.pause();
+                    noMessageIterations++;
+                    if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
+                        noMessageIterations = 0;
+                        pauseNoMessage.pause();
+                    }
+                }
+                else {
+                    noMessageIterations = 0;
                 }
             }
         }
