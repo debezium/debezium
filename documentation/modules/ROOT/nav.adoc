@@ -21,5 +21,4 @@
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
 ** xref:operations/openshift.adoc[Running on Openshift]
-** xref:operations/amq-streams.adoc[Running with AMQ Streams]
 ** xref:operations/embedded.adoc[Embedding Debezium]
