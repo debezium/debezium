@@ -280,7 +280,7 @@ public final class TestHelper {
     }
 
     protected static boolean publicationExists(String publicationName) {
-        if(decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
+        if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
             try(PostgresConnection connection = create()) {
                 String query = String.format("SELECT pubname FROM pg_catalog.pg_publication WHERE pubname = '%s'", publicationName);
                 try {

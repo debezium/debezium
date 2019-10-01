@@ -185,13 +185,13 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
         short retryCount = 0;
         ReplicationConnection replicationConnection = null;
-        while(retryCount <= maxRetries) {
+        while (retryCount <= maxRetries) {
             try {
                 return taskContext.createReplicationConnection(shouldExport);
             }
             catch (SQLException ex) {
                 retryCount++;
-                if (retryCount > maxRetries){
+                if (retryCount > maxRetries) {
                     LOGGER.error("Too many errors connecting to server. All {} retries failed.", maxRetries);
                     throw new ConnectException(ex);
                 }
