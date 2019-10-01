@@ -1594,7 +1594,7 @@ The following _advanced_ configuration properties have good defaults that will w
 
 |`snapshot.lock.timeout.ms`
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail See link:#snapshots[snapshosts]
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail See link:#snapshots[snapshots]
 
 |`snapshot.select.statement.overrides`
 |
