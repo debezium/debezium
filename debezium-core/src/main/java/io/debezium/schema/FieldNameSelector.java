@@ -64,7 +64,7 @@ public class FieldNameSelector {
         private String sanitizeColumnName(String columnName) {
             boolean changed = false;
             StringBuilder sanitizedNameBuilder = new StringBuilder(columnName.length() + 1);
-            for(int i = 0; i < columnName.length(); i++) {
+            for (int i = 0; i < columnName.length(); i++) {
                 char c = columnName.charAt(i);
                 if ( i == 0 && Character.isDigit(c)) {
                     sanitizedNameBuilder.append(NUMBER_PREFIX);
