@@ -65,6 +65,21 @@ public class LogInterceptor extends AppenderSkeleton {
         return containsMessage(Level.WARN, text);
     }
 
+    public boolean containsStacktraceElement(String text) {
+        for (LoggingEvent event : events) {
+            final String[] stackTrace = event.getThrowableStrRep();
+            if (stackTrace == null) {
+                continue;
+            }
+            for (String element: stackTrace) {
+                if (element.contains(text)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private boolean containsMessage(Level level, String text) {
         for (LoggingEvent event : events) {
             if (event.getLevel().equals(level) && event.getMessage().toString().contains(text)) {

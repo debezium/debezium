@@ -232,6 +232,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             SERVER_NAME,
             DATABASE_NAME,
             SNAPSHOT_MODE,
+            RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
             RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
@@ -268,7 +269,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         );
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE);
+                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
 
         return config;
     }
