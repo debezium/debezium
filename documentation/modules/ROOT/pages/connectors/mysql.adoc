@@ -106,6 +106,22 @@ where:
 
 * the value for https://dev.mysql.com/doc/refman/5.7/en/replication-options-binary-log.html#sysvar_binlog_rows_query_log_events[`binlog_rows_query_log_events`] can be set to `on` or `ON` to enable support for including the original SQL statement in the binlog entry.
 
+[[setting-session-timeouts]]
+[[setting-session-timeouts-optional]]
+=== Setting-up session timeouts (optional)
+
+When initial snapshots of very large databases are executed then it is possible that an established connection will time out while reading the content of the database tables.
+
+To prevent this behaviour you can enlarge the timeout by configuring options
+
+[source]
+----
+interactive_timeout = <duration-in-secods>
+wait_timeout = <duration-in-secods>
+----
+
+where the values depends on the size of dataset but generally should be in scale of hours.
+
 [[mysql-user]]
 [[create-a-mysql-user-for-the-connector]]
 === Create a MySQL user for the connector
