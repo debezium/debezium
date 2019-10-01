@@ -116,8 +116,8 @@ To prevent this behaviour you can enlarge the timeout by configuring options
 
 [source]
 ----
-interactive_timeout = <duration-in-secods>
-wait_timeout = <duration-in-secods>
+interactive_timeout = <duration-in-seconds>
+wait_timeout = <duration-in-seconds>
 ----
 
 where the values depends on the size of dataset but generally should be in scale of hours.
