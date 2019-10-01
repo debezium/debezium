@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -469,7 +468,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
-    protected static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
     protected static final int DEFAULT_MAX_RETRIES = 6;
     protected static final Duration DEFAULT_RETRY_DELAY = Duration.ofSeconds(10);
 
@@ -699,15 +697,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                          .withDescription("When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
                                                                          + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
-    public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
-                                                              .withDisplayName("Snapshot lock timeout (ms)")
-                                                              .withWidth(Width.LONG)
-                                                              .withType(Type.LONG)
-                                                              .withImportance(Importance.MEDIUM)
-                                                              .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
-                                                              .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
-                                                                               "time frame, the snapshot will be aborted. Defaults to 10 seconds");
-
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
                                                           .withDisplayName("HStore Handling")
                                                           .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
@@ -796,7 +785,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
                                                      SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
+                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
                                                      RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
@@ -902,10 +891,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(COLUMN_BLACKLIST);
     }
 
-    protected Duration snapshotLockTimeout() {
-        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS));
-    }
-
     protected Snapshotter getSnapshotter() {
         return this.snapshotMode.getSnapshotter(getConfig());
     }
@@ -948,7 +933,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     TOASTED_VALUE_PLACEHOLDER);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                    SNAPSHOT_MODE, SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
+                    SNAPSHOT_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
                     SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
 
         return config;

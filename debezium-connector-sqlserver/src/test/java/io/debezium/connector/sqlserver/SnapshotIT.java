@@ -36,6 +36,8 @@ import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Testing;
 
@@ -152,6 +154,26 @@ public class SnapshotIT extends AbstractConnectorTest {
         });
         assertThat(((Struct) table1.get(INITIAL_RECORDS_PER_TABLE - 1).value()).getStruct("source").getString("snapshot")).isEqualTo("last");
         testStreaming();
+    }
+
+    @Test
+    @FixFor("DBZ-1280")
+    public void testDeadlockDetection() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+        final Configuration config = TestHelper.defaultConfig()
+                .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 1_000)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        connection.setAutoCommit(false).executeWithoutCommitting(
+                "SELECT TOP(0) * FROM dbo.table1 WITH (TABLOCKX)"
+        );
+        consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+        assertConnectorNotRunning();
+        assertThat(logInterceptor.containsStacktraceElement("Lock request time out period exceeded.")).as("Log contains error related to lock timeout").isTrue();
+        connection.rollback();
     }
 
     @Test

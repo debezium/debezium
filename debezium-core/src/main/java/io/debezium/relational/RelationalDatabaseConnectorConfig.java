@@ -6,9 +6,11 @@
 package io.debezium.relational;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -37,6 +39,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     private static final String TABLE_BLACKLIST_NAME = "table.blacklist";
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
     private static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^(([^:]+):([^:;\\s]+))+[^;]$");
+    public static final long DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(10);
 
     /**
      * The set of predefined DecimalHandlingMode options or aliases.
@@ -248,6 +251,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                                                                      + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
                                                                      + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                                                                      + "which uses millisecond precision regardless of the database columns' precision .");
+    public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
+                                                                  .withDisplayName("Snapshot lock timeout (ms)")
+                                                                  .withWidth(Width.LONG)
+                                                                  .withType(Type.LONG)
+                                                                  .withImportance(Importance.MEDIUM)
+                                                                  .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
+                                                                  .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
+                                                                                   "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
@@ -293,6 +304,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public KeyMapper getKeyMapper() {
         return keyMapper;
+    }
+
+    public Duration snapshotLockTimeout() {
+        return Duration.ofMillis(getConfig().getLong(SNAPSHOT_LOCK_TIMEOUT_MS));
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {
