@@ -9,6 +9,7 @@ package io.debezium.connector.sqlserver;
 import java.sql.SQLException;
 
 import org.fest.assertions.Assertions;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,6 +44,13 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         initializeConnectorTestFramework();
 
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+    }
+
+    @After
+    public void after() throws SQLException {
+        if (connection != null) {
+            connection.close();
+        }
     }
 
     @Test
