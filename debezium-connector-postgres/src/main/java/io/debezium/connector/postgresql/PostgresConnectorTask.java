@@ -123,10 +123,12 @@ public class PostgresConnectorTask extends BaseSourceTask {
                 if (slotInfo == null) {
                     try {
                         slotCreatedInfo = replicationConnection.createReplicationSlot().orElse(null);
-                    } catch (SQLException ex) {
+                    }
+                    catch (SQLException ex) {
                         throw new ConnectException(ex);
                     }
-                } else {
+                }
+                else {
                     slotCreatedInfo = null;
                 }
             }
