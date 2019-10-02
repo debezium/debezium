@@ -273,7 +273,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
 
     private ChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
         final Set<ChangeTable> cdcEnabledTables = dataConnection.listOfChangeTables();
-
         if (cdcEnabledTables.isEmpty()) {
             LOGGER.warn("No table has enabled CDC or security constraints prevents getting the list of change tables");
         }

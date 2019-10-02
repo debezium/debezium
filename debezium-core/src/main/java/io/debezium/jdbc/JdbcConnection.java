@@ -1027,7 +1027,7 @@ public class JdbcConnection implements AutoCloseable {
         // Read the metadata for the primary keys ...
         for (Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
             // First get the primary key information, which must be done for *each* table ...
-            List<String> pkColumnNames = readPrimaryKeyNames(metadata, tableEntry.getKey());
+            List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, tableEntry.getKey());
 
             // Then define the table ...
             List<Column> columns = tableEntry.getValue();
@@ -1087,6 +1087,37 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return pkColumnNames;
+    }
+
+    protected List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
+        final List<String> uniqueIndexColumnNames = new ArrayList<>();
+        try (ResultSet rs = metadata.getIndexInfo(id.catalog(), id.schema(), id.table(), true, false)) {
+            String firstIndexName = null;
+            while (rs.next()) {
+                final String indexName = rs.getString(6);
+                final String columnName = rs.getString(9);
+                final int columnIndex = rs.getInt(8);
+                if (firstIndexName == null) {
+                    firstIndexName = indexName;
+                }
+                // SQL Server provides indices also without index name
+                // so we need to ignore them
+                if (indexName == null) {
+                    continue;
+                }
+                // Only first unique index is taken into consideration
+                if (indexName != null && !indexName.equals(firstIndexName)) {
+                    return uniqueIndexColumnNames;
+                }
+                Collect.set(uniqueIndexColumnNames, columnIndex - 1, columnName, null);
+            }
+        }
+        return uniqueIndexColumnNames;
+    }
+
+    protected List<String> readPrimaryKeyOrUniqueIndexNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+        final List<String> pkColumnNames = readPrimaryKeyNames(metadata, id);
+        return pkColumnNames.isEmpty() ? readTableUniqueIndices(metadata, id) : pkColumnNames;
     }
 
     private void cleanupPreparedStatement(PreparedStatement statement) {

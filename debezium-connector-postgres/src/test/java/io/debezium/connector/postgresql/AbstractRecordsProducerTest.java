@@ -1132,4 +1132,14 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected void assertWithTask(Consumer<SourceTask> consumer) {
         engine.runWithTask(consumer);
     }
+
+    protected Map<String, List<SourceRecord>> recordsByTopic(final int expectedRecordsCount, TestConsumer consumer) {
+        final Map<String, List<SourceRecord>> recordsByTopic = new HashMap<>();
+        for (int i = 0; i < expectedRecordsCount; i++) {
+            final SourceRecord record = consumer.remove();
+            recordsByTopic.putIfAbsent(record.topic(), new ArrayList<SourceRecord>());
+            recordsByTopic.compute(record.topic(), (k, v) -> { v.add(record); return v; });
+        }
+        return recordsByTopic;
+    }
 }
