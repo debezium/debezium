@@ -170,7 +170,7 @@ public class ExtractNewDocumentStateTest {
 
     @Test
     @FixFor("DBZ-1430")
-    public void shouldDropHeartbeatMessages() {
+    public void shouldPassHeartbeatMessages() {
         Schema valueSchema = SchemaBuilder.struct()
                 .name("io.debezium.connector.common.Heartbeat")
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
@@ -198,7 +198,7 @@ public class ExtractNewDocumentStateTest {
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
 
-        assertThat(transformed).isNull();
+        assertThat(transformed).isSameAs(eventRecord);
     }
 
     @Test
@@ -230,7 +230,7 @@ public class ExtractNewDocumentStateTest {
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
 
-        assertThat(transformed).isNull();
+        assertThat(transformed).isSameAs(eventRecord);
     }
 
     @Test
@@ -263,7 +263,7 @@ public class ExtractNewDocumentStateTest {
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
 
-        assertThat(transformed).isNull();
+        assertThat(transformed).isSameAs(eventRecord);
     }
 
     @Test
@@ -296,7 +296,7 @@ public class ExtractNewDocumentStateTest {
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
 
-        assertThat(transformed).isNull();
+        assertThat(transformed).isSameAs(eventRecord);
     }
 
     @Test

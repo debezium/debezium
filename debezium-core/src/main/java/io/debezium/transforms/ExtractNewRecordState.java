@@ -50,7 +50,6 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
  */
 public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
 
-    private static final String ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
     private static final String PURPOSE = "source field insertion";
     private static final int SCHEMA_CACHE_SIZE = 64;
 
@@ -65,10 +64,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
     private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
     private BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache;
+    private SmtManager<R> smtManager;
 
     @Override
     public void configure(final Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
+        smtManager = new SmtManager<>(config);
+
         final Field.Set configFields = Field.setOf(ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES);
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -118,10 +120,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             return record;
         }
 
-        if (record.valueSchema() == null ||
-                record.valueSchema().name() == null ||
-                !record.valueSchema().name().endsWith(ENVELOPE_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
+        if (!smtManager.isValidEnvelope(record)) {
             return record;
         }
 

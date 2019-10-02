@@ -114,7 +114,7 @@ public class EventRouterTest {
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
-        assertThat(eventRouted).isNull();
+        assertThat(eventRouted).isSameAs(eventRecord);
     }
 
     @Test
@@ -174,7 +174,7 @@ public class EventRouterTest {
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
-        assertThat(eventRouted).isNull();
+        assertThat(eventRouted).isSameAs(eventRecord);
     }
 
     @Test
@@ -204,7 +204,7 @@ public class EventRouterTest {
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
-        assertThat(eventRouted).isNull();
+        assertThat(eventRouted).isSameAs(eventRecord);
     }
 
     @Test

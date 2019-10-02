@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 
 /**
@@ -43,7 +44,6 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     public static final String ENVELOPE_EVENT_TYPE = "eventType";
     private static final String ENVELOPE_PAYLOAD = "payload";
-    private static final String RECORD_ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final RegexRouter<R> regexRouter = new RegexRouter<>();
@@ -66,6 +66,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
     private boolean onlyHeadersInOutputMessage = false;
 
+    private SmtManager<R> smtManager;
+
     @Override
     public R apply(R r) {
         // Ignoring tombstones
@@ -76,11 +78,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
 
         // Ignoring messages which do not adhere to the CDC Envelope, for instance:
         // Heartbeat and Schema Change messages
-        if (r.valueSchema() == null ||
-                r.valueSchema().name() == null ||
-                !r.valueSchema().name().endsWith(RECORD_ENVELOPE_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.debug("Message without Debezium CDC Envelope ignored. Message key: \"{}\"", r.key());
-            return null;
+        if (!smtManager.isValidEnvelope(r)) {
+            return r;
         }
 
         Struct debeziumEventValue = requireStruct(r.value(), "Detect Debezium Operation");
@@ -217,6 +216,8 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
     @Override
     public void configure(Map<String, ?> configMap) {
         final Configuration config = Configuration.from(configMap);
+        smtManager = new SmtManager<>(config);
+
         io.debezium.config.Field.Set allFields = io.debezium.config.Field.setOf(EventRouterConfigDefinition.CONFIG_FIELDS);
         if (!config.validateAndRecord(allFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
