@@ -65,7 +65,11 @@
         <!-- Checks for blocks. You know, those {}'s -->
         <module name="LeftCurly">
             <property name="option" value="eol" />
-        </module>  
+        </module>
+
+        <module name="RightCurly">
+            <property name="option" value="alone"/>
+        </module>
 
         <module name="ParenPad">
             <property name="tokens" value="CTOR_CALL, SUPER_CTOR_CALL" />

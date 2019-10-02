@@ -526,7 +526,8 @@ final class SourceInfo extends AbstractSourceInfo {
         }
         try {
             return Long.parseLong(obj.toString());
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             throw new ConnectException("Source offset '" + key + "' parameter value " + obj + " could not be converted to a long");
         }
     }
@@ -643,13 +644,16 @@ final class SourceInfo extends AbstractSourceInfo {
             sb.append(", skipping ").append(restartEventsToSkip);
             sb.append(" events plus ").append(restartRowsToSkip);
             sb.append(" rows");
-        } else {
+        }
+        else {
             if (restartBinlogFilename == null) {
                 sb.append("<latest>");
-            } else {
+            }
+            else {
                 if ("".equals(restartBinlogFilename)) {
                     sb.append("earliest binlog file and position");
-                } else {
+                }
+                else {
                     sb.append("binlog file '").append(restartBinlogFilename).append("'");
                     sb.append(", pos=").append(restartBinlogPosition);
                     sb.append(", skipping ").append(restartEventsToSkip);
@@ -740,7 +744,8 @@ final class SourceInfo extends AbstractSourceInfo {
             // use GTIDs should always have the complete set of GTIDs copied from the master, in which case
             // again we know that recorded not having GTIDs is before the desired position ...
             return true;
-        } else if (recordedGtidSetStr != null) {
+        }
+        else if (recordedGtidSetStr != null) {
             // The recorded has a GTID but the desired does not, so per the previous paragraph we assume that previous
             // is not at or before ...
             return false;

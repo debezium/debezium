@@ -348,13 +348,15 @@ public class BinlogReader extends AbstractReader {
                 client.setGtidSet(filteredGtidSetStr);
                 source.setCompletedGtidSet(filteredGtidSetStr);
                 gtidSet = new com.github.shyiko.mysql.binlog.GtidSet(filteredGtidSetStr);
-            } else {
+            }
+            else {
                 // We've not yet seen any GTIDs, so that means we have to start reading the binlog from the beginning ...
                 client.setBinlogFilename(source.binlogFilename());
                 client.setBinlogPosition(source.binlogPosition());
                 gtidSet = new com.github.shyiko.mysql.binlog.GtidSet("");
             }
-        } else {
+        }
+        else {
             // The server is not using GTIDs, so start reading the binlog based upon where we last left off ...
             client.setBinlogFilename(source.binlogFilename());
             client.setBinlogPosition(source.binlogPosition());
@@ -380,7 +382,8 @@ public class BinlogReader extends AbstractReader {
             try {
                 logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeoutInMilliseconds);
                 client.connect(context.timeoutInMilliseconds());
-            } catch (TimeoutException e) {
+            }
+            catch (TimeoutException e) {
                 // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception
                 // The only way we can distinguish this is if we get the timeout exception before the specified timeout has
                 // elapsed, so we simply check this (within 10%) ...
@@ -391,10 +394,12 @@ public class BinlogReader extends AbstractReader {
                             connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'", e);
                 }
                 // Otherwise, we were told to shutdown, so we don't care about the timeout exception
-            } catch (AuthenticationException e) {
+            }
+            catch (AuthenticationException e) {
                 throw new ConnectException("Failed to authenticate to the MySQL database at " +
                         connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'", e);
-            } catch (Throwable e) {
+            }
+            catch (Throwable e) {
                 throw new ConnectException("Unable to connect to the MySQL database at " +
                         connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "': " + e.getMessage(), e);
             }
@@ -410,7 +415,8 @@ public class BinlogReader extends AbstractReader {
                 client.setBinlogPosition(position.getPosition());
                 client.connect();
             }
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             logger.error("Unexpected error when re-connecting to the MySQL binary log reader", e);
         }
     }
@@ -430,7 +436,8 @@ public class BinlogReader extends AbstractReader {
                 client.disconnect();
             }
             cleanupResources();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             logger.error("Unexpected error when disconnecting from the MySQL binary log reader '{}'", this.name(), e);
         }
     }
@@ -459,7 +466,8 @@ public class BinlogReader extends AbstractReader {
                                         recordCounter, Strings.duration(millisSinceLastOutput), lastOffset);
                         });
                     }
-                } finally {
+                }
+                finally {
                     recordCounter = 0;
                     previousOutputMillis += millisSinceLastOutput;
                 }
@@ -492,11 +500,13 @@ public class BinlogReader extends AbstractReader {
             RotateEventData rotateEventData;
             if (eventData instanceof EventDeserializer.EventDataWrapper) {
                 rotateEventData = (RotateEventData) ((EventDeserializer.EventDataWrapper) eventData).getInternal();
-            } else {
+            }
+            else {
                 rotateEventData = (RotateEventData) eventData;
             }
             source.setBinlogStartPoint(rotateEventData.getBinlogFilename(), rotateEventData.getBinlogPosition());
-        } else if (eventHeader instanceof EventHeaderV4) {
+        }
+        else if (eventHeader instanceof EventHeaderV4) {
             EventHeaderV4 trackableEventHeader = (EventHeaderV4) eventHeader;
             source.setEventPosition(trackableEventHeader.getPosition(), trackableEventHeader.getEventLength());
         }
@@ -517,7 +527,8 @@ public class BinlogReader extends AbstractReader {
                 --initialEventsToSkip;
                 skipEvent = initialEventsToSkip > 0;
             }
-        } catch (RuntimeException e) {
+        }
+        catch (RuntimeException e) {
             // There was an error in the event handler, so propagate the failure to Kafka Connect ...
             logReaderState();
             failed(e, "Error processing binlog event");
@@ -526,7 +537,8 @@ public class BinlogReader extends AbstractReader {
             // We can clear the listeners though so that we ignore all future events ...
             eventHandlers.clear();
             logger.info("Error processing binlog event, and propagating to Kafka Connect so it stops this connector. Future binlog events read before connector is shutdown will be ignored.");
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             // Most likely because this reader was stopped and our thread was interrupted ...
             Thread.currentThread().interrupt();
             eventHandlers.clear();
@@ -850,11 +862,13 @@ public class BinlogReader extends AbstractReader {
                     if (startingRowNumber != 0) {
                         logger.debug("Recorded {} insert record(s) for last {} row(s) in event: {}",
                                      count, numRows - startingRowNumber, event);
-                    } else {
+                    }
+                    else {
                         logger.debug("Recorded {} insert record(s) for event: {}", count, event);
                     }
                 }
-            } else {
+            }
+            else {
                 // All rows were previously processed ...
                 logger.debug("Skipping previously processed insert event: {}", event);
             }
@@ -902,11 +916,13 @@ public class BinlogReader extends AbstractReader {
                     if (startingRowNumber != 0) {
                         logger.debug("Recorded {} update record(s) for last {} row(s) in event: {}",
                                      count, numRows - startingRowNumber, event);
-                    } else {
+                    }
+                    else {
                         logger.debug("Recorded {} update record(s) for event: {}", count, event);
                     }
                 }
-            } else {
+            }
+            else {
                 // All rows were previously processed ...
                 logger.debug("Skipping previously processed update event: {}", event);
             }
@@ -950,11 +966,13 @@ public class BinlogReader extends AbstractReader {
                     if (startingRowNumber != 0) {
                         logger.debug("Recorded {} delete record(s) for last {} row(s) in event: {}",
                                      count, numRows - startingRowNumber, event);
-                    } else {
+                    }
+                    else {
                         logger.debug("Recorded {} delete record(s) for event: {}", count, event);
                     }
                 }
-            } else {
+            }
+            else {
                 // All rows were previously processed ...
                 logger.debug("Skipping previously processed delete event: {}", event);
             }
@@ -1011,7 +1029,8 @@ public class BinlogReader extends AbstractReader {
                     Map<String, ?> offset = lastOffset;
                     if (offset != null) {
                         logger.info("Stopped reading binlog after {} events, last recorded offset: {}", totalRecordCounter, offset);
-                    } else {
+                    }
+                    else {
                         logger.info("Stopped reading binlog after {} events, no new offset was recorded", totalRecordCounter);
                     }
                 });
@@ -1109,7 +1128,8 @@ public class BinlogReader extends AbstractReader {
                     kmf.init(ks, passwordArray);
 
                     keyManagers = kmf.getKeyManagers();
-                } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
+                }
+                catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
                     throw new ConnectException("Could not load keystore", e);
                 }
             }

@@ -426,7 +426,8 @@ public class SourceInfoTest {
                     eventsToSkip = 0L;
                 }
                 assertThat(eventsToSkip).isEqualTo(eventNumberInTxn - 1);
-            } else {
+            }
+            else {
                 // Matches the next event ...
                 assertThat(position).isEqualTo(positionOfEvent + eventSize);
                 assertThat(offset.get(SourceInfo.EVENTS_TO_SKIP_OFFSET_KEY)).isNull();
@@ -438,7 +439,8 @@ public class SourceInfoTest {
             if ((row + 1) == rowCount) {
                 // This is the last row, so the next binlog position should be the number of rows in the event ...
                 assertThat(rowsToSkip).isEqualTo(rowCount);
-            } else {
+            }
+            else {
                 // This is not the last row, so the next binlog position should be the row number ...
                 assertThat(rowsToSkip).isEqualTo(row + 1);
             }

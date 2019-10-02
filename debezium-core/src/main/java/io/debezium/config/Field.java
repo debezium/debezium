@@ -385,7 +385,8 @@ public final class Field {
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
                                      groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
                 }
-            } else {
+            }
+            else {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
@@ -564,7 +565,8 @@ public final class Field {
                     newRecommendations.retainAll(previousRecommendations);
                 }
                 value.recommendedValues(newRecommendations);
-            } catch (ConfigException e) {
+            }
+            catch (ConfigException e) {
                 value.addErrorMessage(e.getMessage());
             }
         }
@@ -886,10 +888,12 @@ public final class Field {
         public String toString() {
             if (min == null) {
                 return "[...," + max + "]";
-            } else {
+            }
+            else {
                 if (max == null) {
                     return "[" + min + ",...]";
-                } else {
+                }
+                else {
                     return "[" + min + ",...," + max + "]";
                 }
             }
@@ -1030,7 +1034,8 @@ public final class Field {
         if (value != null) {
             try {
                 Strings.setOfRegex(value, Pattern.CASE_INSENSITIVE);
-            } catch (PatternSyntaxException e) {
+            }
+            catch (PatternSyntaxException e) {
                 problems.accept(field, value, "A comma-separated list of valid regular expressions is expected, but " + e.getMessage());
                 ++errors;
             }
@@ -1044,7 +1049,8 @@ public final class Field {
         if (value != null) {
             try {
                 Pattern.compile(value, Pattern.CASE_INSENSITIVE);
-            } catch (PatternSyntaxException e) {
+            }
+            catch (PatternSyntaxException e) {
                 problems.accept(field, value, "A valid regular expressions is expected, but " + e.getMessage());
                 ++errors;
             }
@@ -1093,7 +1099,8 @@ public final class Field {
         }
         try {
             Integer.parseInt(value);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             problems.accept(field, value, "An integer is expected");
             return 1;
         }
@@ -1109,7 +1116,8 @@ public final class Field {
             if (Integer.parseInt(value) > 0){
                 return 0;
             }
-        } catch (Throwable e) {}
+        }
+        catch (Throwable e) {}
         problems.accept(field, value, "A positive integer is expected");
         return 1;
     }
@@ -1123,7 +1131,8 @@ public final class Field {
             if (Integer.parseInt(value) >= 0) {
                 return 0;
             }
-        } catch (Throwable e) {}
+        }
+        catch (Throwable e) {}
         problems.accept(field, value, "An non-negative integer is expected");
         return 1;
     }
@@ -1135,7 +1144,8 @@ public final class Field {
         }
         try {
             Long.parseLong(value);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             problems.accept(field, value, "A long value is expected");
             return 1;
         }
@@ -1151,7 +1161,8 @@ public final class Field {
             if (Long.parseLong(value) > 0) {
                 return 0;
             }
-        } catch (Throwable e) {}
+        }
+        catch (Throwable e) {}
         problems.accept(field, value, "A positive long value is expected");
         return 1;
     }
@@ -1165,7 +1176,8 @@ public final class Field {
             if (Long.parseLong(value) >= 0) {
                 return 0;
             }
-        } catch (Throwable e) {}
+        }
+        catch (Throwable e) {}
         problems.accept(field, value, "A non-negative long value is expected");
         return 1;
     }
@@ -1177,7 +1189,8 @@ public final class Field {
         }
         try {
             Short.parseShort(value);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             problems.accept(field, value, "A short value is expected");
             return 1;
         }
@@ -1191,7 +1204,8 @@ public final class Field {
         }
         try {
             Double.parseDouble(value);
-        } catch (NumberFormatException e) {
+        }
+        catch (NumberFormatException e) {
             problems.accept(field, value, "A double value is expected");
             return 1;
         }
@@ -1205,7 +1219,8 @@ public final class Field {
         }
         try {
             ZoneOffset.of(value);
-        } catch (DateTimeException e) {
+        }
+        catch (DateTimeException e) {
             problems.accept(field, value, "A zone offset string representation is expected");
             return 1;
         }

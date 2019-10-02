@@ -149,7 +149,8 @@ public class UniqueDatabase {
                        .collect(Collectors.toList());
                 connection.execute(statements.toArray(new String[statements.size()]));
             }
-        } catch (final Exception e) {
+        }
+        catch (final Exception e) {
             throw new IllegalStateException(e);
         }
     }

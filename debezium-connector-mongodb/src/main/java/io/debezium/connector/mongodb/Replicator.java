@@ -229,12 +229,14 @@ public class Replicator {
             if (context.getConnectionContext().performSnapshotEvenIfNotNeeded()) {
                 LOGGER.info("Configured to performing initial sync of replica set '{}'", rsName);
                 performSnapshot = true;
-            } else {
+            }
+            else {
                 if (source.isInitialSyncOngoing(rsName)) {
                     // The last snapshot was not completed, so do it again ...
                     LOGGER.info("The previous initial sync was incomplete for '{}', so initiating another initial sync", rsName);
                     performSnapshot = true;
-                } else {
+                }
+                else {
                     // There is no ongoing initial sync, so look to see if our last recorded offset still exists in the oplog.
                     BsonTimestamp lastRecordedTs = source.lastOffsetTimestamp(rsName);
 
@@ -247,20 +249,23 @@ public class Replicator {
                     if (firstAvailableTs == null) {
                         LOGGER.info("The oplog contains no entries, so performing initial sync of replica set '{}'", rsName);
                         performSnapshot = true;
-                    } else if (lastRecordedTs.compareTo(firstAvailableTs) < 0) {
+                    }
+                    else if (lastRecordedTs.compareTo(firstAvailableTs) < 0) {
                         // The last recorded timestamp is *before* the first existing oplog event, which means there is
                         // almost certainly some history lost since we last processed the oplog ...
                         LOGGER.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
                                     rsName, firstAvailableTs, lastRecordedTs);
                         performSnapshot = true;
-                    } else {
+                    }
+                    else {
                         // Otherwise we'll not perform an initial sync
                         LOGGER.info("The oplog contains the last entry previously read for '{}', so no initial sync will be performed",
                                     rsName);
                     }
                 }
             }
-        } else {
+        }
+        else {
             LOGGER.info("No existing offset found for replica set '{}', starting initial sync", rsName);
             performSnapshot = true;
         }
@@ -289,7 +294,8 @@ public class Replicator {
         // Set up our recorder to buffer the last record ...
         try {
             bufferedRecorder.startBuffering();
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             // Do nothing so that this thread is terminated ...
             LOGGER.info("Interrupted while waiting to flush the buffer before starting an initial sync of '{}'", rsName);
             return false;
@@ -330,10 +336,12 @@ public class Replicator {
                             LOGGER.info("Completing initial sync of {} documents from '{}' in {}", numDocs, id, Strings.duration(duration));
                         }
                     }
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     // Do nothing so that this thread is terminated ...
                     aborted.set(true);
-                } finally {
+                }
+                finally {
                     latch.countDown();
                 }
             });
@@ -342,7 +350,8 @@ public class Replicator {
         // Wait for all of the threads to complete ...
         try {
             latch.await();
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             aborted.set(true);
         }
@@ -365,7 +374,8 @@ public class Replicator {
         try {
             // And immediately flush the last buffered source record with the updated offset ...
             bufferedRecorder.stopBuffering(source.lastOffset(rsName));
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             LOGGER.info("Interrupted while waiting for last initial sync record from replica set '{}' to be recorded", rsName);
             return false;
         }
@@ -524,7 +534,8 @@ public class Replicator {
                         ServerAddress currentPrimary = mongoClient.getAddress();
                         address.set(currentPrimary);
                     });
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     LOGGER.error("Get current primary executeBlocking", e);
                 }
                 ServerAddress serverAddress = address.get();
@@ -533,7 +544,8 @@ public class Replicator {
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
                     LOGGER.info("Found new primary event in oplog, so stopping use of {} to continue with new primary {}",
                             primaryAddress, serverAddress);
-                } else {
+                }
+                else {
                     LOGGER.info("Found new primary event in oplog, current {} is new primary. " +
                                 "Continue to process oplog event.", primaryAddress);
                 }
@@ -573,7 +585,8 @@ public class Replicator {
                 RecordsForCollection factory = recordMakers.forCollection(collectionId);
                 try {
                     factory.recordEvent(event, clock.currentTimeInMillis());
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return false;
                 }

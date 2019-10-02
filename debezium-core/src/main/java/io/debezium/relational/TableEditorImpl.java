@@ -187,7 +187,8 @@ final class TableEditorImpl implements TableEditor {
             // Just append ...
             sortedColumns.remove(columnName);
             sortedColumns.put(columnName, columnToMove);
-        } else {
+        }
+        else {
             LinkedHashMap<String, Column> newColumns = new LinkedHashMap<>();
             sortedColumns.remove(columnName.toLowerCase());
             if (afterColumn == null) {

@@ -111,15 +111,18 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                         logger.debug("Applying: {}", ddl);
                         ddlParser.parse(ddl, schema);
                         listener.onChangeApplied(recovered);
-                    } catch (final ParsingException e) {
+                    }
+                    catch (final ParsingException e) {
                         if (skipUnparseableDDL) {
                             logger.warn("Ignoring unparseable statements '{}' stored in database history: {}", ddl, e);
-                        } else {
+                        }
+                        else {
                             throw e;
                         }
                     }
                 }
-            } else {
+            }
+            else {
                 logger.debug("Skipping: {}", recovered.ddl());
             }
         });

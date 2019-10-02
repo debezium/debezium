@@ -200,7 +200,8 @@ final class ColumnImpl implements Column, Comparable<Column> {
         }
         if (hasDefaultValue() && defaultValue() == null) {
             sb.append(" DEFAULT VALUE NULL");
-        } else if (defaultValue != null) {
+        }
+        else if (defaultValue != null) {
             sb.append(" DEFAULT VALUE ").append(defaultValue);
         }
         return sb.toString();

@@ -332,7 +332,8 @@ public abstract class ConnectorOutputTest {
                 try (InputStream stream = new FileInputStream(file)) {
                     return withConfiguration(stream);
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the configuration file '" + file + "': " + e.getMessage());
                 return null;
             }
@@ -348,7 +349,8 @@ public abstract class ConnectorOutputTest {
             Properties props = new Properties();
             try {
                 props.load(stream);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the configuration file from the input stream': " + e.getMessage());
             }
             return withConfiguration(Configuration.from(props));
@@ -375,7 +377,8 @@ public abstract class ConnectorOutputTest {
                 try (InputStream stream = new FileInputStream(file)) {
                     return withEnvironment(stream);
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the environment file '" + file + "': " + e.getMessage());
                 return null;
             }
@@ -391,7 +394,8 @@ public abstract class ConnectorOutputTest {
             Properties props = new Properties();
             try {
                 props.load(stream);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 fail("Failed to read the environment input stream: " + e.getMessage());
                 return null;
             }
@@ -560,7 +564,8 @@ public abstract class ConnectorOutputTest {
             try {
                 Map<String, String> variables = variableSupplier.get(config);
                 return withVariables(variables::get);
-            } catch (Throwable t) {
+            }
+            catch (Throwable t) {
                 t.printStackTrace(System.err);
                 fail("Unable to read variables using configuration: " + config);
                 return null;
@@ -822,7 +827,8 @@ public abstract class ConnectorOutputTest {
                         if (jsonRecord != null){
                             recorder.accept(jsonRecord);
                         }
-                    } catch (IOException e) {
+                    }
+                    catch (IOException e) {
                         String msg = "Error converting JSON to SourceRecord";
                         Testing.debug(msg);
                         throw new ConnectException(msg, e);
@@ -843,10 +849,12 @@ public abstract class ConnectorOutputTest {
                             String msg = "Source record was found but not expected: " + SchemaUtil.asString(actualRecord);
                             Testing.debug(msg);
                             throw new MismatchRecordException(msg, actualRecordHistory, expectedRecordHistory);
-                        } else if (isCommand(expected)) {
+                        }
+                        else if (isCommand(expected)) {
                             Testing.debug("applying command: " + SchemaUtil.asString(expected));
                             applyCommand(expected, result);
-                        } else {
+                        }
+                        else {
                             try {
                                 // Otherwise, build a record from the expected and add it to the history ...
                                 SourceRecord expectedRecord = rehydrateSourceRecord(expected, keyConverter, valueConverter);
@@ -857,14 +865,16 @@ public abstract class ConnectorOutputTest {
                                 try {
                                     assertSourceRecordMatch(actualRecord, expectedRecord, ignorableFields::contains,
                                                             comparatorsByFieldName, comparatorsBySchemaName);
-                                } catch (AssertionError e) {
+                                }
+                                catch (AssertionError e) {
                                     result.error();
                                     String msg = "Source record with key " + SchemaUtil.asString(actualRecord.key())
                                             + " did not match expected record: " + e.getMessage();
                                     Testing.debug(msg);
                                     throw new MismatchRecordException(e, msg, actualRecordHistory, expectedRecordHistory);
                                 }
-                            } catch (IOException e) {
+                            }
+                            catch (IOException e) {
                                 result.exception();
                                 String msg = "Error converting JSON to SourceRecord";
                                 Testing.debug(msg);
@@ -888,7 +898,8 @@ public abstract class ConnectorOutputTest {
                         }
                     }
 
-                } finally {
+                }
+                finally {
                     prev.restore();
                 }
             };
@@ -928,25 +939,32 @@ public abstract class ConnectorOutputTest {
                 result.reset();
                 engine.run();
             } while (result.get() == ExecutionResult.RESTART_REQUESTED);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             runError = new RuntimeException("Error reading test data: " + e.getMessage(), e);
-        } catch (RuntimeException t) {
+        }
+        catch (RuntimeException t) {
             runError = t;
-        } finally {
+        }
+        finally {
             // And clean up everything ...
             try {
                 testData.close();
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 if (runError != null) {
                     runError = new RuntimeException("Error closing test data: " + e.getMessage(), e);
                 }
-            } finally {
+            }
+            finally {
                 try {
                     keyConverter.close();
-                } finally {
+                }
+                finally {
                     try {
                         valueConverter.close();
-                    } finally {
+                    }
+                    finally {
                         preRunContext.restore();
                     }
                 }
@@ -960,7 +978,8 @@ public abstract class ConnectorOutputTest {
             Throwable error = problem.error();
             if (error instanceof AssertionError) {
                 fail(problem.message());
-            } else if (error instanceof MismatchRecordException) {
+            }
+            else if (error instanceof MismatchRecordException) {
                 MismatchRecordException mismatch = (MismatchRecordException) error;
                 LinkedList<SourceRecord> actualHistory = mismatch.getActualRecords();
                 LinkedList<SourceRecord> expectedHistory = mismatch.getExpectedRecords();
@@ -975,9 +994,11 @@ public abstract class ConnectorOutputTest {
                     throw cause;
                 }
                 fail(problem.message());
-            } else if (error instanceof RuntimeException) {
+            }
+            else if (error instanceof RuntimeException) {
                 throw (RuntimeException) error;
-            } else {
+            }
+            else {
                 throw new RuntimeException(error);
             }
         }
@@ -993,7 +1014,8 @@ public abstract class ConnectorOutputTest {
                 String msg = "Stopping connector after record as requested";
                 Testing.debug(msg);
                 throw new StopConnectorException(msg);
-            } else if (CONTROL_STOP.equalsIgnoreCase(command)) {
+            }
+            else if (CONTROL_STOP.equalsIgnoreCase(command)) {
                 // We're supposed to restart the connector, so stop it ...
                 result.stop();
                 String msg = "Stopping connector after record as requested";
@@ -1041,7 +1063,8 @@ public abstract class ConnectorOutputTest {
                 if (r != null) {
                     r.run();
                 }
-            } finally {
+            }
+            finally {
                 this.result.compareAndSet(null, result);
             }
         }
@@ -1114,12 +1137,14 @@ public abstract class ConnectorOutputTest {
                                          Map<String, RecordValueComparator> comparatorsBySchemaName) {
         try {
             VerifyRecord.isValid(actual);
-        } catch (AssertionError e) {
+        }
+        catch (AssertionError e) {
             throw new AssertionError("Actual source record is not valid: " + e.getMessage());
         }
         try {
             VerifyRecord.isValid(expected);
-        } catch (AssertionError e) {
+        }
+        catch (AssertionError e) {
             throw new AssertionError("Expected source record is not valid: " + e.getMessage());
         }
         VerifyRecord.assertEquals(actual, expected, ignoreFields, comparatorsByName, comparatorsBySchemaName);
@@ -1156,7 +1181,8 @@ public abstract class ConnectorOutputTest {
         public void close() {
             try {
                 jsonSerializer.close();
-            } finally {
+            }
+            finally {
                 jsonDeserializer.close();
             }
         }
@@ -1202,7 +1228,8 @@ public abstract class ConnectorOutputTest {
                 String newLine = Strings.replaceVariables(line, variables::variableForName);
                 try {
                     ostream.write(newLine.getBytes(StandardCharsets.UTF_8));
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new RuntimeException("Error writing to file '" + tmpFile + "'", e);
                 }
             }, StandardCharsets.UTF_8);

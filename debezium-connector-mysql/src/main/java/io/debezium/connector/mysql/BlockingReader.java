@@ -81,7 +81,8 @@ public class BlockingReader implements Reader {
                 completionHandler.run();
             }
 
-        } finally {
+        }
+        finally {
             logger.info("Blocking Reader has completed.");
         }
     }

@@ -42,14 +42,16 @@ public class Filters {
         String schemaBlacklist = config.schemaBlacklist();
         if (schemaBlacklist != null) {
             schemaBlacklist = schemaBlacklist + "," + SYSTEM_SCHEMA_BLACKLIST;
-        } else {
+        }
+        else {
             schemaBlacklist = SYSTEM_SCHEMA_BLACKLIST;
         }
 
         String tableBlacklist = config.tableBlacklist();
         if (tableBlacklist != null) {
             tableBlacklist = tableBlacklist + "," + TEMP_TABLE_BLACKLIST;
-        } else {
+        }
+        else {
             tableBlacklist = TEMP_TABLE_BLACKLIST;
         }
 

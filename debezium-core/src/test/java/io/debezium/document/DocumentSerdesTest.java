@@ -72,7 +72,8 @@ public class DocumentSerdesTest implements Testing {
             try {
                 Document doc = DocumentReader.defaultReader().read(content);
                 array = doc.getArray("entityChanges");
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 array = ArrayReader.defaultReader().readArray(content);
             }
             array.forEach(entry -> documents.add(entry.getValue().asDocument()));

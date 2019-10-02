@@ -90,7 +90,8 @@ public final class ReplicaSetMonitorThread implements Runnable {
             if (!Thread.currentThread().isInterrupted()) {
                 try {
                     metronome.pause();
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
@@ -109,7 +110,8 @@ public final class ReplicaSetMonitorThread implements Runnable {
             if (initialized.await(timeout, unit)) {
                 return replicaSets;
             }
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt(); // but do nothing else
         }
         return null;

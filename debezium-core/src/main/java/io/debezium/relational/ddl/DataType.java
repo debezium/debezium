@@ -43,7 +43,8 @@ public final class DataType {
         this.scale = scale;
         if (arrayDimensions == null || arrayDimLength == 0) {
             this.arrayDimensions = null;
-        } else {
+        }
+        else {
             this.arrayDimensions = Arrays.copyOf(arrayDimensions, arrayDimLength);
         }
     }

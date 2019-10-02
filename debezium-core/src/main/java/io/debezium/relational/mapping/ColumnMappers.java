@@ -189,9 +189,11 @@ public class ColumnMappers {
             if (mapperClassName != null) {
                 try {
                     mapperClass = (Class<ColumnMapper>) getClass().getClassLoader().loadClass(mapperClassName);
-                } catch (ClassNotFoundException e) {
+                }
+                catch (ClassNotFoundException e) {
                     throw new ConnectException("Unable to find column mapper class " + mapperClassName + ": " + e.getMessage(), e);
-                } catch (ClassCastException e) {
+                }
+                catch (ClassCastException e) {
                     throw new ConnectException(
                             "Column mapper class must implement " + ColumnMapper.class + " but does not: " + e.getMessage(),
                             e);
@@ -278,11 +280,14 @@ public class ColumnMappers {
                  mapper.initialize(config);
              }
              return mapper;
-        } catch (InstantiationException e) {
+        }
+        catch (InstantiationException e) {
             throw new ConnectException("Unable to instantiate column mapper class " + clazz.getName() + ": " + e.getMessage(), e);
-        } catch (IllegalAccessException e) {
+        }
+        catch (IllegalAccessException e) {
             throw new ConnectException("Unable to access column mapper class " + clazz.getName() + ": " + e.getMessage(), e);
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             throw new ConnectException("Unable to initialize the column mapper class " + clazz.getName() + ": " + e.getMessage(), e);
         }
     }

@@ -139,14 +139,17 @@ public class MySqlJdbcContext implements AutoCloseable {
     public void shutdown() {
         try {
             jdbc.close();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             logger.error("Unexpected error shutting down the database connection", e);
-        } finally {
+        }
+        finally {
             // Reset the system properties to their original value ...
             originalSystemProperties.forEach((name, value) -> {
                 if (value != null) {
                     System.setProperty(name, value);
-                } else {
+                }
+                else {
                     System.clearProperty(name);
                 }
             });
@@ -171,7 +174,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                     mode.set(rs.getString(2));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
@@ -191,7 +195,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                     gtidSetStr.set(rs.getString(5)); // GTID set, may be null, blank, or contain a GTID set
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
         }
 
@@ -272,7 +277,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                     }
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at privileges for current user: ", e);
         }
         return result.get();
@@ -320,7 +326,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                     }
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Error reading MySQL variables: " + e.getMessage(), e);
         }
 
@@ -335,7 +342,8 @@ public class MySqlJdbcContext implements AutoCloseable {
         for (String varName : varNames) {
             if (first) {
                 first = false;
-            } else {
+            }
+            else {
                 sb.append(", ");
             }
             sb.append(varName).append("=");
@@ -360,7 +368,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                 // There was no existing property ...
                 String existing = System.setProperty(property, value);
                 originalSystemProperties.put(property, existing); // the existing value may be null
-            } else {
+            }
+            else {
                 existingValue = existingValue.trim();
                 if (!existingValue.equalsIgnoreCase(value)) {
                     // There was an existing property, and the value is different ...

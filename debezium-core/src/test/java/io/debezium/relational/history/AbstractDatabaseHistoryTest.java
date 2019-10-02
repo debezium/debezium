@@ -73,7 +73,8 @@ public abstract class AbstractDatabaseHistoryTest {
     protected void record(long pos, int entry, String ddl, Tables... update) {
         try {
             history.record(source1, position("a.log", pos, entry), "db", ddl);
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             fail(t.getMessage());
         }
         for (Tables tables : update) {

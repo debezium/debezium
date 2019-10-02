@@ -64,7 +64,8 @@ public class ConversionsTest {
         try {
             Conversions.toLocalDate(time);
             fail("Should not accept java.sql.Time values");
-        } catch ( IllegalArgumentException e ) {
+        }
+        catch ( IllegalArgumentException e ) {
             // expected
         }
     }
@@ -126,7 +127,8 @@ public class ConversionsTest {
         try {
             Conversions.toLocalDateTime(Long.valueOf(1));
             fail("Should not accept Long values");
-        } catch ( IllegalArgumentException e ) {
+        }
+        catch ( IllegalArgumentException e ) {
             // expected
         }
     }
@@ -158,7 +160,8 @@ public class ConversionsTest {
         try {
             Conversions.toLocalTime(date);
             fail("Should not accept java.sql.Date values");
-        } catch ( IllegalArgumentException e ) {
+        }
+        catch ( IllegalArgumentException e ) {
             // expected
         }
     }

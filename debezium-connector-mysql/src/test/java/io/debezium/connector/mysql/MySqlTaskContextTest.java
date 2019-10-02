@@ -56,7 +56,8 @@ public class MySqlTaskContextTest {
         String portStr = System.getProperty("database.port");
         if (portStr != null) {
             port = Integer.parseInt(portStr);
-        } else {
+        }
+        else {
             port = (Integer) MySqlConnectorConfig.PORT.defaultValue();
         }
         username = "snapper";
@@ -72,7 +73,8 @@ public class MySqlTaskContextTest {
         if (context != null) {
             try {
                 context.shutdown();
-            } finally {
+            }
+            finally {
                 context = null;
                 Testing.Files.delete(DB_HISTORY_PATH);
             }

@@ -535,7 +535,8 @@ public final class FieldSelector {
             for (String nameNode : nameNodes) {
                 if (Strings.isNumeric(nameNode)) {
                     newName.add(nameNode);
-                } else {
+                }
+                else {
                     newName.add((i == replaceIndex) ? newFieldNode : nameNode);
                     i++;
                 }

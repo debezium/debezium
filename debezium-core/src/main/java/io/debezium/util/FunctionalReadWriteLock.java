@@ -51,7 +51,8 @@ public class FunctionalReadWriteLock {
         try {
             lock.readLock().lock();
             return operation.get();
-        } finally {
+        }
+        finally {
             lock.readLock().unlock();
         }
     }
@@ -65,7 +66,8 @@ public class FunctionalReadWriteLock {
         try {
             lock.readLock().lock();
             operation.run();
-        } finally {
+        }
+        finally {
             lock.readLock().unlock();
         }
     }
@@ -80,7 +82,8 @@ public class FunctionalReadWriteLock {
         try {
             lock.writeLock().lock();
             return operation.get();
-        } finally {
+        }
+        finally {
             lock.writeLock().unlock();
         }
     }
@@ -94,7 +97,8 @@ public class FunctionalReadWriteLock {
         try {
             lock.writeLock().lock();
             operation.run();
-        } finally {
+        }
+        finally {
             lock.writeLock().unlock();
         }
     }

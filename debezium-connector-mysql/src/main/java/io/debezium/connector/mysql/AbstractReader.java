@@ -223,7 +223,8 @@ public abstract class AbstractReader implements Reader {
         if (error instanceof ServerException) {
             ServerException e = (ServerException) error;
             msg = msg + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSqlState() + ".";
-        } else if (error instanceof SQLException) {
+        }
+        else if (error instanceof SQLException) {
             SQLException e = (SQLException) error;
             msg = e.getMessage() + " Error code: " + e.getErrorCode() + "; SQLSTATE: " + e.getSQLState() + ".";
         }
@@ -302,7 +303,8 @@ public abstract class AbstractReader implements Reader {
     protected void cleanupResources() {
         try {
             doCleanup();
-        } finally {
+        }
+        finally {
             Runnable completionHandler = uponCompletion.getAndSet(null); // set to null so that we call it only once
             if (completionHandler != null) {
                 completionHandler.run();

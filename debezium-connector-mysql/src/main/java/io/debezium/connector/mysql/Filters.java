@@ -151,7 +151,8 @@ public class Filters {
             if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
                 this.tableFilter = tableFilter.and(isBuiltInTable.negate());
                 this.dbFilter = dbFilter.and(isBuiltInDb.negate());
-            } else {
+            }
+            else {
                 this.tableFilter = tableFilter;
                 this.dbFilter = dbFilter;
             }

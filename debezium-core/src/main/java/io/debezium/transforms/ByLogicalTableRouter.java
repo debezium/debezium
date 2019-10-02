@@ -368,7 +368,8 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
 
         if (source.isOptional()) {
             builder.optional();
-        } else {
+        }
+        else {
             builder.required();
         }
 

@@ -143,7 +143,8 @@ public class MongoDataConverter {
                     colValue = new Struct(fieldSchema);
                     break;
                 }
-            } else {
+            }
+            else {
                 switch (arrayEncoding) {
                 case ARRAY:
                     BsonType valueType = keyvalueforStruct.getValue().asArray().get(0).getBsonType();
@@ -154,37 +155,48 @@ public class MongoDataConverter {
                         if (arrValue.getBsonType() == BsonType.STRING && valueType == BsonType.STRING) {
                             String temp = arrValue.asString().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.JAVASCRIPT && valueType == BsonType.JAVASCRIPT) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.JAVASCRIPT && valueType == BsonType.JAVASCRIPT) {
                             String temp = arrValue.asJavaScript().getCode();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.OBJECT_ID && valueType == BsonType.OBJECT_ID) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.OBJECT_ID && valueType == BsonType.OBJECT_ID) {
                             String temp = arrValue.asObjectId().getValue().toString();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.DOUBLE && valueType == BsonType.DOUBLE) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.DOUBLE && valueType == BsonType.DOUBLE) {
                             double temp = arrValue.asDouble().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.BINARY && valueType == BsonType.BINARY) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.BINARY && valueType == BsonType.BINARY) {
                             byte[] temp = arrValue.asBinary().getData();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.INT32 && valueType == BsonType.INT32) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.INT32 && valueType == BsonType.INT32) {
                             int temp = arrValue.asInt32().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.INT64 && valueType == BsonType.INT64) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.INT64 && valueType == BsonType.INT64) {
                             long temp = arrValue.asInt64().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.DATE_TIME && valueType == BsonType.DATE_TIME) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.DATE_TIME && valueType == BsonType.DATE_TIME) {
                             long temp = arrValue.asInt64().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.DECIMAL128 && valueType == BsonType.DECIMAL128) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.DECIMAL128 && valueType == BsonType.DECIMAL128) {
                             String temp = arrValue.asDecimal128().getValue().toString();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.TIMESTAMP && valueType == BsonType.TIMESTAMP) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.TIMESTAMP && valueType == BsonType.TIMESTAMP) {
                             int temp = arrValue.asInt32().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.BOOLEAN && valueType == BsonType.BOOLEAN) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.BOOLEAN && valueType == BsonType.BOOLEAN) {
                             boolean temp = arrValue.asBoolean().getValue();
                             list.add(temp);
-                        } else if (arrValue.getBsonType() == BsonType.DOCUMENT && valueType == BsonType.DOCUMENT) {
+                        }
+                        else if (arrValue.getBsonType() == BsonType.DOCUMENT && valueType == BsonType.DOCUMENT) {
                             Schema schema1 = schema.field(keyvalueforStruct.getKey()).schema().valueSchema();
                             Struct struct1 = new Struct(schema1);
                             for (Entry<String, BsonValue> entry9 : arrValue.asDocument().entrySet()) {

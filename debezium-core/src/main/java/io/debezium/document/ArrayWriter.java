@@ -45,7 +45,8 @@ public interface ArrayWriter {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             write(array, stream);
             return stream.toByteArray();
-        } catch ( IOException e ) {
+        }
+        catch ( IOException e ) {
             // This really should never happen ...
             e.printStackTrace();
             return new byte[]{};

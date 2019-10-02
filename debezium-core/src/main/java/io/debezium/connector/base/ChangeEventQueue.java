@@ -156,7 +156,8 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
                 LOGGER.debug("checking for more records...");
             }
             return records;
-        } finally {
+        }
+        finally {
             previousContext.restore();
         }
     }

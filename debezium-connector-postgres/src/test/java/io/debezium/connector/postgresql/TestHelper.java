@@ -135,10 +135,12 @@ public final class TestHelper {
             Connection jdbcConn = connection.connection();
             if (!statement.endsWith("ROLLBACK;")) {
                 jdbcConn.commit();
-            } else {
+            }
+            else {
                 jdbcConn.rollback();
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

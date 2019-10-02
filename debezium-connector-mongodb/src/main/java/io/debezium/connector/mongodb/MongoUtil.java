@@ -152,7 +152,8 @@ public class MongoUtil {
                 while (cursor.hasNext()) {
                     try {
                         documentOperation.accept(cursor.next());
-                    } catch (InterruptedException e) {
+                    }
+                    catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         break;
                     }
@@ -253,29 +254,34 @@ public class MongoUtil {
                 if (address.startsWith("[")) {
                     // Definitely an IPv6 address without a replica set name ...
                     hostAndPort = address;
-                } else {
+                }
+                else {
                     // May start with replica set name ...
                     int index = address.indexOf("/[");
                     if (index >= 0) {
                         if ((index + 2) < address.length()) {
                             // replica set name with IPv6, so use just the IPv6 address ...
                             hostAndPort = address.substring(index + 1);
-                        } else {
+                        }
+                        else {
                             // replica set name with just opening bracket; this is invalid, so we'll ignore ...
                             continue;
                         }
-                    } else {
+                    }
+                    else {
                         // possible replica set name with IPv4 only
                         index = address.indexOf("/");
                         if (index >= 0) {
                             if ((index + 1) < address.length()) {
                                 // replica set name with IPv4, so use just the IPv4 address ...
                                 hostAndPort = address.substring(index + 1);
-                            } else {
+                            }
+                            else {
                                 // replica set name with no address ...
                                 hostAndPort = ServerAddress.defaultHost();
                             }
-                        } else {
+                        }
+                        else {
                             // No replica set name with IPv4, so use the whole address ...
                             hostAndPort = address;
                         }

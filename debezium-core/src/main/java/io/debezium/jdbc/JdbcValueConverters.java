@@ -380,7 +380,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
                 r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -405,7 +406,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, fallbackTimeWithTimeZone, (r) -> {
             try {
                 r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -448,7 +450,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
                 r.deliver(Timestamp.toEpochMillis(data, adjuster));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -472,7 +475,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
                 r.deliver(MicroTimestamp.toEpochMicros(data, adjuster));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -496,7 +500,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
                 r.deliver(NanoTimestamp.toEpochNanos(data, adjuster));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -520,7 +525,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
             try {
                 r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -545,7 +551,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             try {
                 r.deliver(Time.toMilliOfDay(data, supportsLargeTimeValues()));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -570,7 +577,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
                 r.deliver(MicroTime.toMicroOfDay(data, supportsLargeTimeValues()));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -595,7 +603,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
                 r.deliver(NanoTime.toNanoOfDay(data, supportsLargeTimeValues()));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -620,7 +629,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, new java.util.Date(0L), (r) -> {
             try {
                 r.deliver(new java.util.Date(Time.toMilliOfDay(data, supportsLargeTimeValues())));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -644,7 +654,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             try {
                 r.deliver(Date.toEpochDay(data, adjuster));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
                 logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                             fieldDefn.schema(), data.getClass(), data);
             }
@@ -673,7 +684,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 int epochDay = Date.toEpochDay(data, adjuster);
                 long epochMillis = TimeUnit.DAYS.toMillis(epochDay);
                 r.deliver(new java.util.Date(epochMillis));
-            } catch (IllegalArgumentException e) {
+            }
+            catch (IllegalArgumentException e) {
                 logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                             fieldDefn.schema(), data.getClass(), data);
             }
@@ -974,7 +986,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             if (data instanceof SQLXML) {
                 try {
                     r.deliver(((SQLXML) data).getString());
-                } catch (SQLException e) {
+                }
+                catch (SQLException e) {
                     throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
                             ": class=" + data.getClass(), e);
                 }

@@ -70,7 +70,8 @@ public class ZookeeperServer {
                 File temp = File.createTempFile("kafka", "suffix");
                 this.dataDir = temp.getParentFile();
                 temp.delete();
-            } catch ( IOException e ) {
+            }
+            catch ( IOException e ) {
                 throw new RuntimeException("Unable to create temporary directory", e);
             }
         }
@@ -83,7 +84,8 @@ public class ZookeeperServer {
             server = new ZooKeeperServer(snapshotDir, logDir, tickTime); 
             factory.startup(server);
             return this;
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             factory = null;
             Thread.currentThread().interrupt();
             throw new IOException(e);
@@ -109,16 +111,19 @@ public class ZookeeperServer {
                 try {
                     // Zookeeper 3.4.6 does not close the ZK DB during shutdown, so we must do this here to avoid file locks and open handles...
                     server.getZKDatabase().close();
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     LOGGER.error("Unable to close zookeeper DB", e);
                 }
-            } finally {
+            }
+            finally {
                 factory = null;
                 if (deleteData) {
                     // Delete all data ...
                     try {
                         IoUtil.delete(this.snapshotDir, this.logDir);
-                    } catch ( IOException e ) {
+                    }
+                    catch ( IOException e ) {
                         LOGGER.error("Unable to delete data upon shutdown", e);
                     }
                 }

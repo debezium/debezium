@@ -102,21 +102,29 @@ public class DdlParserSql2003 extends LegacyDdlParser {
     protected void parseNextStatement(Marker marker) {
         if (tokens.matches(DdlTokenizer.COMMENT)) {
             parseComment(marker);
-        } else if (tokens.matches("CREATE")) {
+        }
+        else if (tokens.matches("CREATE")) {
             parseCreate(marker);
-        } else if (tokens.matches("ALTER")) {
+        }
+        else if (tokens.matches("ALTER")) {
             parseAlter(marker);
-        } else if (tokens.matches("DROP")) {
+        }
+        else if (tokens.matches("DROP")) {
             parseDrop(marker);
-        } else if (tokens.matches("INSERT")) {
+        }
+        else if (tokens.matches("INSERT")) {
             parseInsert(marker);
-        } else if (tokens.matches("SET")) {
+        }
+        else if (tokens.matches("SET")) {
             parseSet(marker);
-        } else if (tokens.matches("GRANT")) {
+        }
+        else if (tokens.matches("GRANT")) {
             parseGrant(marker);
-        } else if (tokens.matches("REVOKE")) {
+        }
+        else if (tokens.matches("REVOKE")) {
             parseRevoke(marker);
-        } else {
+        }
+        else {
             parseUnknownStatement(marker);
         }
     }
@@ -128,12 +136,15 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         if (tokens.matches("TABLE") || tokens.matches("GLOBAL", "TEMPORARY", "TABLE") || tokens.matches("LOCAL", "TEMPORARY", "TABLE")) {
             parseCreateTable(marker);
             debugParsed(marker);
-        } else if (tokens.matches("VIEW") || tokens.matches("RECURSIVE", "VIEW")) {
+        }
+        else if (tokens.matches("VIEW") || tokens.matches("RECURSIVE", "VIEW")) {
             parseCreateView(marker);
             debugParsed(marker);
-        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+        }
+        else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
             parseCreateDatabase(marker);
-        } else {
+        }
+        else {
             parseCreateUnknown(marker);
         }
     }
@@ -174,11 +185,13 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             Marker tableContentStart = tokens.mark();
             try {
                 parseAsSubqueryClause(start, table);
-            } catch (ParsingException e) {
+            }
+            catch (ParsingException e) {
                 tokens.rewind(tableContentStart);
                 parseTableElementList(start, table);
             }
-        } else if (tokens.canConsume("OF")) {
+        }
+        else if (tokens.canConsume("OF")) {
             // Read the qualified name ...
             parseSchemaQualifiedName(start);
             if (tokens.canConsume("UNDER")) {
@@ -188,7 +201,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             if (tokens.matches('(')) {
                 parseTableElementList(start, table);
             }
-        } else if (tokens.canConsume("AS")) {
+        }
+        else if (tokens.canConsume("AS")) {
             parseAsSubqueryClause(start, table);
         }
 
@@ -243,11 +257,14 @@ public class DdlParserSql2003 extends LegacyDdlParser {
     protected void parseTableElement(Marker start, TableEditor table) {
         if (tokens.matchesAnyOf("CONSTRAINT", "UNIQUE", "PRIMARY", "FOREIGN", "CHECK")) {
             parseTableConstraintDefinition(start, table);
-        } else if (tokens.matches("LIKE")) {
+        }
+        else if (tokens.matches("LIKE")) {
             parseTableLikeClause(start, table);
-        } else if (tokens.matches("REF", "IS")) {
+        }
+        else if (tokens.matches("REF", "IS")) {
             parseSelfReferencingColumnSpec(start, table);
-        } else {
+        }
+        else {
             // Obtain the column editor ...
             String columnName = tokens.consume();
             Column existingColumn = table.columnWithName(columnName);
@@ -256,7 +273,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
 
             if (tokens.matches("WITH", "OPTIONS")) {
                 parseColumnOptions(start, columnName, tokens, column);
-            } else {
+            }
+            else {
                 parseColumnDefinition(start, columnName, tokens, table, column, isPrimaryKey);
             }
 
@@ -275,10 +293,12 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         }
         if (tokens.canConsume("UNIQUE", "(", "VALUE", ")")) {
             table.setUniqueValues();
-        } else if (tokens.canConsume("UNIQUE") || tokens.canConsume("PRIMARY", "KEY")) {
+        }
+        else if (tokens.canConsume("UNIQUE") || tokens.canConsume("PRIMARY", "KEY")) {
             List<String> pkColumnNames = parseColumnNameList(start);
             table.setPrimaryKeyNames(pkColumnNames);
-        } else if (tokens.canConsume("FOREIGN", "KEY")) {
+        }
+        else if (tokens.canConsume("FOREIGN", "KEY")) {
             parseColumnNameList(start);
             tokens.consume("REFERENCES");
             parseSchemaQualifiedName(start);
@@ -291,7 +311,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
                     parseReferentialTriggeredActions(start);
                 }
             }
-        } else if (tokens.canConsume("CHECK", "(")) {
+        }
+        else if (tokens.canConsume("CHECK", "(")) {
             // Consume everything (we don't care what it is) ...
             tokens.consumeThrough(')', '(');
         }
@@ -304,7 +325,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             if (tokens.canConsume("ON", "DELETE")) {
                 parseReferentialAction(start);
             }
-        } else if (tokens.canConsume("DELETE")) {
+        }
+        else if (tokens.canConsume("DELETE")) {
             parseReferentialAction(start);
             if (tokens.canConsume("ON", "UPDATE")) {
                 parseReferentialAction(start);
@@ -314,10 +336,14 @@ public class DdlParserSql2003 extends LegacyDdlParser {
 
     protected void parseReferentialAction(Marker start) {
         if (tokens.canConsume("CASCADE")) {
-        } else if (tokens.canConsume("SET", "NULL")) {
-        } else if (tokens.canConsume("SET", "DEFAULT")) {
-        } else if (tokens.canConsume("RESTRICT")) {
-        } else {
+        }
+        else if (tokens.canConsume("SET", "NULL")) {
+        }
+        else if (tokens.canConsume("SET", "DEFAULT")) {
+        }
+        else if (tokens.canConsume("RESTRICT")) {
+        }
+        else {
             tokens.consume("NO", "ACTION");
         }
     }
@@ -368,7 +394,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         }
         if (tokens.matches("DEFAULT")) {
             parseDefaultClause(start, column);
-        } else if (tokens.matches("GENERATED")) {
+        }
+        else if (tokens.matches("GENERATED")) {
             parseIdentityColumnSpec(start, column);
         }
         while (tokens.matchesAnyOf("NOT", "UNIQUE", "PRIMARY", "CHECK", "REFERENCES", "CONSTRAINT")) {
@@ -387,15 +414,18 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         // Handle the constraint ...
         if (tokens.canConsume("NOT", "NULL")) {
             column.optional(false);
-        } else if (tokens.canConsume("UNIQUE") || tokens.canConsume("PRIMARY", "KEY")) {
+        }
+        else if (tokens.canConsume("UNIQUE") || tokens.canConsume("PRIMARY", "KEY")) {
             isPrimaryKey.set(true);
-        } else if (tokens.canConsume("REFERENCES", "ARE")) {
+        }
+        else if (tokens.canConsume("REFERENCES", "ARE")) {
             tokens.canConsume("NOT");
             tokens.consume("CHECKED");
             if (tokens.matches("ON", "DELETE")) {
                 parseReferentialAction(start);
             }
-        } else if (tokens.canConsume("CHECK", "(")) {
+        }
+        else if (tokens.canConsume("CHECK", "(")) {
             // Consume everything (we don't care what it is) ...
             tokens.consumeThrough(')', '(');
         }
@@ -408,10 +438,12 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             tokens.consumeAnyOf("DEFERRED", "IMMEDIATE");
             if (tokens.canConsume("NOT", "DEFERRABLE")) {
                 // do nothing ...
-            } else if (tokens.canConsume("DEFERRABLE")) {
+            }
+            else if (tokens.canConsume("DEFERRABLE")) {
                 // do nothing ...
             }
-        } else if (tokens.canConsume("NOT", "DEFERRABLE") || tokens.canConsume("DEFERRABLE")) {
+        }
+        else if (tokens.canConsume("NOT", "DEFERRABLE") || tokens.canConsume("DEFERRABLE")) {
             if (tokens.canConsume("INITIALLY")) {
                 tokens.consumeAnyOf("DEFERRED", "IMMEDIATE");
             }
@@ -425,7 +457,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         tokens.consume("GENERATED");
         if (tokens.canConsume("BY")) {
             tokens.consume("DEFAULT");
-        } else {
+        }
+        else {
             tokens.consume("ALWAYS");
             if (tokens.canConsume("AS", "(")) {
                 // Consume everything (we don't care what it is) ...
@@ -444,23 +477,29 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         tokens.consume("DEFAULT");
         if (tokens.canConsume("CURRENT", "DATE")) {
             // do nothing, since we don't really care too much about the default value as a function
-        } else if (tokens.canConsume("CURRENT", "TIME") || tokens.canConsume("CURRENT", "TIMESTAMP")
+        }
+        else if (tokens.canConsume("CURRENT", "TIME") || tokens.canConsume("CURRENT", "TIMESTAMP")
                 || tokens.canConsume("LOCALTIME") || tokens.canConsume("LOCALTIMESTAMP")) {
             if (tokens.canConsume('(')) {
                 tokens.consumeInteger(); // precision
                 tokens.consume(')');
             }
             // do nothing, since we don't really care too much about the default value as a function
-        } else if (tokens.canConsume("USER") || tokens.canConsume("CURRENT", "USER") || tokens.canConsume("CURRENT", "ROLE")
+        }
+        else if (tokens.canConsume("USER") || tokens.canConsume("CURRENT", "USER") || tokens.canConsume("CURRENT", "ROLE")
                 || tokens.canConsume("SESSION", "USER") || tokens.canConsume("SYSTEM", "USER") || tokens.canConsume("CURRENT", "PATH")) {
             // do nothing, since we don't really care too much about the default value as a function
-        } else if (tokens.canConsume("NULL")) {
+        }
+        else if (tokens.canConsume("NULL")) {
             // do nothing ...
-        } else if (tokens.canConsume("ARRAY", "[", "]")) {
+        }
+        else if (tokens.canConsume("ARRAY", "[", "]")) {
             // do nothing ...
-        } else if (tokens.canConsume("MULTISET", "[", "]")) {
+        }
+        else if (tokens.canConsume("MULTISET", "[", "]")) {
             // do nothing ...
-        } else {
+        }
+        else {
             parseLiteral(start);
             // do nothing ...
         }
@@ -483,7 +522,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         boolean negative = false;
         if (tokens.canConsume('+')) {
             negative = false;
-        } else if (tokens.canConsume('-')) {
+        }
+        else if (tokens.canConsume('-')) {
             negative = true;
         }
         String str = parseIntervalString(start);
@@ -525,10 +565,14 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         tokens.consume("CHECKED");
         if (tokens.canConsume("ON", "DELETE")) {
             if (tokens.canConsume("CASCADE")) {
-            } else if (tokens.canConsume("SET", "NULL")) {
-            } else if (tokens.canConsume("SET", "DEFAULT")) {
-            } else if (tokens.canConsume("RESTRICT")) {
-            } else {
+            }
+            else if (tokens.canConsume("SET", "NULL")) {
+            }
+            else if (tokens.canConsume("SET", "DEFAULT")) {
+            }
+            else if (tokens.canConsume("RESTRICT")) {
+            }
+            else {
                 tokens.consume("NO", "ACTION");
             }
         }
@@ -559,7 +603,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             if (tokens.matches('(')) {
                 columnNames = parseColumnNameList(start);
             }
-        } else if (tokens.matches('(')) {
+        }
+        else if (tokens.matches('(')) {
             columnNames = parseColumnNameList(start);
         }
         tokens.canConsume("AS");
@@ -588,9 +633,11 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         if (tokens.matches("TABLE") || tokens.matches("IGNORE", "TABLE")) {
             parseAlterTable(marker);
             debugParsed(marker);
-        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+        }
+        else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
             parseAlterDatabase(marker);
-        } else {
+        }
+        else {
             parseAlterUnknown(marker);
         }
     }
@@ -605,7 +652,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
                 || tokens.matches("ADD", "FOREIGN") || tokens.matches("ADD", "CHECK")) {
             tokens.consume("ADD");
             parseTableConstraintDefinition(start, table);
-        } else if (tokens.canConsume("ADD", "COLUMN") || tokens.canConsume("ADD")) {
+        }
+        else if (tokens.canConsume("ADD", "COLUMN") || tokens.canConsume("ADD")) {
             // Adding a column ...
             String columnName = tokens.consume();
             ColumnEditor column = Column.editor().name(columnName);
@@ -618,7 +666,8 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             if (isPrimaryKey.get()) {
                 table.setPrimaryKeyNames(newColumnDefn.name());
             }
-        } else if (tokens.canConsume("ALTER", "COLUMN") || tokens.canConsume("ALTER")) {
+        }
+        else if (tokens.canConsume("ALTER", "COLUMN") || tokens.canConsume("ALTER")) {
             // Altering a column ...
             String columnName = tokens.consume();
             Column existingColumn = table.columnWithName(columnName);
@@ -627,9 +676,11 @@ public class DdlParserSql2003 extends LegacyDdlParser {
             // Update the table ...
             Column newColumnDefn = column.create();
             table.setColumns(newColumnDefn);
-        } else if (tokens.matches("DROP", "CONSTRAINT")) {
+        }
+        else if (tokens.matches("DROP", "CONSTRAINT")) {
             parseDropTableConstraint(start, table);
-        } else if (tokens.canConsume("DROP", "COLUMN") || tokens.canConsume("DROP")) {
+        }
+        else if (tokens.canConsume("DROP", "COLUMN") || tokens.canConsume("DROP")) {
             parseDropColumn(start, table);
         }
 
@@ -653,29 +704,39 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         if (tokens.canConsume("SET", "INCREMENT", "BY")) {
             parseNumericLiteral(start, true);
             // do nothing ...
-        } else if (tokens.canConsume("SET", "MAXVALUE")) {
+        }
+        else if (tokens.canConsume("SET", "MAXVALUE")) {
             parseNumericLiteral(start, true);
             // do nothing ...
-        } else if (tokens.canConsume("SET", "NO", "MAXVALUE")) {
+        }
+        else if (tokens.canConsume("SET", "NO", "MAXVALUE")) {
             // do nothing ...
-        } else if (tokens.canConsume("SET", "MINVALUE")) {
+        }
+        else if (tokens.canConsume("SET", "MINVALUE")) {
             parseNumericLiteral(start, true);
             // do nothing ...
-        } else if (tokens.canConsume("SET", "NO", "MINVALUE")) {
+        }
+        else if (tokens.canConsume("SET", "NO", "MINVALUE")) {
             // do nothing ...
-        } else if (tokens.canConsume("SET", "CYCLE")) {
+        }
+        else if (tokens.canConsume("SET", "CYCLE")) {
             // do nothing ...
-        } else if (tokens.canConsume("SET", "NO", "CYCLE")) {
+        }
+        else if (tokens.canConsume("SET", "NO", "CYCLE")) {
             // do nothing ...
-        } else if (tokens.canConsume("DROP", "DEFAULT")) {
+        }
+        else if (tokens.canConsume("DROP", "DEFAULT")) {
             // do nothing ...
-        } else if (tokens.canConsume("ADD", "SCOPE")) {
+        }
+        else if (tokens.canConsume("ADD", "SCOPE")) {
             parseSchemaQualifiedName(start);
             // do nothing ...
-        } else if (tokens.canConsume("DROP", "SCOPE")) {
+        }
+        else if (tokens.canConsume("DROP", "SCOPE")) {
             tokens.consumeAnyOf("CASCADE", "RESTRICT");
             // do nothing ...
-        } else if (tokens.canConsume("SET")) {
+        }
+        else if (tokens.canConsume("SET")) {
             parseDefaultClause(start, column);
         }
     }
@@ -691,12 +752,15 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         if (tokens.matches("TABLE") || tokens.matches("TEMPORARY", "TABLE")) {
             parseDropTable(marker);
             debugParsed(marker);
-        } else if (tokens.matches("VIEW")) {
+        }
+        else if (tokens.matches("VIEW")) {
             parseDropView(marker);
             debugParsed(marker);
-        } else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
+        }
+        else if (tokens.matchesAnyOf("DATABASE", "SCHEMA")) {
             parseDropDatabase(marker);
-        } else {
+        }
+        else {
             parseDropUnknown(marker);
         }
     }

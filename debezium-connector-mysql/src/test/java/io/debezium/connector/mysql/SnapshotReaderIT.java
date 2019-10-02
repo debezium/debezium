@@ -62,14 +62,16 @@ public class SnapshotReaderIT {
         if (reader != null) {
             try {
                 reader.stop();
-            } finally {
+            }
+            finally {
                 reader = null;
             }
         }
         if (context != null) {
             try {
                 context.shutdown();
-            } finally {
+            }
+            finally {
                 context = null;
                 Testing.Files.delete(DB_HISTORY_PATH);
             }
@@ -178,7 +180,8 @@ public class SnapshotReaderIT {
         if (completed.await(10, TimeUnit.SECONDS)) {
             // completed the snapshot ...
             Testing.print("completed the snapshot");
-        } else {
+        }
+        else {
             fail("failed to complete the snapshot within 10 seconds");
         }
     }
@@ -277,7 +280,8 @@ public class SnapshotReaderIT {
         if (completed.await(10, TimeUnit.SECONDS)) {
             // completed the snapshot ...
             Testing.print("completed the snapshot");
-        } else {
+        }
+        else {
             fail("failed to complete the snapshot within 10 seconds");
         }
     }
@@ -380,7 +384,8 @@ public class SnapshotReaderIT {
         if (completed.await(10, TimeUnit.SECONDS)) {
             // completed the snapshot ...
             Testing.print("completed the snapshot");
-        } else {
+        }
+        else {
             fail("failed to complete the snapshot within 10 seconds");
         }
     }
@@ -453,7 +458,8 @@ public class SnapshotReaderIT {
         if (completed.await(10, TimeUnit.SECONDS)) {
             // completed the snapshot ...
             Testing.print("completed the snapshot");
-        } else {
+        }
+        else {
             fail("failed to complete the snapshot within 10 seconds");
         }
     }

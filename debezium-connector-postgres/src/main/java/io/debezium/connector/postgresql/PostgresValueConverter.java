@@ -574,9 +574,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
             // return the smallest possible value
             if (Short.MIN_VALUE <= longValue && longValue <= Short.MAX_VALUE) {
                 data = (short) longValue;
-            } else if (Integer.MIN_VALUE <= longValue && longValue <= Integer.MAX_VALUE) {
+            }
+            else if (Integer.MIN_VALUE <= longValue && longValue <= Integer.MAX_VALUE) {
                 data = (int) longValue;
-            } else {
+            }
+            else {
                 data = longValue;
             }
         }
@@ -650,7 +652,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String) data);
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
-            } catch (IllegalArgumentException | UnsupportedEncodingException e) {
+            }
+            catch (IllegalArgumentException | UnsupportedEncodingException e) {
                 logger.warn("Error converting to a Geometry type", column);
             }
         });
@@ -674,7 +677,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String) data);
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
-            } catch (IllegalArgumentException | UnsupportedEncodingException e) {
+            }
+            catch (IllegalArgumentException | UnsupportedEncodingException e) {
                 logger.warn("Error converting to a Geography type", column);
             }
         });
@@ -714,7 +718,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 try {
                     PGpoint pgPoint = new PGpoint(dataString);
                     r.deliver(Point.createValue(schema, pgPoint.x, pgPoint.y));
-                } catch (SQLException e) {
+                }
+                catch (SQLException e) {
                     logger.warn("Error converting the string '{}' to a PGPoint type for the column '{}'", dataString, column);
                 }
             }

@@ -230,10 +230,12 @@ public class KafkaCluster {
                     dataDir = new File(temp.getParentFile(), "cluster");
                     dataDir.mkdirs();
                     temp.delete();
-                } catch (IOException e) {
+                }
+                catch (IOException e) {
                     throw new RuntimeException("Unable to create temporary directory", e);
                 }
-            } else if (deleteDataPriorToStartup) {
+            }
+            else if (deleteDataPriorToStartup) {
                 IoUtil.delete(dataDir);
                 dataDir.mkdirs();
             }
@@ -261,19 +263,24 @@ public class KafkaCluster {
         if (running) {
             try {
                 kafkaServers.values().forEach(this::shutdownReliably);
-            } finally {
+            }
+            finally {
                 try {
                     zkServer.shutdown(deleteDataUponShutdown);
-                } catch (Throwable t) {
+                }
+                catch (Throwable t) {
                     LOGGER.error("Error while shutting down {}", zkServer, t);
-                } finally {
+                }
+                finally {
                     if (deleteDataUponShutdown) {
                         try {
                             kafkaServers.values().forEach(KafkaServer::deleteData);
-                        } finally {
+                        }
+                        finally {
                             try {
                                 IoUtil.delete(this.dataDir);
-                            } catch (IOException e) {
+                            }
+                            catch (IOException e) {
                                 LOGGER.error("Error while deleting cluster data", e);
                             }
                         }
@@ -391,7 +398,8 @@ public class KafkaCluster {
     private void shutdownReliably(KafkaServer server) {
         try {
             server.shutdown(deleteDataUponShutdown);
-        } catch (Throwable t) {
+        }
+        catch (Throwable t) {
             LOGGER.error("Error while shutting down {}", server, t);
         }
     }
@@ -741,7 +749,8 @@ public class KafkaCluster {
             Thread t = new Thread(() -> {
                 try {
                     producer.accept(interactive);
-                } finally {
+                }
+                finally {
                     interactive.close();
                 }
             });

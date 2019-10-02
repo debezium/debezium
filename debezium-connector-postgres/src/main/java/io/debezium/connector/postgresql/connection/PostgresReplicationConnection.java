@@ -198,7 +198,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 }
             }
             hasInitedSlot = true;
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new JdbcConnectionException(e);
         }
     }
@@ -502,7 +503,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         // Needed by tests when connections are opened and closed in a fast sequence
         try {
             Thread.sleep(10);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
         }
         stream.forceUpdateStatus();
         return stream;

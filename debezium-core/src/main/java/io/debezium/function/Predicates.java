@@ -75,7 +75,8 @@ public class Predicates {
         for (String literalOrPattern : LITERAL_SEPARATOR_PATTERN.split(literalsOrPatterns)) {
             if (isLiteral.test(literalOrPattern)) {
                 literals.add(literalOrPattern.toLowerCase());
-            } else {
+            }
+            else {
                 patterns.add(Pattern.compile(literalOrPattern, Pattern.CASE_INSENSITIVE));
             }
         }

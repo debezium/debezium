@@ -200,7 +200,8 @@ public class KafkaServer {
                 File temp = File.createTempFile("kafka", "suffix");
                 this.logsDir = temp.getParentFile();
                 temp.delete();
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 throw new RuntimeException("Unable to create temporary directory", e);
             }
         }
@@ -221,7 +222,8 @@ public class KafkaServer {
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             adminZkClient = new AdminZkClient(server.zkClient());
             return this;
-        } catch (RuntimeException e) {
+        }
+        catch (RuntimeException e) {
             server = null;
             throw e;
         }
@@ -242,7 +244,8 @@ public class KafkaServer {
                     JavaConverters.asJavaIterableConverter(server.logManager().allLogs()).asJava().forEach(Log::delete);
                 }
                 LOGGER.info("Stopped Kafka server {} at {}", brokerId, getConnection());
-            } finally {
+            }
+            finally {
                 server = null;
                 adminZkClient = null;
                 port = desiredPort;
@@ -258,7 +261,8 @@ public class KafkaServer {
             // Delete all data ...
             try {
                 IoUtil.delete(this.logsDir);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 LOGGER.error("Unable to delete directory '{}'", this.logsDir, e);
             }
         }

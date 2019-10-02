@@ -83,7 +83,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     LOGGER.debug("retrieved latest position from stored offset '{}'", ReplicationConnection.format(lsn));
                 }
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn));
-            } else {
+            }
+            else {
                 LOGGER.info("no previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming());
             }

@@ -118,7 +118,8 @@ public class KafkaClusterTest {
         if (completion.await(10, TimeUnit.SECONDS)) {
             sw.stop();
             Testing.debug("Both consumer and producer completed normally in " + sw.durations());
-        } else {
+        }
+        else {
             Testing.debug("Consumer and/or producer did not completed normally");
         }
 
@@ -156,7 +157,8 @@ public class KafkaClusterTest {
         if (completion.await(10, TimeUnit.SECONDS)) {
             sw.stop();
             Testing.debug("The consumer completed normally in " + sw.durations());
-        } else {
+        }
+        else {
             Testing.debug("Consumer did not completed normally");
         }
 
@@ -195,7 +197,8 @@ public class KafkaClusterTest {
         if (completion.await(10, TimeUnit.SECONDS)) {
             sw.stop();
             Testing.debug("The consumer completed normally in " + sw.durations());
-        } else {
+        }
+        else {
             Testing.debug("Consumer did not completed normally");
         }
         assertThat(messagesRead.get()).isEqualTo(numMessages);

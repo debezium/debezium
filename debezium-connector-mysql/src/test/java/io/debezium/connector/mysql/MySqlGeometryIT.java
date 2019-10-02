@@ -57,7 +57,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -101,7 +102,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             if (record.topic().endsWith("dbz_222_point")) {
                 assertPoint(value);
-            } else if (record.topic().endsWith("dbz_507_geometry")) {
+            }
+            else if (record.topic().endsWith("dbz_507_geometry")) {
                 assertGeomRecord(value);
             }
         });
@@ -146,7 +148,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             if (record.topic().endsWith("dbz_222_point")) {
                 assertPoint(value);
-            } else if (record.topic().endsWith("dbz_507_geometry")) {
+            }
+            else if (record.topic().endsWith("dbz_507_geometry")) {
                 assertGeomRecord(value);
             }
         });
@@ -172,7 +175,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
             Point point = (Point) WkbGeometryReader.readGeometry(new ByteReader((byte[]) after.getStruct("point")
                     .get("wkb")));
             databaseDifferences.geometryAssertPoints(expectedX, expectedY, point.getX(), point.getY());
-        } else if (expectedX != null) {
+        }
+        else if (expectedX != null) {
             Assert.fail("Got a null geometry but didn't expect to");
         }
     }
@@ -195,7 +199,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
 
             assertThat(after.getStruct("collection").getInt32("srid")).isEqualTo(4326);
             assertThat(DatatypeConverter.printHexBinary(after.getStruct("collection").getBytes("wkb"))).isEqualTo("0107000000020000000101000000000000000000F03F000000000000F03F01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F");
-        } else if (i == 2) {
+        }
+        else if (i == 2) {
             // INSERT INTO dbz_507_geometry VALUES (2, ST_GeomFromText('LINESTRING(0 0, 1 1)'), NULL, NULL, NULL);
             assertThat(after.getStruct("geom").getInt32("srid")).isEqualTo(null);
             assertThat(DatatypeConverter.printHexBinary(after.getStruct("geom").getBytes("wkb"))).isEqualTo("01020000000200000000000000000000000000000000000000000000000000F03F000000000000F03F");

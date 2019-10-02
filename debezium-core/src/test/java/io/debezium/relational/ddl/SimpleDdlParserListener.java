@@ -81,7 +81,8 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
             TableId previousTableId = alterTableEvent().previousTableId();
             if ( oldName == null ) {
                 assertThat(previousTableId).isNull();
-            } else {
+            }
+            else {
                 assertThat(previousTableId.table()).isEqualTo(oldName);
             }
             return this;

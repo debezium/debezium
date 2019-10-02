@@ -48,7 +48,8 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -156,7 +157,8 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
     protected void check(String json, String expectedBinlog, Consumer<String> msg ) {
         if ((json == null && expectedBinlog != null) || (json != null && !json.equals(expectedBinlog))) {
             msg.accept("JSON was:     " + json + System.lineSeparator() + "but expected: " + expectedBinlog);
-        } else {
+        }
+        else {
             assertThat(json).isEqualTo(expectedBinlog);
         }
     }

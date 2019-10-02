@@ -77,7 +77,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     public void afterEach() {
         try {
             stopConnector();
-        } finally {
+        }
+        finally {
             Testing.Files.delete(DB_HISTORY_PATH);
         }
     }
@@ -628,7 +629,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             // Binlog position in offset should be more than before the inserts, but less than the position after the inserts ...
             assertThat(persistedOffsetSource.binlogPosition()).isGreaterThan(positionBeforeInserts.binlogPosition());
             assertThat(persistedOffsetSource.binlogPosition()).isLessThan(positionAfterInserts.binlogPosition());
-        } else {
+        }
+        else {
             // the replica is not the same server as the master, so it will have a different binlog filename and position ...
         }
         // Event number is 2 ...
@@ -1128,7 +1130,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             try {
                 value.get("order_number");
                 fail("The 'order_number' field was found but should not exist");
-            } catch (DataException e) {
+            }
+            catch (DataException e) {
                 // expected
             }
         });

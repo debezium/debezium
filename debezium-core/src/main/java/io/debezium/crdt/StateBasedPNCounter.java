@@ -74,10 +74,12 @@ class StateBasedPNCounter implements PNCounter {
             PNCount changes = (PNCount) other;
             this.adds += changes.getIncrement();
             this.removes += changes.getDecrement();
-        } else if (other instanceof GCount) {
+        }
+        else if (other instanceof GCount) {
             GCount changes = (GCount) other;
             this.adds += changes.getIncrement();
-        } else if (other instanceof Count) {
+        }
+        else if (other instanceof Count) {
             Count changes = other;
             this.adds += changes.get();
         }

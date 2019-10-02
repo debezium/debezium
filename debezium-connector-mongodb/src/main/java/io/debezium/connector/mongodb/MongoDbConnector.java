@@ -123,7 +123,8 @@ public class MongoDbConnector extends SourceConnector {
                     Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
             replicaSetMonitorExecutor.execute(monitorThread);
             logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.hosts());
-        } finally {
+        }
+        finally {
             previousLogContext.restore();
         }
     }
@@ -165,7 +166,8 @@ public class MongoDbConnector extends SourceConnector {
             }
             logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
             return taskConfigs;
-        } finally {
+        }
+        finally {
             previousLogContext.restore();
         }
     }
@@ -183,10 +185,12 @@ public class MongoDbConnector extends SourceConnector {
                 if ( this.connectionContext != null ) {
                     this.connectionContext.shutdown();
                 }
-            } finally {
+            }
+            finally {
                 logger.info("Stopped MongoDB connector");
             }
-        } finally {
+        }
+        finally {
             if ( previousLogContext != null ) {
                 previousLogContext.restore();
             }
@@ -219,7 +223,8 @@ public class MongoDbConnector extends SourceConnector {
                 try ( MongoClient client = connContext.clientFor(connContext.hosts()) ) {
                     client.listDatabaseNames();
                 }
-            } catch (MongoException e) {
+            }
+            catch (MongoException e) {
                 hostsValue.addErrorMessage("Unable to connect: " + e.getMessage());
             }
         }

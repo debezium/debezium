@@ -28,7 +28,8 @@ public class DataTypeBuilder {
                 prefix.append(' ');
             }
             prefix.append(str);
-        } else {
+        }
+        else {
             // Length has already been set, so add as a suffix ...
             if (suffix.length() != 0) {
                 suffix.append(' ');
@@ -82,7 +83,8 @@ public class DataTypeBuilder {
                 expression.append(this.scale);
             }
             expression.append(')');
-        } else if (parameters != null ) {
+        }
+        else if (parameters != null ) {
             expression.append('(');
             expression.append(parameters);
             expression.append(')');

@@ -176,7 +176,8 @@ final class ComparableValue implements Value {
         Comparable<Object> thatValue = (Comparable<Object>) ((ComparableValue) that.comparable()).asObject();
         if ( thisValue.getClass().isAssignableFrom(thatValue.getClass())) {
             return thisValue.compareTo(thatValue);
-        } else if (thatValue.getClass().isAssignableFrom(thisValue.getClass())) {
+        }
+        else if (thatValue.getClass().isAssignableFrom(thisValue.getClass())) {
             return thatValue.compareTo(thisValue) * -1; // correct for the reversed comparison
         }
         return ((Comparable<Object>) this.value).compareTo(that.asObject());

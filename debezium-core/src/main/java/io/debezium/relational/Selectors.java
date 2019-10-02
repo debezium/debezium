@@ -67,7 +67,8 @@ public class Selectors {
         public DatabaseSelectionPredicateBuilder includeDatabases(String databaseNames) {
             if (databaseNames == null || databaseNames.trim().isEmpty()) {
                 dbInclusions = null;
-            } else {
+            }
+            else {
                 dbInclusions = Predicates.includes(databaseNames);
             }
             return this;
@@ -84,7 +85,8 @@ public class Selectors {
         public DatabaseSelectionPredicateBuilder excludeDatabases(String databaseNames) {
             if (databaseNames == null || databaseNames.trim().isEmpty()) {
                 dbExclusions = null;
-            } else {
+            }
+            else {
                 dbExclusions = Predicates.excludes(databaseNames);
             }
             return this;
@@ -133,7 +135,8 @@ public class Selectors {
         public TableSelectionPredicateBuilder includeDatabases(String databaseNames) {
             if (isEmpty(databaseNames)) {
                 dbInclusions = null;
-            } else {
+            }
+            else {
                 dbInclusions = Predicates.includes(databaseNames);
             }
             return this;
@@ -150,7 +153,8 @@ public class Selectors {
         public TableSelectionPredicateBuilder excludeDatabases(String databaseNames) {
             if (isEmpty(databaseNames)) {
                 dbExclusions = null;
-            } else {
+            }
+            else {
                 dbExclusions = Predicates.excludes(databaseNames);
             }
             return this;
@@ -166,7 +170,8 @@ public class Selectors {
         public TableSelectionPredicateBuilder includeSchemas(String schemaNames) {
             if (isEmpty(schemaNames)) {
                 schemaInclusions = null;
-            } else {
+            }
+            else {
                 schemaInclusions = Predicates.includes(schemaNames);
             }
             return this;
@@ -183,7 +188,8 @@ public class Selectors {
         public TableSelectionPredicateBuilder excludeSchemas(String schemaNames) {
             if (isEmpty(schemaNames)) {
                 schemaExclusions = null;
-            } else {
+            }
+            else {
                 schemaExclusions = Predicates.excludes(schemaNames);
             }
             return this;
@@ -300,7 +306,8 @@ public class Selectors {
             assert schemaFilter != null;
             if (tableFilter != null) {
                 return (id) -> schemaFilter.test(id.schema()) && tableFilter.test(id);
-            } else {
+            }
+            else {
                 return (id) -> schemaFilter.test(id.schema());
             }
         }
@@ -312,12 +319,15 @@ public class Selectors {
             if (schemaFilter != null) {
                 if (tableFilter != null) {
                     return (id) -> dbFilter.test(id.catalog()) && schemaFilter.test(id.schema()) && tableFilter.test(id);
-                } else {
+                }
+                else {
                     return (id) -> schemaFilter.test(id.schema());
                 }
-            } else if (tableFilter != null) {
+            }
+            else if (tableFilter != null) {
                 return (id) -> dbFilter.test(id.catalog()) && tableFilter.test(id);
-            } else {
+            }
+            else {
                 return (id) -> dbFilter.test(id.catalog());
             }
         }

@@ -40,14 +40,17 @@ public class ConditionalFail extends AnnotationBasedTestRule {
                     }
                     if (condition.get() && failure == null) {
                         Assert.fail("Expected failing test for " + description);
-                    } else if (condition.get() && failure != null) {
+                    }
+                    else if (condition.get() && failure != null) {
                         System.out.println("Ignored failure for " + description);
-                    } else if (failure != null) {
+                    }
+                    else if (failure != null) {
                         throw failure;
                     }
                 }
             };
-        } catch (final InstantiationException | IllegalAccessException e) {
+        }
+        catch (final InstantiationException | IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
     }

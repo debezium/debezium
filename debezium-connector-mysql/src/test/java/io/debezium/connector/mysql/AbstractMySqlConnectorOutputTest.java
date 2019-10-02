@@ -92,9 +92,11 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
                     Testing.debug("Waiting for replica's GTIDs to catch up to master's...");
                     Thread.sleep(100);
                 }
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            } finally {
+            }
+            finally {
                 latch.countDown();
             }
         };
@@ -107,7 +109,8 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
                 checker.interrupt();
             }
             Testing.print("Waited a total of " + sw.durations().statistics().getTotalAsString() + " for the replica to catch up to the master.");
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
@@ -143,9 +146,11 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
                         // We have one GTID other than the 'server_uuid', so this must be the master ...
                         String masterUuid = uuids.iterator().next();
                         variables.put("master_uuid", masterUuid);
-                    } else if(uuids.isEmpty()) {
+                    }
+                    else if(uuids.isEmpty()) {
                         // do nothing ...
-                    } else {
+                    }
+                    else {
                         logger.warn("More than 2 GTID sources were found, so unable to determine master UUID: {}", gtidSet);
                     }
                 }

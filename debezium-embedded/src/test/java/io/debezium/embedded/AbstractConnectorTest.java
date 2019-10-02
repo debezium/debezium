@@ -146,7 +146,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 try {
                     // Oracle connector needs longer time to complete shutdown
                     engine.await(60, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     logger.warn("Engine has not stopped on time");
                     Thread.currentThread().interrupt();
                 }
@@ -158,7 +159,8 @@ public abstract class AbstractConnectorTest implements Testing {
                     while (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
                         // wait for completion ...
                     }
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     logger.warn("Executor has not stopped on time");
                     Thread.currentThread().interrupt();
                 }
@@ -168,7 +170,8 @@ public abstract class AbstractConnectorTest implements Testing {
                     while (!engine.await(60, TimeUnit.SECONDS)) {
                         // Wait for connector to stop completely ...
                     }
-                } catch (InterruptedException e) {
+                }
+                catch (InterruptedException e) {
                     logger.warn("Connector has not stopped on time");
                     Thread.currentThread().interrupt();
                 }
@@ -176,7 +179,8 @@ public abstract class AbstractConnectorTest implements Testing {
             if (callback != null){
                 callback.accept(engine != null ? engine.isRunning() : false);
             }
-        } finally {
+        }
+        finally {
             engine = null;
             executor = null;
         }
@@ -206,7 +210,8 @@ public abstract class AbstractConnectorTest implements Testing {
         return (success, msg, error) -> {
             if (success) {
                 logger.info(msg);
-            } else {
+            }
+            else {
                 logger.error(msg, error);
             }
         };
@@ -274,7 +279,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 if (callback != null) {
                     callback.handle(success, msg, error);
                 }
-            } finally {
+            }
+            finally {
                 if (!success) {
                     // we only unblock if there was an error; in all other cases we're unblocking when a task has been started
                     latch.countDown();
@@ -326,7 +332,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 // maybe it takes more time to start up, so just log a warning and continue
                 logger.warn("The connector did not finish starting its task(s) or complete in the expected amount of time");
             }
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             if (Thread.interrupted()) {
                 fail("Interrupted while waiting for engine startup");
             }
@@ -396,12 +403,14 @@ public abstract class AbstractConnectorTest implements Testing {
                     Testing.debug("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
                             + (numberOfRecords - recordsConsumed) + " more)");
                     debug(record);
-                } else if (Testing.Print.isEnabled()) {
+                }
+                else if (Testing.Print.isEnabled()) {
                     Testing.print("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
                             + (numberOfRecords - recordsConsumed) + " more)");
                     print(record);
                 }
-            } else {
+            }
+            else {
                 if (++nullReturn >= BREAK_AFTER_NULLS) {
                     return recordsConsumed;
                 }
@@ -742,7 +751,8 @@ public abstract class AbstractConnectorTest implements Testing {
         try {
             OffsetStorageReaderImpl offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
             return offsetReader.offsets(partitions);
-        } finally {
+        }
+        finally {
             offsetStore.stop();
         }
     }

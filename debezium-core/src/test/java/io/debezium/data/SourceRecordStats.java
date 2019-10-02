@@ -34,7 +34,8 @@ public class SourceRecordStats implements Consumer<SourceRecord> {
     public void accept(SourceRecord record) {
         if (record.value() == null) {
             tombstones.incrementAndGet();
-        } else {
+        }
+        else {
             Operation op = Envelope.operationFor(record);
             if (op != null) {
                 statsByOperation.computeIfAbsent(op, key -> new AtomicLong()).incrementAndGet();

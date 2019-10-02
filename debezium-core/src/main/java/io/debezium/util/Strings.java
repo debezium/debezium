@@ -593,25 +593,32 @@ public final class Strings {
         if (value != null) {
             try {
                 return Short.valueOf(value);
-            } catch (NumberFormatException e1) {
+            }
+            catch (NumberFormatException e1) {
                 try {
                     return Integer.valueOf(value);
-                } catch (NumberFormatException e2) {
+                }
+                catch (NumberFormatException e2) {
                     try {
                         return Long.valueOf(value);
-                    } catch (NumberFormatException e3) {
+                    }
+                    catch (NumberFormatException e3) {
                         try {
                             return Float.valueOf(value);
-                        } catch (NumberFormatException e4) {
+                        }
+                        catch (NumberFormatException e4) {
                             try {
                                 return Double.valueOf(value);
-                            } catch (NumberFormatException e5) {
+                            }
+                            catch (NumberFormatException e5) {
                                 try {
                                     return new BigInteger(value);
-                                } catch (NumberFormatException e6) {
+                                }
+                                catch (NumberFormatException e6) {
                                     try {
                                         return new BigDecimal(value);
-                                    } catch (NumberFormatException e7) {}
+                                    }
+                                    catch (NumberFormatException e7) {}
                                 }
                             }
                         }
@@ -633,7 +640,8 @@ public final class Strings {
         if (value != null) {
             try {
                 return Integer.parseInt(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -649,7 +657,8 @@ public final class Strings {
         if (value != null) {
             try {
                 return Long.parseLong(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -665,7 +674,8 @@ public final class Strings {
         if (value != null) {
             try {
                 return Double.parseDouble(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -681,7 +691,8 @@ public final class Strings {
         if (value != null) {
             try {
                 return Boolean.parseBoolean(value);
-            } catch (NumberFormatException e) {}
+            }
+            catch (NumberFormatException e) {}
         }
         return defaultValue;
     }
@@ -876,7 +887,8 @@ public final class Strings {
                 // Checking for another constants
                 startName = sb.indexOf(CURLY_PREFIX);
 
-            } else {
+            }
+            else {
                 // continue to try to substitute for other properties so that all defined variables
                 // are tried to be substituted for
                 startName = sb.indexOf(CURLY_PREFIX, endName);
@@ -916,7 +928,8 @@ public final class Strings {
         try {
             UUID.fromString(str);
             return true;
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return false;
         }
     }
@@ -1069,7 +1082,8 @@ public final class Strings {
                         throw new ParsingException(input.position(input.index()), "Unterminated escape sequence at the end of the string");
                     }
                     input.next();
-                } else if (c == ',') {
+                }
+                else if (c == ',') {
                     tokens.addToken(input.position(tokenStart), tokenStart, input.index());
                     tokenStart = input.index() + 1;
                 }

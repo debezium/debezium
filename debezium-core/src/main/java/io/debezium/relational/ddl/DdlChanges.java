@@ -121,7 +121,8 @@ public class DdlChanges implements DdlParserListener {
                 currentDatabase = dbName;
                 // Accumulate the statement ...
                 dbEvents.add(event);
-            } else {
+            }
+            else {
                 // Submit the statements ...
                 consumer.consume(currentDatabase, dbEvents);
             }

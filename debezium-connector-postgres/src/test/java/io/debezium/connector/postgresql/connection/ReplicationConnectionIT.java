@@ -320,7 +320,8 @@ public class ReplicationConnectionIT {
                 if (streamProcessor != null) {
                     streamProcessor.accept(stream);
                 }
-            } catch (Throwable t) {
+            }
+            catch (Throwable t) {
                 // make sure we always drop the slot if something fails - note the connection was created with the drop on close
                 // set to false
                 try (PostgresConnection conn = TestHelper.create()) {
@@ -362,7 +363,8 @@ public class ReplicationConnectionIT {
                 result.cancel(true);
                 fail("expected " + expectedMessages + " messages, but read only " + actualMessages.size());
             }
-        } finally {
+        }
+        finally {
             executorService.shutdownNow();
         }
         return actualMessages;

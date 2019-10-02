@@ -348,7 +348,8 @@ public class PostgresConnection extends JdbcConnection {
     public synchronized void close() {
         try {
             super.close();
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             LOGGER.error("Unexpected error while closing Postgres connection", e);
         }
     }

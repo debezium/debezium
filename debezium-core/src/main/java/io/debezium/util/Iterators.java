@@ -133,7 +133,8 @@ public class Iterators {
                     }
                     --index;
                     throw new NoSuchElementException();
-                } finally {
+                }
+                finally {
                     ++index;
                 }
             }
@@ -157,7 +158,8 @@ public class Iterators {
                     }
                     --index;
                     throw new NoSuchElementException();
-                } finally {
+                }
+                finally {
                     ++index;
                 }
             }

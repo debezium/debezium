@@ -47,7 +47,8 @@ public interface DocumentWriter {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             write(document, stream);
             return stream.toByteArray();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             // This really should never happen ...
             e.printStackTrace();
             return new byte[] {};

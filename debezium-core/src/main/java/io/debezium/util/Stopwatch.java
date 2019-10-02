@@ -291,11 +291,14 @@ public abstract class Stopwatch {
             Stopwatch sw = create().start();
             try {
                 return runnable.call();
-            } catch (RuntimeException e) {
+            }
+            catch (RuntimeException e) {
                 throw e;
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 throw new RuntimeException(e);
-            } finally {
+            }
+            finally {
                 sw.stop();
             }
         }
@@ -311,7 +314,8 @@ public abstract class Stopwatch {
                 Stopwatch sw = create().start();
                 try {
                     runnable.run();
-                } finally {
+                }
+                finally {
                     sw.stop();
                 }
             }
@@ -332,7 +336,8 @@ public abstract class Stopwatch {
                 Stopwatch sw = create().start();
                 try {
                     result = runnable.call();
-                } finally {
+                }
+                finally {
                     sw.stop();
                     if (cleanup != null) {
                         cleanup.accept(result);

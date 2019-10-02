@@ -197,11 +197,13 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 logger.debug("Stored record in topic '{}' partition {} at offset {} ",
                              metadata.topic(), metadata.partition(), metadata.offset());
             }
-        } catch( InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             logger.trace("Interrupted before record was written into database history: {}", record);
             Thread.currentThread().interrupt();
             throw new DatabaseHistoryException(e);
-        } catch (ExecutionException e) {
+        }
+        catch (ExecutionException e) {
             throw new DatabaseHistoryException(e);
         }
     }
@@ -237,14 +239,16 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                             if (record.value() == null) {
                                 logger.warn("Skipping null database history record. " +
                                         "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", topicName);
-                            } else {
+                            }
+                            else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
                                 logger.trace("Recovering database history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
                                     logger.warn("Skipping invalid database history record '{}'. " +
                                             "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, topicName);
-                                } else {
+                                }
+                                else {
                                     records.accept(recordObj);
                                     logger.trace("Recovered database history: {}", recordObj);
                                 }
@@ -252,9 +256,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                             lastProcessedOffset = record.offset();
                             ++numRecordsProcessed;
                         }
-                    } catch (final IOException e) {
+                    }
+                    catch (final IOException e) {
                         logger.error("Error while deserializing history record '{}'", record, e);
-                    } catch (final Exception e) {
+                    }
+                    catch (final Exception e) {
                         logger.error("Unexpected exception while processing record '{}'", record, e);
                         throw e;
                     }
@@ -262,7 +268,8 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 if (numRecordsProcessed == 0) {
                     logger.debug("No new records found in the database history; will retry");
                     recoveryAttempts++;
-                } else {
+                }
+                else {
                     logger.debug("Processed {} records from database history", numRecordsProcessed);
                 }
             }
@@ -315,11 +322,13 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             if (this.producer != null) {
                 try {
                     this.producer.flush();
-                } finally {
+                }
+                finally {
                     this.producer.close();
                 }
             }
-        } finally {
+        }
+        finally {
             this.producer = null;
             super.stop();
         }

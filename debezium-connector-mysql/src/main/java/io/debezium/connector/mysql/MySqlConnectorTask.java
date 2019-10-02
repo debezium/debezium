@@ -94,12 +94,14 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                         }
                         logger.info("The db-history topic is missing but we are in {} snapshot mode. " +
                                     "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.", SnapshotMode.SCHEMA_ONLY_RECOVERY);
-                    } else {
+                    }
+                    else {
                         String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
                         throw new ConnectException(msg);
                     }
                     taskContext.initializeHistoryStorage();
-                } else {
+                }
+                else {
 
                     // Before anything else, recover the database history to the specified binlog coordinates ...
                     taskContext.loadHistory(source);
@@ -115,7 +117,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                         // Otherwise, restart a new snapshot ...
                         startWithSnapshot = true;
                         logger.info("Prior execution was an incomplete snapshot, so starting new snapshot");
-                    } else {
+                    }
+                    else {
                         // No snapshot was in effect, so we should just start reading from the binlog ...
                         startWithSnapshot = false;
 
@@ -131,7 +134,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     }
                 }
 
-            } else {
+            }
+            else {
                 // We have no recorded offsets ...
                 this.taskContext = createAndStartTaskContext(config, getAllFilters(config));
                 taskContext.initializeHistoryStorage();
@@ -150,10 +154,12 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     String earliestBinlogFilename = earliestBinlogFilename();
                     if (earliestBinlogFilename == null) {
                         logger.warn("No binlog appears to be available. Ensure that the MySQL row-level binlog is enabled.");
-                    } else if (!earliestBinlogFilename.endsWith("00001")) {
+                    }
+                    else if (!earliestBinlogFilename.endsWith("00001")) {
                         logger.warn("It is possible the server has purged some binlogs. If this is the case, then using snapshot mode may be required.");
                     }
-                } else {
+                }
+                else {
                     // We are allowed to use snapshots, and that is the best way to start ...
                     startWithSnapshot = true;
                     // The snapshot will determine if GTIDs are set
@@ -191,7 +197,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
                     chainedReaderBuilder.addReader(new BlockingReader("blocker", "Connector has completed all of its work but will continue in the running state. It can be shut down at any time."));
                     chainedReaderBuilder.completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
-                } else {
+                }
+                else {
                     if (!rowBinlogEnabled) {
                         throw new ConnectException("The MySQL server is not configured to use a row-level binlog, which is "
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
@@ -200,7 +207,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
                     chainedReaderBuilder.addReader(binlogReader);
                 }
-            } else {
+            }
+            else {
                 if (!source.hasFilterInfo()) {
                     // if we don't have filter info, then either
                     // 1. the snapshot was taken in a version of debezium before the filter info was stored in the offsets, or
@@ -242,7 +250,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
                         unifiedBinlogReader.uponCompletion(unifiedTaskContext::shutdown);
                     }
-                } else {
+                }
+                else {
                     // We're going to start by reading the binlog ...
                     BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
                     chainedReaderBuilder.addReader(binlogReader);
@@ -256,12 +265,14 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             // And finally initialize and start the chain of readers ...
             this.readers.initialize();
             this.readers.start();
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             // If we don't complete startup, then Kafka Connect will not attempt to stop the connector. So if we
             // run into a problem, we have to stop ourselves ...
             try {
                 stop();
-            } catch (Throwable s) {
+            }
+            catch (Throwable s) {
                 // Log, but don't propagate ...
                 logger.error("Failed to start the connector (see other exception), but got this error while cleaning up", s);
             }
@@ -273,7 +284,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 throw (ConnectException) e;
             }
             throw new ConnectException(e);
-        } finally {
+        }
+        finally {
             prevLoggingContext.restore();
         }
     }
@@ -343,7 +355,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         BiFunction<String, String, Boolean> hasExclusiveElements = (String a, String b) -> {
             if (a == null || a.isEmpty()) {
                 return false;
-            } else if (b == null || b.isEmpty()) {
+            }
+            else if (b == null || b.isEmpty()) {
                 return true;
             }
             Set<String> bSet = Stream.of(b.split(elementSep)).collect(Collectors.toSet());
@@ -414,7 +427,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         try {
             logger.trace("Polling for events");
             return currentReader.poll();
-        } finally {
+        }
+        finally {
             prevLoggingContext.restore();
         }
     }
@@ -433,7 +447,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     readers.stop();
                     readers.destroy();
                 }
-            } finally {
+            }
+            finally {
                 if (prevLoggingContext != null) {
                     prevLoggingContext.restore();
                 }
@@ -458,9 +473,11 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             if (this.taskContext != null) {
                 taskContext.shutdown();
             }
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             logger.error("Unexpected error shutting down the database history and/or closing JDBC connections", e);
-        } finally {
+        }
+        finally {
             context = null;
             logger.info("Connector task finished all work and is now shutdown");
             prevLoggingContext.restore();
@@ -557,7 +574,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     logNames.add(rs.getString(1));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking for binary logs: ", e);
         }
 
@@ -580,7 +598,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     mode.set(rs.getString(2));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG mode: ", e);
         }
 
@@ -593,7 +612,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     rowImage.set(rs.getString(2));
                 }
             });
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at BINLOG row image mode: ", e);
         }
 
