@@ -7,8 +7,6 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -87,18 +85,6 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         final Map<String, List<SourceRecord>> recordsByTopic = recordsByTopic(expectedRecordsCount, consumer);
         Assertions.assertThat(recordsByTopic.get("test_server.over.t1")).hasSize(2);
         Assertions.assertThat(recordsByTopic.get("test_server.over.t2")).hasSize(3);
-    }
-
-    private Map<String, List<SourceRecord>> recordsByTopic(final int expectedRecordsCount, TestConsumer consumer) {
-        final Map<String, List<SourceRecord>> recordsByTopic = new HashMap<>();
-        for (int i = 0; i < expectedRecordsCount; i++) {
-            final SourceRecord record = consumer.remove();
-            recordsByTopic.putIfAbsent(record.topic(), new ArrayList<SourceRecord>());
-            recordsByTopic.compute(record.topic(), (k, v) -> {
-                v.add(record);
-                return v; });
-        }
-        return recordsByTopic;
     }
 
     private void buildProducer(Configuration.Builder config) {

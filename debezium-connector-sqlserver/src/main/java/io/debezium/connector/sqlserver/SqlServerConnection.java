@@ -300,7 +300,7 @@ public class SqlServerConnection extends JdbcConnection {
             }
         }
 
-        final List<String> pkColumnNames = readPrimaryKeyNames(metadata, changeTable.getSourceTableId());
+        final List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, changeTable.getSourceTableId());
         Collections.sort(columns);
         return Table.editor()
                 .tableId(changeTable.getSourceTableId())
