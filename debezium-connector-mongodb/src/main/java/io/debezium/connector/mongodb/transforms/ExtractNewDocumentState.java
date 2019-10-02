@@ -32,6 +32,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
+import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 
 /**
@@ -44,9 +45,6 @@ import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandli
  * @author Renato mefi
  */
 public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Transformation<R> {
-
-    private static final String RECORD_ENVELOPE_VALUE_SCHEMA_NAME_SUFFIX = ".Envelope";
-    private static final String RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX = ".Key";
 
     public enum ArrayEncoding implements EnumeratedValue {
         ARRAY("array"),
@@ -142,13 +140,12 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
 
+    private SmtManager<R> smtManager;
+
     @Override
     public R apply(R record) {
-        if (record.keySchema() == null ||
-                record.keySchema().name() == null ||
-                !record.keySchema().name().endsWith(RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.debug("Message without Debezium CDC Envelope ignored, missing Key Schema. Message key: \"{}\"", record.key());
-            return null;
+        if (!smtManager.isValidKey(record)) {
+            return record;
         }
 
         final R keyRecord = keyExtractor.apply(record);
@@ -168,11 +165,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             return newRecord(record, keyDocument, valueDocument);
         }
 
-        if (record.valueSchema() == null ||
-                record.valueSchema().name() == null ||
-                !record.valueSchema().name().endsWith(RECORD_ENVELOPE_VALUE_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.debug("Message without Debezium CDC Envelope ignored. Message key: \"{}\"", record.key());
-            return null;
+        if (!smtManager.isValidEnvelope(record)) {
+            return record;
         }
 
         final R afterRecord = afterExtractor.apply(record);
@@ -368,6 +362,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     @Override
     public void configure(final Map<String, ?> map) {
         final Configuration config = Configuration.from(map);
+        smtManager = new SmtManager<>(config);
+
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
                 ExtractNewRecordStateConfigDefinition.OPERATION_HEADER,
                 ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
