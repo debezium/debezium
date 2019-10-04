@@ -5,12 +5,12 @@
  */
 package io.debezium.util;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch

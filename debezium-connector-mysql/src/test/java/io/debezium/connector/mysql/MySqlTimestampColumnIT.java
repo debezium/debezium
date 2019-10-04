@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.nio.file.Path;
 
 import org.junit.After;
@@ -15,8 +17,6 @@ import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Chris Cranford

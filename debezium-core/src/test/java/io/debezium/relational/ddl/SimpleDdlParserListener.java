@@ -5,12 +5,12 @@
  */
 package io.debezium.relational.ddl;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.relational.TableId;
 

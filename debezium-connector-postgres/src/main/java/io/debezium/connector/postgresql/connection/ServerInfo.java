@@ -6,11 +6,11 @@
 
 package io.debezium.connector.postgresql.connection;
 
-import io.debezium.connector.postgresql.spi.SlotState;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import io.debezium.connector.postgresql.spi.SlotState;
 
 /**
  * Information about a running Postgres instance.

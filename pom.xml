@@ -506,7 +506,7 @@
                     <configuration>
                         <groups>java.,javax.,org.,com.,io.</groups>
                         <staticGroups>*</staticGroups>
-                        <staticAfter>true</staticAfter>
+                        <staticAfter>false</staticAfter>
                         <skip>${format.skip}</skip>
                         <removeUnused>true</removeUnused>
                     </configuration>

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -12,8 +14,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.connector.mysql.GtidSet.Interval;
 import io.debezium.connector.mysql.GtidSet.UUIDSet;

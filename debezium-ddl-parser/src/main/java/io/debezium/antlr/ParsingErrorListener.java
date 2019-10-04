@@ -5,15 +5,16 @@
  */
 package io.debezium.antlr;
 
-import io.debezium.text.ParsingException;
-import io.debezium.text.Position;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.function.BiFunction;
+
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.function.BiFunction;
+import io.debezium.text.ParsingException;
+import io.debezium.text.Position;
 
 /**
  * ANTLR parsing error listener.

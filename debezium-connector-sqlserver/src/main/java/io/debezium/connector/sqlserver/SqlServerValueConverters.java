@@ -19,6 +19,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.ZonedTimestamp;
+
 import microsoft.sql.DateTimeOffset;
 
 /**

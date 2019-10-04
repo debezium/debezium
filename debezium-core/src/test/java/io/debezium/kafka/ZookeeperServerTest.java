@@ -5,13 +5,13 @@
  */
 package io.debezium.kafka;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.File;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.util.Testing;
 

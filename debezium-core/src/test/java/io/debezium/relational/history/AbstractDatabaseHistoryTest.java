@@ -15,8 +15,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.relational.Tables;
-import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.relational.ddl.DdlParserSql2003;
+import io.debezium.relational.ddl.LegacyDdlParser;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 

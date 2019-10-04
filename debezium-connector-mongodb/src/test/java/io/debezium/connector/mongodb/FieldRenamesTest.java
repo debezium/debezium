@@ -5,8 +5,14 @@
  */
 package io.debezium.connector.mongodb;
 
-import io.debezium.config.Configuration;
-import io.debezium.schema.TopicSelector;
+import static io.debezium.data.Envelope.FieldName.AFTER;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonTimestamp;
@@ -17,13 +23,8 @@ import org.bson.types.ObjectId;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static io.debezium.data.Envelope.FieldName.AFTER;
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.config.Configuration;
+import io.debezium.schema.TopicSelector;
 
 public class FieldRenamesTest {
 

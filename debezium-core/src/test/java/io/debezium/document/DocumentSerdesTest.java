@@ -5,14 +5,14 @@
  */
 package io.debezium.document;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.util.Testing;
 

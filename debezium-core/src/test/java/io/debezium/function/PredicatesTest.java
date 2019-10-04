@@ -5,12 +5,12 @@
  */
 package io.debezium.function;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.UUID;
 import java.util.function.Predicate;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Randall Hauch

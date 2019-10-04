@@ -5,10 +5,10 @@
  */
 package io.debezium.relational.ddl;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.relational.ddl.DataTypeGrammarParser.DataTypePattern;
 import io.debezium.text.TokenStream;

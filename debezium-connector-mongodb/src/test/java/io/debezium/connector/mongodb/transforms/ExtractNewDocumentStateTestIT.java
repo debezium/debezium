@@ -5,9 +5,12 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
-import io.debezium.data.Envelope;
-import io.debezium.data.SchemaUtil;
-import io.debezium.doc.FixFor;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -15,11 +18,9 @@ import org.bson.Document;
 import org.bson.RawBsonDocument;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.data.Envelope;
+import io.debezium.data.SchemaUtil;
+import io.debezium.doc.FixFor;
 
 /**
  * Integration test for {@link ExtractNewDocumentState}. It sends operations into

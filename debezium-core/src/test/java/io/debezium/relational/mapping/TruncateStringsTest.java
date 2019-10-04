@@ -5,9 +5,9 @@
  */
 package io.debezium.relational.mapping;
 
-import org.junit.Test;
-
 import static org.fest.assertions.Assertions.assertThat;
+
+import org.junit.Test;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;

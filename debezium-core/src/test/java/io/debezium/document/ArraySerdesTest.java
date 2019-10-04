@@ -5,11 +5,11 @@
  */
 package io.debezium.document;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.IOException;
 
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.util.Testing;
 
