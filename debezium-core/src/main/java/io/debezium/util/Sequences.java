@@ -14,7 +14,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * Utility methods for obtaining streams of integers.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -23,7 +23,7 @@ public class Sequences {
     /**
      * Create a stream of <em>number</em> monotonically increasing numbers starting at 0, useful when performing an operation
      * <em>number</em> times.
-     * 
+     *
      * @param number the number of values to include in the stream; must be positive
      * @return the sequence; never null
      */
@@ -34,7 +34,7 @@ public class Sequences {
     /**
      * Create an iterator over an infinite number of monotonically increasing numbers starting at 0, useful when performing an
      * operation an unknown number of times.
-     * 
+     *
      * @return the sequence; never null
      */
     public static Iterable<Integer> infiniteIntegers() {
@@ -44,7 +44,7 @@ public class Sequences {
     /**
      * Create an iterator over an infinite number monotonically increasing numbers starting at the given number, useful when
      * performing an operation an unknown number of times.
-     * 
+     *
      * @param startingAt the first number to include in the resulting stream
      * @return the sequence; never null
      */
@@ -67,7 +67,7 @@ public class Sequences {
     /**
      * Obtain a supplier function that randomly selects from the given values. If the supplied values contain nulls, then
      * the resulting supplier function may return null values.
-     * 
+     *
      * @param first the first value that may be randomly picked
      * @param additional the additional values to randomly pick from; may be null or empty
      * @return the supplier function; never null
@@ -88,7 +88,7 @@ public class Sequences {
     /**
      * Obtain a supplier function that randomly selects from the given values. If the supplied values contain nulls, then
      * the resulting supplier function may return null values.
-     * 
+     *
      * @param values the values to randomly pick from; may not be null, should not be empty
      * @return the supplier function; never null
      */

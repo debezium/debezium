@@ -13,7 +13,7 @@ import io.debezium.util.Strings;
 
 /**
  * A specialization of {@link Value} that wraps another {@link Value} to allow conversion of types.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable

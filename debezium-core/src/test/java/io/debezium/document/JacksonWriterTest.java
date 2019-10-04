@@ -16,18 +16,18 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  */
 public class JacksonWriterTest implements Testing {
-    
+
     private Document doc;
     private Document after;
     private JacksonWriter writer = JacksonWriter.INSTANCE;
     private JacksonReader reader = JacksonReader.DEFAULT_INSTANCE;
-    
+
     @Before
     public void beforeEach() {
         doc = Document.create();
         after = null;
     }
-    
+
     @Test
     public void shouldWriteDocumentWithSingleField() throws Exception {
         doc.set("field", "value");
@@ -35,7 +35,7 @@ public class JacksonWriterTest implements Testing {
         assertThat(after.getString("field")).isEqualTo("value");
         assertThat(after.size()).isEqualTo(1);
     }
-    
+
     @Test
     public void shouldWriteDocumentWithTwoFields() throws Exception {
         doc.set("field1", "value");
@@ -45,7 +45,7 @@ public class JacksonWriterTest implements Testing {
         assertThat(after.getInteger("field2")).isEqualTo(22);
         assertThat(after.size()).isEqualTo(2);
     }
-    
+
     @Test
     public void shouldWriteDocumentWithNestedDocument() throws Exception {
         doc.set("field1", "value");
@@ -79,5 +79,5 @@ public class JacksonWriterTest implements Testing {
         assertThat(deepNested.getString("x")).isEqualTo("X");
         assertThat(deepNested.size()).isEqualTo(1);
     }
-    
+
 }

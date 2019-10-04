@@ -31,11 +31,11 @@ import io.debezium.util.Strings;
  * <h2>Configuration</h2>
  * <p>
  * This connector is configured with the set of properties described in {@link PostgresConnectorConfig}.
- * 
+ *
  * @author Horia Chiorean
  */
 public class PostgresConnector extends SourceConnector {
-    
+
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> props;
 
@@ -79,7 +79,7 @@ public class PostgresConnector extends SourceConnector {
 
         // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
         Map<String, ConfigValue> results = config.validate();
-        
+
         // Get the config values for each of the connection-related fields ...
         ConfigValue hostnameValue = results.get(PostgresConnectorConfig.HOSTNAME.name());
         ConfigValue portValue = results.get(PostgresConnectorConfig.PORT.name());
@@ -112,6 +112,6 @@ public class PostgresConnector extends SourceConnector {
                 }
             }
         }
-        return new Config(new ArrayList<>(results.values())); 
+        return new Config(new ArrayList<>(results.values()));
     }
 }

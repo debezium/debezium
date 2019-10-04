@@ -20,7 +20,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * A {@link DocumentReader} and {@link ArrayReader} that uses the Jackson library to read JSON.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe

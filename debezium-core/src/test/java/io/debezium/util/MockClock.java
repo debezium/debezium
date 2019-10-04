@@ -12,15 +12,15 @@ package io.debezium.util;
 public class MockClock implements Clock {
 
     private long currentTimeInMillis;
-    
+
     public MockClock() {
     }
-    
+
     public MockClock(long timeInMillis) {
         assert timeInMillis >= 0;
         currentTimeInMillis = timeInMillis;
     }
-    
+
     public MockClock advanceTo(long timeInMillis) {
         assert timeInMillis >= 0;
         currentTimeInMillis = timeInMillis;
@@ -37,7 +37,7 @@ public class MockClock implements Clock {
     public long currentTimeInMillis() {
         return currentTimeInMillis;
     }
-    
+
     @Override
     public String toString() {
         return Strings.duration(currentTimeInMillis);

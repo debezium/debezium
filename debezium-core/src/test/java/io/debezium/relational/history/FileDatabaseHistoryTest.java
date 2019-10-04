@@ -36,7 +36,7 @@ public class FileDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
         history.start();
         return history;
     }
-    
+
     @Override
     @Test
     public void shouldRecordChangesAndRecoverToVariousPoints() {

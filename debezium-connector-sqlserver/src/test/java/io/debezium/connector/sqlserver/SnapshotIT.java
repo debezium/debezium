@@ -370,7 +370,7 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         stopConnector();
     }
-    
+
     @Test
     public void reoderCapturedTables() throws Exception {
         connection.execute(
@@ -389,21 +389,21 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        
+
         SourceRecords records = consumeRecordsByTopic(1);
         List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
         List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_b");
-        
+
         Assertions.assertThat(tableB).hasSize(1);
         Assertions.assertThat(tableA).isNull();
-        
+
         records = consumeRecordsByTopic(1);
         tableA = records.recordsForTopic("server1.dbo.table_a");
         Assertions.assertThat(tableA).hasSize(1);
-        
+
         stopConnector();
     }
-    
+
     @Test
     public void reoderCapturedTablesWithOverlappingTableWhitelist() throws Exception {
         connection.execute(
@@ -425,28 +425,28 @@ public class SnapshotIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        
+
         SourceRecords records = consumeRecordsByTopic(1);
         List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
         List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_ab");
         List<SourceRecord> tableC = records.recordsForTopic("server1.dbo.table_ac");
-        
+
         Assertions.assertThat(tableB).hasSize(1);
         Assertions.assertThat(tableA).isNull();
         Assertions.assertThat(tableC).isNull();
-        
+
         records = consumeRecordsByTopic(1);
         tableA = records.recordsForTopic("server1.dbo.table_a");
         Assertions.assertThat(tableA).hasSize(1);
         Assertions.assertThat(tableC).isNull();
-        
+
         records = consumeRecordsByTopic(1);
         tableC = records.recordsForTopic("server1.dbo.table_ac");
         Assertions.assertThat(tableC).hasSize(1);
-        
+
         stopConnector();
     }
-    
+
     @Test
     public void reoderCapturedTablesWithoutTableWhitelist() throws Exception {
         connection.execute(
@@ -464,33 +464,33 @@ public class SnapshotIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_BLACKLIST, "dbo.table1")
-                
+
                 .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        
+
         SourceRecords records = consumeRecordsByTopic(1);
         List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.table_a");
         List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.table_ab");
         List<SourceRecord> tableC = records.recordsForTopic("server1.dbo.table_ac");
-        
+
         Assertions.assertThat(tableA).hasSize(1);
         Assertions.assertThat(tableB).isNull();
         Assertions.assertThat(tableC).isNull();
-        
+
         records = consumeRecordsByTopic(1);
         tableB = records.recordsForTopic("server1.dbo.table_ab");
         Assertions.assertThat(tableB).hasSize(1);
         Assertions.assertThat(tableC).isNull();
-        
+
         records = consumeRecordsByTopic(1);
         tableC = records.recordsForTopic("server1.dbo.table_ac");
         Assertions.assertThat(tableC).hasSize(1);
-        
+
         stopConnector();
     }
-    
+
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));

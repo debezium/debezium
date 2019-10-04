@@ -12,7 +12,7 @@ import java.util.function.Supplier;
 /**
  * A form of a read-write lock that has methods that allow lambdas to be performed while the read or write lock is acquired and
  * held.
- * 
+ *
  * @author Randall Hauch
  */
 public class FunctionalReadWriteLock {
@@ -43,7 +43,7 @@ public class FunctionalReadWriteLock {
 
     /**
      * Obtain a read lock, perform the operation, and release the read lock.
-     * 
+     *
      * @param operation the operation to perform while the read lock is held; may not be null
      * @return the result of the operation
      */
@@ -59,7 +59,7 @@ public class FunctionalReadWriteLock {
 
     /**
      * Obtain a read lock, perform the operation, and release the lock.
-     * 
+     *
      * @param operation the operation to perform while the read lock is held; may not be null
      */
     public void read(Runnable operation) {
@@ -74,7 +74,7 @@ public class FunctionalReadWriteLock {
 
     /**
      * Obtain an exclusive write lock, perform the operation, and release the lock.
-     * 
+     *
      * @param operation the operation to perform while the write lock is held; may not be null
      * @return the result of the operation
      */
@@ -90,7 +90,7 @@ public class FunctionalReadWriteLock {
 
     /**
      * Obtain an exclusive write lock, perform the operation, and release the lock.
-     * 
+     *
      * @param operation the operation to perform while the write lock is held; may not be null
      */
     public void write(Runnable operation) {

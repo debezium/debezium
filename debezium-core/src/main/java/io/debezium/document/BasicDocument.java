@@ -18,7 +18,7 @@ import io.debezium.util.MathOps;
 
 /**
  * Package-level implementation of {@link Document}.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -123,7 +123,7 @@ final class BasicDocument implements Document {
     /**
      * Semantically compare two values. This includes comparing numeric values of different types (e.g., an integer and long),
      * and {@code null} and {@link Value#nullValue()} references.
-     * 
+     *
      * @param value1 the first value; may be null
      * @param value2 the second value; may be null
      * @return a negative integer, zero, or a positive integer as this object
@@ -139,7 +139,7 @@ final class BasicDocument implements Document {
     /**
      * Semantically compare two non-null values. This includes comparing numeric values of different types
      * (e.g., an integer and long), but excludes {@code null} and {@link Value#nullValue()} references.
-     * 
+     *
      * @param value1 the first value; may be null
      * @param value2 the second value; may be null
      * @return a negative integer, zero, or a positive integer as this object

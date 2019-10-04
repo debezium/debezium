@@ -16,22 +16,22 @@ import org.junit.Test;
 public class CollectionIdTest {
 
     private CollectionId id;
-    
+
     @Test
     public void shouldParseStringWithThreeSegments() {
         assertParseable("a", "b", "c");
     }
-    
+
     @Test
     public void shouldNotParseStringWithTwoSegments() {
         assertThat(CollectionId.parse("a.b")).isNull();
     }
-    
+
     @Test
     public void shouldNotParseStringWithOneSegments() {
         assertThat(CollectionId.parse("a")).isNull();
     }
-    
+
     protected void assertParseable( String replicaSetName, String dbName, String collectionName ) {
         String str = replicaSetName + "." + dbName + "." + collectionName;
         id = CollectionId.parse(str);

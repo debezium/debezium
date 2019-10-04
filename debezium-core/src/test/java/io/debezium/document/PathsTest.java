@@ -17,14 +17,14 @@ import io.debezium.util.Testing;
  *
  */
 public class PathsTest implements Testing {
-    
+
     private Path path;
 
     @Before
     public void beforeEach() {
         this.path = null;
     }
-    
+
     @Test
     public void shouldParseRootPath() {
         path = parse("/");
@@ -32,7 +32,7 @@ public class PathsTest implements Testing {
         assertThat(path.isSingle()).isFalse();
         assertThat(path.size()).isEqualTo(0);
     }
-    
+
     @Test
     public void shouldParseSingleRelativePath() {
         path = parse("a");
@@ -41,7 +41,7 @@ public class PathsTest implements Testing {
         assertThat(path.size()).isEqualTo(1);
         assertThat(path.segment(0)).isEqualTo("a");
     }
-    
+
     @Test
     public void shouldParseSingleAbsolutePath() {
         path = parse("/a");
@@ -50,7 +50,7 @@ public class PathsTest implements Testing {
         assertThat(path.size()).isEqualTo(1);
         assertThat(path.segment(0)).isEqualTo("a");
     }
-    
+
     @Test
     public void shouldParseDoubleRelativePath() {
         path = parse("a/b");
@@ -60,7 +60,7 @@ public class PathsTest implements Testing {
         assertThat(path.segment(0)).isEqualTo("a");
         assertThat(path.segment(1)).isEqualTo("b");
     }
-    
+
     @Test
     public void shouldParseDoubleAbsolutePath() {
         path = parse("/a/b");
@@ -70,7 +70,7 @@ public class PathsTest implements Testing {
         assertThat(path.segment(0)).isEqualTo("a");
         assertThat(path.segment(1)).isEqualTo("b");
     }
-    
+
     @Test
     public void shouldParseMultiRelativePath() {
         path = parse("a/b");
@@ -80,7 +80,7 @@ public class PathsTest implements Testing {
         assertThat(path.segment(0)).isEqualTo("a");
         assertThat(path.segment(1)).isEqualTo("b");
     }
-    
+
     @Test
     public void shouldParseMultiAbsolutePath() {
         path = parse("/a/b/c/d/e");
@@ -97,5 +97,5 @@ public class PathsTest implements Testing {
     protected Path parse( String path ) {
         return Paths.parse(path, false);
     }
-    
+
 }

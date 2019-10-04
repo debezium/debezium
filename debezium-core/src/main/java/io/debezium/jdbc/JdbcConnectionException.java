@@ -22,7 +22,7 @@ public final class JdbcConnectionException extends RuntimeException {
 
     /**
      * Creates a new exception instance, wrapping the supplied SQLException
-     * 
+     *
      * @param e a {@link SQLException} instance, may not be null
      */
     public JdbcConnectionException(SQLException e) {

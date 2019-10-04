@@ -28,7 +28,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 public abstract class Metrics {
 
     private final ObjectName name;
-    
+
     protected Metrics(CdcSourceTaskContext taskContext, String contextName) {
         this.name = metricName(taskContext.getConnectorType(), taskContext.getConnectorName(), contextName);
     }

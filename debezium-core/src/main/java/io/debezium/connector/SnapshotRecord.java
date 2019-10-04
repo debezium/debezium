@@ -9,7 +9,7 @@ import org.apache.kafka.connect.data.Struct;
 
 /**
  * Describes whether the change record comes from snapshot and if it is the last one
- * 
+ *
  * @author Jiri Pechanec
  *
  */

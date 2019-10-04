@@ -16,14 +16,14 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A Kafka {@link Deserializer} and {@link Serializer} that operates upon Debezium {@link Document}s.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
 public class DocumentSerdes implements Serializer<Document>, Deserializer<Document> {
 
     public static DocumentSerdes INSTANCE = new DocumentSerdes();
-    
+
     private static final DocumentReader DOCUMENT_READER = DocumentReader.defaultReader();
     private static final DocumentWriter DOCUMENT_WRITER = DocumentWriter.defaultWriter();
 
@@ -35,7 +35,7 @@ public class DocumentSerdes implements Serializer<Document>, Deserializer<Docume
     public byte[] serialize(String topic, Document data) {
         return DOCUMENT_WRITER.writeAsBytes(data);
     }
-    
+
     @Override
     public Document deserialize(String topic, byte[] data) {
         try {

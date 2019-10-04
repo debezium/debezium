@@ -179,59 +179,59 @@ public class SelectorsTest {
         assertAllowed(filter, "db3", "A");
         assertAllowed(filter, "db4", "A");
     }
-    
+
     @Test
     public void shouldCreateFilterWithSchemaBlacklistAndNoTableFilter() {
         filter = Selectors.tableSelector()
                           .excludeSchemas("sc1,sc2")
                           .build();
-    
+
         assertNotAllowed(filter, "db1", "sc1", "A");
         assertNotAllowed(filter, "db2", "sc2", "A");
         assertAllowed(filter, "db1", "sc3", "A");
-        assertAllowed(filter, "db2", "sc4", "A");     
-    } 
-    
+        assertAllowed(filter, "db2", "sc4", "A");
+    }
+
     @Test
     public void shouldCreateFilterWithSchemaWhitelistAndNoTableFilter() {
         filter = Selectors.tableSelector()
                           .includeSchemas("sc1,sc2")
                           .build();
-    
+
         assertAllowed(filter, "db1", "sc1", "A");
         assertAllowed(filter, "db2", "sc2", "A");
         assertNotAllowed(filter, "db1", "sc3", "A");
-        assertNotAllowed(filter, "db2", "sc4", "A");     
-    } 
-    
+        assertNotAllowed(filter, "db2", "sc4", "A");
+    }
+
     @Test
     public void shouldCreateFilterWithSchemaWhitelistAndTableWhitelist() {
         filter = Selectors.tableSelector()
                           .includeSchemas("sc1,sc2")
                           .includeTables("db\\.sc1\\.A,db\\.sc2\\.B")
                           .build();
-    
+
         assertAllowed(filter, "db", "sc1", "A");
         assertNotAllowed(filter, "db", "sc1", "B");
         assertAllowed(filter, "db", "sc2", "B");
         assertNotAllowed(filter, "db", "sc2", "A");
         assertNotAllowed(filter, "db", "sc1", "C");
-        assertNotAllowed(filter, "db2", "sc2", "D");     
+        assertNotAllowed(filter, "db2", "sc2", "D");
         assertNotAllowed(filter, "db", "sc3", "A");
-        assertNotAllowed(filter, "db2", "sc4", "B");     
+        assertNotAllowed(filter, "db2", "sc4", "B");
     }
 
     protected void assertAllowed(Predicate<TableId> filter, String dbName, String tableName) {
         TableId id = new TableId(dbName, null, tableName);
         assertThat(filter.test(id)).isTrue();
     }
-    
+
     protected void assertAllowed(Predicate<TableId> filter, String dbName, String schemaName, String tableName) {
         TableId id = new TableId(dbName, schemaName, tableName);
         assertThat(filter.test(id)).isTrue();
     }
 
-    
+
     protected void assertNotAllowed(Predicate<TableId> filter, String dbName, String tableName) {
         TableId id = new TableId(dbName, null, tableName);
         assertThat(filter.test(id)).isFalse();

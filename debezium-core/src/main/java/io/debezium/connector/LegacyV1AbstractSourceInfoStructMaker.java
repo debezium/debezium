@@ -21,7 +21,7 @@ import io.debezium.config.CommonConnectorConfig;
 public abstract class LegacyV1AbstractSourceInfoStructMaker<T extends AbstractSourceInfo> implements SourceInfoStructMaker<T> {
     public static final String DEBEZIUM_VERSION_KEY = "version";
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
- 
+
     private final String version;
     private final String connector;
     protected final String serverName;

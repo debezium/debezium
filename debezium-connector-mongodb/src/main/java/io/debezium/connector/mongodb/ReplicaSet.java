@@ -29,7 +29,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
      * specification (e.g., "{@code shard01=replicaSet1/host1:27017,host2:27017}"), replica set hosts (e.g.,
      * "{@code replicaSet1/host1:27017,host2:27017}"), or standalone host (e.g., "{@code host1:27017}" or
      * "{@code 1.2.3.4:27017}").
-     * 
+     *
      * @param hosts the hosts string; may be null
      * @return the replica set; or {@code null} if the host string could not be parsed
      */
@@ -63,7 +63,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     /**
      * Get the immutable list of server addresses.
-     * 
+     *
      * @return the server addresses; never null
      */
     public List<ServerAddress> addresses() {
@@ -72,7 +72,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     /**
      * Get the name of this replica set.
-     * 
+     *
      * @return the replica set name, or {@code null} if the addresses are for standalone servers.
      */
     public String replicaSetName() {
@@ -81,7 +81,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
 
     /**
      * Get the shard name for this replica set.
-     * 
+     *
      * @return the shard name, or {@code null} if this replica set is not used as a shard
      */
     public String shardName() {
@@ -91,7 +91,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     /**
      * Return whether the address(es) represent a standalone server, where the {@link #replicaSetName() replica set name} is
      * {@code null}. This method returns the opposite of {@link #hasReplicaSetName()}.
-     * 
+     *
      * @return {@code true} if this represents the address of a standalone server, or {@code false} if it represents the
      *         address of a replica set
      * @see #hasReplicaSetName()
@@ -103,7 +103,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     /**
      * Return whether the address(es) represents a replica set, where the {@link #replicaSetName() replica set name} is
      * not {@code null}. This method returns the opposite of {@link #isStandaloneServer()}.
-     * 
+     *
      * @return {@code true} if this represents the address of a replica set, or {@code false} if it represents the
      *         address of a standalone server
      * @see #isStandaloneServer()

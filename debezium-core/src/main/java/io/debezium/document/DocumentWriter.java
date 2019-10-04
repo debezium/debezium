@@ -14,7 +14,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * Writes {@link Document} instances to a variety of output forms.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -22,7 +22,7 @@ public interface DocumentWriter {
 
     /**
      * Get the default DocumentWriter instance.
-     * 
+     *
      * @return the shared default writer instance; never null
      */
     static DocumentWriter defaultWriter() {
@@ -31,7 +31,7 @@ public interface DocumentWriter {
 
     /**
      * Get the default DocumentWriter instance that outputs nicely-formatted JSON arrays.
-     * 
+     *
      * @return the shared default pretty writer instance; never null
      */
     static DocumentWriter prettyWriter() {

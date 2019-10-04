@@ -11,7 +11,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
  * A semantic type for an XML string.
- * 
+ *
  * @author Horia Chiorean
  */
 public class Xml {
@@ -21,7 +21,7 @@ public class Xml {
     /**
      * Returns a {@link SchemaBuilder} for an XML field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
-     * 
+     *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
@@ -32,7 +32,7 @@ public class Xml {
 
     /**
      * Returns a {@link SchemaBuilder} for an XML field, with all other default Schema settings.
-     * 
+     *
      * @return the schema
      * @see #builder()
      */

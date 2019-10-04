@@ -11,7 +11,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 /**
  * A semantic type for a Uuid string.
- * 
+ *
  * @author Horia Chiorean
  */
 public class Uuid {
@@ -21,7 +21,7 @@ public class Uuid {
     /**
      * Returns a {@link SchemaBuilder} for a Uuid field. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
-     * 
+     *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
@@ -32,7 +32,7 @@ public class Uuid {
 
     /**
      * Returns a {@link SchemaBuilder} for a Uuid field, with all other default Schema settings.
-     * 
+     *
      * @return the schema
      * @see #builder()
      */

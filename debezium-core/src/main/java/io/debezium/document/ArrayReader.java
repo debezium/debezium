@@ -18,7 +18,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * Reads {@link Array} instances from a variety of input forms.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -26,7 +26,7 @@ public interface ArrayReader {
 
     /**
      * Get the default {@link ArrayReader} instance.
-     * 
+     *
      * @return the shared default reader instance; never null
      */
     static ArrayReader defaultReader() {
@@ -35,7 +35,7 @@ public interface ArrayReader {
 
     /**
      * Read an array from the supplied stream.
-     * 
+     *
      * @param jsonStream the input stream to be read; may not be null
      * @return the array instance; never null
      * @throws IOException if an array could not be read from the supplied stream
@@ -44,7 +44,7 @@ public interface ArrayReader {
 
     /**
      * Read an array from the supplied {@link Reader}.
-     * 
+     *
      * @param jsonReader the reader to be read; may not be null
      * @return the array instance; never null
      * @throws IOException if an array could not be read from the supplied reader
@@ -53,7 +53,7 @@ public interface ArrayReader {
 
     /**
      * Read an array from the supplied JSON-formatted string.
-     * 
+     *
      * @param json the JSON string representation to be read; may not be null
      * @return the array instance; never null
      * @throws IOException if an array could not be read from the supplied string
@@ -62,7 +62,7 @@ public interface ArrayReader {
 
     /**
      * Read an array from the content at the given URL.
-     * 
+     *
      * @param jsonUrl the URL to the content that is to be read; may not be null
      * @return the array instance; never null
      * @throws IOException if an array could not be read from the supplied content
@@ -73,7 +73,7 @@ public interface ArrayReader {
 
     /**
      * Read an array from the supplied file.
-     * 
+     *
      * @param jsonFile the file to be read; may not be null
      * @return the array instance; never null
      * @throws IOException if an array could not be read from the supplied file
@@ -84,7 +84,7 @@ public interface ArrayReader {
 
     /**
      * Read an array from the supplied bytes.
-     * 
+     *
      * @param rawBytes the UTF-8 bytes to be read; may not be null
      * @return the array instance; never null
      * @throws IOException if an array could not be read from the supplied bytes

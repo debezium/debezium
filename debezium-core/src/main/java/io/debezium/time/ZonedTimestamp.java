@@ -24,7 +24,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
  * <p>
  * The ISO date-time format includes the date, time (including fractional parts), and offset from UTC, such as
  * '2011-12-03T10:15:30+01:00'.
- * 
+ *
  * @author Randall Hauch
  * @see Timestamp
  * @see MicroTimestamp
@@ -44,7 +44,7 @@ public class ZonedTimestamp {
     /**
      * Returns a {@link SchemaBuilder} for a {@link ZonedTimestamp}. You can use the resulting SchemaBuilder
      * to set additional schema settings such as required/optional, default value, and documentation.
-     * 
+     *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
@@ -55,7 +55,7 @@ public class ZonedTimestamp {
 
     /**
      * Returns a Schema for a {@link ZonedTimestamp} but with all other default Schema settings.
-     * 
+     *
      * @return the schema
      * @see #builder()
      */
@@ -68,7 +68,7 @@ public class ZonedTimestamp {
      * {@link java.time.LocalTime}, {@link java.util.Date}, {@link java.sql.Date}, {@link java.sql.Time},
      * {@link java.sql.Timestamp}, {@link OffsetTime}, or {@link OffsetDateTime}, ignoring any date portions of the supplied
      * value.
-     * 
+     *
      * @param value the local or SQL date, time, or timestamp value; may not be null
      * @param defaultZone the time zone that should be used by default if the value does not have timezone information; may not be
      *            null
@@ -99,7 +99,7 @@ public class ZonedTimestamp {
 
     /**
      * Get the ISO 8601 formatted representation of the given {@link OffsetDateTime}.
-     * 
+     *
      * @param timestamp the timestamp value
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
@@ -111,10 +111,10 @@ public class ZonedTimestamp {
         }
         return timestamp.format(FORMATTER);
     }
-   
+
     /**
      * Get the ISO 8601 formatted representation of the given {@link ZonedDateTime}.
-     * 
+     *
      * @param timestamp the timestamp value
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
@@ -129,7 +129,7 @@ public class ZonedTimestamp {
 
     /**
      * Get the ISO 8601 formatted representation of the given {@link OffsetTime}.
-     * 
+     *
      * @param timestamp the timestamp value
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
      * adjustment is necessary
@@ -145,7 +145,7 @@ public class ZonedTimestamp {
     /**
      * Get the ISO 8601 formatted representation of the given {@link java.util.Date} or one of its JDBC subclasses, using
      * the supplied timezone information.
-     * 
+     *
      * @param timestamp the timestamp value
      * @param zoneId the timezone identifier or offset where the timestamp is defined
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
@@ -168,7 +168,7 @@ public class ZonedTimestamp {
     /**
      * Get the ISO 8601 formatted representation of the given {@link java.sql.Timestamp}, which contains a date and time but
      * has no timezone information.
-     * 
+     *
      * @param timestamp the JDBC timestamp value
      * @param zoneId the timezone identifier or offset where the timestamp is defined
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
@@ -187,7 +187,7 @@ public class ZonedTimestamp {
     /**
      * Get the ISO 8601 formatted representation of the given {@link java.sql.Date}, which contains a date but no time or
      * timezone information.
-     * 
+     *
      * @param date the date value
      * @param zoneId the timezone identifier or offset where the date is defined
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
@@ -206,7 +206,7 @@ public class ZonedTimestamp {
     /**
      * Get the ISO 8601 formatted representation of the given {@link java.sql.Time}, which contains time but no date or timezone
      * information.
-     * 
+     *
      * @param time the JDBC time value
      * @param zoneId the timezone identifier or offset where the time is defined
      * @param adjuster the optional component that adjusts the local date value before obtaining the epoch day; may be null if no
