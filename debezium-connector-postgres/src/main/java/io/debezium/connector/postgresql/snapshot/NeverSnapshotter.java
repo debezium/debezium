@@ -5,16 +5,17 @@
  */
 package io.debezium.connector.postgresql.snapshot;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig;
-import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.connector.postgresql.spi.OffsetState;
-import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.relational.TableId;
+import java.util.Optional;
+
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.spi.OffsetState;
+import io.debezium.connector.postgresql.spi.SlotState;
+import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.relational.TableId;
 
 public class NeverSnapshotter implements Snapshotter {
 

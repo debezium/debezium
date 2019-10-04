@@ -5,6 +5,8 @@
  */
 package io.debezium.junit.logging;
 
+import static org.slf4j.Logger.ROOT_LOGGER_NAME;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +17,6 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggingEvent;
 import org.slf4j.LoggerFactory;
 import org.slf4j.impl.Log4jLoggerAdapter;
-
-import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
 /**
  * @author Chris Cranford

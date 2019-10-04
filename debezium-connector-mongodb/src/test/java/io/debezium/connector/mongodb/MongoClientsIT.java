@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.List;
 
 import org.junit.After;
@@ -14,8 +16,6 @@ import org.junit.Test;
 
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.config.Configuration;
 

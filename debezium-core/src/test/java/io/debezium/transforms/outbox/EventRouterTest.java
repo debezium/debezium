@@ -5,10 +5,13 @@
  */
 package io.debezium.transforms.outbox;
 
-import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.data.Envelope;
-import io.debezium.data.VerifyRecord;
-import io.debezium.doc.FixFor;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -21,12 +24,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link EventRouter}

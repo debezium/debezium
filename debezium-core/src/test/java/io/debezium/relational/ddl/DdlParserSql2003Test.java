@@ -5,13 +5,13 @@
  */
 package io.debezium.relational.ddl;
 
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertFalse;
+
 import java.sql.Types;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;

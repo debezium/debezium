@@ -5,6 +5,18 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
+import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.fail;
+
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.connector.mongodb.MongoDbConnector;
@@ -14,17 +26,6 @@ import io.debezium.connector.mongodb.ReplicaSet;
 import io.debezium.connector.mongodb.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-
-import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.Assert.fail;
 
 /**
  * Baseline for all integrations tests regarding MongoDB Update Operations

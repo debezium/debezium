@@ -9,7 +9,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-
 /**
  * A semantic type for an OGC Simple Features for SQL Geometry.
  * Used to describe geometries on a planar basis (rather than Geography, which is a spherical basis).

@@ -5,6 +5,8 @@
  */
 package io.debezium.transforms;
 
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,7 +30,6 @@ import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 import io.debezium.util.BoundedConcurrentHashMap;
 
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values
  * <code>before</code> and <code>after change</code>. Sink connectors usually are not able to work

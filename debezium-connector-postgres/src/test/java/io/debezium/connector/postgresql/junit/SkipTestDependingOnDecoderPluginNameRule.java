@@ -5,10 +5,11 @@
  */
 package io.debezium.connector.postgresql.junit;
 
-import io.debezium.connector.postgresql.TestHelper;
-import io.debezium.junit.AnnotationBasedTestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
+
+import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.junit.AnnotationBasedTestRule;
 
 /**
  * JUnit rule that skips a test based on the {@link SkipWhenDecoderPluginNameIs} annotation or the

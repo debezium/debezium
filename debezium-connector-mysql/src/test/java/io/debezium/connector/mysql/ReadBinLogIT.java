@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -46,8 +47,6 @@ import com.github.shyiko.mysql.binlog.event.XidEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.ServerException;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Testing;

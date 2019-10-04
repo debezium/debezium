@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.mongodb.transforms.UpdateOperators;
 
-import com.mongodb.MongoClient;
-import com.mongodb.client.model.UpdateOptions;
-import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
-import io.debezium.data.VerifyRecord;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.util.function.Consumer;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -16,9 +16,11 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.junit.Test;
 
-import java.util.function.Consumer;
+import com.mongodb.MongoClient;
+import com.mongodb.client.model.UpdateOptions;
 
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState;
+import io.debezium.data.VerifyRecord;
 
 /**
  * Integration test for {@link ExtractNewDocumentState}.

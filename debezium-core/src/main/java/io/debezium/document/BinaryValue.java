@@ -7,7 +7,6 @@ package io.debezium.document;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-
 import java.util.Arrays;
 
 import io.debezium.annotation.Immutable;

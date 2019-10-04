@@ -15,7 +15,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.connector.AbstractSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -28,8 +27,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Configurator;
 import io.debezium.connector.mongodb.Filters;
@@ -43,7 +44,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.schema.TopicSelector;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.util.Collect;
-import org.junit.rules.ExpectedException;
 
 /**
  * Unit test for {@link ExtractNewDocumentState}. It uses {@link RecordMakers}

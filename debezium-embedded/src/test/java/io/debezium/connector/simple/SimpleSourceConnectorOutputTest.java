@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.simple;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -19,8 +21,6 @@ import java.util.Properties;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.document.Array;
 import io.debezium.document.ArrayReader;

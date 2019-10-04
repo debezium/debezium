@@ -5,12 +5,12 @@
  */
 package io.debezium.text;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.util.Arrays;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.text.TokenStream.BasicTokenizer;
 import io.debezium.text.TokenStream.Tokenizer;

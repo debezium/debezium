@@ -6,6 +6,12 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import static io.debezium.relational.ddl.AbstractDdlParser.withoutQuotes;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
@@ -13,12 +19,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static io.debezium.relational.ddl.AbstractDdlParser.withoutQuotes;
 
 /**
  * Parser listener that is parsing MySQL SELECT statements used for definition of VIEW.

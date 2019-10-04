@@ -6,11 +6,12 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import org.antlr.v4.runtime.misc.Interval;
+
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.TableId;
-import org.antlr.v4.runtime.misc.Interval;
 
 /**
  * Parser listener that is parsing MySQL DROP TABLE statements.

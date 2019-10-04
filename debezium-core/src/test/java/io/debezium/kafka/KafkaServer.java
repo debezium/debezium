@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.IoUtil;
+
 import kafka.admin.RackAwareMode;
 import kafka.log.Log;
 import kafka.server.KafkaConfig;

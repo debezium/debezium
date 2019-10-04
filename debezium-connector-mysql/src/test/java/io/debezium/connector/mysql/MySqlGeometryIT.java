@@ -24,6 +24,7 @@ import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
+
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.io.ByteReader;
 import mil.nga.wkb.io.WkbGeometryReader;

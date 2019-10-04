@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
-import io.debezium.doc.FixFor;
+import static org.fest.assertions.Assertions.assertThat;
+
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.fest.assertions.Assertions.assertThat;
-
+import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 
 /**

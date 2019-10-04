@@ -5,13 +5,13 @@
  */
 package io.debezium.relational;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 public class TableEditorTest {
 

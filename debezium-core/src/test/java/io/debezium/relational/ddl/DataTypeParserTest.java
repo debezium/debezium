@@ -5,12 +5,12 @@
  */
 package io.debezium.relational.ddl;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.sql.Types;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 import io.debezium.text.TokenStream;
 
