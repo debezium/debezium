@@ -13,7 +13,7 @@ import io.debezium.annotation.Immutable;
 /**
  * A utility class for determining the validity of various XML names, per the <a href="http://www.w3.org/TR/REC-xml/">XML 1.0
  * Specification</a>.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -202,7 +202,7 @@ public class XmlCharacters {
     /**
      * Determine whether the supplied character is a valid first character in an XML Name. The first character in an XML name is
      * more restrictive than the {@link #isValidName(int) remaining characters}.
-     * 
+     *
      * @param c the character
      * @return true if the character is valid for an XML Name's first character
      */
@@ -213,7 +213,7 @@ public class XmlCharacters {
     /**
      * Determine whether the supplied character is a valid first character in an XML NCName. The first character in an XML NCName
      * is more restrictive than the {@link #isValidName(int) remaining characters}.
-     * 
+     *
      * @param c the character
      * @return true if the character is valid for an XML NCName's first character
      */
@@ -224,7 +224,7 @@ public class XmlCharacters {
     /**
      * Determine whether the supplied character is a valid non-first character in an XML Name. The {@link #isValidNameStart(int)
      * first character} in an XML name is more restrictive than the remaining characters.
-     * 
+     *
      * @param c the character
      * @return true if the character is valid character in an XML Name
      */
@@ -235,7 +235,7 @@ public class XmlCharacters {
     /**
      * Determine whether the supplied character is a valid non-first character in an XML NCName. The
      * {@link #isValidNcNameStart(int) first character} in an XML NCName is more restrictive than the remaining characters.
-     * 
+     *
      * @param c the character
      * @return true if the character is valid character in an XML NCName
      */
@@ -245,7 +245,7 @@ public class XmlCharacters {
 
     /**
      * Determine whether the supplied character is a valid character in an XML Pubid.
-     * 
+     *
      * @param c the character
      * @return true if the character is valid character in an XML Pubid
      */
@@ -255,7 +255,7 @@ public class XmlCharacters {
 
     /**
      * Determine whether the supplied character is a valid character in XML.
-     * 
+     *
      * @param c the character
      * @return true if the character is valid character in XML
      */
@@ -265,7 +265,7 @@ public class XmlCharacters {
 
     /**
      * Determine whether the supplied character is a valid character in XML content
-     * 
+     *
      * @param c the character
      * @return true if the character is valid character in XML content
      */
@@ -275,7 +275,7 @@ public class XmlCharacters {
 
     /**
      * Determine whether the supplied character is a valid whitespace character in XML
-     * 
+     *
      * @param c the character
      * @return true if the character is valid whitespace character in XML
      */
@@ -285,7 +285,7 @@ public class XmlCharacters {
 
     /**
      * Determine if the supplied name is a valid XML Name.
-     * 
+     *
      * @param name the string being checked
      * @return true if the supplied name is indeed a valid XML Name, or false otherwise
      */
@@ -309,7 +309,7 @@ public class XmlCharacters {
 
     /**
      * Determine if the supplied name is a valid XML NCName.
-     * 
+     *
      * @param name the string being checked
      * @return true if the supplied name is indeed a valid XML NCName, or false otherwise
      */

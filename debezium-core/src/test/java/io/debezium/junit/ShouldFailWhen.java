@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  * If the condition evaluates to <code>true</code> and a test fails then the failure is ignored. If the test does not fail
  * then a failure is reported.
  * If the condition evaluates to <code>false</code> then the test failure is handled in a usual way.
- * 
+ *
  * @author Jiri Pechanec
  *
  */

@@ -30,18 +30,18 @@ import io.debezium.util.Collect;
  * for testing the infrastructure to run {@link SourceConnector}s.
  * <p>
  * This connector produces messages with keys having a single monotonically-increasing integer field named {@code id}:
- * 
+ *
  * <pre>
  * {
  *     "id" : "1"
  * }
  * </pre>
- * 
- * 
+ *
+ *
  * and values with a {@code batch} field containing the 1-based batch number, a {@code record} field containing the
  * 1-based record number within the batch, and an optional {@code timestamp} field that contains a simulated number of
  * milliseconds past epoch computed by adding the start time of the connector task with the message {@code id}:
- * 
+ *
  * <pre>
  * {
  *     "batch" : "1",
@@ -49,7 +49,7 @@ import io.debezium.util.Collect;
  *     "timestamp" : null
  * }
  * </pre>
- * 
+ *
  * @author Randall Hauch
  */
 public class SimpleSourceConnector extends SourceConnector {

@@ -12,7 +12,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A representation of multiple name segments that together form a path within {@link Document}.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -47,7 +47,7 @@ public interface Path extends Iterable<String> {
 
     /**
      * Get the zero-length path.
-     * 
+     *
      * @return the shared root path; never null
      */
     public static Path root() {
@@ -57,7 +57,7 @@ public interface Path extends Iterable<String> {
     /**
      * Get an {@link Optional} reference to the root path. The resulting Optional will always {@link Optional#isPresent() be
      * present}.
-     * 
+     *
      * @return the shared optional root path; never null
      */
     static Optional<Path> optionalRoot() {
@@ -67,7 +67,7 @@ public interface Path extends Iterable<String> {
     /**
      * Parse a JSON Path expression. Segments are separated by a single forward slash ('{@code /}'); any '{@code ~}' or '{@code /}
      * ' literals must be escaped. Trailing slashes are ignored.
-     * 
+     *
      * @param path the path as a string; may not be null, but may be an empty string or "/" for a root path
      * @return the path object; never null
      */
@@ -78,7 +78,7 @@ public interface Path extends Iterable<String> {
     /**
      * Parse a JSON Path expression. Segments are separated by a single forward slash ('{@code /}'); any '{@code ~}' or '{@code /}
      * ' literals must be escaped. Trailing slashes are ignored.
-     * 
+     *
      * @param path the path as a string; may not be null, but may be an empty string or "/" for a root path
      * @param resolveJsonPointerEscapes {@code true} if '{@code ~}' and '{@code /} ' literals are to be escaped as '{@code ~0}'
      *            and '{@code ~1}', respectively, or {@code false} if they are not to be escaped
@@ -90,7 +90,7 @@ public interface Path extends Iterable<String> {
 
     /**
      * Return whether this path is the root path with no segments. This method is equivalent to {@code size() == 0}.
-     * 
+     *
      * @return true if this path contains exactly one segment, or false otherwise
      */
     default boolean isRoot() {
@@ -99,7 +99,7 @@ public interface Path extends Iterable<String> {
 
     /**
      * Return whether this path has a single segment. This method is equivalent to {@code size() == 1}.
-     * 
+     *
      * @return true if this path contains exactly one segment, or false otherwise
      */
     default boolean isSingle() {
@@ -108,7 +108,7 @@ public interface Path extends Iterable<String> {
 
     /**
      * Return whether this path has more than one segment. This method is equivalent to {@code size() > 1}.
-     * 
+     *
      * @return true if this path contains exactly one segment, or false otherwise
      */
     default boolean isMultiple() {
@@ -117,21 +117,21 @@ public interface Path extends Iterable<String> {
 
     /**
      * Get the number of segments in the path.
-     * 
+     *
      * @return the size of the path; never negative
      */
     int size();
 
     /**
      * Get the optional parent path.
-     * 
+     *
      * @return an optional containing the parent (if this is not the root path), or an empty optional if this is the root path.
      */
     Optional<Path> parent();
 
     /**
      * Get the last segment, if there is one.
-     * 
+     *
      * @return an optional containing the last segment of this path (if this is not the root path), or an empty optional if this
      *         is the root path.
      */
@@ -176,7 +176,7 @@ public interface Path extends Iterable<String> {
 
     /**
      * Call the consumer with the path of every ancestor (except root) down to this path.
-     * 
+     *
      * @param consumer the function to call on each path segment
      */
     default void fromRoot(Consumer<Path> consumer) {

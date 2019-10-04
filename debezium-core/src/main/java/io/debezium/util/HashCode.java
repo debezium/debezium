@@ -21,7 +21,7 @@ public class HashCode {
 
     /**
      * Compute a combined hash code from the supplied objects. This method always returns 0 if no objects are supplied.
-     * 
+     *
      * @param objects the objects that should be used to compute the hash code
      * @return the hash code
      */
@@ -31,7 +31,7 @@ public class HashCode {
 
     /**
      * Compute a combined hash code from the supplied objects using the supplied seed.
-     * 
+     *
      * @param seed a value upon which the hash code will be based; may be 0
      * @param objects the objects that should be used to compute the hash code
      * @return the hash code

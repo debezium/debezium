@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.checkstyle;
@@ -25,7 +25,7 @@ public final class JavaDocUtil {
 
     /**
      * Gets validTags from a given piece of Javadoc.
-     * 
+     *
      * @param aCmt the Javadoc comment to process.
      * @param aTagType the type of validTags we're interested in
      * @return all standalone validTags from the given javadoc.

@@ -23,7 +23,7 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
     public static final class EventAssert {
 
         private final Event actual;
-        
+
         public EventAssert(Event actual) {
             this.actual = actual;
         }
@@ -42,7 +42,7 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
             assertThat(actual.statement()).contains(expected);
             return this;
         }
-        
+
         protected TableEvent tableEvent() {
             assertThat(actual).isInstanceOf(TableEvent.class);
             return (TableEvent) actual;
@@ -138,7 +138,7 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
 
     public SimpleDdlParserListener() {
     }
-    
+
     @Override
     public void handle(Event event) {
         events.add(event);
@@ -152,7 +152,7 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
     public int total() {
         return counter.intValue();
     }
-    
+
     /**
      * Get the number of events currently held by this listener that have yet to be {@link #assertNext() checked}.
      * @return the number of remaining events
@@ -160,14 +160,14 @@ public class SimpleDdlParserListener extends DdlChanges implements DdlParserList
     public int remaining() {
         return events.size();
     }
-    
+
     /**
      * Assert that there is no next event.
      */
     public void assertNoMoreEvents() {
         assertThat( events.isEmpty()).isTrue();
     }
-    
+
     /**
      * Perform assertions on the next event seen by this listener.
      * @return the next event, or null if there is no event

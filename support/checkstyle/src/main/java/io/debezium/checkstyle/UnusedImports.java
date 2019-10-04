@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.checkstyle;
@@ -38,7 +38,7 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * A regular expression for finding the first word within a JavaDoc "@link" text.
-     * 
+     *
      * <pre>
      * (.*?)(?:\s+|#|\$)(.*)
      * </pre>
@@ -47,7 +47,7 @@ public class UnusedImports extends UnusedImportsCheck {
     /**
      * A regular expression for finding the class name (group 1) and the method parameters (group 2) within a JavaDoc "@link"
      * reference.
-     * 
+     *
      * <pre>
      * ([\w.]+)(?:\#?\w+)?(?:\(([^\)]+)\))?.*
      * </pre>
@@ -56,7 +56,7 @@ public class UnusedImports extends UnusedImportsCheck {
             "([\\w.]+)(?:\\#?\\w+)?(?:\\(([^\\)]+)\\))?.*");
     /**
      * A regular expression for finding the first classname referenced in a "@link" reference.
-     * 
+     *
      * <pre>
      * \{\@link\s+([^}]*)
      * </pre>
@@ -115,7 +115,7 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * Collects references made by IDENT.
-     * 
+     *
      * @param aAST the IDENT node to process {@link ArrayList stuff}
      */
     protected void processIdent(DetailAST aAST) {
@@ -209,7 +209,7 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * Collects the details of imports.
-     * 
+     *
      * @param aAST node containing the import details
      */
     private void processImport(DetailAST aAST) {
@@ -221,7 +221,7 @@ public class UnusedImports extends UnusedImportsCheck {
 
     /**
      * Collects the details of static imports.
-     * 
+     *
      * @param aAST node containing the static import details
      */
     private void processStaticImport(DetailAST aAST) {

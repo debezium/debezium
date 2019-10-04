@@ -13,7 +13,7 @@ import io.debezium.annotation.Immutable;
 /**
  * A utility for joining multiple {@link CharSequence character sequences} together. One major difference compared to
  * {@link StringJoiner} is that this class ignores null values (rather than appending "null").
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable

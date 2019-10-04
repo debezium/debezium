@@ -15,7 +15,7 @@ import io.debezium.relational.ValueConverter;
 
 /**
  * A {@link ColumnMapper} implementation that ensures that string values are masked by a predefined value.
- * 
+ *
  * @author Randall Hauch
  */
 public class MaskStrings implements ColumnMapper {
@@ -24,7 +24,7 @@ public class MaskStrings implements ColumnMapper {
 
     /**
      * Create a {@link ColumnMapper} that masks string values with a predefined value.
-     * 
+     *
      * @param maskValue the value that should be used in place of the actual value; may not be null
      * @throws IllegalArgumentException if the {@code maxLength} is not positive
      */

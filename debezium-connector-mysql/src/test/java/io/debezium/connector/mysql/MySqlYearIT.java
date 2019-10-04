@@ -77,25 +77,25 @@ public class MySqlYearIT extends AbstractConnectorTest {
         assertChangeRecordByDatabase();
 
         try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
-            conn.createStatement().execute("INSERT INTO dbz_1143_year_test VALUES (\n" + 
-                    "    default,\n" + 
-                    "    '18',\n" + 
-                    "    '0018',\n" + 
-                    "    '2018',\n" + 
-                    "    '18-04-01',\n" + 
-                    "    '0018-04-01',\n" + 
-                    "    '2018-04-01',\n" + 
-                    "    '18-04-01 12:34:56',\n" + 
-                    "    '0018-04-01 12:34:56',\n" + 
-                    "    '2018-04-01 12:34:56',\n" + 
-                    "    '78',\n" + 
-                    "    '0078',\n" + 
-                    "    '1978',\n" + 
-                    "    '78-04-01',\n" + 
-                    "    '0078-04-01',\n" + 
-                    "    '1978-04-01',\n" + 
-                    "    '78-04-01 12:34:56',\n" + 
-                    "    '0078-04-01 12:34:56',\n" + 
+            conn.createStatement().execute("INSERT INTO dbz_1143_year_test VALUES (\n" +
+                    "    default,\n" +
+                    "    '18',\n" +
+                    "    '0018',\n" +
+                    "    '2018',\n" +
+                    "    '18-04-01',\n" +
+                    "    '0018-04-01',\n" +
+                    "    '2018-04-01',\n" +
+                    "    '18-04-01 12:34:56',\n" +
+                    "    '0018-04-01 12:34:56',\n" +
+                    "    '2018-04-01 12:34:56',\n" +
+                    "    '78',\n" +
+                    "    '0078',\n" +
+                    "    '1978',\n" +
+                    "    '78-04-01',\n" +
+                    "    '0078-04-01',\n" +
+                    "    '1978-04-01',\n" +
+                    "    '78-04-01 12:34:56',\n" +
+                    "    '0078-04-01 12:34:56',\n" +
                     "    '1978-04-01 12:34:56'" +
                     ");");
         }
@@ -127,25 +127,25 @@ public class MySqlYearIT extends AbstractConnectorTest {
         assertChangeRecordByConnector();
 
         try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
-            conn.createStatement().execute("INSERT INTO dbz_1143_year_test VALUES (\n" + 
-                    "    default,\n" + 
-                    "    '18',\n" + 
-                    "    '0018',\n" + 
-                    "    '2018',\n" + 
-                    "    '18-04-01',\n" + 
-                    "    '0018-04-01',\n" + 
-                    "    '2018-04-01',\n" + 
-                    "    '18-04-01 12:34:56',\n" + 
-                    "    '0018-04-01 12:34:56',\n" + 
-                    "    '2018-04-01 12:34:56',\n" + 
-                    "    '78',\n" + 
-                    "    '0078',\n" + 
-                    "    '1978',\n" + 
-                    "    '78-04-01',\n" + 
-                    "    '0078-04-01',\n" + 
-                    "    '1978-04-01',\n" + 
-                    "    '78-04-01 12:34:56',\n" + 
-                    "    '0078-04-01 12:34:56',\n" + 
+            conn.createStatement().execute("INSERT INTO dbz_1143_year_test VALUES (\n" +
+                    "    default,\n" +
+                    "    '18',\n" +
+                    "    '0018',\n" +
+                    "    '2018',\n" +
+                    "    '18-04-01',\n" +
+                    "    '0018-04-01',\n" +
+                    "    '2018-04-01',\n" +
+                    "    '18-04-01 12:34:56',\n" +
+                    "    '0018-04-01 12:34:56',\n" +
+                    "    '2018-04-01 12:34:56',\n" +
+                    "    '78',\n" +
+                    "    '0078',\n" +
+                    "    '1978',\n" +
+                    "    '78-04-01',\n" +
+                    "    '0078-04-01',\n" +
+                    "    '1978-04-01',\n" +
+                    "    '78-04-01 12:34:56',\n" +
+                    "    '0078-04-01 12:34:56',\n" +
                     "    '1978-04-01 12:34:56'" +
                     ");");
         }

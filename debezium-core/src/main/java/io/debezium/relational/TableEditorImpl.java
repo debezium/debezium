@@ -124,7 +124,7 @@ final class TableEditorImpl implements TableEditor {
         }
         return this;
     }
-    
+
     @Override
     public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
         for (String pkColumnName : pkColumnNames) {
@@ -144,18 +144,18 @@ final class TableEditorImpl implements TableEditor {
         uniqueValues = true;
         return this;
     }
-    
+
     @Override
     public boolean hasUniqueValues() {
         return uniqueValues;
     }
-    
+
     @Override
     public TableEditor setDefaultCharsetName(String charsetName) {
         this.defaultCharsetName = charsetName;
         return this;
     }
-    
+
     @Override
     public boolean hasDefaultCharsetName() {
         return this.defaultCharsetName != null && !this.defaultCharsetName.trim().isEmpty();
@@ -207,7 +207,7 @@ final class TableEditorImpl implements TableEditor {
         updatePositions();
         return this;
     }
-    
+
     @Override
     public TableEditor renameColumn(String existingName, String newName) {
         final Column existing = columnWithName(existingName);

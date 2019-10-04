@@ -86,9 +86,9 @@ public class MySqlAntlrDdlParserTest {
                 "  `device_type` int(11) NOT NULL,\n" +
                 "  `cost_name` varchar(64) NOT NULL,\n" +
                 "  `cost_value` float DEFAULT NULL,\n" +
-                "  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" + 
+                "  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
                 "  `comment` varchar(1024) DEFAULT NULL,\n" +
-                "  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'io_block_read_cost' then 1.0 when _utf8mb3'memory_block_read_cost' then 0.25 else NULL end)) VIRTUAL,\n" + 
+                "  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'io_block_read_cost' then 1.0 when _utf8mb3'memory_block_read_cost' then 0.25 else NULL end)) VIRTUAL,\n" +
                 "  PRIMARY KEY (`cost_name`,`engine_name`,`device_type`)\n" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0" + System.lineSeparator();
         parser.parse(ddl, tables);

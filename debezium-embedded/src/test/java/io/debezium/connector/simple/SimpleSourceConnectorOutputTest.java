@@ -33,7 +33,7 @@ import io.debezium.util.Testing;
 /**
  * A test case for the {@link SimpleSourceConnector} that is also able to test and verify the behavior of
  * {@link ConnectorOutputTest}.
- * 
+ *
  * @author Randall Hauch
  */
 public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
@@ -42,7 +42,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
 
     /**
      * Run the connector with no known expected results so that it generates the results.
-     * 
+     *
      * @throws Exception if there is an error
      */
     @Test
@@ -63,7 +63,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         config.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, Integer.toString(numRecordsPerBatch));
         config.put(SimpleSourceConnector.TOPIC_NAME, TOPIC_NAME);
         writeConfigurationFileWithDefaultName(dir, config);
-        
+
         Properties env = new Properties();
         env.put(ConnectorOutputTest.ENV_CONNECTOR_TIMEOUT_IN_SECONDS, "1");
         writeEnvironmentFileWithDefaultName(dir, env);
@@ -151,7 +151,7 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
     protected void appendStop(Path results) throws IOException {
         appendCommand(results, Document.create(CONTROL_KEY, CONTROL_STOP));
     }
-    
+
     protected Array readResults(File file) throws IOException {
         return ArrayReader.defaultReader().readArray(file);
     }

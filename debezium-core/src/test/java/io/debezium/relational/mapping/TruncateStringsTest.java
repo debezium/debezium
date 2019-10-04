@@ -20,7 +20,7 @@ public class TruncateStringsTest {
 
     private final Column column = Column.editor().name("col").create();
     private ValueConverter converter;
-    
+
     @Test
     public void shouldTruncateStrings() {
         converter = new TruncateStrings(5).create(column);

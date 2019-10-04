@@ -16,7 +16,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A Kafka {@link Serializer} and {@link Serializer} that operates upon Debezium {@link Array}s.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable

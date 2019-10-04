@@ -76,7 +76,7 @@ public class DdlParserSql2003Test {
         parser.parse("DROP TABLE my.foo", tables);
         assertThat(tables.size()).isEqualTo(0);
     }
-    
+
     protected void assertColumn(Table table, String name, String typeName, int jdbcType, int length, int scale,
                                 boolean optional, boolean generated, boolean autoIncremented ) {
         Column column = table.columnWithName(name);

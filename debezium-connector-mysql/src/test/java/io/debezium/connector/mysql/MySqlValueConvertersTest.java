@@ -59,7 +59,7 @@ public class MySqlValueConvertersTest {
         assertThat(ADJUSTER.adjustInto(localDateWithYear(-1))).isEqualTo(localDateWithYear(-1));
         assertThat(ADJUSTER.adjustInto(localDateWithYear(100))).isEqualTo(localDateWithYear(100));
     }
-    
+
     @Test
     public void shouldNotAdjustLocalDateTimeWithThreeDigitYears() {
         assertThat(ADJUSTER.adjustInto(localDateTimeWithYear(-1))).isEqualTo(localDateTimeWithYear(-1));
@@ -104,7 +104,7 @@ public class MySqlValueConvertersTest {
     protected LocalDate localDateWithYear(int year) {
         return LocalDate.of(year, Month.APRIL, 4);
     }
-    
+
     protected LocalDateTime localDateTimeWithYear(int year) {
         return LocalDateTime.of(year, Month.APRIL, 4, 0, 0, 0);
     }

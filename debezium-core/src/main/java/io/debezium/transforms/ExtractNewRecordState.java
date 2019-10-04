@@ -43,9 +43,9 @@ import io.debezium.util.BoundedConcurrentHashMap;
  * The SMT by default drops the tombstone message created by Debezium and converts the delete message into
  * a tombstone message that can be dropped, too, if required.
  * * <p>
- * The SMT also has the option to insert fields from the original record's 'source' struct into the new 
+ * The SMT also has the option to insert fields from the original record's 'source' struct into the new
  * unwrapped record prefixed with "__" (for example __lsn in Postgres, or __file in MySQL)
- * 
+ *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
  */
@@ -175,13 +175,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         if (addSourceFields == null) {
             return unwrappedRecord;
         }
-        
+
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct source = ((Struct) originalRecord.value()).getStruct("source");
-        
+
         // Get (or compute) the updated schema from the cache
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), s -> makeUpdatedSchema(s, source.schema(),  addSourceFields));
-        
+
         // Create the updated struct
         final Struct updatedValue = new Struct(updatedSchema);
         for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
@@ -192,12 +192,12 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         return unwrappedRecord.newRecord(
-            unwrappedRecord.topic(), 
-            unwrappedRecord.kafkaPartition(), 
-            unwrappedRecord.keySchema(), 
-            unwrappedRecord.key(), 
-            updatedSchema, 
-            updatedValue, 
+            unwrappedRecord.topic(),
+            unwrappedRecord.kafkaPartition(),
+            unwrappedRecord.keySchema(),
+            unwrappedRecord.key(),
+            updatedSchema,
+            updatedValue,
             unwrappedRecord.timestamp());
     }
 
@@ -213,7 +213,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
             }
             builder.field(
-                ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, 
+                ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
                 sourceSchema.field(sourceField).schema());
         }
         return builder.build();

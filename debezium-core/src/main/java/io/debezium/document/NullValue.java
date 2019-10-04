@@ -100,7 +100,7 @@ final class NullValue implements Value {
     public Double asDouble() {
         return null;
     }
-    
+
     @Override
     public byte[] asBytes() {
         return null;
@@ -165,7 +165,7 @@ final class NullValue implements Value {
     public boolean isBigDecimal() {
         return false;
     }
-    
+
     @Override
     public boolean isBinary() {
         return false;

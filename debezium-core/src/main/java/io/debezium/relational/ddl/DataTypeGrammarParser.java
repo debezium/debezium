@@ -42,7 +42,7 @@ import io.debezium.text.TokenStream.Marker;
  * <li><code>ENUM(...)</code> will match {@code ENUM(a,b,c,d)} and {@code ENUM(a)}.
  * <li>
  * </ul>
- * 
+ *
  * @author Randall Hauch
  * @see DataTypeParser
  */
@@ -61,7 +61,7 @@ public class DataTypeGrammarParser {
 
         /**
          * Get the JDBC type associated with this data type.
-         * 
+         *
          * @return the JDBC {@link Types JDBC type} constant
          */
         public int jdbcType() {
@@ -70,7 +70,7 @@ public class DataTypeGrammarParser {
 
         /**
          * Look for a matching data type on the specified token stream.
-         * 
+         *
          * @param stream the stream of tokens containing the data type definition
          * @return the data type, or null if no data type could be found
          */
@@ -80,7 +80,7 @@ public class DataTypeGrammarParser {
 
         /**
          * Look for a matching data type on the specified token stream.
-         * 
+         *
          * @param stream the stream of tokens containing the data type definition
          * @param errors the function called for each parsing exception; may be null if not needed
          * @return the data type, or null if no data type could be found
@@ -114,7 +114,7 @@ public class DataTypeGrammarParser {
 
     /**
      * Parse the supplied grammar for a data type.
-     * 
+     *
      * @param jdbcType the {@link Types JDBC data type}
      * @param dataTypeDefn the data type grammar
      * @return the data type pattern that can be used for pattern matching the data type; never null

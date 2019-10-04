@@ -18,7 +18,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * Reads {@link Document} instances from a variety of input forms.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
@@ -26,7 +26,7 @@ public interface DocumentReader {
 
     /**
      * Get the default {@link DocumentReader} instance.
-     * 
+     *
      * @return the shared default reader instance; never null
      */
     static DocumentReader defaultReader() {
@@ -44,7 +44,7 @@ public interface DocumentReader {
 
     /**
      * Read a document from the supplied stream.
-     * 
+     *
      * @param jsonStream the input stream to be read; may not be null
      * @return the document instance; never null
      * @throws IOException if a document could not be read from the supplied stream
@@ -53,7 +53,7 @@ public interface DocumentReader {
 
     /**
      * Read a document from the supplied {@link Reader}.
-     * 
+     *
      * @param jsonReader the reader to be read; may not be null
      * @return the document instance; never null
      * @throws IOException if a document could not be read from the supplied reader
@@ -62,7 +62,7 @@ public interface DocumentReader {
 
     /**
      * Read a document from the supplied JSON-formatted string.
-     * 
+     *
      * @param json the JSON string representation to be read; may not be null
      * @return the document instance; never null
      * @throws IOException if a document could not be read from the supplied string
@@ -71,7 +71,7 @@ public interface DocumentReader {
 
     /**
      * Read a document from the content at the given URL.
-     * 
+     *
      * @param jsonUrl the URL to the content that is to be read; may not be null
      * @return the document instance; never null
      * @throws IOException if a document could not be read from the supplied content
@@ -82,7 +82,7 @@ public interface DocumentReader {
 
     /**
      * Read a document from the supplied file.
-     * 
+     *
      * @param jsonFile the file to be read; may not be null
      * @return the document instance; never null
      * @throws IOException if a document could not be read from the supplied file
@@ -93,7 +93,7 @@ public interface DocumentReader {
 
     /**
      * Read a document from the supplied bytes.
-     * 
+     *
      * @param rawBytes the UTF-8 bytes to be read; may not be null
      * @return the document instance; never null
      * @throws IOException if a document could not be read from the supplied bytes

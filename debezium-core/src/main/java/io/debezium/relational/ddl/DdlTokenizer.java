@@ -14,7 +14,7 @@ import io.debezium.text.TokenStream.Tokens;
 
 /**
  * A {@link Tokenizer} that is specialized for tokenizing DDL streams.
- * 
+ *
  * @author Randall Hauch
  * @author Horia Chiorean
  * @author Barry LaFond
@@ -81,7 +81,7 @@ public class DdlTokenizer implements Tokenizer {
     public static interface TokenTypeFunction {
         /**
          * Determine the type of the token.
-         * 
+         *
          * @param type the type of the token
          * @param token the token
          * @return the potentially modified token type

@@ -14,12 +14,12 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * Writes {@link Array} instances to a variety of output forms.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe
 public interface ArrayWriter {
-    
+
     /**
      * Get the default ArrayWriter instance.
      * @return the shared default writer instance; never null
@@ -27,7 +27,7 @@ public interface ArrayWriter {
     static ArrayWriter defaultWriter() {
         return JacksonWriter.INSTANCE;
     }
-    
+
     /**
      * Get the default ArrayWriter instance that outputs nicely-formatted JSON arrays.
      * @return the shared default pretty writer instance; never null
@@ -35,7 +35,7 @@ public interface ArrayWriter {
     static ArrayWriter prettyWriter() {
         return JacksonWriter.PRETTY_WRITER;
     }
-    
+
     /**
      * Write the supplied array to bytes using UTF-8.
      * @param array the array to be written; may not be null
@@ -52,7 +52,7 @@ public interface ArrayWriter {
             return new byte[]{};
         }
     }
-    
+
     /**
      * Write the supplied array to bytes using UTF-8.
      * @param array the array to be written; may not be null
@@ -60,7 +60,7 @@ public interface ArrayWriter {
      * @throws IOException if an array could not be written to the supplied stream
      */
     void write( Array array, OutputStream jsonStream ) throws IOException;
-    
+
     /**
      * Write the supplied array to bytes using UTF-8.
      * @param array the array to be written; may not be null
@@ -68,7 +68,7 @@ public interface ArrayWriter {
      * @throws IOException if an array could not be written to the supplied stream
      */
     void write( Array array, Writer jsonWriter ) throws IOException;
-    
+
     /**
      * Write the supplied array to a string using UTF-8.
      * @param array the array to be written; may not be null

@@ -27,7 +27,7 @@ public class MismatchRecordException extends ConnectException {
         this.actualRecords = new LinkedList<>(actualRecords);
         this.expectedRecords = new LinkedList<>(expectedRecords);
     }
-    
+
     public AssertionError getError() {
         return (AssertionError) super.getCause();
     }

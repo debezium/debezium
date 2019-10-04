@@ -13,7 +13,7 @@ import org.slf4j.MDC;
 /**
  * A utility that provides a consistent set of properties for the Mapped Diagnostic Context (MDC) properties used by Debezium
  * components.
- * 
+ *
  * @author Randall Hauch
  * @since 0.2
  */
@@ -57,7 +57,7 @@ public class LoggingContext {
 
     /**
      * Configure for a connector the logger's Mapped Diagnostic Context (MDC) properties for the thread making this call.
-     * 
+     *
      * @param connectorType the type of connector; may not be null
      * @param connectorName the name of the connector; may not be null
      * @param contextName the name of the context; may not be null
@@ -84,7 +84,7 @@ public class LoggingContext {
     /**
      * Run the supplied function in the temporary connector MDC context, and when complete always return the MDC context to its
      * state before this method was called.
-     * 
+     *
      * @param connectorType the type of connector; may not be null
      * @param connectorName the logical name of the connector; may not be null
      * @param contextName the name of the context; may not be null

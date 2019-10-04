@@ -22,7 +22,7 @@ public class MaskStringsTest {
 
     private final Column column = Column.editor().name("col").jdbcType(Types.VARCHAR).create();
     private ValueConverter converter;
-    
+
     @Test
     public void shouldTruncateStrings() {
         String maskValue = "*****";

@@ -38,12 +38,12 @@ public interface DatabaseHistoryMXBean {
      */
     long getChangesApplied();
 
-    /** 
+    /**
      * @return elapsed time in milliseconds since the last change was applied
      */
     long getMilliSecondsSinceLastAppliedChange();
 
-    /** 
+    /**
      * @return elapsed time in milliseconds since the last record was recovered from history
      */
     long getMilliSecondsSinceLastRecoveredChange();

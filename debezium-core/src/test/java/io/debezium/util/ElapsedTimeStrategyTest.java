@@ -25,7 +25,7 @@ public class ElapsedTimeStrategyTest {
     public void beforeEach() {
         clock = new MockClock();
     }
-    
+
     @Test
     public void testConstantDelay() {
         clock.advanceTo(100);
@@ -60,7 +60,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100000000000000L);
         assertElapsed();
     }
-    
+
     @Test
     public void testLinearDelay() {
         clock.advanceTo(100);
@@ -74,7 +74,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(200);
         assertElapsed();
         // next stop at 200+(100*2)=400
-        
+
         clock.advanceTo(201);
         assertNotElapsed();
         clock.advanceTo(301);
@@ -100,7 +100,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100000000000000L);
         assertElapsed();
     }
-    
+
     @Test
     public void testStepDelayStartingBeforeStep() {
         clock.advanceTo(100);
@@ -117,7 +117,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(110);
         assertElapsed();
         // next stop at 110+(10)=120
-        
+
         clock.advanceTo(119);
         assertNotElapsed();
         clock.advanceTo(120);
@@ -163,8 +163,8 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100000000000000L);
         assertElapsed();
     }
-    
-    
+
+
     @Test
     public void testStepDelayStartingAfterStep() {
         clock.advanceTo(100);
@@ -185,7 +185,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(200);
         assertElapsed();
         // next stop at 200+(100)=300
-        
+
         clock.advanceTo(209);
         assertNotElapsed();
         clock.advanceTo(300);
@@ -226,7 +226,7 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100000000000000L);
         assertElapsed();
     }
-    
+
     @Test
     public void testExponentialDelay() {
         clock.advanceTo(100);
@@ -234,14 +234,14 @@ public class ElapsedTimeStrategyTest {
         // Initial call should always be true ...
         assertElapsed();
         // next stop at 100+(100)=200
-        
+
         assertNotElapsed();
         clock.advanceTo(199);
         assertNotElapsed();
         clock.advanceTo(200);
         assertElapsed();
         // next stop at 200+(100*2)=400
-        
+
         clock.advanceTo(201);
         assertNotElapsed();
         clock.advanceTo(301);
@@ -298,12 +298,12 @@ public class ElapsedTimeStrategyTest {
         clock.advanceTo(100000000006400L);
         assertElapsed();
     }
-    
+
     protected void assertElapsed() {
         assertThat(delay.hasElapsed()).isTrue();
         assertNotElapsed();
     }
-    
+
     protected void assertNotElapsed() {
         for (int i=0; i!=5; ++i) {
             assertThat(delay.hasElapsed()).isFalse();

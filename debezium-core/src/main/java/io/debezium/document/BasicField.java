@@ -12,7 +12,7 @@ import io.debezium.util.Strings;
 
 /**
  * Package-level implementation of a {@link Document.Field} inside a {@link Document}.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -40,12 +40,12 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
     public String toString() {
         return name + "=" + value;
     }
-    
+
     @Override
     public int hashCode() {
         return name.hashCode();
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if ( obj == this ) {
@@ -57,7 +57,7 @@ final class BasicField implements Document.Field, Comparable<Document.Field> {
         }
         return false;
     }
-    
+
     @Override
     public int compareTo(Document.Field that) {
         if ( this == that ) {

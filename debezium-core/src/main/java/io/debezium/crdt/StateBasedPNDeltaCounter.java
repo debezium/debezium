@@ -61,12 +61,12 @@ import io.debezium.annotation.NotThreadSafe;
     public PNCount getChanges() {
         return delta;
     }
-    
+
     @Override
     public boolean hasChanges() {
         return delta.getIncrement() != 0 || delta.getDecrement() != 0;
     }
-    
+
     @Override
     public Count getPriorCount() {
         long value = super.get() - delta.get();
@@ -96,7 +96,7 @@ import io.debezium.annotation.NotThreadSafe;
         }
         return this;
     }
-    
+
     @Override
     public String toString() {
         return super.toString() + " (changes " + this.delta + ")";
