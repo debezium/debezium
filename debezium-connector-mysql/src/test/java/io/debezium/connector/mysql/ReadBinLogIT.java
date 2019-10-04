@@ -108,7 +108,7 @@ public class ReadBinLogIT implements Testing {
     protected void startClient() throws IOException, TimeoutException, SQLException {
         startClient(null);
     }
-    
+
     protected void startClient(Consumer<BinaryLogClient> preConnect) throws IOException, TimeoutException, SQLException {
         // Connect the bin log client ...
         counters = new EventQueue(DEFAULT_TIMEOUT, this::logConsumedEvent, this::logIgnoredEvent);
@@ -139,7 +139,7 @@ public class ReadBinLogIT implements Testing {
         counters.consume(2, EventType.QUERY);
         counters.reset();
     }
-    
+
     @Ignore
     @Test( expected = ServerException.class)
     public void shouldFailToConnectToInvalidBinlogFile() throws Exception {
@@ -266,7 +266,7 @@ public class ReadBinLogIT implements Testing {
     /**
      * Test case that is normally commented out since it is only useful to print out the DDL statements recorded by
      * the binlog during a MySQL server initialization and startup.
-     * 
+     *
      * @throws Exception if there are problems
      */
     @Ignore
@@ -504,7 +504,7 @@ public class ReadBinLogIT implements Testing {
 
         /**
          * Blocks for the specified amount of time, consuming (and discarding) all events.
-         * 
+         *
          * @param timeout the maximum amount of time that this method should block
          * @param unit the time unit for {@code timeout}
          * @throws TimeoutException if the waiting timed out before the expected number of events were received
@@ -524,7 +524,7 @@ public class ReadBinLogIT implements Testing {
          * Blocks until the listener has consume the specified number of matching events, blocking at most the default number of
          * milliseconds. If this method has not reached the number of matching events and comes across events that do not satisfy
          * the predicate, those events are consumed and ignored.
-         * 
+         *
          * @param eventCount the number of events
          * @param condition the event-based predicate that signals a match; may not be null
          * @throws TimeoutException if the waiting timed out before the expected number of events were received
@@ -537,7 +537,7 @@ public class ReadBinLogIT implements Testing {
          * Blocks until the listener has consume the specified number of matching events, blocking at most the specified number
          * of milliseconds. If this method has not reached the number of matching events and comes across events that do not
          * satisfy the predicate, those events are consumed and ignored.
-         * 
+         *
          * @param eventCount the number of events
          * @param timeoutInMillis the maximum amount of time in milliseconds that this method should block
          * @param condition the event-based predicate that signals a match; may not be null
@@ -574,7 +574,7 @@ public class ReadBinLogIT implements Testing {
         /**
          * Blocks until the listener has seen the specified number of events with the given type, or until the default timeout
          * has passed.
-         * 
+         *
          * @param eventCount the number of events
          * @param type the type of event
          * @throws TimeoutException if the waiting timed out before the expected number of events were received
@@ -586,7 +586,7 @@ public class ReadBinLogIT implements Testing {
         /**
          * Blocks until the listener has seen the specified number of events with the given type, or until the specified time
          * has passed.
-         * 
+         *
          * @param eventCount the number of events
          * @param type the type of event
          * @param timeoutMillis the maximum amount of time in milliseconds that this method should block
@@ -603,7 +603,7 @@ public class ReadBinLogIT implements Testing {
         /**
          * Blocks until the listener has seen the specified number of events with the given type, or until the default timeout
          * has passed.
-         * 
+         *
          * @param eventCount the number of events
          * @param eventDataClass the EventData subclass
          * @throws TimeoutException if the waiting timed out before the expected number of events were received
@@ -615,7 +615,7 @@ public class ReadBinLogIT implements Testing {
         /**
          * Blocks until the listener has seen the specified number of events with event data matching the specified class,
          * or until the specified time has passed.
-         * 
+         *
          * @param eventCount the number of events
          * @param eventDataClass the EventData subclass
          * @param timeoutMillis the maximum amount of time in milliseconds that this method should block

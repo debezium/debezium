@@ -16,7 +16,7 @@ import io.debezium.relational.TableId;
  * {@link Event} also may have additional data associated with it.
  * <p>
  * Clearly not all DDL statements processed by a {@link LegacyDdlParser parser} will result in an {@link Event event}.
- * 
+ *
  * @author Randall Hauch
  */
 @FunctionalInterface
@@ -24,7 +24,7 @@ public interface DdlParserListener {
 
     /**
      * Handle a DDL event.
-     * 
+     *
      * @param event the DDL event; never null
      */
     void handle(Event event);
@@ -90,7 +90,7 @@ public interface DdlParserListener {
         public TableId tableId() {
             return tableId;
         }
-        
+
         /**
          * Determine whether the target of the event is a view rather than a table.
          * @return {@code true} if the target is a view, or {@code false} if the target is a table
@@ -221,7 +221,7 @@ public interface DdlParserListener {
             super(EventType.DROP_INDEX, indexName, tableId, ddlStatement);
         }
     }
-    
+
     /**
      * The base class for all table-related events.
      */
@@ -241,7 +241,7 @@ public interface DdlParserListener {
         public String databaseName() {
             return databaseName;
         }
-        
+
         @Override
         public String toString() {
             return databaseName() + " => " + statement();
@@ -310,7 +310,7 @@ public interface DdlParserListener {
      */
     @Immutable
     public static class SetVariableEvent extends Event {
-        
+
         private final String variableName;
         private final String value;
         private final String databaseName;
@@ -329,7 +329,7 @@ public interface DdlParserListener {
         public String variableName() {
             return variableName;
         }
-        
+
         /**
          * Get the value of the variable that was set.
          * @return the variable value; may be null

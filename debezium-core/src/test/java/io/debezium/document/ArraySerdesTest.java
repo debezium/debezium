@@ -18,9 +18,9 @@ import io.debezium.util.Testing;
  *
  */
 public class ArraySerdesTest implements Testing {
-    
+
     private static final ArraySerdes SERDES = new ArraySerdes();
-    
+
     @Test
     public void shouldConvertFromBytesToArray1() throws IOException {
         readAsStringAndBytes("json/array1.json");

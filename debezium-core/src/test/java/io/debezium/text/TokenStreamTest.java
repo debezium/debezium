@@ -482,7 +482,7 @@ public class TokenStreamTest {
         assertThat(tokens.nextPosition().column()).isEqualTo(7);
 
     }
-    
+
     @Test
     public void shouldConsumeUntilWithoutRepeats() {
         makeCaseInsensitive();
@@ -497,7 +497,7 @@ public class TokenStreamTest {
         tokens.consume("BAR");
         assertThat(tokens.hasNext()).isFalse();
     }
-    
+
     @Test
     public void shouldConsumeUntilWithRepeats() {
         makeCaseInsensitive();
@@ -512,7 +512,7 @@ public class TokenStreamTest {
         tokens.consume("BAR");
         assertThat(tokens.hasNext()).isFalse();
     }
-    
+
     @Test
     public void shouldConsumeUntilWithRepeatsAndMultipleSkipTokens() {
         makeCaseInsensitive();

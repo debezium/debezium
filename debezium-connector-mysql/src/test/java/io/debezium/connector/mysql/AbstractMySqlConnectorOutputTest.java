@@ -28,7 +28,7 @@ import io.debezium.util.Testing;
 /**
  * Run the {@link MySqlConnector} in various configurations and against different MySQL server instances
  * and verify the output is as expected.
- * 
+ *
  * @author Randall Hauch
  */
 public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
@@ -47,7 +47,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
 
     /**
      * Wait up to 10 seconds until the replica catches up with the master.
-     * 
+     *
      * @param master the configuration with the {@link MySqlConnectorConfig#HOSTNAME} and {@link MySqlConnectorConfig#PORT}
      *            configuration properties for the MySQL master; may not be null
      * @param replica the configuration with the {@link MySqlConnectorConfig#HOSTNAME} and {@link MySqlConnectorConfig#PORT}
@@ -60,7 +60,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
 
     /**
      * Wait a maximum amount of time until the replica catches up with the master.
-     * 
+     *
      * @param master the configuration with the {@link MySqlConnectorConfig#HOSTNAME} and {@link MySqlConnectorConfig#PORT}
      *            configuration properties for the MySQL master; may not be null
      * @param replica the configuration with the {@link MySqlConnectorConfig#HOSTNAME} and {@link MySqlConnectorConfig#PORT}
@@ -123,7 +123,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
      * When connected to a replica, the GTID source for the master is added to the variables using the "@{code master_uuid}"
      * variable, which does not correspond to a real MySQL system variable. The GTID source of the server to which the test
      * case connects is given by the "{@code server_uuid}" system variable.
-     * 
+     *
      * @param config the connector configuration; never null
      * @return the available system variables
      * @throws Exception if there is a problem connecting to the database and reading the system variables
@@ -158,7 +158,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
         }
         return variables;
     }
-    
+
     @Override
     protected String[] globallyIgnorableFieldNames() {
         return new String[]{"VALUE/source/thread"};

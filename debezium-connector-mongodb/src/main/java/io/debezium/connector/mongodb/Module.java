@@ -11,11 +11,11 @@ import io.debezium.util.IoUtil;
 
 /**
  * Information about this module.
- * 
+ *
  * @author Randall Hauch
  */
 public final class Module {
-    
+
     private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/connector/mongodb/build.version");
 
     public static String version() {

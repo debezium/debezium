@@ -17,7 +17,7 @@ import io.debezium.util.Sequences;
 
 /**
  * Package-level implementation of {@link Array}.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -156,7 +156,7 @@ final class  BasicArray implements Array {
         }
         return this;
     }
-    
+
     @Override
     public Array increment(int index, Value increment) {
         if ( !increment.isNumber() ) {

@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.checkstyle;
@@ -15,7 +15,7 @@ import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
 
 /**
  * A simple CheckStyle checker to verify specific import statements are not being used.
- * 
+ *
  * @author Sanne Grinovero
  */
 public class IllegalImport extends AbstractCheck {
@@ -25,7 +25,7 @@ public class IllegalImport extends AbstractCheck {
 
     /**
      * Set the list of illegal import statements.
-     * 
+     *
      * @param importStatements array of illegal packages
      */
     public void setIllegalClassnames(String[] importStatements) {

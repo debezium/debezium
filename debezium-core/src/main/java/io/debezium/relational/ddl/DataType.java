@@ -12,7 +12,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * An immutable representation of a data type
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -20,7 +20,7 @@ public final class DataType {
 
     /**
      * Obtain the data type for a user-defined or fully-qualified type name.
-     * 
+     *
      * @param qualifiedName the fully-qualified name; may not be null
      * @return the data type; never null
      */

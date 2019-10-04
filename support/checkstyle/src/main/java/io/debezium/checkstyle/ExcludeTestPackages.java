@@ -1,6 +1,6 @@
 /*
  * Copyright Debezium Authors.
- * 
+ *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.checkstyle;
@@ -16,7 +16,7 @@ import com.puppycrawl.tools.checkstyle.api.Filter;
  * "[not required for tests]".
  * <p>
  * A SuppressionFilter is too generic, and requires per-module configuration.
- * 
+ *
  * @author Sanne Grinovero <sanne@hibernate.org>
  */
 public class ExcludeTestPackages implements Filter {

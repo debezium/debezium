@@ -1128,7 +1128,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         stopConnector(value -> assertThat(logInterceptor.containsMessage("Creating new publication 'cdc' for plugin 'PGOUTPUT'")).isTrue());
         assertTrue(TestHelper.publicationExists("cdc"));
     }
-    
+
     @Test
     @FixFor("DBZ-1015")
     public void shouldRewriteIdentityKey() throws InterruptedException {
@@ -1139,7 +1139,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                                                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
                                                //rewrite key from table 'a': from {pk} to {pk, aa}
                                                .with(PostgresConnectorConfig.MSG_KEY_COLUMNS, "(.*).a:pk,aa");
-        
+
         start(PostgresConnector.class, configBuilder.build());
         waitForSnapshotToBeCompleted();
         SourceRecords records = consumeRecordsByTopic(1);
@@ -1148,9 +1148,9 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
             Assertions.assertThat(key.get("aa")).isNotNull();
         });
-        
+
         stopConnector();
-        
+
     }
 
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {

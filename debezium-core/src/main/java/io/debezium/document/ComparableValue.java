@@ -14,7 +14,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A specialization of {@link Value} that wraps another {@link Value} that is not comparable.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable

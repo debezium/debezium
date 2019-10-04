@@ -20,7 +20,7 @@ import io.debezium.util.IoUtil;
 
 /**
  * A lightweight embeddable Zookeeper server useful for unit testing.
- * 
+ *
  * @author Randall Hauch
  * @see KafkaCluster
  */
@@ -51,7 +51,7 @@ public class ZookeeperServer {
 
     /**
      * Start the embedded Zookeeper server.
-     * 
+     *
      * @return this instance to allow chaining methods; never null
      * @throws IOException if there is an error during startup
      * @throws IllegalStateException if the server is already running
@@ -81,7 +81,7 @@ public class ZookeeperServer {
         this.logDir.mkdirs();
 
         try {
-            server = new ZooKeeperServer(snapshotDir, logDir, tickTime); 
+            server = new ZooKeeperServer(snapshotDir, logDir, tickTime);
             factory.startup(server);
             return this;
         }
@@ -101,7 +101,7 @@ public class ZookeeperServer {
 
     /**
      * Shutdown the embedded Kafka server.
-     * 
+     *
      * @param deleteData true if the data should be removed, or false otherwise
      */
     public synchronized void shutdown(boolean deleteData) {
@@ -134,7 +134,7 @@ public class ZookeeperServer {
     /**
      * Get the connection string. If the server is not {@link #startup() running} and the port is to be dynamically discovered
      * upon startup, then this method returns "{@code localhost:-1}".
-     * 
+     *
      * @return the connection string; never null
      */
     public String getConnection() {
@@ -143,7 +143,7 @@ public class ZookeeperServer {
 
     /**
      * Set the port for the server.
-     * 
+     *
      * @param port the desired port, or {@code -1} if a random available port should be found and used
      * @return this instance to allow chaining methods; never null
      */
@@ -155,7 +155,7 @@ public class ZookeeperServer {
     /**
      * Set the basic time unit in milliseconds used by ZooKeeper. It is used to do heartbeats and the minimum session timeout will
      * be twice the tickTime.
-     * 
+     *
      * @param tickTime the desired value, or non-positive if the default of {@link #DEFAULT_TICK_TIME} be used
      * @return this instance to allow chaining methods; never null
      */
@@ -166,7 +166,7 @@ public class ZookeeperServer {
 
     /**
      * Get the current port.
-     * 
+     *
      * @return the port number, or {@code -1} if the port should be discovered upon {@link #startup()}
      */
     public int getPort() {
@@ -175,7 +175,7 @@ public class ZookeeperServer {
 
     /**
      * Get the basic time unit in milliseconds used by ZooKeeper.
-     * 
+     *
      * @return tick time; always positive
      */
     public int getTickTime() {
@@ -184,7 +184,7 @@ public class ZookeeperServer {
 
     /**
      * Perform the supplied function on each directory used by this server.
-     * 
+     *
      * @param consumer the consumer function; may not be null
      */
     void onEachDirectory(Consumer<File> consumer) {
@@ -199,7 +199,7 @@ public class ZookeeperServer {
     File getSnapshotDirectory() {
         return this.snapshotDir;
     }
-    
+
     /**
      * Get the parent directory where the server's logs are kept.
      * @return the parent directory for the server's logs; never null once the server is running
@@ -207,7 +207,7 @@ public class ZookeeperServer {
     File getLogDirectory() {
         return this.logDir;
     }
-    
+
     /**
      * Get the parent directory where the server's logs and snapshots will be kept.
      * @return the parent directory for the server's logs and snapshots; may be null if a temporary directory will be used
@@ -215,7 +215,7 @@ public class ZookeeperServer {
     public File getStateDirectory() {
         return this.logDir;
     }
-    
+
     /**
      * Set the parent directory where the server's logs and snapshots will be kept.
      * @param dataDir the parent directory for the server's logs and snapshots; may be null if a temporary directory will be used

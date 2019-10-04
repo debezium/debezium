@@ -283,7 +283,7 @@ public class DataTypeGrammarParserTest {
         assertThat(type.name()).isEqualTo("CHAR BINARY CHARACTER SET utf8 COLLATE utf8_bin");
         assertThat(type.expression()).isEqualTo("CHAR(60) BINARY CHARACTER SET utf8 COLLATE utf8_bin");
         assertThat(type.jdbcType()).isEqualTo(TYPE);
-        
+
         type = pattern.match(text("char  (  60  )  binary  DEFAULT  ''  NOT  NULL"));
         assertThat(type.arrayDimensions()).isNull();
         assertThat(type.length()).isEqualTo(60);

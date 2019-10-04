@@ -24,7 +24,7 @@ import io.debezium.text.TokenStream.Marker;
  * <p>
  * This is typically used within a {@link LegacyDdlParser} implementation to parse and identify data types appearing within a stream
  * of DDL content.
- * 
+ *
  * @author Randall Hauch
  * @see LegacyDdlParser
  */
@@ -46,7 +46,7 @@ public class DataTypeParser {
      * The order that grammars are registered is the same order that they are evaluated by the resulting parser. However, when
      * multiple grammars match the same input tokens, the grammar that successfully consumes the most input tokens will be
      * selected.
-     * 
+     *
      * @param jdbcType the best JDBC type for the data type
      * @param grammar the grammar the defines the data type format; may not be null
      * @return this parser so callers can chain methods; never null
@@ -74,7 +74,7 @@ public class DataTypeParser {
      * although these errors are only reported when no data type is found. This is often useful when the caller expects
      * to find a data type, but no such data type can be found due to one or more parsing exceptions. When this happens,
      * the method calls {@code errorHandler} with all of the {@link ParsingException}s and then returns <code>null</code>.
-     * 
+     *
      * @param stream the stream of tokens; may not be null
      * @param errorHandler a function that should be called when no data type was found because at least one
      *            {@link ParsingException}

@@ -135,7 +135,7 @@ public class MongoDataConverterTest {
     @FixFor("DBZ-928")
     public void shouldProcessNullValue() {
         val = BsonDocument.parse("{\n" +
-                "    \"_id\" : ObjectId(\"51e5619ee4b01f9fbdfba9fc\"),\n"+ 
+                "    \"_id\" : ObjectId(\"51e5619ee4b01f9fbdfba9fc\"),\n"+
                 "    \"delivery\" : {\n" +
                 "        \"hour\" : null,\n" +
                 "        \"hourId\" : 10\n" +

@@ -149,14 +149,14 @@ public class MongoUtilTest {
         assertThat(addresses.get(0).getHost()).isEqualTo(ServerAddress.defaultHost());
         assertThat(addresses.get(0).getPort()).isEqualTo(ServerAddress.defaultPort());
     }
-    
+
     @Test
     public void shouldParseReplicaSetName() {
         assertThat(MongoUtil.replicaSetUsedIn("rs0/")).isEqualTo("rs0");
         assertThat(MongoUtil.replicaSetUsedIn("rs0/localhost")).isEqualTo("rs0");
         assertThat(MongoUtil.replicaSetUsedIn("rs0/[::1/128]")).isEqualTo("rs0");
     }
-    
+
     @Test
     public void shouldNotParseReplicaSetName() {
         assertThat(MongoUtil.replicaSetUsedIn("")).isNull();

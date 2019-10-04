@@ -68,25 +68,25 @@ public class PredicatesTest {
         assertThat(p.test(uuid2)).isTrue();
         assertThat(p.test(uuid3)).isFalse();
         assertThat(p.test(uuid4)).isFalse();
-        
+
         p = Predicates.excludesUuids(uuid1 + "," + uuid2);
         assertThat(p.test(uuid1)).isFalse();
         assertThat(p.test(uuid2)).isFalse();
         assertThat(p.test(uuid3)).isTrue();
         assertThat(p.test(uuid4)).isTrue();
-        
+
         p = Predicates.includesUuids(uuid1 + "," + uuid2 + "," + uuid4Prefix);
         assertThat(p.test(uuid1)).isTrue();
         assertThat(p.test(uuid2)).isTrue();
         assertThat(p.test(uuid3)).isFalse();
         assertThat(p.test(uuid4)).isTrue();
-        
+
         p = Predicates.excludesUuids(uuid1 + "," + uuid2 + "," + uuid4Prefix);
         assertThat(p.test(uuid1)).isFalse();
         assertThat(p.test(uuid2)).isFalse();
         assertThat(p.test(uuid3)).isTrue();
         assertThat(p.test(uuid4)).isFalse();
-        
+
     }
 
 }

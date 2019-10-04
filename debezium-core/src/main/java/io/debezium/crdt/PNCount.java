@@ -12,7 +12,7 @@ package io.debezium.crdt;
 public interface PNCount extends GCount {
     /**
      * Get the current value.
-     * 
+     *
      * @return the current value
      */
     @Override
@@ -23,7 +23,7 @@ public interface PNCount extends GCount {
     /**
      * Get the amount that the value decremented. The {@link #get() value} is the {@link #getIncrement() total
      * increments} minus the {@link #getDecrement() total decrements}
-     * 
+     *
      * @return the decremented value
      */
     long getDecrement();

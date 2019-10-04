@@ -9,7 +9,7 @@ package io.debezium.relational.history;
  * @author Randall Hauch
  */
 public class MemoryDatabaseHistoryTest extends AbstractDatabaseHistoryTest {
-    
+
     @Override
     protected DatabaseHistory createHistory() {
         return new MemoryDatabaseHistory();

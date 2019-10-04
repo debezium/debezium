@@ -13,7 +13,7 @@ public interface ValueConverter {
 
     /**
      * Convert the column's data value.
-     * 
+     *
      * @param data the column data value
      * @return the new data value
      */
@@ -22,7 +22,7 @@ public interface ValueConverter {
     /**
      * Adapt this converter to call the specified <em>fallback</em> converter when this converter returns {@code null} for
      * a non-null input.
-     * 
+     *
      * @param fallback the converter to fall back to when this converter returns {@code null} for a non-null input
      * @return the new converter, or this converter if {@code fallback} is {@code null}
      */
@@ -38,7 +38,7 @@ public interface ValueConverter {
 
     /**
      * Return a new converter that calls this converter and passes the result to the specified converter.
-     * 
+     *
      * @param delegate the converter to call after this converter
      * @return the new converter, or this converter if {@code delegate} is {@code null}
      */
@@ -53,7 +53,7 @@ public interface ValueConverter {
 
     /**
      * Return a new converter that will call this converter only when the input is not {@code null}.
-     * 
+     *
      * @return the new converter; never null
      */
     default ValueConverter nullOr() {
@@ -67,7 +67,7 @@ public interface ValueConverter {
 
     /**
      * Obtain a {@link ValueConverter} that passes through values.
-     * 
+     *
      * @return the pass-through {@link ValueConverter}; never null
      */
     public static ValueConverter passthrough() {

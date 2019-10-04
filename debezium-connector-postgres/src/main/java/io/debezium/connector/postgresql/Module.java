@@ -11,11 +11,11 @@ import io.debezium.util.IoUtil;
 
 /**
  * Information about this module.
- * 
+ *
  * @author Horia Chiorean
  */
 public final class Module {
-    
+
     private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/connector/postgresql/build.version");
 
     public static String version() {

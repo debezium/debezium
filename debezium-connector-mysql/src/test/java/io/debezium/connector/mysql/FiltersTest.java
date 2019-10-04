@@ -26,7 +26,7 @@ public class FiltersTest {
         build = new Configurator();
         filters = null;
     }
-    
+
     @Test
     public void shouldAllowDatabaseListedWithLiteralInWhitelistAndNoDatabaseBlacklist() {
         filters = build.includeDatabases("connector_test").createFilters();
@@ -34,7 +34,7 @@ public class FiltersTest {
         assertDatabaseExcluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowDatabaseListedWithMultipleLiteralsInWhitelistAndNoDatabaseBlacklist() {
         filters = build.includeDatabases("connector_test,another_included").createFilters();
@@ -43,7 +43,7 @@ public class FiltersTest {
         assertDatabaseExcluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowDatabaseListedWithMultipleRegexInWhitelistAndNoDatabaseBlacklist() {
         filters = build.includeDatabases("connector.*_test,another_{1}.*").createFilters();
@@ -55,7 +55,7 @@ public class FiltersTest {
         assertDatabaseExcluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowDatabaseListedWithWildcardInWhitelistAndNoDatabaseBlacklist() {
         filters = build.includeDatabases(".*").createFilters();
@@ -64,7 +64,7 @@ public class FiltersTest {
         assertDatabaseIncluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowAllDatabaseExceptSystemWhenWhitelistIsBlank() {
         filters = build.includeDatabases("").createFilters();
@@ -80,7 +80,7 @@ public class FiltersTest {
         assertDatabaseIncluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldNotAllowDatabaseListedWithMultipleLiteralsInBlacklistAndNoDatabaseWhitelist() {
         filters = build.excludeDatabases("connector_test,another_included").createFilters();
@@ -90,7 +90,7 @@ public class FiltersTest {
         assertDatabaseIncluded("something-else");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldNotAllowDatabaseListedWithMultipleRegexInBlacklistAndNoDatabaseWhitelist() {
         filters = build.excludeDatabases("connector.*_test,another_{1}.*").createFilters();
@@ -102,7 +102,7 @@ public class FiltersTest {
         assertDatabaseIncluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldNotAllowDatabaseListedWithWildcardInBlacklistAndNoDatabaseWhitelist() {
         filters = build.excludeDatabases(".*").createFilters();
@@ -111,7 +111,7 @@ public class FiltersTest {
         assertDatabaseExcluded("other");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldRespectOnlyDatabaseWhitelistWithDatabaseBlacklistAlsoSpecified() {
         filters = build.includeDatabases("A,B,C,D.*").excludeDatabases("C,B,E").createFilters();
@@ -125,7 +125,7 @@ public class FiltersTest {
         assertDatabaseExcluded("another__test");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowAllDatabaseWhenBlacklistIsBlank() {
         filters = build.excludeDatabases("").createFilters();
@@ -142,7 +142,7 @@ public class FiltersTest {
         assertDatabaseIncluded("something_else");
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowTableListedWithLiteralInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
         filters = build.includeTables("connector_test.table1").createFilters();
@@ -154,7 +154,7 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowTableListedWithLiteralWithEscapedPeriodInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
         filters = build.includeTables("connector_test[.]table1").createFilters();
@@ -175,7 +175,7 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowTableListedWithMultipleLiteralsInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
         filters = build.includeTables("connector_test.table1,connector_test.table2").createFilters();
@@ -187,7 +187,7 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowTableListedWithMultipleRegexInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
         filters = build.includeTables("connector_test.table[x]?1,connector_test[.](.*)2").createFilters();
@@ -199,7 +199,7 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldAllowTableListedWithWildcardInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
         filters = build.includeTables("connector_test[.](.*)").createFilters();
@@ -272,7 +272,7 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
     @Test
     public void shouldNotAllowTableWhenExcludedInDatabaseWhitelist() {
         filters = build.includeTables("db1.table1,db2.table1,db3.*").excludeDatabases("db2").createFilters();
@@ -290,7 +290,7 @@ public class FiltersTest {
         assertSystemTablesExcluded();
         assertSystemDatabasesExcluded();
     }
-    
+
     protected void assertDatabaseIncluded( String databaseName ) {
         assertThat(filters.databaseFilter().test(databaseName)).isTrue();
     }

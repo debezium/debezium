@@ -20,7 +20,7 @@ import io.debezium.annotation.ThreadSafe;
 
 /**
  * A {@link DocumentWriter} and {@link ArrayWriter} that uses the Jackson library to write JSON.
- * 
+ *
  * @author Randall Hauch
  */
 @ThreadSafe

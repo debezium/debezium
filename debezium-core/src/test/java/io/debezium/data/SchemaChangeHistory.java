@@ -46,19 +46,19 @@ public class SchemaChangeHistory {
     public int recordCount() {
         return sourceRecords.size();
     }
-    
+
     public void forEach( Consumer<SourceRecord> consumer ) {
         sourceRecords.forEach(consumer);
     }
-    
+
     public int databaseCount() {
         return sourceRecordsByDbName.size();
     }
-    
+
     public Set<String> databases() {
         return Collections.unmodifiableSet(sourceRecordsByDbName.keySet());
     }
-    
+
     public List<SourceRecord> ddlRecordsForDatabase( String dbName ) {
         return sourceRecordsByDbName.get(dbName);
     }

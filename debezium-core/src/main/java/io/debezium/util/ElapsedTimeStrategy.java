@@ -9,7 +9,7 @@ import java.util.function.BooleanSupplier;
 
 /**
  * Encapsulates the logic of determining a delay when some criteria is met.
- * 
+ *
  * @author Randall Hauch
  */
 @FunctionalInterface
@@ -17,14 +17,14 @@ public interface ElapsedTimeStrategy {
 
     /**
      * Determine if the time period has elapsed since this method was last called.
-     * 
+     *
      * @return {@code true} if this invocation caused the thread to sleep, or {@code false} if this method did not sleep
      */
     boolean hasElapsed();
 
     /**
      * Create an elapsed time strategy that always is elapsed.
-     * 
+     *
      * @return the strategy; never null
      */
     public static ElapsedTimeStrategy none() {
@@ -33,7 +33,7 @@ public interface ElapsedTimeStrategy {
 
     /**
      * Create a strategy whose time periods are constant.
-     * 
+     *
      * @param clock the clock used to determine if sufficient time has elapsed; may not be null
      * @param delayInMilliseconds the time period; must be positive
      * @return the strategy; never null
@@ -68,7 +68,7 @@ public interface ElapsedTimeStrategy {
     /**
      * Create a strategy whose time periods start out at one length but then change to another length after another
      * period has elapsed.
-     * 
+     *
      * @param clock the clock used to determine if sufficient time has elapsed; may not be null
      * @param preStepDelayInMilliseconds the time period before the step has occurred; must be positive
      * @param stepFunction the function that determines if the step time has elapsed; may not be null
@@ -121,7 +121,7 @@ public interface ElapsedTimeStrategy {
 
     /**
      * Create a strategy whose time periods linearly increase in length.
-     * 
+     *
      * @param clock the clock used to determine if sufficient time has elapsed; may not be null
      * @param delayInMilliseconds the initial delay; must be positive
      * @return the strategy; never null
@@ -159,7 +159,7 @@ public interface ElapsedTimeStrategy {
 
     /**
      * Create a strategy whose time periods increase exponentially.
-     * 
+     *
      * @param clock the clock used to determine if sufficient time has elapsed; may not be null
      * @param initialDelayInMilliseconds the initial delay; must be positive
      * @param maxDelayInMilliseconds the maximum delay; must be greater than the initial delay
@@ -173,7 +173,7 @@ public interface ElapsedTimeStrategy {
 
     /**
      * Create a strategy whose time periods increase exponentially.
-     * 
+     *
      * @param clock the clock used to determine if sufficient time has elapsed; may not be null
      * @param initialDelayInMilliseconds the initial delay; must be positive
      * @param maxDelayInMilliseconds the maximum delay; must be greater than the initial delay

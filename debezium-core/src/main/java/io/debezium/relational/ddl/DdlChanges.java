@@ -16,7 +16,7 @@ import io.debezium.relational.TableId;
 
 /**
  * A {@link DdlParserListener} that accumulates changes, allowing them to be consumed in the same order by database.
- * 
+ *
  * @author Randall Hauch
  */
 @NotThreadSafe
@@ -35,7 +35,7 @@ public class DdlChanges implements DdlParserListener {
 
     /**
      * Create a new changes object with the designated terminator token.
-     * 
+     *
      * @param terminator the token used to terminate each statement; may be null
      */
     public DdlChanges(String terminator) {
@@ -44,7 +44,7 @@ public class DdlChanges implements DdlParserListener {
 
     /**
      * Clear all accumulated changes.
-     * 
+     *
      * @return this object for method chaining; never null
      */
     public DdlChanges reset() {
@@ -154,15 +154,15 @@ public class DdlChanges implements DdlParserListener {
         assert false : "Should never happen";
         return null;
     }
-    
+
     public boolean isEmpty() {
         return events.isEmpty();
     }
-    
+
     public boolean applyToMoreDatabasesThan( String name ) {
         return databaseNames.contains(name) ? databaseNames.size() > 1 : databaseNames.size() > 0;
     }
-    
+
     @Override
     public String toString() {
         return events.toString();

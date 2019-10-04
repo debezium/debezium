@@ -12,7 +12,7 @@ import org.junit.runners.model.Statement;
  * JUnit rule that inspects the presence of the {@link SkipLongRunning} annotation either on a test method or on a test suite. If
  * it finds the annotation, it will only run the test method/suite if the system property {@code skipLongRunningTests} has the
  * value {@code true}
- * 
+ *
  * @author Horia Chiorean
  */
 public class SkipTestRule extends AnnotationBasedTestRule {

@@ -33,7 +33,7 @@ import kafka.server.KafkaConfig;
  * @author Randall Hauch
  */
 public class KafkaClusterTest {
-    
+
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
 

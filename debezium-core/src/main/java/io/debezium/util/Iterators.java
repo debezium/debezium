@@ -14,7 +14,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * A utility for creating iterators.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -333,14 +333,14 @@ public class Iterators {
     /**
      * A read only iterator that is able to preview the next value without consuming it or altering the behavior or semantics
      * of the normal {@link Iterator} methods.
-     * 
+     *
      * @param <T> the type of value
      */
     public static interface PreviewIterator<T> extends Iterator<T> {
         /**
          * Peek at the next value without consuming or using it. This method returns the same value if called multiple times
          * between {@link Iterator#next}.
-         * 
+         *
          * @return the next value, or null if there are no more
          */
         T peek();
@@ -348,7 +348,7 @@ public class Iterators {
 
     /**
      * Get a read-only iterator that can peek at the next value before it is retrieved with {@link Iterator#next()}.
-     * 
+     *
      * @param iter the original iterator
      * @return the peeking iterator; may be null if {@code iter} is null
      */

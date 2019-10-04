@@ -125,7 +125,7 @@ public class GtidSetTest {
         assertThat(original.forServerWithId("036d85a9-64e5-11e6-9b48-42010af0000c")).isNotNull();
         assertThat(original.forServerWithId("7c1de3f2-3fd2-11e6-9cdc-42010af000bc")).isNotNull();
         assertThat(original.forServerWithId("7145bf69-d1ca-11e5-a588-0242ac110004")).isNotNull();
-        
+
         GtidSet filtered = original.retainAll(keepers::contains);
         List<String> actualUuids = filtered.getUUIDSets().stream().map(UUIDSet::getUUID).collect(Collectors.toList());
         assertThat(keepers.containsAll(actualUuids)).isTrue();

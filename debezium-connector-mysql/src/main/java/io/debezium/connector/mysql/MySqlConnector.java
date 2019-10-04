@@ -30,12 +30,12 @@ import io.debezium.util.Strings;
  * <h2>Configuration</h2>
  * <p>
  * This connector is configured with the set of properties described in {@link MySqlConnectorConfig}.
- * 
- * 
+ *
+ *
  * @author Randall Hauch
  */
 public class MySqlConnector extends SourceConnector {
-    
+
     private Logger logger = LoggerFactory.getLogger(getClass());
     private Map<String, String> props;
 

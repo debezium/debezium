@@ -7,11 +7,11 @@ package io.debezium.text;
 
 /**
  * An exception representing a problem during parsing of text.
- * 
+ *
  * @author Randall Hauch
  */
 public class ParsingException extends RuntimeException {
-    
+
     private static final long serialVersionUID = 1L;
 
     private final Position position;

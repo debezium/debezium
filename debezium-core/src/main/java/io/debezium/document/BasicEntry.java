@@ -11,7 +11,7 @@ import io.debezium.annotation.Immutable;
 
 /**
  * Package-level implementation of {@link Array.Entry} in an {@link Array}.
- * 
+ *
  * @author Randall Hauch
  */
 @Immutable
@@ -24,7 +24,7 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
         this.index = index;
         this.value = value;
     }
-    
+
     @Override
     public int getIndex() {
         return index;
@@ -39,12 +39,12 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
     public String toString() {
         return "@" + index + "=" + value;
     }
-    
+
     @Override
     public int hashCode() {
         return index;
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if ( obj == this ) {
@@ -56,7 +56,7 @@ final class BasicEntry implements Array.Entry, Comparable<Array.Entry> {
         }
         return false;
     }
-    
+
     @Override
     public int compareTo(Array.Entry that) {
         if ( this == that ) {

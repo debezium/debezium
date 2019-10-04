@@ -9,7 +9,7 @@ import io.debezium.config.Configuration;
 
 /**
  * A functional interface for obtaining the value of variables given their names.
- * 
+ *
  * @author Randall Hauch
  */
 @FunctionalInterface
@@ -18,7 +18,7 @@ public interface AvailableVariables {
     /**
      * Get an {@link AvailableVariables} that returns the value of a {@link Configuration#getString(String) Configuration
      * property}.
-     * 
+     *
      * @param config the configuration
      * @return the available variables function that returns the configuration property value for the given property name; never
      *         null
@@ -32,7 +32,7 @@ public interface AvailableVariables {
      * {@code -Dvariable=value}.
      * <p>
      * This method does not use the configuration.
-     * 
+     *
      * @param config the configuration
      * @return the available variables function that returns System properties; never null
      */
@@ -45,7 +45,7 @@ public interface AvailableVariables {
      * operating system environment variables (e.g., <code>${JAVA_HOME}</code>).
      * <p>
      * This method does not use the configuration.
-     * 
+     *
      * @param config the configuration
      * @return the available variables function that returns System properties; never null
      */
@@ -55,7 +55,7 @@ public interface AvailableVariables {
 
     /**
      * Get an {@link AvailableVariables} that always returns null.
-     * 
+     *
      * @return the empty available variables function that always return null.
      */
     public static AvailableVariables empty() {
@@ -64,7 +64,7 @@ public interface AvailableVariables {
 
     /**
      * Obtain the value of a variable with the given name.
-     * 
+     *
      * @param varName the variable name; may be null
      * @return the value of the variable; may be null if the named variable is not known
      */
@@ -72,7 +72,7 @@ public interface AvailableVariables {
 
     /**
      * Obtain an {@link AvailableVariables} function that first checks this instance and then checks the supplied instance.
-     * 
+     *
      * @param next the next {@link AvailableVariables} instance to check
      * @return the new {@link AvailableVariables} function that combines both instances; never null but may be this instance if
      *         {@code next} is null or {@this}
