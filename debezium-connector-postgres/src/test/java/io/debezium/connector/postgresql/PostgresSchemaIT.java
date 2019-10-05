@@ -31,6 +31,7 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersion
 import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.Ltree;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
@@ -128,9 +129,7 @@ public class PostgresSchemaIT {
                               SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
             assertTableSchema("\"Quoted_\"\" . Schema\".\"Quoted_\"\" . Table\"", "\"Quoted_\"\" . Text_Column\"",
                               Schema.OPTIONAL_STRING_SCHEMA);
-
-            TableSchema tableSchema = schemaFor("public.custom_table");
-            assertThat(tableSchema.valueSchema().field("lt")).isNull();
+            assertTableSchema("public.custom_table", "lt", Ltree.builder().optional().build());
         }
     }
 
@@ -166,8 +165,8 @@ public class PostgresSchemaIT {
         try (PostgresConnection connection = TestHelper.create()) {
             schema.refresh(connection, false);
             assertTablesIncluded(TEST_TABLES);
-            assertTableSchema("public.custom_table", "lt, i",
-                    Schema.OPTIONAL_BYTES_SCHEMA, Schema.BYTES_SCHEMA);
+            assertTableSchema("public.custom_table", "lt", Ltree.builder().optional().build());
+            assertTableSchema("public.custom_table", "i", Schema.BYTES_SCHEMA);
         }
     }
 
