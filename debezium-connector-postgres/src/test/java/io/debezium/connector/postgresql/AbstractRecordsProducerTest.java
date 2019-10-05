@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.Ltree;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
@@ -787,10 +788,12 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForCustomTypes() {
-        return Arrays.asList(new SchemaAndValueField("lt", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("Top.Collections.Pictures.Astronomy.Galaxies".getBytes())),
+        final Schema ltreeSchema = Ltree.builder().optional().build();
+        final Schema ltreeArraySchema = SchemaBuilder.array(ltreeSchema).optional().build();
+        return Arrays.asList(new SchemaAndValueField("lt", ltreeSchema, "Top.Collections.Pictures.Astronomy.Galaxies"),
                              new SchemaAndValueField("i", Schema.BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
                              new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
-                             new SchemaAndValueField("lt_array", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("{Ship.Frigate,Ship.Destroyer}".getBytes())));
+                             new SchemaAndValueField("lt_array", ltreeArraySchema, Arrays.asList("Ship.Frigate", "Ship.Destroyer")));
 
     }
 

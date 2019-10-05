@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -48,6 +49,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandling
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
+import io.debezium.data.Ltree;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
@@ -260,6 +262,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return hstoreSchema();
                 }
+                else if (oidValue == typeRegistry.ltreeOid()) {
+                    return Ltree.builder();
+                }
                 else if (oidValue == typeRegistry.hstoreArrayOid()) {
                     return SchemaBuilder.array(hstoreSchema().optional().build());
                 }
@@ -268,6 +273,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
                 else if (oidValue == typeRegistry.citextArrayOid()) {
                     return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+                }
+                else if (oidValue == typeRegistry.ltreeArrayOid()) {
+                    return SchemaBuilder.array(Ltree.builder().optional().build());
                 }
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
@@ -398,6 +406,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.hstoreOid()) {
                     return data -> convertHStore(column, fieldDefn, data, hStoreMode);
                 }
+                else if (oidValue == typeRegistry.ltreeOid()) {
+                    return data -> convertLtree(column, fieldDefn, data);
+                }
+                else if (oidValue == typeRegistry.ltreeArrayOid()) {
+                    return data -> convertLtreeArray(column, fieldDefn, data);
+                }
                 else if (oidValue == typeRegistry.geometryArrayOid() ||
                         oidValue == typeRegistry.geographyArrayOid() ||
                         oidValue == typeRegistry.citextArrayOid() ||
@@ -491,6 +505,46 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
             return convertHstoreToMap(column, fieldDefn, data);
         }
+
+    private Object convertLtree(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, "", r -> {
+            if (data instanceof byte[]) {
+                r.deliver(new String((byte[]) data, databaseCharset));
+            }
+            if (data instanceof String) {
+                r.deliver(data);
+            }
+            else if (data instanceof PGobject) {
+                r.deliver(data.toString());
+            }
+        });
+    }
+
+    private Object convertLtreeArray(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
+            if (data instanceof byte[]) {
+                String s = new String((byte[]) data, databaseCharset);
+                // remove '{' and '}'
+                s = s.substring(1, s.length() - 1);
+                List<String> ltrees = Arrays.asList(s.split(","));
+                r.deliver(ltrees);
+            }
+            else if (data instanceof PgArray) {
+                PgArray pgArray = (PgArray) data;
+                try {
+                    Object[] array = (Object[]) pgArray.getArray();
+                    List<String> ltrees = new ArrayList<>(array.length);
+                    for (Object value : array) {
+                        ltrees.add(value.toString());
+                    }
+                    r.deliver(ltrees);
+                }
+                catch (SQLException e) {
+                    logger.error("Failed to parse PgArray: " + pgArray, e);
+                }
+            }
+        });
+    }
 
     private Object convertHstoreToMap(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyMap(), (r) -> {
