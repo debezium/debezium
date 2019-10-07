@@ -383,13 +383,13 @@ public abstract class AbstractConnectorTest implements Testing {
      * till the waiting is terminated.
      *
      * @param numberOfRecords the number of records that should be consumed
+     * @param breakAfterNulls the number of allowed runs when no records are received
      * @param recordConsumer the function that should be called with each consumed record
      * @return the actual number of records that were consumed
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
-    protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
+    protected int consumeRecords(int numberOfRecords, int breakAfterNulls, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
         int recordsConsumed = 0;
-        final int BREAK_AFTER_NULLS = 3;
         int nullReturn = 0;
         while (recordsConsumed < numberOfRecords) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
@@ -411,12 +411,41 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             else {
-                if (++nullReturn >= BREAK_AFTER_NULLS) {
+                if (++nullReturn >= breakAfterNulls) {
                     return recordsConsumed;
                 }
             }
         }
         return recordsConsumed;
+    }
+
+    /**
+     * Try to consume the specified number of records from the connector, calling the given function for each, and return the
+     * actual number of records that were consumed.
+     * For slower connectors it is possible to receive no records form the connector at most 3 times in a row
+     * till the waiting is terminated.
+     *
+     * @param numberOfRecords the number of records that should be consumed
+     * @param recordConsumer the function that should be called with each consumed record
+     * @return the actual number of records that were consumed
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
+        return consumeRecords(numberOfRecords, 3, recordConsumer);
+    }
+
+    /**
+     * Try to consume and capture exactly the specified number of records from the connector.
+     *
+     * @param numRecords the number of records that should be consumed
+     * @param breakAfterNulls how many times to wait when no records arrive from the connector
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeRecordsByTopic(int numRecords, int breakAfterNulls) throws InterruptedException {
+        SourceRecords records = new SourceRecords();
+        consumeRecords(numRecords, breakAfterNulls, records::add);
+        return records;
     }
 
     /**
