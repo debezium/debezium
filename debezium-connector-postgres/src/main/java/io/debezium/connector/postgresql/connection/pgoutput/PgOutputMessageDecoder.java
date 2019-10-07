@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -233,8 +234,16 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Schema: '{}', Table: '{}'", schemaName, tableName);
 
         // Perform several out-of-bands database metadata queries
-        Map<String, Boolean> columnOptionality = getTableColumnOptionalityFromDatabase(schemaName, tableName);
-        Set<String> primaryKeyColumns = getTablePrimaryKeyColumnNamesFromDatabase(schemaName, tableName);
+        Map<String, Boolean> columnOptionality;
+        Set<String> primaryKeyColumns;
+        try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration())) {
+            final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
+            columnOptionality = getTableColumnOptionalityFromDatabase(databaseMetadata, schemaName, tableName);
+            primaryKeyColumns = getTablePrimaryKeyColumnNamesFromDatabase(databaseMetadata, schemaName, tableName);
+            if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
+                primaryKeyColumns = new HashSet<>(connection.readTableUniqueIndices(databaseMetadata, new TableId(null, schemaName, tableName)));
+            }
+        }
 
         List<ColumnMetaData> columns = new ArrayList<>();
         for (short i = 0; i < columnCount; ++i) {
@@ -259,35 +268,31 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         config.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
-    private Map<String, Boolean> getTableColumnOptionalityFromDatabase(String schemaName, String tableName) {
+    private Map<String, Boolean> getTableColumnOptionalityFromDatabase(DatabaseMetaData databaseMetadata, String schemaName, String tableName) {
         Map<String, Boolean> columnOptionality = new HashMap<>();
-        try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration())) {
-            try {
-                try (ResultSet resultSet = connection.connection().getMetaData().getColumns(null, schemaName, tableName, null)) {
-                    while (resultSet.next()) {
-                        columnOptionality.put(resultSet.getString("COLUMN_NAME"), resultSet.getString("IS_NULLABLE").equals("YES"));
-                    }
+        try {
+            try (ResultSet resultSet = databaseMetadata.getColumns(null, schemaName, tableName, null)) {
+                while (resultSet.next()) {
+                    columnOptionality.put(resultSet.getString("COLUMN_NAME"), resultSet.getString("IS_NULLABLE").equals("YES"));
                 }
             }
-            catch (SQLException e) {
-                LOGGER.warn("Failed to read column optionality metadata for '{}.{}'", schemaName, tableName);
-                // todo: DBZ-766 Should this throw the exception or just log the warning?
-            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to read column optionality metadata for '{}.{}'", schemaName, tableName);
+            // todo: DBZ-766 Should this throw the exception or just log the warning?
         }
         return columnOptionality;
     }
 
-    private Set<String> getTablePrimaryKeyColumnNamesFromDatabase(String schemaName, String tableName) {
+    private Set<String> getTablePrimaryKeyColumnNamesFromDatabase(DatabaseMetaData databaseMetadata, String schemaName, String tableName) {
         Set<String> primaryKeyColumns = new HashSet<>();
-        try (final PostgresConnection connection = new PostgresConnection(config.getConfiguration())) {
-            try (ResultSet resultSet = connection.connection().getMetaData().getPrimaryKeys(null, schemaName, tableName)) {
-                while (resultSet.next()) {
-                    primaryKeyColumns.add(resultSet.getString("COLUMN_NAME"));
-                }
+        try (ResultSet resultSet = databaseMetadata.getPrimaryKeys(null, schemaName, tableName)) {
+            while (resultSet.next()) {
+                primaryKeyColumns.add(resultSet.getString("COLUMN_NAME"));
             }
-            catch (SQLException e) {
-                LOGGER.warn("Failed to read table {}.{} primary keys", schemaName, tableName);
-            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to read table {}.{} primary keys", schemaName, tableName);
         }
         return primaryKeyColumns;
     }

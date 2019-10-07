@@ -1089,7 +1089,7 @@ public class JdbcConnection implements AutoCloseable {
         return pkColumnNames;
     }
 
-    protected List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
+    public List<String> readTableUniqueIndices(DatabaseMetaData metadata, TableId id) throws SQLException {
         final List<String> uniqueIndexColumnNames = new ArrayList<>();
         try (ResultSet rs = metadata.getIndexInfo(id.catalog(), id.schema(), id.table(), true, false)) {
             String firstIndexName = null;
