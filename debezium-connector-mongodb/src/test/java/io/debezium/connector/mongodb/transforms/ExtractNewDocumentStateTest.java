@@ -203,7 +203,7 @@ public class ExtractNewDocumentStateTest {
 
     @Test
     @FixFor("DBZ-1430")
-    public void shouldDropMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaName() {
+    public void shouldSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaName() {
         Schema valueSchema = SchemaBuilder.struct()
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .build();
@@ -235,7 +235,7 @@ public class ExtractNewDocumentStateTest {
 
     @Test
     @FixFor("DBZ-1430")
-    public void shouldDropMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaNameSuffix() {
+    public void shouldSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingSchemaNameSuffix() {
         Schema valueSchema = SchemaBuilder.struct()
                 .name("io.debezium.connector.common.Heartbeat")
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
@@ -268,7 +268,7 @@ public class ExtractNewDocumentStateTest {
 
     @Test
     @FixFor("DBZ-1430")
-    public void shouldDropMessagesWithoutDebeziumCdcEnvelopeDueToMissingValueSchema() {
+    public void shouldSkipMessagesWithoutDebeziumCdcEnvelopeDueToMissingValueSchema() {
         Schema valueSchema = SchemaBuilder.struct()
                 .name("io.debezium.connector.common.Heartbeat.Envelope")
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
