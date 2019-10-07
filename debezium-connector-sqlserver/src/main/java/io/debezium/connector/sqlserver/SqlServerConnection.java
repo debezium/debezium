@@ -66,7 +66,7 @@ public class SqlServerConnection extends JdbcConnection {
      */
     private final String realDatabaseName;
 
-    private static interface ResultSetExtractor<T> {
+    public static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
@@ -208,7 +208,7 @@ public class SqlServerConnection extends JdbcConnection {
         return tableId.schema() + '_' + tableId.table();
     }
 
-    private <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
         return (rs) -> {
             if (rs.next()) {
                 final T ret = extractor.apply(rs);
