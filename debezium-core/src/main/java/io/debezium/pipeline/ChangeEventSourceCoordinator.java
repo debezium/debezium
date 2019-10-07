@@ -75,12 +75,15 @@ public class ChangeEventSourceCoordinator {
             try {
                 snapshotMetrics.register(LOGGER);
                 streamingMetrics.register(LOGGER);
+                LOGGER.info("Metrics registered");
 
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
+                LOGGER.info("Context created");
 
                 SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
                 eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
+                LOGGER.info("Snapshot ended with {}", snapshotResult);
 
                 schema.assureNonEmptySchema();
 
@@ -88,7 +91,9 @@ public class ChangeEventSourceCoordinator {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
                     eventDispatcher.setEventListener(streamingMetrics);
                     streamingMetrics.connected(true);
+                    LOGGER.info("Starting streaming");
                     streamingSource.execute(context);
+                    LOGGER.info("Finished streaming");
                 }
             }
             catch (InterruptedException e) {
@@ -116,17 +121,25 @@ public class ChangeEventSourceCoordinator {
     public synchronized void stop() throws InterruptedException {
         running = false;
 
-        executor.shutdown();
-        boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-
-        if (!isShutdown) {
-            LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
-
-            executor.shutdownNow();
-            executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        try {
+            // Clear interrupt flag so the graceful termination is always attempted
+            Thread.interrupted();
+            executor.shutdown();
+            boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+    
+            if (!isShutdown) {
+                LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
+    
+                // Clear interrupt flag so the forced termination is always attempted
+                Thread.interrupted();
+                executor.shutdownNow();
+                executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            }
         }
-        snapshotMetrics.unregister(LOGGER);
-        streamingMetrics.unregister(LOGGER);
+        finally {
+            snapshotMetrics.unregister(LOGGER);
+            streamingMetrics.unregister(LOGGER);
+        }
         Thread.currentThread().interrupt();
     }
 
