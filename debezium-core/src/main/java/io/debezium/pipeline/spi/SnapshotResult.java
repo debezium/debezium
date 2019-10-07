@@ -35,4 +35,9 @@ public class SnapshotResult {
         COMPLETED,
         ABORTED;
     }
+
+    @Override
+    public String toString() {
+        return "SnapshotResult [status=" + status + ", offset=" + offset + "]";
+    }
 }

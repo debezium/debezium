@@ -75,12 +75,15 @@ public class ChangeEventSourceCoordinator {
             try {
                 snapshotMetrics.register(LOGGER);
                 streamingMetrics.register(LOGGER);
+                LOGGER.info("Metrics registered");
 
                 ChangeEventSourceContext context = new ChangeEventSourceContextImpl();
+                LOGGER.info("Context created");
 
                 SnapshotChangeEventSource snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(previousOffset, snapshotMetrics);
                 eventDispatcher.setEventListener(snapshotMetrics);
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
+                LOGGER.info("Snapshot ended with {}", snapshotResult);
 
                 schema.assureNonEmptySchema();
 
@@ -88,7 +91,9 @@ public class ChangeEventSourceCoordinator {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
                     eventDispatcher.setEventListener(streamingMetrics);
                     streamingMetrics.connected(true);
+                    LOGGER.info("Starting streaming");
                     streamingSource.execute(context);
+                    LOGGER.info("Finished streaming");
                 }
             }
             catch (InterruptedException e) {
