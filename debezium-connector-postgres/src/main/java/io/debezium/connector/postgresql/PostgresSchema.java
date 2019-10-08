@@ -79,6 +79,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                 config.includeUnknownDatatypes(),
                 typeRegistry,
                 config.hStoreHandlingMode(),
+                config.intervalHandlingMode(),
                 config.toastedValuePlaceholder()
         );
 

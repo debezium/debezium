@@ -39,6 +39,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
@@ -168,6 +169,21 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // range types
         consumer.expects(1);
         assertInsert(INSERT_RANGE_TYPES_STMT, 1, schemaAndValuesForRangeTypes());
+    }
+
+    @Test
+    @FixFor("DBZ-1498")
+    public void shouldReceiveChangesForIntervalAsString() throws Exception {
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INTERVAL_HANDLING_MODE, IntervalHandlingMode.STRING)
+        );
+
+        consumer = testConsumer(1);
+
+        //date and time
+        consumer.expects(1);
+        assertInsert(INSERT_DATE_TIME_TYPES_STMT, 1, schemaAndValuesForIntervalAsString());
     }
 
     @Test
