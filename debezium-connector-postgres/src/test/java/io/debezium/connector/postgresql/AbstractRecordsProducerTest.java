@@ -70,6 +70,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.TestLogger;
 import io.debezium.relational.TableId;
 import io.debezium.time.Date;
+import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
@@ -583,6 +584,14 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                              new SchemaAndValueField("ts_large_ms", Timestamp.builder().optional().build(), expectedTsLargeMs),
                              new SchemaAndValueField("tz_large", ZonedTimestamp.builder().optional().build(), expectedTzLarge)
                              );
+    }
+
+    protected List<SchemaAndValueField> schemaAndValuesForIntervalAsString() {
+        //1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds, 78000 ms
+        final String expectedInterval = "P1Y2M3DT4H5M" + 6.78 + "S";
+        return Arrays.asList(
+                new SchemaAndValueField("it", Interval.builder().optional().build(), expectedInterval)
+         );
     }
 
     protected List<SchemaAndValueField> schemaAndValuesForDateTimeTypesAdaptiveTimeMicroseconds() {

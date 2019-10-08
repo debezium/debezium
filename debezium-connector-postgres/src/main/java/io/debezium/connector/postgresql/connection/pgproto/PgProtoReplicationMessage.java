@@ -20,8 +20,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc.PgArray;
+import org.postgresql.util.PGInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -219,7 +221,13 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                         .toOffsetTime();
             case PgOid.INTERVAL:
                 // these are sent as doubles by the plugin since their storage is larger than 8 bytes
-                return datumMessage.hasDatumDouble() ? datumMessage.getDatumDouble() : null;
+            try {
+                return datumMessage.hasDatumDouble() ? datumMessage.getDatumDouble() :
+                    datumMessage.hasDatumString() ? new PGInterval(datumMessage.getDatumString()) : null;
+            }
+            catch (SQLException e) {
+                throw new ConnectException("Could not convert interval value");
+            }
             // the plugin will send back a TZ formatted string
             case PgOid.BYTEA:
                 return datumMessage.hasDatumBytes() ? datumMessage.getDatumBytes().toByteArray() : null;

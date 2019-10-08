@@ -44,6 +44,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
@@ -57,6 +58,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
@@ -95,6 +97,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
      */
     public static final String NEGATIVE_INFINITY = "-Infinity";
 
+    private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
+
     /**
      * A formatter used to parse TIMETZ columns when provided as strings.
      */
@@ -115,6 +119,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private final TypeRegistry typeRegistry;
     private final HStoreHandlingMode hStoreMode;
+    private final IntervalHandlingMode intervalMode;
 
     /**
      * The current database's character encoding.
@@ -129,13 +134,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
             TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
             BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
-            HStoreHandlingMode hStoreMode, byte[] toastPlaceholder) {
+            HStoreHandlingMode hStoreMode, IntervalHandlingMode intervalMode, byte[] toastPlaceholder) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode);
         this.databaseCharset = databaseCharset;
         this.jsonFactory = new JsonFactory();
         this.includeUnknownDatatypes = includeUnknownDatatypes;
         this.typeRegistry = typeRegistry;
         this.hStoreMode = hStoreMode;
+        this.intervalMode = intervalMode;
         this.toastPlaceholderBinary = toastPlaceholder;
         this.toastPlaceholderString = new String(toastPlaceholder);
     }
@@ -150,7 +156,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.VARBIT:
                 return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
             case PgOid.INTERVAL:
-                return MicroDuration.builder();
+                return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case PgOid.TIMESTAMPTZ:
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
                 return ZonedTimestamp.builder();
@@ -600,12 +606,39 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
             if (data instanceof Number) {
-                r.deliver(((Number) data).longValue());
+                final long micros = ((Number) data).longValue();
+                if (intervalMode == IntervalHandlingMode.STRING) {
+                    r.deliver(Interval.toIsoString(0, 0, 0, 0, 0, new BigDecimal(micros).divide(MICROSECONDS_PER_SECOND)));
+                }
+                else {
+                    r.deliver(micros);
+                }
             }
             if (data instanceof PGInterval) {
-                PGInterval interval = (PGInterval) data;
-                r.deliver(MicroDuration.durationMicros(interval.getYears(), interval.getMonths(), interval.getDays(), interval.getHours(),
-                                                    interval.getMinutes(), interval.getSeconds(), MicroDuration.DAYS_PER_MONTH_AVG));
+                final PGInterval interval = (PGInterval) data;
+                if (intervalMode == IntervalHandlingMode.STRING) {
+                    r.deliver(
+                            Interval.toIsoString(
+                                    interval.getYears(),
+                                    interval.getMonths(),
+                                    interval.getDays(),
+                                    interval.getHours(),
+                                    interval.getMinutes(),
+                                    new BigDecimal(interval.getSeconds()))
+                    );
+                }
+                else {
+                    r.deliver(
+                            MicroDuration.durationMicros(
+                                    interval.getYears(),
+                                    interval.getMonths(),
+                                    interval.getDays(),
+                                    interval.getHours(),
+                                    interval.getMinutes(),
+                                    interval.getSeconds(),
+                                    MicroDuration.DAYS_PER_MONTH_AVG)
+                    );
+                }
             }
         });
     }

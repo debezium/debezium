@@ -69,7 +69,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         private final String value;
 
         HStoreHandlingMode(String value) {
-            this.value=value;
+            this.value = value;
         }
 
         @Override
@@ -105,6 +105,68 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static HStoreHandlingMode parse(String value, String defaultValue) {
             HStoreHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
+     * Defines modes of representation of {@code interval} datatype
+     */
+    public enum IntervalHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represents interval as inexact microseconds count
+         */
+        MICROSECONDS("microseconds"),
+
+        /**
+         * Represents interval as ISO 8601 time interval
+         */
+        STRING("string");
+
+
+        private final String value;
+
+        IntervalHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static IntervalHandlingMode parse(String value) {
+            if (value == null) {
+                return null ;
+            }
+            value = value.trim();
+            for (IntervalHandlingMode option: IntervalHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Convert mode name into the logical value
+         *
+         * @param value the configuration property value ; may not be null
+         * @param defaultValue the default value ; may be null
+         * @return the matching option or null if the match is not found and non-null default is invalid
+         */
+        public static IntervalHandlingMode parse(String value, String defaultValue) {
+            IntervalHandlingMode mode = parse(value);
             if (mode == null && defaultValue != null) {
                 mode = parse(defaultValue);
             }
@@ -706,6 +768,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                                 + "'json' represents values as json string"
                                                                 + "'map' (default) represents values using java.util.Map");
 
+    public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
+                                                            .withDisplayName("Interval Handling")
+                                                            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.MICROSECONDS)
+                                                            .withWidth(Width.MEDIUM)
+                                                            .withImportance(Importance.LOW)
+                                                            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
+                                                                  + "'string' represents values as exact ISO formatted string"
+                                                                  + "'microseconds' (default) represents values using inexact conversion into microseconds");
+
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
                                                           .withDisplayName("Status update interval (ms)")
                                                           .withType(Type.INT) // Postgres doesn't accept long for this value
@@ -784,13 +855,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                                      SCHEMA_WHITELIST,
                                                      SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS,
                                                      COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
-                                                     SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
+                                                     INTERVAL_HANDLING_MODE, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
                                                      SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
                                                      STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
                                                      RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                                                      XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
 
     private final HStoreHandlingMode  hStoreHandlingMode;
+    private final IntervalHandlingMode  intervalHandlingMode;
     private final SnapshotMode snapshotMode;
     private final SchemaRefreshMode schemaRefreshMode;
 
@@ -807,6 +879,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
         this.hStoreHandlingMode = hStoreHandlingMode;
+        this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(PostgresConnectorConfig.INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
         this.schemaRefreshMode = SchemaRefreshMode.parse(config.getString(SCHEMA_REFRESH_MODE));
     }
@@ -857,6 +930,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected HStoreHandlingMode hStoreHandlingMode() {
         return hStoreHandlingMode;
+    }
+
+    protected IntervalHandlingMode intervalHandlingMode() {
+        return intervalHandlingMode;
     }
 
     protected boolean includeUnknownDatatypes() {
@@ -934,7 +1011,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
-                    SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
+                    INTERVAL_HANDLING_MODE, SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
 
         return config;
     }
