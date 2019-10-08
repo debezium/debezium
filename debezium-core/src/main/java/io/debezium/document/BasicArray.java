@@ -21,7 +21,7 @@ import io.debezium.util.Sequences;
  * @author Randall Hauch
  */
 @NotThreadSafe
-final class  BasicArray implements Array {
+final class BasicArray implements Array {
 
     private static final BiFunction<Integer, Value, Entry> CONVERT_PAIR_TO_ENTRY = new BiFunction<Integer, Value, Entry>() {
         @Override
@@ -159,11 +159,11 @@ final class  BasicArray implements Array {
 
     @Override
     public Array increment(int index, Value increment) {
-        if ( !increment.isNumber() ) {
+        if (!increment.isNumber()) {
             throw new IllegalArgumentException("The increment must be a number but is " + increment);
         }
         Value current = get(index);
-        if ( current.isNumber() ) {
+        if (current.isNumber()) {
             Value updated = Value.create(MathOps.add(current.asNumber(), increment.asNumber()));
             setValue(index, Value.create(updated));
         }

@@ -95,12 +95,12 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                 assertThat(i).isNotNull();
                 String json = after.getString("json");
                 String expectedBinlog = after.getString("expectedBinlogStr");
-                check(json, expectedBinlog, errors :: add);
+                check(json, expectedBinlog, errors::add);
             }
         });
         if (!errors.isEmpty()) {
             fail("" + errors.size() + " errors with JSON records..." + System.lineSeparator() +
-                 String.join(System.lineSeparator(), errors));
+                    String.join(System.lineSeparator(), errors));
         }
     }
 
@@ -114,7 +114,7 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numTables = 1;
         int numDataRecords = 1;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
@@ -145,16 +145,16 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
                 assertThat(i).isNotNull();
                 String json = after.getString("json");
                 String expectedJdbc = after.getString("expectedJdbcStr");
-                check(json, expectedJdbc, errors :: add);
+                check(json, expectedJdbc, errors::add);
             }
         });
         if (!errors.isEmpty()) {
             fail("" + errors.size() + " errors with JSON records..." + System.lineSeparator() +
-                 String.join(System.lineSeparator(), errors));
+                    String.join(System.lineSeparator(), errors));
         }
     }
 
-    protected void check(String json, String expectedBinlog, Consumer<String> msg ) {
+    protected void check(String json, String expectedBinlog, Consumer<String> msg) {
         if ((json == null && expectedBinlog != null) || (json != null && !json.equals(expectedBinlog))) {
             msg.accept("JSON was:     " + json + System.lineSeparator() + "but expected: " + expectedBinlog);
         }

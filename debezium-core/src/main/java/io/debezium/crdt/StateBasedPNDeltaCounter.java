@@ -7,7 +7,8 @@ package io.debezium.crdt;
 
 import io.debezium.annotation.NotThreadSafe;
 
-@NotThreadSafe class StateBasedPNDeltaCounter extends StateBasedPNCounter implements DeltaCounter {
+@NotThreadSafe
+class StateBasedPNDeltaCounter extends StateBasedPNCounter implements DeltaCounter {
     private PNCounter delta;
 
     protected StateBasedPNDeltaCounter() {

@@ -94,7 +94,7 @@ public class PathsTest implements Testing {
         assertThat(path.segment(4)).isEqualTo("e");
     }
 
-    protected Path parse( String path ) {
+    protected Path parse(String path) {
         return Paths.parse(path, false);
     }
 

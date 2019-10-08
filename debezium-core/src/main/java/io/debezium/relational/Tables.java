@@ -166,7 +166,7 @@ public final class Tables {
         return lock.write(() -> {
             TableImpl updated = new TableImpl(tableId, columnDefs, primaryKeyColumnNames, defaultCharsetName);
             TableImpl existing = tablesByTableId.get(tableId);
-            if ( existing == null || !existing.equals(updated) ) {
+            if (existing == null || !existing.equals(updated)) {
                 // Our understanding of the table has changed ...
                 changes.add(tableId);
                 tablesByTableId.put(tableId, updated);
@@ -225,7 +225,7 @@ public final class Tables {
             }
             tablesByTableId.remove(existing.id());
             TableImpl updated = new TableImpl(newTableId, existing.columns(),
-                                              existing.primaryKeyColumnNames(), existing.defaultCharsetName());
+                    existing.primaryKeyColumnNames(), existing.defaultCharsetName());
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -250,7 +250,7 @@ public final class Tables {
             Table updated = changer.apply(existing);
             if (updated != existing) {
                 tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(),
-                                                           updated.primaryKeyColumnNames(), updated.defaultCharsetName()));
+                        updated.primaryKeyColumnNames(), updated.defaultCharsetName()));
             }
             changes.add(tableId);
             return existing;
@@ -403,7 +403,7 @@ public final class Tables {
         public void putAll(TablesById tablesByTableId) {
             if (tableIdCaseInsensitive) {
                 tablesByTableId.values.entrySet()
-                    .forEach(e -> put(e.getKey().toLowercase(), e.getValue()));
+                        .forEach(e -> put(e.getKey().toLowercase(), e.getValue()));
             }
             else {
                 values.putAll(tablesByTableId.values);

@@ -63,9 +63,9 @@ public final class GtidSet {
             return this;
         }
         Map<String, UUIDSet> newSets = this.uuidSetsByServerId.entrySet()
-                                                              .stream()
-                                                              .filter(entry -> sourceFilter.test(entry.getKey()))
-                                                              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .stream()
+                .filter(entry -> sourceFilter.test(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         return new GtidSet(newSets);
     }
 
@@ -193,6 +193,7 @@ public final class GtidSet {
                 }
             }
         }
+
         protected UUIDSet(String uuid, Interval interval) {
             this.uuid = uuid;
             this.intervals.add(interval);

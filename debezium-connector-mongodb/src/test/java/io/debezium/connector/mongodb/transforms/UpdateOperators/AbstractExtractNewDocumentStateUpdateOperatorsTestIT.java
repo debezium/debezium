@@ -62,8 +62,7 @@ abstract class AbstractExtractNewDocumentStateUpdateOperatorsTestIT extends Abst
                         "'dataLong': 80000000000," +
                         "'dataBoolean': true," +
                         "'dataByte': -1" +
-                        "}}")
-                );
+                        "}}"));
     }
 
     private Consumer<MongoClient> createUpdateOneItem(int id, String document) {

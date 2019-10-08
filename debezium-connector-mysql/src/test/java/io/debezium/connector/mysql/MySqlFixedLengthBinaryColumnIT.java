@@ -30,7 +30,7 @@ import io.debezium.util.Testing;
 public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binary-column.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("binarycolumnit", "binary_column_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 
@@ -68,7 +68,7 @@ public class MySqlFixedLengthBinaryColumnIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 1;
         int numInserts = 4;

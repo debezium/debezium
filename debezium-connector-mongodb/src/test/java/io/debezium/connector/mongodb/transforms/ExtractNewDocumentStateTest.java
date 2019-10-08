@@ -78,8 +78,8 @@ public class ExtractNewDocumentStateTest {
         filters = new Configurator().createFilters();
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
-                .build()));
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                        .build()));
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
         produced = new ArrayList<>();
         recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
@@ -192,8 +192,7 @@ public class ExtractNewDocumentStateTest {
                 keySchema,
                 key,
                 valueSchema,
-                value
-        );
+                value);
 
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
@@ -224,8 +223,7 @@ public class ExtractNewDocumentStateTest {
                 keySchema,
                 key,
                 valueSchema,
-                value
-        );
+                value);
 
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
@@ -257,8 +255,7 @@ public class ExtractNewDocumentStateTest {
                 keySchema,
                 key,
                 valueSchema,
-                value
-        );
+                value);
 
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
@@ -290,8 +287,7 @@ public class ExtractNewDocumentStateTest {
                 keySchema,
                 key,
                 null,
-                value
-        );
+                value);
 
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
@@ -323,8 +319,7 @@ public class ExtractNewDocumentStateTest {
                 keySchema,
                 key,
                 valueSchema,
-                value
-        );
+                value);
 
         exceptionRule.expect(NullPointerException.class);
 
@@ -347,10 +342,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "i");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -403,10 +398,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "i");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -446,11 +441,11 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("o2", objId)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "u");
+                .append("o2", objId)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -495,8 +490,7 @@ public class ExtractNewDocumentStateTest {
         ObjectId objId = new ObjectId();
         Document obj = new Document()
                 .append("$set", new Document("name", "Sally"))
-                .append("$unset", new Document().append("phone", true).append("active", false))
-                ;
+                .append("$unset", new Document().append("phone", true).append("active", false));
 
         // given
         Document event = new Document().append("o", obj)
@@ -531,8 +525,7 @@ public class ExtractNewDocumentStateTest {
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
         ObjectId objId = new ObjectId();
         Document obj = new Document()
-                .append("$unset", new Document().append("phone", true).append("active", false))
-                ;
+                .append("$unset", new Document().append("phone", true).append("active", false));
 
         // given
         Document event = new Document().append("o", obj)
@@ -647,7 +640,6 @@ public class ExtractNewDocumentStateTest {
         assertThat(value).isNull();
     }
 
-
     @Test
     @FixFor("DBZ-583")
     public void shouldDropDeleteMessagesByDefault() throws InterruptedException {
@@ -761,10 +753,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "d");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(2);
@@ -840,10 +832,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "i");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -865,18 +857,17 @@ public class ExtractNewDocumentStateTest {
         assertThat(value.get("name")).isEqualTo("Sally");
         assertThat(value.get("id")).isEqualTo(objId.toString());
         assertThat(value.get("address")).isEqualTo(new Struct(value.schema().field("address").schema())
-            .put("street", "Morris Park Ave").put("zipcode", "10462"));
+                .put("street", "Morris Park Ave").put("zipcode", "10462"));
 
         assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address").schema()).isEqualTo(
                 SchemaBuilder.struct()
-                    .name("serverX.dbA.c1.address")
-                    .optional()
-                    .field("street", Schema.OPTIONAL_STRING_SCHEMA)
-                    .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
-                    .build()
-        );
+                        .name("serverX.dbA.c1.address")
+                        .optional()
+                        .field("street", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build());
         assertThat(value.schema().fields()).hasSize(3);
     }
 
@@ -894,10 +885,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "i");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -945,10 +936,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "i");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);
@@ -1031,7 +1022,6 @@ public class ExtractNewDocumentStateTest {
         assertThat(value.schema().fields()).hasSize(4);
     }
 
-
     @Test
     @FixFor("DBZ-677")
     public void canUseDeprecatedSmt() throws InterruptedException {
@@ -1049,10 +1039,10 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                                       .append("ns", "dbA.c1")
-                                       .append("ts", ts)
-                                       .append("h", Long.valueOf(12345678))
-                                       .append("op", "i");
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
         records.recordEvent(event, 1002);
         assertThat(produced.size()).isEqualTo(1);

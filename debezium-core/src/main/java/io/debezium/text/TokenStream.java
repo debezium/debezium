@@ -423,8 +423,8 @@ public class TokenStream {
     private boolean completed;
 
     public TokenStream(String content,
-            Tokenizer tokenizer,
-            boolean caseSensitive) {
+                       Tokenizer tokenizer,
+                       boolean caseSensitive) {
         Objects.requireNonNull(content, "content");
         Objects.requireNonNull(tokenizer, "tokenizer");
         this.inputString = content;
@@ -584,10 +584,12 @@ public class TokenStream {
             // Scientific format, need to identify mantissa and exponent and put it back to stream
             if (ePos != -1) {
                 String mantissa = value.substring(0, ePos);
-                newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos, currentToken().startIndex() + ePos + 1, DdlTokenizer.WORD, currentToken().position()));
+                newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos, currentToken().startIndex() + ePos + 1, DdlTokenizer.WORD,
+                        currentToken().position()));
                 // Number is in format xxxEyyy
                 if (ePos != value.length() - 1) {
-                    newTokens.add(new CaseInsensitiveToken(currentToken().startIndex() + ePos + 1, currentToken().endIndex(), DdlTokenizer.WORD, currentToken().position()));
+                    newTokens.add(
+                            new CaseInsensitiveToken(currentToken().startIndex() + ePos + 1, currentToken().endIndex(), DdlTokenizer.WORD, currentToken().position()));
                 }
                 value = mantissa;
             }
@@ -1848,7 +1850,6 @@ public class TokenStream {
         return matchesAnyOf(BasicTokenizer.WORD, firstOption, additionalOptions);
     }
 
-
     /**
      * Determine if the next token matches one of the supplied values.
      *
@@ -1970,7 +1971,7 @@ public class TokenStream {
 
     private void moveToNextToken(List<Token> newTokens) {
         if (newTokens != null && !newTokens.isEmpty()) {
-            for (Token t: newTokens) {
+            for (Token t : newTokens) {
                 tokenIterator.add(t);
             }
             for (int i = 0; i < newTokens.size() - 1; i++) {
@@ -2433,9 +2434,9 @@ public class TokenStream {
         private final Position position;
 
         public CaseSensitiveToken(int startIndex,
-                int endIndex,
-                int type,
-                Position position) {
+                                  int endIndex,
+                                  int type,
+                                  Position position) {
             this.startIndex = startIndex;
             this.endIndex = endIndex;
             this.type = type;
@@ -2506,9 +2507,9 @@ public class TokenStream {
     @Immutable
     protected class CaseInsensitiveToken extends CaseSensitiveToken {
         public CaseInsensitiveToken(int startIndex,
-                int endIndex,
-                int type,
-                Position position) {
+                                    int endIndex,
+                                    int type,
+                                    Position position) {
             super(startIndex, endIndex, type, position);
         }
 
@@ -2828,7 +2829,7 @@ public class TokenStream {
                                 c = input.next(); // consume the ' character since it is escaped \'
                             }
                             else if (c == '\'' && input.isNext('\'')) {
-                                    c = input.next(); // consume the ' character since it is escaped ''
+                                c = input.next(); // consume the ' character since it is escaped ''
                             }
                             else if (c == '\'') {
                                 foundClosingQuote = true;

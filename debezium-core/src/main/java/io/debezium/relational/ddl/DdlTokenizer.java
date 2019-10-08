@@ -113,7 +113,7 @@ public class DdlTokenizer implements Tokenizer {
                            Tokens output) {
         return (position, startIndex, endIndex, type) -> {
             output.addToken(position, startIndex, endIndex,
-                            retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
+                    retypingFunction.typeOf(type, input.substring(startIndex, endIndex).toUpperCase()));
         };
     }
 
@@ -149,7 +149,7 @@ public class DdlTokenizer implements Tokenizer {
                             break;
                         }
                     }
-                    endIndex = input.index();  // the token won't include the '\n' or '\r' character(s)
+                    endIndex = input.index(); // the token won't include the '\n' or '\r' character(s)
                     if (!foundLineTerminator) {
                         ++endIndex; // must point beyond last char
                     }
@@ -242,17 +242,17 @@ public class DdlTokenizer implements Tokenizer {
                         throw new ParsingException(startingPosition, msg);
                     }
                     endIndex = input.index() + 1; // beyond last character read
-                    if ( removeQuotes && endIndex - startIndex > 1 ) {
+                    if (removeQuotes && endIndex - startIndex > 1) {
                         // At least one quoted character, so remove the quotes ...
                         startIndex += 1;
                         endIndex -= 1;
                     }
                     tokens.addToken(startingPosition, startIndex, endIndex, DOUBLE_QUOTED_STRING);
                     break;
-                case '`':       // back-quote character
+                case '`': // back-quote character
                 case '\u2018': // left single-quote character
                 case '\u2019': // right single-quote character
-                case '\'':     // single-quote character
+                case '\'': // single-quote character
                     char quoteChar = c;
                     startIndex = input.index();
                     startingPosition = input.position(startIndex);
@@ -273,7 +273,7 @@ public class DdlTokenizer implements Tokenizer {
                         throw new ParsingException(startingPosition, msg);
                     }
                     endIndex = input.index() + 1; // beyond last character read
-                    if ( removeQuotes && endIndex - startIndex > 1 ) {
+                    if (removeQuotes && endIndex - startIndex > 1) {
                         // At least one quoted character, so remove the quotes ...
                         startIndex += 1;
                         endIndex -= 1;

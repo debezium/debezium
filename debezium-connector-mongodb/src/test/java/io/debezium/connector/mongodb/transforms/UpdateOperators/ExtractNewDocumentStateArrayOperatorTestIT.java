@@ -34,15 +34,15 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
     @Test
     public void shouldTransformOperationAddToSet() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$addToSet': {dataArrayOfStr: 'b'}}"
-        );
+                "{'$addToSet': {dataArrayOfStr: 'b'}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
         VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(), SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(),
+                SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
         assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataArrayOfStr")).isEqualTo(Arrays.asList("a", "c", "e", "b"));
     }
@@ -53,15 +53,15 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
     @Test
     public void shouldTransformOperationPop() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$pop': {dataArrayOfStr: -1}}"
-        );
+                "{'$pop': {dataArrayOfStr: -1}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
         VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(), SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(),
+                SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
         assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataArrayOfStr")).isEqualTo(Arrays.asList("c", "e"));
     }
@@ -72,15 +72,15 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
     @Test
     public void shouldTransformOperationPull() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$pull': {dataArrayOfStr: {$in: ['c']}}}"
-        );
+                "{'$pull': {dataArrayOfStr: {$in: ['c']}}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
         VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(), SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(),
+                SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
         assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataArrayOfStr")).isEqualTo(Arrays.asList("a", "e"));
     }
@@ -91,15 +91,15 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
     @Test
     public void shouldTransformOperationPullAll() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$pullAll': {dataArrayOfStr: ['c']}}"
-        );
+                "{'$pullAll': {dataArrayOfStr: ['c']}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
         final Schema valueSchema = transformedUpdate.valueSchema();
 
         VerifyRecord.assertConnectSchemasAreEqual("id", valueSchema.field("id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
-        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(), SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+        VerifyRecord.assertConnectSchemasAreEqual("dataArrayOfStr", valueSchema.field("dataArrayOfStr").schema(),
+                SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
         assertThat(transformedUpdateValue.get("id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataArrayOfStr")).isEqualTo(Arrays.asList("a", "e"));
     }
@@ -110,8 +110,7 @@ public class ExtractNewDocumentStateArrayOperatorTestIT extends AbstractExtractN
     @Test
     public void shouldTransformOperationPush() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$push': {dataArrayOfStr: 'g'}}"
-        );
+                "{'$push': {dataArrayOfStr: 'g'}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();

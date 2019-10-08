@@ -100,47 +100,47 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * replica set.
      */
     public static final Field HOSTS = Field.create("mongodb.hosts")
-                                           .withDisplayName("Hosts")
-                                           .withType(Type.LIST)
-                                           .withWidth(Width.LONG)
-                                           .withImportance(Importance.HIGH)
-                                           .withValidation(MongoDbConnectorConfig::validateHosts)
-                                           .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
-                                                   + "of the MongoDB server(s) in the replica set.");
+            .withDisplayName("Hosts")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(MongoDbConnectorConfig::validateHosts)
+            .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
+                    + "of the MongoDB server(s) in the replica set.");
 
     public static final Field LOGICAL_NAME = Field.create("mongodb.name")
-                                                  .withDisplayName("Namespace")
-                                                  .withType(Type.STRING)
-                                                  .withWidth(Width.MEDIUM)
-                                                  .withImportance(Importance.HIGH)
-                                                  .withValidation(Field::isRequired)
-                                                  .withDescription("Unique name that identifies the MongoDB replica set or cluster and all recorded offsets, and"
-                                                          + "that is used as a prefix for all schemas and topics. "
-                                                          + "Each distinct MongoDB installation should have a separate namespace and monitored by "
-                                                          + "at most one Debezium connector.");
+            .withDisplayName("Namespace")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Unique name that identifies the MongoDB replica set or cluster and all recorded offsets, and"
+                    + "that is used as a prefix for all schemas and topics. "
+                    + "Each distinct MongoDB installation should have a separate namespace and monitored by "
+                    + "at most one Debezium connector.");
 
     public static final Field USER = Field.create("mongodb.user")
-                                          .withDisplayName("User")
-                                          .withType(Type.STRING)
-                                          .withWidth(Width.SHORT)
-                                          .withImportance(Importance.HIGH)
-                                          .withDescription("Database user for connecting to MongoDB, if necessary.");
+            .withDisplayName("User")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Database user for connecting to MongoDB, if necessary.");
 
     public static final Field PASSWORD = Field.create("mongodb.password")
-                                              .withDisplayName("Password")
-                                              .withType(Type.PASSWORD)
-                                              .withWidth(Width.SHORT)
-                                              .withImportance(Importance.HIGH)
-                                              .withDescription("Password to be used when connecting to MongoDB, if necessary.");
+            .withDisplayName("Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Password to be used when connecting to MongoDB, if necessary.");
 
     public static final Field POLL_INTERVAL_SEC = Field.create("mongodb.poll.interval.sec")
-                                                       .withDisplayName("Replica membership poll interval (sec)")
-                                                       .withType(Type.INT)
-                                                       .withWidth(Width.SHORT)
-                                                       .withImportance(Importance.MEDIUM)
-                                                       .withDefault(30)
-                                                       .withValidation(Field::isPositiveInteger)
-                                                       .withDescription("Frequency in seconds to look for new, removed, or changed replica sets. Defaults to 30 seconds.");
+            .withDisplayName("Replica membership poll interval (sec)")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(30)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Frequency in seconds to look for new, removed, or changed replica sets. Defaults to 30 seconds.");
 
     public static final Field SSL_ENABLED = Field.create("mongodb.ssl.enabled")
             .withDisplayName("Enable SSL connection to MongoDB")
@@ -161,82 +161,84 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
 
     public static final Field MAX_COPY_THREADS = Field.create("initial.sync.max.threads")
-                                                      .withDisplayName("Maximum number of threads for initial sync")
-                                                      .withType(Type.INT)
-                                                      .withWidth(Width.SHORT)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDefault(1)
-                                                      .withValidation(Field::isPositiveInteger)
-                                                      .withDescription("Maximum number of threads used to perform an intial sync of the collections in a replica set. "
-                                                              + "Defaults to 1.");
+            .withDisplayName("Maximum number of threads for initial sync")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Maximum number of threads used to perform an intial sync of the collections in a replica set. "
+                    + "Defaults to 1.");
 
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
-                                                                      .withDisplayName("Initial delay before reconnection (ms)")
-                                                                      .withType(Type.LONG)
-                                                                      .withWidth(Width.SHORT)
-                                                                      .withImportance(Importance.MEDIUM)
-                                                                      .withDefault(TimeUnit.SECONDS.toMillis(1))
-                                                                      .withValidation(Field::isPositiveInteger)
-                                                                      .withDescription("The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 1 second (1000 ms).");
+            .withDisplayName("Initial delay before reconnection (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(TimeUnit.SECONDS.toMillis(1))
+            .withValidation(Field::isPositiveInteger)
+            .withDescription(
+                    "The initial delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 1 second (1000 ms).");
 
     public static final Field CONNECT_BACKOFF_MAX_DELAY_MS = Field.create("connect.backoff.max.delay.ms")
-                                                                  .withDisplayName("Maximum delay before reconnection (ms)")
-                                                                  .withType(Type.LONG)
-                                                                  .withWidth(Width.SHORT)
-                                                                  .withImportance(Importance.MEDIUM)
-                                                                  .withDefault(TimeUnit.SECONDS.toMillis(120))
-                                                                  .withValidation(Field::isPositiveInteger)
-                                                                  .withDescription("The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 120 second (120,000 ms).");
+            .withDisplayName("Maximum delay before reconnection (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(TimeUnit.SECONDS.toMillis(120))
+            .withValidation(Field::isPositiveInteger)
+            .withDescription(
+                    "The maximum delay when trying to reconnect to a primary after a connection cannot be made or when no primary is available. Defaults to 120 second (120,000 ms).");
 
     public static final Field MAX_FAILED_CONNECTIONS = Field.create("connect.max.attempts")
-                                                            .withDisplayName("Connection attempt limit")
-                                                            .withType(Type.INT)
-                                                            .withWidth(Width.SHORT)
-                                                            .withImportance(Importance.HIGH)
-                                                            .withDefault(16)
-                                                            .withValidation(Field::isPositiveInteger)
-                                                            .withDescription("Maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. "
-                                                                    + "Defaults to 16, which with the defaults for '"
-                                                                    + CONNECT_BACKOFF_INITIAL_DELAY_MS + "' and '"
-                                                                    + CONNECT_BACKOFF_MAX_DELAY_MS + "' results in "
-                                                                    + "just over 20 minutes of attempts before failing.");
+            .withDisplayName("Connection attempt limit")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDefault(16)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. "
+                    + "Defaults to 16, which with the defaults for '"
+                    + CONNECT_BACKOFF_INITIAL_DELAY_MS + "' and '"
+                    + CONNECT_BACKOFF_MAX_DELAY_MS + "' results in "
+                    + "just over 20 minutes of attempts before failing.");
 
     public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
-                                                           .withDisplayName("Auto-discovery")
-                                                           .withType(Type.BOOLEAN)
-                                                           .withWidth(Width.SHORT)
-                                                           .withImportance(Importance.LOW)
-                                                           .withDefault(true)
-                                                           .withValidation(Field::isBoolean)
-                                                           .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
-                                                                   + "used to discover all members of the cluster or replica set ('true'), "
-                                                                   + "or whether the address(es) in 'hosts' should be used as is ('false'). "
-                                                                   + "The default is 'true'.");
+            .withDisplayName("Auto-discovery")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withValidation(Field::isBoolean)
+            .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
+                    + "used to discover all members of the cluster or replica set ('true'), "
+                    + "or whether the address(es) in 'hosts' should be used as is ('false'). "
+                    + "The default is 'true'.");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be monitored.
      * May not be used with {@link #DATABASE_BLACKLIST}.
      */
     public static final Field DATABASE_WHITELIST = Field.create("database.whitelist")
-                                                        .withDisplayName("DB Whitelist")
-                                                        .withType(Type.LIST)
-                                                        .withWidth(Width.LONG)
-                                                        .withImportance(Importance.HIGH)
-                                                        .withValidation(Field::isListOfRegex,
-                                                                        MongoDbConnectorConfig::validateDatabaseBlacklist)
-                                                        .withDescription("The databases for which changes are to be captured");
+            .withDisplayName("DB Whitelist")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isListOfRegex,
+                    MongoDbConnectorConfig::validateDatabaseBlacklist)
+            .withDescription("The databases for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the databases to be excluded.
      * May not be used with {@link #DATABASE_WHITELIST}.
      */
     public static final Field DATABASE_BLACKLIST = Field.create("database.blacklist")
-                                                        .withDisplayName("DB Blacklist")
-                                                        .withType(Type.LIST)
-                                                        .withWidth(Width.LONG)
-                                                        .withImportance(Importance.HIGH)
-                                                        .withValidation(Field::isListOfRegex)
-                                                        .withDescription("The databases for which changes are to be excluded");
+            .withDisplayName("DB Blacklist")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("The databases for which changes are to be excluded");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be monitored.
@@ -244,13 +246,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * May not be used with {@link #COLLECTION_BLACKLIST}.
      */
     public static final Field COLLECTION_WHITELIST = Field.create("collection.whitelist")
-                                                          .withDisplayName("Collections")
-                                                          .withType(Type.LIST)
-                                                          .withWidth(Width.LONG)
-                                                          .withImportance(Importance.HIGH)
-                                                          .withValidation(Field::isListOfRegex,
-                                                                          MongoDbConnectorConfig::validateCollectionBlacklist)
-                                                          .withDescription("The collections for which changes are to be captured");
+            .withDisplayName("Collections")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isListOfRegex,
+                    MongoDbConnectorConfig::validateCollectionBlacklist)
+            .withDescription("The collections for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified namespaces of collections to be excluded from
@@ -258,8 +260,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * May not be used with {@link #COLLECTION_WHITELIST}.
      */
     public static final Field COLLECTION_BLACKLIST = Field.create("collection.blacklist")
-                                                          .withValidation(Field::isListOfRegex)
-                                                          .withInvisibleRecommender();
+            .withValidation(Field::isListOfRegex)
+            .withInvisibleRecommender();
 
     /**
      * A comma-separated list of the fully-qualified names of fields that should be excluded from change event message values.
@@ -268,11 +270,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * {@code <collectionName>} may contain the wildcard ({@code *}) which matches any characters.
      */
     public static final Field FIELD_BLACKLIST = Field.create("field.blacklist")
-                                                     .withDisplayName("Exclude Fields")
-                                                     .withType(Type.STRING)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withDescription("");
+            .withDisplayName("Exclude Fields")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("");
 
     /**
      * A comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change
@@ -282,47 +284,47 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      * any characters, the colon character ({@code :}) is used to determine rename mapping of field.
      */
     public static final Field FIELD_RENAMES = Field.create("field.renames")
-                                                     .withDisplayName("Rename Fields")
-                                                     .withType(Type.STRING)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withDescription("");
+            .withDisplayName("Rename Fields")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("");
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
-                                                     .withDisplayName("Snapshot mode")
-                                                     .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
-                                                     .withWidth(Width.SHORT)
-                                                     .withImportance(Importance.LOW)
-                                                     .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                                                              + "Options include: "
-                                                              + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
-                                                              + "'never' to specify the connector should never perform an initial sync ");
+            .withDisplayName("Snapshot mode")
+            .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                    + "Options include: "
+                    + "'initial' (the default) to specify the connector should always perform an initial sync when required; "
+                    + "'never' to specify the connector should never perform an initial sync ");
 
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
-                                                .withDescription("Internal use only")
-                                                .withValidation(Field::isInteger)
-                                                .withInvisibleRecommender();
+            .withDescription("Internal use only")
+            .withValidation(Field::isInteger)
+            .withInvisibleRecommender();
 
     public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
-                                                     SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
-                                                     MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                                                     CommonConnectorConfig.MAX_BATCH_SIZE,
-                                                     CommonConnectorConfig.POLL_INTERVAL_MS,
-                                                     MAX_FAILED_CONNECTIONS,
-                                                     CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                                                     CONNECT_BACKOFF_MAX_DELAY_MS,
-                                                     COLLECTION_WHITELIST,
-                                                     COLLECTION_BLACKLIST,
-                                                     FIELD_BLACKLIST,
-                                                     FIELD_RENAMES,
-                                                     AUTO_DISCOVER_MEMBERS,
-                                                     DATABASE_WHITELIST,
-                                                     DATABASE_BLACKLIST,
-                                                     CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-                                                     CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                                                     SNAPSHOT_MODE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                                                     Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+            SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
+            MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
+            CommonConnectorConfig.MAX_BATCH_SIZE,
+            CommonConnectorConfig.POLL_INTERVAL_MS,
+            MAX_FAILED_CONNECTIONS,
+            CONNECT_BACKOFF_INITIAL_DELAY_MS,
+            CONNECT_BACKOFF_MAX_DELAY_MS,
+            COLLECTION_WHITELIST,
+            COLLECTION_BLACKLIST,
+            FIELD_BLACKLIST,
+            FIELD_RENAMES,
+            AUTO_DISCOVER_MEMBERS,
+            DATABASE_WHITELIST,
+            DATABASE_BLACKLIST,
+            CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+            SNAPSHOT_MODE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -338,9 +340,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                    CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
-                    SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+                CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
+                SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
+        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES,
+                CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -387,10 +390,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         switch (version) {
-        case V1:
-            return new LegacyV1MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
-        default:
-            return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+            case V1:
+                return new LegacyV1MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
+            default:
+                return new MongoDbSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
     }
 

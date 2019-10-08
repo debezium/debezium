@@ -163,7 +163,6 @@ public class ParallelSnapshotReaderTest {
         verify(mockNewSnapshotReader).stop();
     }
 
-
     @Test
     public void testHaltingPredicateHonorsTimeRange() {
         // verify that halting predicate does nothing and changes no state if the
@@ -188,7 +187,6 @@ public class ParallelSnapshotReaderTest {
     public void testHaltingPredicateFlipsthisReaderNearEnd() {
         // verify that the halting predicate flips the `this reader` boolean if the
         // document's timestamp is within the time range, but still returns false.
-
 
         AtomicBoolean thisReaderNearEnd = new AtomicBoolean(false);
         AtomicBoolean otherReaderNearEnd = new AtomicBoolean(false);
@@ -215,11 +213,9 @@ public class ParallelSnapshotReaderTest {
 
         Duration duration = Duration.ofMinutes(5);
 
-        ParallelHaltingPredicate parallelHaltingPredicate =
-            new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
+        ParallelHaltingPredicate parallelHaltingPredicate = new ParallelHaltingPredicate(thisReaderNearEnd, otherReaderNearEnd, duration);
 
-        boolean testResult =
-            parallelHaltingPredicate.accepts(createSourceRecordWithTimestamp(Instant.now()));
+        boolean testResult = parallelHaltingPredicate.accepts(createSourceRecordWithTimestamp(Instant.now()));
 
         Assert.assertFalse(testResult);
 

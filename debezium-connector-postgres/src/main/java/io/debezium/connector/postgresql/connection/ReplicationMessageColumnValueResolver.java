@@ -33,7 +33,8 @@ public class ReplicationMessageColumnValueResolver {
      * @param includeUnknownDatatypes true to include unknown data types, false otherwise
      * @return
      */
-    public static Object resolveValue(String columnName, PostgresType type, String fullType, ColumnValue value, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+    public static Object resolveValue(String columnName, PostgresType type, String fullType, ColumnValue value, final PgConnectionSupplier connection,
+                                      boolean includeUnknownDatatypes) {
         if (value.isNull()) {
             // nulls are null
             return null;
@@ -50,7 +51,7 @@ public class ReplicationMessageColumnValueResolver {
             return null;
         }
 
-        switch(type.getName()) {
+        switch (type.getName()) {
             // include all types from https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
             // plus aliases from the shorter names produced by older wal2json
             case "boolean":
@@ -143,8 +144,8 @@ public class ReplicationMessageColumnValueResolver {
             case "polygon":
                 return value.asPolygon();
 
-                // PostGIS types are HexEWKB strings
-                // ValueConverter turns them into the correct types
+            // PostGIS types are HexEWKB strings
+            // ValueConverter turns them into the correct types
             case "geometry":
             case "geography":
                 return value.asString();
@@ -184,7 +185,7 @@ public class ReplicationMessageColumnValueResolver {
             // this includes things like PostGIS geometries or other custom types.
             // leave up to the downstream message recipient to deal with.
             LOGGER.debug("processing column '{}' with unknown data type '{}' as byte array", columnName,
-                         fullType);
+                    fullType);
             return value.asString();
         }
         LOGGER.debug("Unknown column type {} for column {} – ignoring", fullType, columnName);

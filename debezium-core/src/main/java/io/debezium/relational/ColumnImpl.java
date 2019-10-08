@@ -30,15 +30,15 @@ final class ColumnImpl implements Column, Comparable<Column> {
     private final List<String> enumValues;
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int componentType, String typeName, String typeExpression,
-            String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-            boolean optional, boolean autoIncremented, boolean generated) {
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated) {
         this(columnName, position, jdbcType, componentType, typeName, typeExpression, charsetName,
                 defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, null, false);
     }
 
     protected ColumnImpl(String columnName, int position, int jdbcType, int nativeType, String typeName, String typeExpression,
-            String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
-            boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
+                         String charsetName, String defaultCharsetName, int columnLength, Integer columnScale,
+                         boolean optional, boolean autoIncremented, boolean generated, Object defaultValue, boolean hasDefaultValue) {
         this(columnName, position, jdbcType, nativeType, typeName, typeExpression, charsetName,
                 defaultCharsetName, columnLength, columnScale, null, optional, autoIncremented, generated, defaultValue, hasDefaultValue);
     }
@@ -54,7 +54,7 @@ final class ColumnImpl implements Column, Comparable<Column> {
         this.typeName = typeName;
         this.typeExpression = typeExpression;
         // We want to always capture the charset name for the column (if the column needs one) ...
-        if ( typeUsesCharset() && (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) ) {
+        if (typeUsesCharset() && (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName))) {
             // Use the default charset name ...
             charsetName = defaultCharsetName;
         }

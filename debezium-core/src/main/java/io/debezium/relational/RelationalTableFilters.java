@@ -19,14 +19,13 @@ public class RelationalTableFilters implements DataCollectionFilters {
     public RelationalTableFilters(Configuration config, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
         // Define the filter using the whitelists and blacklists for tables and database names ...
         Predicate<TableId> predicate = Selectors.tableSelector()
-//                                                  .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
-//                                                  .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
-                                                  .includeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_WHITELIST))
-                                                  .excludeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST))                                                  .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdMapper)
-                                                  .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST), tableIdMapper)
-                                                  .build();
-
-
+                // .includeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_WHITELIST))
+                // .excludeDatabases(config.getString(RelationalDatabaseConnectorConfig.DATABASE_BLACKLIST))
+                .includeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_WHITELIST))
+                .excludeSchemas(config.getString(RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST))
+                .includeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_WHITELIST), tableIdMapper)
+                .excludeTables(config.getString(RelationalDatabaseConnectorConfig.TABLE_BLACKLIST), tableIdMapper)
+                .build();
 
         Predicate<TableId> finalPredicate = config.getBoolean(RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
                 ? predicate.and(systemTablesFilter::isIncluded)

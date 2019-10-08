@@ -194,7 +194,6 @@ public abstract class AbstractDdlParser implements DdlParser {
         signalChangeEvent(new DdlParserListener.TableDroppedEvent(id, statement, false));
     }
 
-
     /**
      * Signal a truncate table event to ddl changes listener.
      *

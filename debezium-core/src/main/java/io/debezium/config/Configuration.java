@@ -1554,9 +1554,9 @@ public interface Configuration {
             @Override
             public Set<String> keys() {
                 return Collect.unmodifiableSet(Configuration.this.keys().stream()
-                                                                 .filter(k -> k != null)
-                                                                 .filter(matcher)
-                                                                 .collect(Collectors.toSet()));
+                        .filter(k -> k != null)
+                        .filter(matcher)
+                        .collect(Collectors.toSet()));
             }
 
             @Override
@@ -1956,7 +1956,7 @@ public interface Configuration {
             }
             catch (NumberFormatException e) {
                 LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
-                                                          strValue, fieldName, regex);
+                        strValue, fieldName, regex);
                 return null;
             }
         };
@@ -2004,7 +2004,7 @@ public interface Configuration {
             }
             catch (NumberFormatException e) {
                 LoggerFactory.getLogger(getClass()).error("Unexpected value {} extracted from configuration field '{}' using regex '{}'",
-                                                          strValue, fieldName, regex);
+                        strValue, fieldName, regex);
                 return null;
             }
         };

@@ -21,7 +21,6 @@ public class UnwrapFromEnvelope<R extends ConnectRecord<R>> extends ExtractNewRe
         LOGGER.warn(
                 "{} has been deprecated and is scheduled for removal. Use {} instead.",
                 getClass().getSimpleName(),
-                ExtractNewRecordState.class.getName()
-        );
+                ExtractNewRecordState.class.getName());
     }
 }

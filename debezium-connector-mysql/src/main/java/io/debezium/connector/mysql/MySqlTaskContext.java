@@ -185,7 +185,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         dbSchema.setSystemVariables(variables);
 
         // And then load the history ...
-       return dbSchema.historyExists();
+        return dbSchema.historyExists();
     }
 
     /**
@@ -315,9 +315,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         if (connectorConfig.gtidNewChannelPosition() == GtidNewChannelPosition.EARLIEST) {
             final GtidSet knownGtidSet = filteredGtidSet;
             LOGGER.info("Using first available positions for new GTID channels");
-            final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ?
-                    availableServerGtidSet.retainAll(gtidSourceFilter) :
-                    availableServerGtidSet;
+            final GtidSet relevantAvailableServerGtidSet = (gtidSourceFilter != null) ? availableServerGtidSet.retainAll(gtidSourceFilter) : availableServerGtidSet;
             LOGGER.info("Relevant GTID set available on server: {}", relevantAvailableServerGtidSet);
 
             mergedGtidSet = relevantAvailableServerGtidSet

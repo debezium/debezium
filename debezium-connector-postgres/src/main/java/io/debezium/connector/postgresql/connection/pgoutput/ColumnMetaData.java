@@ -41,10 +41,10 @@ public class ColumnMetaData {
         this.optional = optional;
 
         // todo: investigate whether this can be removed and PostgresType updated to always delegate
-        //      Currently PostgresType only delegates calls to length and scale with an attribute modifier
-        //      for specific types and ideally for PgOutput, we should always delegate if a modifier
-        //      is provided.  For now, I've allowed PostgresType to expose the TypeInfo object where
-        //      I will use it here for now until further research can be done.
+        // Currently PostgresType only delegates calls to length and scale with an attribute modifier
+        // for specific types and ideally for PgOutput, we should always delegate if a modifier
+        // is provided. For now, I've allowed PostgresType to expose the TypeInfo object where
+        // I will use it here for now until further research can be done.
         if (TypeRegistry.NO_TYPE_MODIFIER != typeModifier && postgresType.getTypeInfo() != null) {
             length = postgresType.getTypeInfo().getPrecision(postgresType.getOid(), typeModifier);
             scale = postgresType.getTypeInfo().getScale(postgresType.getOid(), typeModifier);

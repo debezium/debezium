@@ -307,7 +307,7 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
                 // definition; so in fact it's arguably not correct to use edit() on the existing column to begin with, but
                 // I'm going to leave this as is for now, to be prepared for the ability of updating column definitions in 8.0
                 ColumnEditor columnEditor = existingColumn.edit();
-//                columnEditor.unsetDefaultValue();
+                // columnEditor.unsetDefaultValue();
 
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser.dataTypeResolver(), parser.getConverters());
                 listeners.add(columnDefinitionListener);

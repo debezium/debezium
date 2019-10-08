@@ -342,9 +342,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(true);
         assertThat(schemaF.defaultValue()).isEqualTo(true);
         assertThat(schemaG.defaultValue()).isEqualTo(false);
-        assertThat(schemaH.defaultValue()).isEqualTo(new byte[] {66, 1});
+        assertThat(schemaH.defaultValue()).isEqualTo(new byte[]{ 66, 1 });
         assertThat(schemaI.defaultValue()).isEqualTo(null);
-        assertThat(schemaJ.defaultValue()).isEqualTo(new byte[] {15, 97, 1, 0});
+        assertThat(schemaJ.defaultValue()).isEqualTo(new byte[]{ 15, 97, 1, 0 });
         assertEmptyFieldValue(record, "K");
     }
 
@@ -413,9 +413,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         consumeRecordsByTopic(EVENT_COUNT);
         try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
             conn.createStatement().execute("CREATE TABLE ti_boolean_table (" +
-                                            "  A TINYINT(1) NOT NULL DEFAULT TRUE," +
-                                            "  B TINYINT(2) NOT NULL DEFAULT FALSE" +
-                                            ")");
+                    "  A TINYINT(1) NOT NULL DEFAULT TRUE," +
+                    "  B TINYINT(2) NOT NULL DEFAULT FALSE" +
+                    ")");
             conn.createStatement().execute("INSERT INTO ti_boolean_table VALUES (default, default)");
         }
 
@@ -541,7 +541,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaJ = record.valueSchema().fields().get(1).schema().fields().get(9).schema();
         Schema schemaL = record.valueSchema().fields().get(1).schema().fields().get(11).schema();
         Schema schemaM = record.valueSchema().fields().get(1).schema().fields().get(12).schema();
-//         Number of days since epoch for date 1976-08-23
+        // Number of days since epoch for date 1976-08-23
         assertThat(schemaA.defaultValue()).isEqualTo(2426);
 
         String value1 = "1970-01-01 00:00:01";
@@ -550,15 +550,18 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaB.defaultValue()).isEqualTo(isoString);
 
         String value2 = "2018-01-03 00:00:10";
-        long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)), MySqlValueConverters::adjustTemporal);
+        long toEpochMillis1 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(value2)),
+                MySqlValueConverters::adjustTemporal);
         assertThat(schemaC.defaultValue()).isEqualTo(toEpochMillis1);
 
         String value3 = "2018-01-03 00:00:10.7";
-        long toEpochMillis2 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").parse(value3)), MySqlValueConverters::adjustTemporal);
+        long toEpochMillis2 = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S").parse(value3)),
+                MySqlValueConverters::adjustTemporal);
         assertThat(schemaD.defaultValue()).isEqualTo(toEpochMillis2);
 
         String value4 = "2018-01-03 00:00:10.123456";
-        long toEpochMicro = MicroTimestamp.toEpochMicros(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse(value4)), MySqlValueConverters::adjustTemporal);
+        long toEpochMicro = MicroTimestamp.toEpochMicros(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").parse(value4)),
+                MySqlValueConverters::adjustTemporal);
         assertThat(schemaE.defaultValue()).isEqualTo(toEpochMicro);
 
         assertThat(schemaF.defaultValue()).isEqualTo(2001);
@@ -568,14 +571,13 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         assertThat(schemaL.defaultValue()).isEqualTo(Duration.ofHours(-23).minusMinutes(45).minusSeconds(56).minusMillis(700).toNanos() / 1_000);
         assertThat(schemaM.defaultValue()).isEqualTo(Duration.ofHours(123).plus(123456, ChronoUnit.MICROS).toNanos() / 1_000);
-        //current timestamp will be replaced with epoch timestamp
+        // current timestamp will be replaced with epoch timestamp
         ZonedDateTime t5 = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
         String isoString5 = ZonedTimestamp.toIsoString(t5, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
         assertThat(schemaJ.defaultValue()).isEqualTo(
                 MySQLConnection.forTestDatabase(DATABASE.getDatabaseName())
-                    .databaseAsserts()
-                    .currentDateTimeDefaultOptional(isoString5)
-        );
+                        .databaseAsserts()
+                        .currentDateTimeDefaultOptional(isoString5));
         assertEmptyFieldValue(record, "K");
     }
 
@@ -679,7 +681,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor({"DBZ-771", "DBZ-1321"})
+    @FixFor({ "DBZ-771", "DBZ-1321" })
     public void columnTypeChangeResetsDefaultValue() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)

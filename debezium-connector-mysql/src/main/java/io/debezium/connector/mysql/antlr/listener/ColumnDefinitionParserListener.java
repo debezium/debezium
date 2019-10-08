@@ -46,7 +46,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
      */
     private final boolean convertDefault;
 
-    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver, MySqlValueConverters converters, boolean convertDefault) {
+    public ColumnDefinitionParserListener(TableEditor tableEditor, ColumnEditor columnEditor, DataTypeResolver dataTypeResolver, MySqlValueConverters converters,
+                                          boolean convertDefault) {
         this.tableEditor = tableEditor;
         this.columnEditor = columnEditor;
         this.dataTypeResolver = dataTypeResolver;
@@ -252,8 +253,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
 
         if (dataTypeName.equals("ENUM") || dataTypeName.equals("SET")) {
             // type expression has to be set, because the value converter needs to know the enum or set options
-            MySqlParser.CollectionDataTypeContext collectionDataTypeContext =
-                       (MySqlParser.CollectionDataTypeContext) dataTypeContext;
+            MySqlParser.CollectionDataTypeContext collectionDataTypeContext = (MySqlParser.CollectionDataTypeContext) dataTypeContext;
 
             List<String> collectionOptions = collectionDataTypeContext.collectionOptions().collectionOption().stream()
                     .map(AntlrDdlParser::getText)

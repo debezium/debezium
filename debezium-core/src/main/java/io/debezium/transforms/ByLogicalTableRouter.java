@@ -68,7 +68,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRequired)
             .withDescription("The replacement string used in conjunction with " + TOPIC_REGEX.name() +
-                ". This will be used to create the new topic name.");
+                    ". This will be used to create the new topic name.");
     private static final Field KEY_FIELD_REGEX = Field.create("key.field.regex")
             .withDisplayName("Key field regex")
             .withType(ConfigDef.Type.STRING)
@@ -76,10 +76,10 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(Field::isRegex)
             .withDescription("The regex used for extracting the physical table identifier from the original topic " +
-                "name. Now that multiple physical tables can share a topic, the event's key may need to be augmented " +
-                "to include fields other than just those for the record's primary/unique key, since these are not " +
-                "guaranteed to be unique across tables. We need some identifier added to the key that distinguishes " +
-                "the different physical tables.");
+                    "name. Now that multiple physical tables can share a topic, the event's key may need to be augmented " +
+                    "to include fields other than just those for the record's primary/unique key, since these are not " +
+                    "guaranteed to be unique across tables. We need some identifier added to the key that distinguishes " +
+                    "the different physical tables.");
     private static final Field KEY_FIELD_NAME = Field.create("key.field.name")
             .withDisplayName("Key field name")
             .withType(ConfigDef.Type.STRING)
@@ -88,9 +88,9 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             // Default is prefixed with "__dbz__" to minimize the likelihood of a conflict with an existing key field name.
             .withDefault("__dbz__physicalTableIdentifier")
             .withDescription("Each record's key schema will be augmented with this field name. The purpose of this " +
-                "field is to distinguish the different physical tables that can now share a single topic. Make " +
-                "sure not to configure a field name that is at risk of conflict with existing key schema field " +
-                "names.");
+                    "field is to distinguish the different physical tables that can now share a single topic. Make " +
+                    "sure not to configure a field name that is at risk of conflict with existing key schema field " +
+                    "names.");
     private static final Field KEY_FIELD_REPLACEMENT = Field.create("key.field.replacement")
             .withDisplayName("Key field replacement")
             .withType(ConfigDef.Type.STRING)
@@ -98,7 +98,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             .withImportance(ConfigDef.Importance.LOW)
             .withValidation(ByLogicalTableRouter::validateKeyFieldReplacement)
             .withDescription("The replacement string used in conjunction with " + KEY_FIELD_REGEX.name() +
-                ". This will be used to create the physical table identifier in the record's key.");
+                    ". This will be used to create the physical table identifier in the record's key.");
 
     private static final Logger logger = LoggerFactory.getLogger(ByLogicalTableRouter.class);
     private final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
@@ -132,9 +132,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                     null,
                     String.format("%s must be non-empty if %s is set.",
                             KEY_FIELD_REPLACEMENT.name(),
-                            KEY_FIELD_REGEX.name()
-                    )
-            );
+                            KEY_FIELD_REGEX.name()));
 
             return 1;
         }
@@ -149,8 +147,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 TOPIC_REGEX,
                 TOPIC_REPLACEMENT,
                 KEY_FIELD_REGEX,
-                KEY_FIELD_REPLACEMENT
-        );
+                KEY_FIELD_REPLACEMENT);
 
         if (!config.validateAndRecord(configFields, logger::error)) {
             throw new ConnectException("Unable to validate config.");
@@ -200,8 +197,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                     newKey,
                     record.valueSchema(),
                     record.value(),
-                    record.timestamp()
-            );
+                    record.timestamp());
         }
 
         final Struct oldEnvelope = requireStruct(record.value(), "Updating schema");
@@ -215,8 +211,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
                 newKey,
                 newEnvelopeSchema,
                 newEnvelope,
-                record.timestamp()
-        );
+                record.timestamp());
     }
 
     @Override

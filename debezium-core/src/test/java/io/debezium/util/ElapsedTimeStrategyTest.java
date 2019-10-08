@@ -164,7 +164,6 @@ public class ElapsedTimeStrategyTest {
         assertElapsed();
     }
 
-
     @Test
     public void testStepDelayStartingAfterStep() {
         clock.advanceTo(100);
@@ -305,7 +304,7 @@ public class ElapsedTimeStrategyTest {
     }
 
     protected void assertNotElapsed() {
-        for (int i=0; i!=5; ++i) {
+        for (int i = 0; i != 5; ++i) {
             assertThat(delay.hasElapsed()).isFalse();
         }
     }

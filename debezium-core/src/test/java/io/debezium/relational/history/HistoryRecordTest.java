@@ -33,16 +33,16 @@ public class HistoryRecordTest {
         String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );";
 
         Table table = Table.editor()
-            .tableId(new TableId(databaseName, schemaName, "foo"))
-            .addColumn(Column.editor()
-                    .name("first")
-                    .jdbcType(Types.VARCHAR)
-                    .type("VARCHAR")
-                    .length(22)
-                    .optional(false)
-                    .create())
-            .setPrimaryKeyNames("first")
-            .create();
+                .tableId(new TableId(databaseName, schemaName, "foo"))
+                .addColumn(Column.editor()
+                        .name("first")
+                        .jdbcType(Types.VARCHAR)
+                        .type("VARCHAR")
+                        .length(22)
+                        .optional(false)
+                        .create())
+                .setPrimaryKeyNames("first")
+                .create();
 
         TableChanges tableChanges = new TableChanges().create(table);
 

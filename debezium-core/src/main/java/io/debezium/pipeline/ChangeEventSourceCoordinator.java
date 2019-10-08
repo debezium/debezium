@@ -56,7 +56,8 @@ public class ChangeEventSourceCoordinator {
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName, ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, RelationalDatabaseSchema schema) {
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName,
+                                        ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, RelationalDatabaseSchema schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -65,7 +66,8 @@ public class ChangeEventSourceCoordinator {
         this.schema = schema;
     }
 
-    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+    public synchronized <T extends CdcSourceTaskContext> void start(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                    EventMetadataProvider metadataProvider) {
         this.snapshotMetrics = new SnapshotChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
         this.streamingMetrics = new StreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider);
         running = true;
@@ -126,10 +128,10 @@ public class ChangeEventSourceCoordinator {
             Thread.interrupted();
             executor.shutdown();
             boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-    
+
             if (!isShutdown) {
                 LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
-    
+
                 // Clear interrupt flag so the forced termination is always attempted
                 Thread.interrupted();
                 executor.shutdownNow();

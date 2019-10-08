@@ -91,8 +91,8 @@ public class PostgresConnectionIT {
     @Test
     public void shouldPrintReplicateIdentityInfo() throws Exception {
         String statement = "DROP SCHEMA IF EXISTS public CASCADE;" +
-                           "CREATE SCHEMA public;" +
-                           "CREATE TABLE test(pk serial, PRIMARY KEY (pk));";
+                "CREATE SCHEMA public;" +
+                "CREATE TABLE test(pk serial, PRIMARY KEY (pk));";
         TestHelper.execute(statement);
         try (PostgresConnection connection = TestHelper.create()) {
             assertEquals(ServerInfo.ReplicaIdentity.DEFAULT, connection.readReplicaIdentityInfo(TableId.parse("public.test")));
@@ -120,7 +120,7 @@ public class PostgresConnectionIT {
     @Test
     @FixFor("DBZ-934")
     public void temporaryReplicationSlotsShouldGetDroppedAutomatically() throws Exception {
-        try(ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
+        try (ReplicationConnection replicationConnection = TestHelper.createForReplication("test", true)) {
             replicationConnection.initConnection();
             PgConnection pgConnection = getUnderlyingConnection(replicationConnection);
 
@@ -156,8 +156,7 @@ public class PostgresConnectionIT {
             connection.execute(
                     "DROP SCHEMA IF EXISTS public CASCADE",
                     "CREATE SCHEMA public",
-                    "CREATE TABLE test(pk serial, PRIMARY KEY (pk))"
-            );
+                    "CREATE TABLE test(pk serial, PRIMARY KEY (pk))");
         }
 
         try (PostgresConnection blockingConnection = TestHelper.create("blocker")) {
@@ -165,8 +164,7 @@ public class PostgresConnectionIT {
             blockingConnection.connection().setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             blockingConnection.connection().setAutoCommit(false);
             blockingConnection.executeWithoutCommitting(
-                    "INSERT INTO test VALUES(default)"
-            );
+                    "INSERT INTO test VALUES(default)");
             Testing.print("Blocking exception started");
 
             final Future<?> f1 = Executors.newSingleThreadExecutor().submit(() -> {
@@ -234,7 +232,8 @@ public class PostgresConnectionIT {
         return new PostgresConnection(TestHelper.defaultJdbcConfig().edit().with("ApplicationName", name).build()) {
             @Override
             protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
-                                                              ResultSetMapper<ServerInfo.ReplicationSlot> map) throws SQLException {
+                                                              ResultSetMapper<ServerInfo.ReplicationSlot> map)
+                    throws SQLException {
 
                 String fields = "slot_name, plugin, slot_type, datoid, database, active, active_pid, xmin, catalog_xmin, restart_lsn";
                 return prepareQueryAndMap("select " + fields + " from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {

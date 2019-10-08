@@ -90,7 +90,7 @@ public interface Metronome {
             public void pause() throws InterruptedException {
                 while (next > timeSystem.currentTimeInNanos()) {
                     LockSupport.parkNanos(next - timeSystem.currentTimeInNanos());
-                    if ( Thread.currentThread().isInterrupted() ) {
+                    if (Thread.currentThread().isInterrupted()) {
                         throw new InterruptedException();
                     }
                 }

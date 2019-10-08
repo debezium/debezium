@@ -40,7 +40,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     private final SqlServerConnectorConfig connectorConfig;
     private final SqlServerConnection jdbcConnection;
 
-    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection, SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+    public SqlServerSnapshotChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerOffsetContext previousOffset, SqlServerConnection jdbcConnection,
+                                              SqlServerDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                              SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -92,7 +94,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
 
     @Override
     protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
-        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"});
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
@@ -147,8 +149,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
                 false,
-                false
-        );
+                false);
     }
 
     @Override
@@ -172,8 +173,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                     schema,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
-                    false
-            );
+                    false);
         }
     }
 

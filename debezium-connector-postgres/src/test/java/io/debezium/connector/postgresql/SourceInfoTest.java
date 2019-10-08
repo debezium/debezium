@@ -31,9 +31,9 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
-                .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
-                .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
-                .build()));
+                        .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
+                        .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
+                        .build()));
         source.update(Conversions.toInstantFromMicros(123_456_789L), new TableId("catalogNameX", "schemaNameX", "tableNameX"));
     }
 
@@ -66,7 +66,7 @@ public class SourceInfoTest {
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot",  AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)

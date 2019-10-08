@@ -32,7 +32,9 @@ public class DatabaseHistoryMetrics extends Metrics implements DatabaseHistoryLi
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHistoryMetrics.class);
 
     public static enum DatabaseHistoryStatus {
-        STOPPED, RECOVERING, RUNNING
+        STOPPED,
+        RECOVERING,
+        RUNNING
     }
 
     private DatabaseHistoryStatus status = DatabaseHistoryStatus.STOPPED;

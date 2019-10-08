@@ -194,28 +194,28 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     /**
      * Quotes the given identifier part, e.g. schema or table name.
      */
-   private static String quote(String identifierPart, char quotingChar) {
-       if (identifierPart == null) {
-           return null;
-       }
+    private static String quote(String identifierPart, char quotingChar) {
+        if (identifierPart == null) {
+            return null;
+        }
 
-       if (identifierPart.isEmpty()) {
-           return new StringBuilder().append(quotingChar).append(quotingChar).toString();
-       }
+        if (identifierPart.isEmpty()) {
+            return new StringBuilder().append(quotingChar).append(quotingChar).toString();
+        }
 
-       if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {
-           identifierPart = identifierPart.replace(quotingChar + "", repeat(quotingChar));
-           identifierPart = quotingChar + identifierPart + quotingChar;
-       }
+        if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {
+            identifierPart = identifierPart.replace(quotingChar + "", repeat(quotingChar));
+            identifierPart = quotingChar + identifierPart + quotingChar;
+        }
 
-       return identifierPart;
-   }
+        return identifierPart;
+    }
 
-   private static String repeat(char quotingChar) {
-       return new StringBuilder().append(quotingChar).append(quotingChar).toString();
-   }
+    private static String repeat(char quotingChar) {
+        return new StringBuilder().append(quotingChar).append(quotingChar).toString();
+    }
 
-   public TableId toLowercase() {
-       return new TableId(catalogName, schemaName, tableName.toLowerCase());
-   }
+    public TableId toLowercase() {
+        return new TableId(catalogName, schemaName, tableName.toLowerCase());
+    }
 }

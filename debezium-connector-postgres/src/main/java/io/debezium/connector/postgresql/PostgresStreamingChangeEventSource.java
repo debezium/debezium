@@ -53,15 +53,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final Snapshotter snapshotter;
     private final Metronome pauseNoMessage;
 
-    public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext offsetContext, PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
+    public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext offsetContext,
+                                              PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                              PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
         this.connectorConfig = connectorConfig;
         this.connection = connection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
-        this.offsetContext = (offsetContext != null) ? offsetContext :
-            PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
+        this.offsetContext = (offsetContext != null) ? offsetContext : PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
         pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
@@ -112,19 +113,18 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     final TableId tableId = PostgresSchema.parse(message.getTable());
                     Objects.requireNonNull(tableId);
 
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId, taskContext.getSlotXmin(connection));
+                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
+                            taskContext.getSlotXmin(connection));
                     dispatcher
-                        .dispatchDataChangeEvent(
-                                tableId,
-                                new PostgresChangeRecordEmitter(
-                                        offsetContext,
-                                        clock,
-                                        connectorConfig,
-                                        schema,
-                                        connection,
-                                        message
-                                )
-                        );
+                            .dispatchDataChangeEvent(
+                                    tableId,
+                                    new PostgresChangeRecordEmitter(
+                                            offsetContext,
+                                            clock,
+                                            connectorConfig,
+                                            schema,
+                                            connection,
+                                            message));
                 })) {
                     if (offsetContext.hasCompletelyProcessedPosition()) {
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
@@ -146,8 +146,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         finally {
             if (replicationConnection != null) {
                 LOGGER.debug("stopping streaming...");
-                //TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
-                //replicationStream.close();
+                // TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
+                // replicationStream.close();
                 // close the connection - this should also disconnect the current stream even if it's blocking
                 try {
                     replicationConnection.close();

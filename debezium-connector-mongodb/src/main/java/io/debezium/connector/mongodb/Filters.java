@@ -41,7 +41,7 @@ public final class Filters {
             databaseFilter = Predicates.excludes(dbBlacklist);
         }
         else {
-            databaseFilter = (db)->true;
+            databaseFilter = (db) -> true;
         }
 
         String collectionWhitelist = config.getString(MongoDbConnectorConfig.COLLECTION_WHITELIST);

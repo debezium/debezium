@@ -30,8 +30,7 @@ public class FieldRenamesTest {
 
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = "patch";
-    private static final JsonWriterSettings WRITER_SETTINGS =
-            new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
+    private static final JsonWriterSettings WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
 
     private Configurator build;
     private SourceInfo source;
@@ -42,8 +41,8 @@ public class FieldRenamesTest {
         build = new Configurator();
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
-                .build()));
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                        .build()));
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
     }
 
@@ -90,11 +89,11 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\","
-                +     "\"new_active\": true"
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\","
+                + "\"new_active\": true"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -147,16 +146,16 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"address\": {"
-                +         "\"street\": \"Claude Debussylaan\","
-                +         "\"city\": \"Amsterdam\","
-                +         "\"new_number\": {\"$numberLong\": \"34\"}"
-                +     "},"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\","
-                +     "\"new_active\": true"
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"address\": {"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\","
+                + "\"new_number\": {\"$numberLong\": \"34\"}"
+                + "},"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\","
+                + "\"new_active\": true"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -232,11 +231,11 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\","
-                +     "\"new_active\": true"
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\","
+                + "\"new_active\": true"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -289,16 +288,16 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"address\": {"
-                +         "\"street\": \"Claude Debussylaan\","
-                +         "\"city\": \"Amsterdam\","
-                +         "\"new_number\": {\"$numberLong\": \"34\"}"
-                +     "},"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\","
-                +     "\"new_active\": true"
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"address\": {"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\","
+                + "\"new_number\": {\"$numberLong\": \"34\"}"
+                + "},"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\","
+                + "\"new_active\": true"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
@@ -374,11 +373,11 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\","
-                +     "\"new_active\": true"
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\","
+                + "\"new_active\": true"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -431,16 +430,16 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"address\": {"
-                +         "\"street\": \"Claude Debussylaan\","
-                +         "\"city\": \"Amsterdam\","
-                +         "\"new_number\": {\"$numberLong\": \"34\"}"
-                +     "},"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\","
-                +     "\"new_active\": true"
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"address\": {"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\","
+                + "\"new_number\": {\"$numberLong\": \"34\"}"
+                + "},"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\","
+                + "\"new_active\": true"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -525,23 +524,23 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"addresses\": ["
-                +         "{"
-                +             "\"street\": \"Claude Debussylaan\","
-                +             "\"city\": \"Amsterdam\","
-                +             "\"new_number\": {\"$numberLong\": \"34\"}"
-                +         "},"
-                +         "{"
-                +             "\"street\": \"Fragkokklisias\","
-                +             "\"city\": \"Athens\","
-                +             "\"new_number\": {\"$numberLong\": \"7\"}"
-                +         "}"
-                +     "],"
-                +     "\"active\": true,"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\""
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"addresses\": ["
+                + "{"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\","
+                + "\"new_number\": {\"$numberLong\": \"34\"}"
+                + "},"
+                + "{"
+                + "\"street\": \"Fragkokklisias\","
+                + "\"city\": \"Athens\","
+                + "\"new_number\": {\"$numberLong\": \"7\"}"
+                + "}"
+                + "],"
+                + "\"active\": true,"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\""
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -576,27 +575,27 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                +     "\"phone\": {\"$numberLong\": \"123\"},"
-                +     "\"addresses\": ["
-                +         "["
-                +             "{"
-                +                 "\"number\": {\"$numberLong\": \"34\"},"
-                +                 "\"street\": \"Claude Debussylaan\","
-                +                 "\"city\": \"Amsterdam\""
-                +             "}"
-                +         "],"
-                +         "["
-                +             "{"
-                +                 "\"number\": {\"$numberLong\": \"7\"},"
-                +                 "\"street\": \"Fragkokklisias\","
-                +                 "\"city\": \"Athens\""
-                +             "}"
-                +         "]"
-                +     "],"
-                +     "\"active\": true,"
-                +     "\"scores\": [1.2,3.4,5.6],"
-                +     "\"new_name\": \"Sally\""
+                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"addresses\": ["
+                + "["
+                + "{"
+                + "\"number\": {\"$numberLong\": \"34\"},"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\""
+                + "}"
+                + "],"
+                + "["
+                + "{"
+                + "\"number\": {\"$numberLong\": \"7\"},"
+                + "\"street\": \"Fragkokklisias\","
+                + "\"city\": \"Athens\""
+                + "}"
+                + "]"
+                + "],"
+                + "\"active\": true,"
+                + "\"scores\": [1.2,3.4,5.6],"
+                + "\"new_name\": \"Sally\""
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -620,10 +619,10 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"phone\": {\"$numberLong\": \"123\"},"
-                +         "\"new_name\": \"Sally\""
-                +     "}"
+                + "\"$set\": {"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"new_name\": \"Sally\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -664,10 +663,10 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\": {"
-                +         "\"phone\": \"\","
-                +         "\"new_name\": \"\""
-                +     "}"
+                + "\"$unset\": {"
+                + "\"phone\": \"\","
+                + "\"new_name\": \"\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -712,15 +711,15 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"phone\": {\"$numberLong\": \"123\"},"
-                +         "\"address\": {"
-                +             "\"street\": \"Claude Debussylaan\","
-                +             "\"city\": \"Amsterdam\","
-                +             "\"new_number\": {\"$numberLong\": \"34\"}"
-                +         "},"
-                +         "\"new_name\": \"Sally\""
-                +     "}"
+                + "\"$set\": {"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"address\": {"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\","
+                + "\"new_number\": {\"$numberLong\": \"34\"}"
+                + "},"
+                + "\"new_name\": \"Sally\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -753,22 +752,22 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"phone\": {\"$numberLong\": \"123\"},"
-                +         "\"addresses\": ["
-                +             "{"
-                +                 "\"street\": \"Claude Debussylaan\","
-                +                 "\"city\": \"Amsterdam\","
-                +                 "\"new_number\": {\"$numberLong\": \"34\"}"
-                +             "},"
-                +             "{"
-                +                 "\"street\": \"Fragkokklisias\","
-                +                 "\"city\": \"Athens\","
-                +                 "\"new_number\": {\"$numberLong\": \"7\"}"
-                +             "}"
-                +         "],"
-                +         "\"new_name\": \"Sally\""
-                +     "}"
+                + "\"$set\": {"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"addresses\": ["
+                + "{"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\","
+                + "\"new_number\": {\"$numberLong\": \"34\"}"
+                + "},"
+                + "{"
+                + "\"street\": \"Fragkokklisias\","
+                + "\"city\": \"Athens\","
+                + "\"new_number\": {\"$numberLong\": \"7\"}"
+                + "}"
+                + "],"
+                + "\"new_name\": \"Sally\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -801,26 +800,26 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"phone\": {\"$numberLong\": \"123\"},"
-                +         "\"addresses\": ["
-                +             "["
-                +                 "{"
-                +                     "\"number\": {\"$numberLong\": \"34\"},"
-                +                     "\"street\": \"Claude Debussylaan\","
-                +                     "\"city\": \"Amsterdam\""
-                +                 "}"
-                +             "],"
-                +             "["
-                +                 "{"
-                +                     "\"number\": {\"$numberLong\": \"7\"},"
-                +                     "\"street\": \"Fragkokklisias\","
-                +                     "\"city\": \"Athens\""
-                +                 "}"
-                +             "]"
-                +         "],"
-                +         "\"new_name\": \"Sally\""
-                +     "}"
+                + "\"$set\": {"
+                + "\"phone\": {\"$numberLong\": \"123\"},"
+                + "\"addresses\": ["
+                + "["
+                + "{"
+                + "\"number\": {\"$numberLong\": \"34\"},"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\""
+                + "}"
+                + "],"
+                + "["
+                + "{"
+                + "\"number\": {\"$numberLong\": \"7\"},"
+                + "\"street\": \"Fragkokklisias\","
+                + "\"city\": \"Athens\""
+                + "}"
+                + "]"
+                + "],"
+                + "\"new_name\": \"Sally\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -846,12 +845,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"address.street\": \"Claude Debussylaan\","
-                +         "\"address.city\": \"Amsterdam\","
-                +         "\"new_name\": \"Sally\","
-                +         "\"address.new_number\": {\"$numberLong\": \"34\"}"
-                +     "}"
+                + "\"$set\": {"
+                + "\"address.street\": \"Claude Debussylaan\","
+                + "\"address.city\": \"Amsterdam\","
+                + "\"new_name\": \"Sally\","
+                + "\"address.new_number\": {\"$numberLong\": \"34\"}"
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -861,14 +860,14 @@ public class FieldRenamesTest {
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "number": 34,
-        //         "street": "Claude Debussylaan",
-        //         "city": "Amsterdam"
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
         // }
 
         // given
@@ -889,12 +888,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"name\": \"Sally\","
-                +         "\"addresses.0.street\": \"Claude Debussylaan\","
-                +         "\"addresses.0.city\": \"Amsterdam\","
-                +         "\"addresses.0.new_number\": {\"$numberLong\": \"34\"}"
-                +     "}"
+                + "\"$set\": {"
+                + "\"name\": \"Sally\","
+                + "\"addresses.0.street\": \"Claude Debussylaan\","
+                + "\"addresses.0.city\": \"Amsterdam\","
+                + "\"addresses.0.new_number\": {\"$numberLong\": \"34\"}"
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -923,16 +922,16 @@ public class FieldRenamesTest {
     public void shouldNotRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      [
-        //         {
-        //            "number": 34,
-        //            "street": "Claude Debussylaan",
-        //            "city": "Amsterdam"
-        //         }
-        //      ]
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
+        // ]
         // }
 
         // given
@@ -960,18 +959,18 @@ public class FieldRenamesTest {
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "second": [
-        //            {
-        //               "number": 34,
-        //               "street": "Claude Debussylaan",
-        //               "city": "Amsterdam"
-        //            }
-        //         ]
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "second": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
+        // }
+        // ]
         // }
 
         // given
@@ -992,12 +991,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"name\": \"Sally\","
-                +         "\"addresses.0.second.0.street\": \"Claude Debussylaan\","
-                +         "\"addresses.0.second.0.city\": \"Amsterdam\","
-                +         "\"addresses.0.second.0.new_number\": {\"$numberLong\": \"34\"}"
-                +     "}"
+                + "\"$set\": {"
+                + "\"name\": \"Sally\","
+                + "\"addresses.0.second.0.street\": \"Claude Debussylaan\","
+                + "\"addresses.0.second.0.city\": \"Amsterdam\","
+                + "\"addresses.0.second.0.new_number\": {\"$numberLong\": \"34\"}"
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -1007,14 +1006,14 @@ public class FieldRenamesTest {
     public void shouldRenameFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "number": 34,
-        //         "street": "Claude Debussylaan",
-        //         "city": "Amsterdam"
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
         // }
 
         // given
@@ -1035,12 +1034,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"name\": \"Sally\","
-                +         "\"new_addresses.0.number\": {\"$numberLong\": \"34\"},"
-                +         "\"new_addresses.0.street\": \"Claude Debussylaan\","
-                +         "\"new_addresses.0.city\": \"Amsterdam\""
-                +     "}"
+                + "\"$set\": {"
+                + "\"name\": \"Sally\","
+                + "\"new_addresses.0.number\": {\"$numberLong\": \"34\"},"
+                + "\"new_addresses.0.street\": \"Claude Debussylaan\","
+                + "\"new_addresses.0.city\": \"Amsterdam\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -1050,14 +1049,14 @@ public class FieldRenamesTest {
     public void shouldRenameFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "number": 34,
-        //         "street": "Claude Debussylaan",
-        //         "city": "Amsterdam"
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
         // }
 
         // given
@@ -1079,14 +1078,14 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$set\": {"
-                +         "\"name\": \"Sally\","
-                +         "\"new_addresses.0\": {"
-                +             "\"number\": {\"$numberLong\": \"34\"},"
-                +             "\"street\": \"Claude Debussylaan\","
-                +             "\"city\": \"Amsterdam\""
-                +         "}"
-                +     "}"
+                + "\"$set\": {"
+                + "\"name\": \"Sally\","
+                + "\"new_addresses.0\": {"
+                + "\"number\": {\"$numberLong\": \"34\"},"
+                + "\"street\": \"Claude Debussylaan\","
+                + "\"city\": \"Amsterdam\""
+                + "}"
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -1112,12 +1111,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\": {"
-                +         "\"address.street\": \"\","
-                +         "\"address.city\": \"\","
-                +         "\"new_name\": \"\","
-                +         "\"address.new_number\": \"\""
-                +     "}"
+                + "\"$unset\": {"
+                + "\"address.street\": \"\","
+                + "\"address.city\": \"\","
+                + "\"new_name\": \"\","
+                + "\"address.new_number\": \"\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -1127,14 +1126,14 @@ public class FieldRenamesTest {
     public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "number": 34,
-        //         "street": "Claude Debussylaan",
-        //         "city": "Amsterdam"
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
         // }
 
         // given
@@ -1155,12 +1154,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\": {"
-                +         "\"name\": \"\","
-                +         "\"addresses.0.street\": \"\","
-                +         "\"addresses.0.city\": \"\","
-                +         "\"addresses.0.new_number\": \"\""
-                +     "}"
+                + "\"$unset\": {"
+                + "\"name\": \"\","
+                + "\"addresses.0.street\": \"\","
+                + "\"addresses.0.city\": \"\","
+                + "\"addresses.0.new_number\": \"\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -1189,16 +1188,16 @@ public class FieldRenamesTest {
     public void shouldNotRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      [
-        //         {
-        //            "number": 34,
-        //            "street": "Claude Debussylaan",
-        //            "city": "Amsterdam"
-        //         }
-        //      ]
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
+        // ]
         // }
 
         // given
@@ -1226,18 +1225,18 @@ public class FieldRenamesTest {
     public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "second": [
-        //            {
-        //               "number": 34,
-        //               "street": "Claude Debussylaan",
-        //               "city": "Amsterdam"
-        //            }
-        //         ]
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "second": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
+        // }
+        // ]
         // }
 
         // given
@@ -1258,12 +1257,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\": {"
-                +         "\"name\": \"\","
-                +         "\"addresses.0.second.0.street\": \"\","
-                +         "\"addresses.0.second.0.city\": \"\","
-                +         "\"addresses.0.second.0.new_number\": \"\""
-                +     "}"
+                + "\"$unset\": {"
+                + "\"name\": \"\","
+                + "\"addresses.0.second.0.street\": \"\","
+                + "\"addresses.0.second.0.city\": \"\","
+                + "\"addresses.0.second.0.new_number\": \"\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
@@ -1273,14 +1272,14 @@ public class FieldRenamesTest {
     public void shouldRenameFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
         // source document can have the following structure:
         // {
-        //   "name": "Sally",
-        //   "addresses": [
-        //      {
-        //         "number": 34,
-        //         "street": "Claude Debussylaan",
-        //         "city": "Amsterdam"
-        //      }
-        //   ]
+        // "name": "Sally",
+        // "addresses": [
+        // {
+        // "number": 34,
+        // "street": "Claude Debussylaan",
+        // "city": "Amsterdam"
+        // }
+        // ]
         // }
 
         // given
@@ -1301,12 +1300,12 @@ public class FieldRenamesTest {
 
         // then
         String expected = "{"
-                +     "\"$unset\": {"
-                +         "\"name\": \"\","
-                +         "\"new_addresses.0.number\": \"\","
-                +         "\"new_addresses.0.street\": \"\","
-                +         "\"new_addresses.0.city\": \"\""
-                +     "}"
+                + "\"$unset\": {"
+                + "\"name\": \"\","
+                + "\"new_addresses.0.number\": \"\","
+                + "\"new_addresses.0.street\": \"\","
+                + "\"new_addresses.0.city\": \"\""
+                + "}"
                 + "}";
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);

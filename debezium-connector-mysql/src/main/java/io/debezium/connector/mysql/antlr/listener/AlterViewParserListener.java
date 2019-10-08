@@ -32,7 +32,6 @@ public class AlterViewParserListener extends MySqlParserBaseListener {
     private TableEditor tableEditor;
     private ViewSelectedColumnsParserListener selectColumnsListener;
 
-
     public AlterViewParserListener(MySqlAntlrDdlParser parser, List<ParseTreeListener> listeners) {
         this.parser = parser;
         this.listeners = listeners;

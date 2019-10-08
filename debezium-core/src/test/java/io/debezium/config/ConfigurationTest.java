@@ -46,8 +46,8 @@ public class ConfigurationTest {
         assertThat(config.getString("A")).isEqualTo("a");
         assertThat(config.getString("B")).isEqualTo("b");
         assertThat(config.getString("1")).isEqualTo("1");
-        assertThat(config.getInteger("1")).isEqualTo(1);    // converts
-        assertThat(config.getBoolean("1")).isNull();    // not a boolean
+        assertThat(config.getInteger("1")).isEqualTo(1); // converts
+        assertThat(config.getBoolean("1")).isNull(); // not a boolean
     }
 
     @Test
@@ -160,22 +160,22 @@ public class ConfigurationTest {
         // null : ok
         config = Configuration.create().build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
-        //empty field: error
+        // empty field: error
         config = Configuration.create().with(MSG_KEY_COLUMNS, "").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isNotEmpty();
-        //field: ok
+        // field: ok
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
-        //field: ok
+        // field: ok
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1,C2").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
-        //field: ok
+        // field: ok
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1,C2;t2:C1,C2").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
-        //field: ok
+        // field: ok
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1:C1;(.*).t2:C1,C2").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isEmpty();
-        //field: invalid format
+        // field: invalid format
         config = Configuration.create().with(MSG_KEY_COLUMNS, "t1,t2").build();
         assertThat(config.validate(Field.setOf(MSG_KEY_COLUMNS)).get(MSG_KEY_COLUMNS.name()).errorMessages()).isNotEmpty();
     }

@@ -45,8 +45,8 @@ public class ZonedTime {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.string()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**
@@ -74,13 +74,13 @@ public class ZonedTime {
      * @throws IllegalArgumentException if the value is not an instance of the acceptable types or is null
      */
     public static String toIsoString(Object value, ZoneId defaultZone, TemporalAdjuster adjuster) {
-        if ( value instanceof OffsetTime ) {
+        if (value instanceof OffsetTime) {
             return toIsoString((OffsetTime) value, adjuster);
         }
-        if ( value instanceof OffsetDateTime ) {
+        if (value instanceof OffsetDateTime) {
             return toIsoString((OffsetDateTime) value, adjuster);
         }
-        if (value instanceof java.util.Date) {  // or JDBC subtypes
+        if (value instanceof java.util.Date) { // or JDBC subtypes
             return toIsoString((java.util.Date) value, defaultZone, adjuster);
         }
         throw new IllegalArgumentException("Unable to convert to OffsetTime from unexpected value '" + value + "' of type " + value.getClass().getName());
@@ -100,6 +100,7 @@ public class ZonedTime {
         }
         return timestamp.toOffsetTime().format(FORMATTER);
     }
+
     /**
      * Get the ISO 8601 formatted representation of the given {@link OffsetTime}.
      *

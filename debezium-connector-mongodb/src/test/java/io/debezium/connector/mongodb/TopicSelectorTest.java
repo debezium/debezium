@@ -46,7 +46,7 @@ public class TopicSelectorTest {
         return assertThat(selector.topicNameFor(collectionId));
     }
 
-    protected CollectionId dbAndCollection( String dbName, String collectionName ) {
+    protected CollectionId dbAndCollection(String dbName, String collectionName) {
         return new CollectionId("rs0", dbName, collectionName);
     }
 

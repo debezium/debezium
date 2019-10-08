@@ -68,7 +68,7 @@ public class DdlChanges implements DdlParserListener {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
             final StringBuilder statements = new StringBuilder();
             final Set<TableId> tables = new HashSet<>();
-            eventList.forEach(event-> {
+            eventList.forEach(event -> {
                 statements.append(event.statement());
                 statements.append(terminator);
                 addTable(tables, event);
@@ -92,7 +92,7 @@ public class DdlChanges implements DdlParserListener {
         groupEventsByDatabase((DatabaseEventConsumer) (dbName, eventList) -> {
             List<String> statements = new ArrayList<>();
             final Set<TableId> tables = new HashSet<>();
-            eventList.forEach(event-> {
+            eventList.forEach(event -> {
                 statements.add(event.statement());
                 addTable(tables, event);
             });
@@ -106,10 +106,10 @@ public class DdlChanges implements DdlParserListener {
      * @param consumer the consumer
      */
     public void groupEventsByDatabase(DatabaseEventConsumer consumer) {
-        if ( isEmpty() ) {
+        if (isEmpty()) {
             return;
         }
-        if ( databaseNames.size() <= 1 ) {
+        if (databaseNames.size() <= 1) {
             consumer.consume(databaseNames.iterator().next(), events);
             return;
         }
@@ -159,7 +159,7 @@ public class DdlChanges implements DdlParserListener {
         return events.isEmpty();
     }
 
-    public boolean applyToMoreDatabasesThan( String name ) {
+    public boolean applyToMoreDatabasesThan(String name) {
         return databaseNames.contains(name) ? databaseNames.size() > 1 : databaseNames.size() > 0;
     }
 
@@ -189,13 +189,9 @@ public class DdlChanges implements DdlParserListener {
      * <ul>
      */
     public boolean anyMatch(Predicate<String> databaseFilter, Predicate<TableId> tableFilter) {
-        return events.stream().anyMatch(event ->
-            (event instanceof DatabaseEvent) && databaseFilter.test(((DatabaseEvent) event).databaseName())
-            || (event instanceof TableEvent) && tableFilter.test(((TableEvent) event).tableId())
-            || (event instanceof SetVariableEvent) && (
-                    !((SetVariableEvent) event).databaseName().isPresent()
-                    || databaseFilter.test(((SetVariableEvent) event).databaseName().get())
-                )
-            );
+        return events.stream().anyMatch(event -> (event instanceof DatabaseEvent) && databaseFilter.test(((DatabaseEvent) event).databaseName())
+                || (event instanceof TableEvent) && tableFilter.test(((TableEvent) event).tableId())
+                || (event instanceof SetVariableEvent) && (!((SetVariableEvent) event).databaseName().isPresent()
+                        || databaseFilter.test(((SetVariableEvent) event).databaseName().get())));
     }
 }

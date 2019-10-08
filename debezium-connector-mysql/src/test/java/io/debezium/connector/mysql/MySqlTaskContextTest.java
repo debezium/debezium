@@ -83,22 +83,22 @@ public class MySqlTaskContextTest {
 
     protected Configuration.Builder simpleConfig() {
         return Configuration.create()
-                            .with(MySqlConnectorConfig.HOSTNAME, hostname)
-                            .with(MySqlConnectorConfig.PORT, port)
-                            .with(MySqlConnectorConfig.USER, username)
-                            .with(MySqlConnectorConfig.PASSWORD, password)
-                            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
-                            .with(MySqlConnectorConfig.SERVER_ID, serverId)
-                            .with(MySqlConnectorConfig.SERVER_NAME, serverName)
-                            .with(MySqlConnectorConfig.DATABASE_WHITELIST, databaseName)
-                            .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                            .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+                .with(MySqlConnectorConfig.HOSTNAME, hostname)
+                .with(MySqlConnectorConfig.PORT, port)
+                .with(MySqlConnectorConfig.USER, username)
+                .with(MySqlConnectorConfig.PASSWORD, password)
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED)
+                .with(MySqlConnectorConfig.SERVER_ID, serverId)
+                .with(MySqlConnectorConfig.SERVER_NAME, serverName)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, databaseName)
+                .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
+                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
     }
 
     @Test
     public void shouldCreateTaskFromConfigurationWithNeverSnapshotMode() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                               .build();
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
 
@@ -110,7 +110,7 @@ public class MySqlTaskContextTest {
     @Test
     public void shouldCreateTaskFromConfigurationWithWhenNeededSnapshotMode() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
-                               .build();
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
 
@@ -122,7 +122,7 @@ public class MySqlTaskContextTest {
     @Test
     public void shouldUseGtidSetIncludes() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES, "a,b,c,d.*")
-                               .build();
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
 
@@ -148,8 +148,8 @@ public class MySqlTaskContextTest {
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41";
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
-                                     "036d85a9-64e5-11e6-9b48-42010af0000c,7145bf69-d1ca-11e5-a588-0242ac110004")
-                               .build();
+                "036d85a9-64e5-11e6-9b48-42010af0000c,7145bf69-d1ca-11e5-a588-0242ac110004")
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
 
@@ -178,8 +178,8 @@ public class MySqlTaskContextTest {
                 + "7145bf69-d1ca-11e5-a588-0242ac110004:1-3200,"
                 + "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41";
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES,
-                                     "7c1de3f2-3fd2-11e6-9cdc-42010af000bc")
-                               .build();
+                "7c1de3f2-3fd2-11e6-9cdc-42010af000bc")
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
 
@@ -205,12 +205,13 @@ public class MySqlTaskContextTest {
     @Test
     public void shouldNotAllowBothGtidSetIncludesAndExcludes() throws Exception {
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
-                                     "036d85a9-64e5-11e6-9b48-42010af0000c,7145bf69-d1ca-11e5-a588-0242ac110004")
-                               .with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES,
-                                     "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41")
-                               .build();
+                "036d85a9-64e5-11e6-9b48-42010af0000c,7145bf69-d1ca-11e5-a588-0242ac110004")
+                .with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES,
+                        "7c1de3f2-3fd2-11e6-9cdc-42010af000bc:1-41")
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
-        boolean valid = config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, msg -> {});
+        boolean valid = config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, msg -> {
+        });
         assertThat(valid).isFalse();
     }
 
@@ -224,8 +225,8 @@ public class MySqlTaskContextTest {
         String purgedServerGtidStr = "";
 
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
-                                     "036d85a9-64e5-11e6-9b48-42010af0000c")
-                               .build();
+                "036d85a9-64e5-11e6-9b48-42010af0000c")
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
         context.source().setCompletedGtidSet(gtidStr);
@@ -287,7 +288,7 @@ public class MySqlTaskContextTest {
                 + "c627b2bc-9647-11e6-a886-42010af0044a:1-10426868,"
                 + "d079cbb3-750f-11e6-954e-42010af00c28:1-11544291:11544293-11885648";
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES, "96c2072e-e428-11e6-9590-42010a28002d")
-                               .build();
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
         context.source().setCompletedGtidSet(lastGtidStr);
@@ -314,7 +315,7 @@ public class MySqlTaskContextTest {
     @Test
     public void shouldIgnoreDatabaseHistoryProperties() throws Exception {
         config = simpleConfig().with(KafkaDatabaseHistory.TOPIC, "dummytopic")
-                               .build();
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
 
@@ -327,7 +328,7 @@ public class MySqlTaskContextTest {
                                           int event, int row, boolean snapshot) {
         Document source = Document.create(AbstractSourceInfo.SERVER_NAME_KEY, serverName);
         Document pos = Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, binlogFilename,
-                                       SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
+                SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
         if (row >= 0) {
             pos = pos.set(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row);
         }
@@ -341,7 +342,7 @@ public class MySqlTaskContextTest {
             pos = pos.set(SourceInfo.SNAPSHOT_KEY, true);
         }
         return new HistoryRecord(Document.create(HistoryRecord.Fields.SOURCE, source,
-                                                 HistoryRecord.Fields.POSITION, pos));
+                HistoryRecord.Fields.POSITION, pos));
     }
 
 }

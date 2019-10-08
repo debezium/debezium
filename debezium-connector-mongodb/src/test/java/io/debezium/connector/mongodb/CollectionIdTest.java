@@ -32,7 +32,7 @@ public class CollectionIdTest {
         assertThat(CollectionId.parse("a")).isNull();
     }
 
-    protected void assertParseable( String replicaSetName, String dbName, String collectionName ) {
+    protected void assertParseable(String replicaSetName, String dbName, String collectionName) {
         String str = replicaSetName + "." + dbName + "." + collectionName;
         id = CollectionId.parse(str);
         assertThat(id.replicaSetName()).isEqualTo(replicaSetName);

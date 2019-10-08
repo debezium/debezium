@@ -38,8 +38,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationInc() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$inc': {'dataInt': 123, 'nested.dataInt': -23}}"
-        );
+                "{'$inc': {'dataInt': 123, 'nested.dataInt': -23}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -59,8 +58,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationMin() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$min': {'dataInt': 122, 'nested.dataInt': 124}}"
-        );
+                "{'$min': {'dataInt': 122, 'nested.dataInt': 124}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -80,8 +78,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationMax() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$max': {'dataInt': 122, 'nested.dataInt': 124}}"
-        );
+                "{'$max': {'dataInt': 122, 'nested.dataInt': 124}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -101,8 +98,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationMul() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$mul': {'dataInt': 3, 'nested.dataInt': 2, 'nonExistentField': 123}}"
-        );
+                "{'$mul': {'dataInt': 3, 'nested.dataInt': 2, 'nonExistentField': 123}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -124,8 +120,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationRename() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$rename': {'dataInt': 'dataIntNewName', 'nonExistentField': 'nonExistentFieldRenamed'}}"
-        );
+                "{'$rename': {'dataInt': 'dataIntNewName', 'nonExistentField': 'nonExistentFieldRenamed'}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -150,8 +145,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationSet() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$set': {'dataStr': 'Setting new value', 'newDataInt': 456}}"
-        );
+                "{'$set': {'dataStr': 'Setting new value', 'newDataInt': 456}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -216,8 +210,7 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
     @Test
     public void shouldTransformOperationUnset() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$unset': {'dataStr': '', 'nonExistentField': ''}}"
-        );
+                "{'$unset': {'dataStr': '', 'nonExistentField': ''}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();

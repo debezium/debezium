@@ -51,7 +51,7 @@ public interface DocumentWriter {
         catch (IOException e) {
             // This really should never happen ...
             e.printStackTrace();
-            return new byte[] {};
+            return new byte[]{};
         }
     }
 

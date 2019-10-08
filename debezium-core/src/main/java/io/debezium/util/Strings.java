@@ -82,9 +82,9 @@ public final class Strings {
         List<T> matches = new ArrayList<T>();
         for (String item : splitter.apply(input)) {
             T obj = factory.apply(item);
-                        if (obj != null) {
-                            matches.add(obj);
-                        }
+            if (obj != null) {
+                matches.add(obj);
+            }
         }
         return matches;
     }
@@ -192,7 +192,7 @@ public final class Strings {
             return 0;
         }
         if (str1 == null) {
-            return - 1;
+            return -1;
         }
         if (str2 == null) {
             return 1;
@@ -280,7 +280,7 @@ public final class Strings {
         Objects.requireNonNull(delimiter);
         Objects.requireNonNull(values);
         Iterator<T> iter = values.iterator();
-        if (! iter.hasNext()) {
+        if (!iter.hasNext()) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
@@ -396,7 +396,9 @@ public final class Strings {
     }
 
     public static enum Justify {
-        LEFT, RIGHT, CENTER;
+        LEFT,
+        RIGHT,
+        CENTER;
     }
 
     /**
@@ -1001,7 +1003,7 @@ public final class Strings {
         byte[] bytes = new byte[length / 2];
         for (int i = 0; i < length; i += 2) {
             bytes[i / 2] = (byte) ((Character.digit(hexString.charAt(i), 16) << 4)
-                                 + Character.digit(hexString.charAt(i+1), 16));
+                    + Character.digit(hexString.charAt(i + 1), 16));
         }
 
         return bytes;

@@ -66,12 +66,12 @@ public class FieldNameSelector {
             StringBuilder sanitizedNameBuilder = new StringBuilder(columnName.length() + 1);
             for (int i = 0; i < columnName.length(); i++) {
                 char c = columnName.charAt(i);
-                if ( i == 0 && Character.isDigit(c)) {
+                if (i == 0 && Character.isDigit(c)) {
                     sanitizedNameBuilder.append(NUMBER_PREFIX);
                     sanitizedNameBuilder.append(c);
                     changed = true;
                 }
-                else if ( ! ( c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')  || (c >= '0' && c <= '9') ) ) {
+                else if (!(c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
                     sanitizedNameBuilder.append(REPLACEMENT_CHAR);
                     changed = true;
                 }

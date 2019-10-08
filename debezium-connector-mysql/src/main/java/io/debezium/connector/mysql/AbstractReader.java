@@ -148,7 +148,6 @@ public abstract class AbstractReader implements Reader {
         // do nothing
     }
 
-
     /**
      * The reader has been requested to de-initialize resources after stopping. This should only be
      * called once after {@link #doStop()}.
@@ -263,7 +262,7 @@ public abstract class AbstractReader implements Reader {
         // this reader has been stopped before it reached the success or failed end state, so clean up and abort
         if (!running.get()) {
             cleanupResources();
-            throw new InterruptedException( "Reader was stopped while polling" );
+            throw new InterruptedException("Reader was stopped while polling");
         }
 
         logger.trace("Polling for next batch of records");

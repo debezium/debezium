@@ -30,8 +30,8 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     private final DatabaseHistory databaseHistory;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
-            TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-            boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
+                                                 TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
+                                                 boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
         super(config, topicSelector, tableFilter, columnFilter, schemaBuilder, tableIdCaseInsensitive, customKeysMapper);
 
         this.databaseHistory = config.getDatabaseHistory();

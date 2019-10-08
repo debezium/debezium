@@ -139,12 +139,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * inclusions/exclusions.
      */
     public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
-                                                     .withDisplayName("Included tables")
-                                                     .withType(Type.LIST)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.HIGH)
-                                                     .withValidation(Field::isListOfRegex)
-                                                     .withDescription("The tables for which changes are to be captured");
+            .withDisplayName("Included tables")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("The tables for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
@@ -152,12 +152,12 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
      */
     public static final Field TABLE_BLACKLIST = Field.create(TABLE_BLACKLIST_NAME)
-                                                     .withDisplayName("Excluded tables")
-                                                     .withType(Type.STRING)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableBlacklist)
-                                                     .withInvisibleRecommender();
+            .withDisplayName("Excluded tables")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex, RelationalDatabaseConnectorConfig::validateTableBlacklist)
+            .withInvisibleRecommender();
 
     public static final Field TABLE_IGNORE_BUILTIN = Field.create("table.ignore.builtin")
             .withDisplayName("Ignore system databases")
@@ -209,9 +209,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the" +
+            .withDescription(" This property contains a comma-separated list of fully-qualified tables (DB_NAME.TABLE_NAME) or (SCHEMA_NAME.TABLE_NAME), depending on the"
+                    +
                     "specific connectors . Select statements for the individual tables are " +
-                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]' or " +
+                    "specified in further configuration properties, one for each table, identified by the id 'snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]' or "
+                    +
                     "'snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]', respectively. " +
                     "The value of those properties is the select statement to use when retrieving data from the specific table during snapshotting. " +
                     "A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted.");
@@ -221,44 +223,44 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
      * May not be used with {@link #SCHEMA_BLACKLIST}.
      */
     public static final Field SCHEMA_WHITELIST = Field.create("schema.whitelist")
-                                                      .withDisplayName("Schemas")
-                                                      .withType(Type.LIST)
-                                                      .withWidth(Width.LONG)
-                                                      .withImportance(Importance.HIGH)
-                                                      .withDependents(TABLE_WHITELIST_NAME)
-                                                      .withDescription("The schemas for which events should be captured");
+            .withDisplayName("Schemas")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDependents(TABLE_WHITELIST_NAME)
+            .withDescription("The schemas for which events should be captured");
 
     /**
      * A comma-separated list of regular expressions that match schema names to be excluded from monitoring.
      * May not be used with {@link #SCHEMA_WHITELIST}.
      */
     public static final Field SCHEMA_BLACKLIST = Field.create("schema.blacklist")
-                                                      .withDisplayName("Exclude Schemas")
-                                                      .withType(Type.STRING)
-                                                      .withWidth(Width.LONG)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withValidation(RelationalDatabaseConnectorConfig::validateSchemaBlacklist)
-                                                      .withInvisibleRecommender()
-                                                      .withDescription("The schemas for which events must not be captured");
+            .withDisplayName("Exclude Schemas")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(RelationalDatabaseConnectorConfig::validateSchemaBlacklist)
+            .withInvisibleRecommender()
+            .withDescription("The schemas for which events must not be captured");
 
     public static final Field TIME_PRECISION_MODE = Field.create("time.precision.mode")
-                                                             .withDisplayName("Time Precision")
-                                                             .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
-                                                             .withWidth(Width.SHORT)
-                                                             .withImportance(Importance.MEDIUM)
-                                                             .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
-                                                                     + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
-                                                                     + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
-                                                                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                                                                     + "which uses millisecond precision regardless of the database columns' precision .");
+            .withDisplayName("Time Precision")
+            .withEnum(TemporalPrecisionMode.class, TemporalPrecisionMode.ADAPTIVE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Time, date, and timestamps can be represented with different kinds of precisions, including:"
+                    + "'adaptive' (the default) bases the precision of time, date, and timestamp values on the database column's precision; "
+                    + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
+                    + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
+                    + "which uses millisecond precision regardless of the database columns' precision .");
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
-                                                                  .withDisplayName("Snapshot lock timeout (ms)")
-                                                                  .withWidth(Width.LONG)
-                                                                  .withType(Type.LONG)
-                                                                  .withImportance(Importance.MEDIUM)
-                                                                  .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
-                                                                  .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
-                                                                                   "time frame, the snapshot will be aborted. Defaults to 10 seconds");
+            .withDisplayName("Snapshot lock timeout (ms)")
+            .withWidth(Width.LONG)
+            .withType(Type.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
+            .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
+                    "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
@@ -336,9 +338,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
         for (String table : tableList.split(",")) {
             snapshotSelectOverridesByTable.put(
-                TableId.parse(table),
-                getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table)
-            );
+                    TableId.parse(table),
+                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);

@@ -27,12 +27,16 @@ public interface OffsetContext {
      */
     interface Loader {
         Map<String, ?> getPartition();
+
         OffsetContext load(Map<String, ?> offset);
     }
 
     Map<String, ?> getPartition();
+
     Map<String, ?> getOffset();
+
     Schema getSourceInfoSchema();
+
     Struct getSourceInfo();
 
     /**

@@ -65,13 +65,13 @@ public class ZookeeperServer {
             this.port = IoUtil.getAvailablePort();
         }
         this.factory = ServerCnxnFactory.createFactory(new InetSocketAddress("localhost", port), 1024);
-        if ( this.dataDir == null ) {
+        if (this.dataDir == null) {
             try {
                 File temp = File.createTempFile("kafka", "suffix");
                 this.dataDir = temp.getParentFile();
                 temp.delete();
             }
-            catch ( IOException e ) {
+            catch (IOException e) {
                 throw new RuntimeException("Unable to create temporary directory", e);
             }
         }
@@ -123,7 +123,7 @@ public class ZookeeperServer {
                     try {
                         IoUtil.delete(this.snapshotDir, this.logDir);
                     }
-                    catch ( IOException e ) {
+                    catch (IOException e) {
                         LOGGER.error("Unable to delete data upon shutdown", e);
                     }
                 }
@@ -223,7 +223,7 @@ public class ZookeeperServer {
      * @throws IllegalArgumentException if the supplied file is not a directory or not writable
      */
     public ZookeeperServer setStateDirectory(File dataDir) {
-        if ( dataDir != null && dataDir.exists() && !dataDir.isDirectory() && !dataDir.canWrite() && !dataDir.canRead() ) {
+        if (dataDir != null && dataDir.exists() && !dataDir.isDirectory() && !dataDir.canWrite() && !dataDir.canRead()) {
             throw new IllegalArgumentException("The directory must be readable and writable");
         }
         this.dataDir = dataDir;

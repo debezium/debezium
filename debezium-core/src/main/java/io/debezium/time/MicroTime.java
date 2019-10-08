@@ -38,8 +38,8 @@ public class MicroTime {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.int64()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**

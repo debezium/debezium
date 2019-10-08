@@ -61,13 +61,13 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
             final String defaultCharsetName = tableEditor.create().defaultCharsetName();
             tableEditor.setColumns(tableEditor.columns().stream()
                     .map(
-                        column -> {
-                            final ColumnEditor columnEditor = column.edit();
-                            if (columnEditor.charsetNameOfTable() == null) {
-                                columnEditor.charsetNameOfTable(defaultCharsetName);
-                            }
-                            return columnEditor;
-                        })
+                            column -> {
+                                final ColumnEditor columnEditor = column.edit();
+                                if (columnEditor.charsetNameOfTable() == null) {
+                                    columnEditor.charsetNameOfTable(defaultCharsetName);
+                                }
+                                return columnEditor;
+                            })
                     .map(this::convertDefaultValueToSchemaType)
                     .map(ColumnEditor::create)
                     .collect(Collectors.toList()));

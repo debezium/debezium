@@ -26,7 +26,7 @@ import io.debezium.util.Testing;
 public class MySqlDateTimeInKeyIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-decimal-column.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("pkdb", "datetime_key_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 

@@ -14,11 +14,9 @@ package io.debezium.util;
  */
 public class HexConverter {
 
-    private static final char[] HEX_CHARS = new char[]
-            {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    private static final char[] HEX_CHARS = new char[]{ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
-    private static final byte[] HEX_BYTES = new byte[]
-            {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    private static final byte[] HEX_BYTES = new byte[]{ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 
     /**
      * Take the supplied byte array and convert it to a hex encoded String.
@@ -84,7 +82,7 @@ public class HexConverter {
 
         for (int i = 0; i < response.length; i++) {
             int posOne = i * 2;
-            response[i] =   (byte) (toByte(toConvert, posOne) << 4 | toByte(toConvert, posOne+1));
+            response[i] = (byte) (toByte(toConvert, posOne) << 4 | toByte(toConvert, posOne + 1));
         }
 
         return response;

@@ -162,7 +162,6 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
         return table;
     }
 
-
     private MySqlParser.TableSourceItemContext getTableSourceItemContext(MySqlParser.TableSourceContext tableSourceContext) {
         if (tableSourceContext instanceof MySqlParser.TableSourceBaseContext) {
             return ((MySqlParser.TableSourceBaseContext) tableSourceContext).tableSourceItem();

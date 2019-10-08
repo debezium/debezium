@@ -91,10 +91,10 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration ...
         config = ro_database.defaultConfig()
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, ro_database.qualifiedTableName("customers"))
-                              .build();
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, ro_database.qualifiedTableName("customers"))
+                .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -125,8 +125,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
-                        "FLUSH LOGS"
-                );
+                        "FLUSH LOGS");
                 final String lastBinlogName = connection.queryAndMap("SHOW BINARY LOGS", rs -> {
                     String binlog = null;
                     while (rs.next()) {
@@ -135,8 +134,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
                     return binlog;
                 });
                 connection.execute(
-                        "PURGE BINARY LOGS TO '" + lastBinlogName + "'"
-                );
+                        "PURGE BINARY LOGS TO '" + lastBinlogName + "'");
             }
         }
     }
@@ -158,10 +156,10 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration ...
         config = database.defaultConfig()
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, database.qualifiedTableName("customers"))
-                              .build();
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.WHEN_NEEDED)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, database.qualifiedTableName("customers"))
+                .build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
@@ -181,8 +179,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,1,1,1)",
-                    "INSERT INTO customers VALUES(default,2,2,2)"
-            );
+                    "INSERT INTO customers VALUES(default,2,2,2)");
         }
 
         start(MySqlConnector.class, config);
@@ -192,8 +189,7 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,3,3,3)",
-                    "INSERT INTO customers VALUES(default,4,4,4)"
-            );
+                    "INSERT INTO customers VALUES(default,4,4,4)");
         }
         purgeDatabaseLogs();
         start(MySqlConnector.class, config);
@@ -207,15 +203,13 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
         try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,5,5,5)",
-                    "INSERT INTO customers VALUES(default,6,6,6)"
-            );
+                    "INSERT INTO customers VALUES(default,6,6,6)");
         }
         purgeDatabaseLogs();
         try (MySQLConnection db = MySQLConnection.forTestDatabase(database.getDatabaseName())) {
             db.execute(
                     "INSERT INTO customers VALUES(default,7,7,7)",
-                    "INSERT INTO customers VALUES(default,8,8,8)"
-            );
+                    "INSERT INTO customers VALUES(default,8,8,8)");
         }
         start(MySqlConnector.class, config);
         // SET + DROP/CREATE/USE DB + DROP/CREATE 4 tables + 8 data

@@ -71,7 +71,7 @@ public class LogInterceptor extends AppenderSkeleton {
             if (stackTrace == null) {
                 continue;
             }
-            for (String element: stackTrace) {
+            for (String element : stackTrace) {
                 if (element.contains(text)) {
                     return true;
                 }

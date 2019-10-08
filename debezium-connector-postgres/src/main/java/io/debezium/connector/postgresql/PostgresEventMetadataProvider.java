@@ -48,8 +48,7 @@ class PostgresEventMetadataProvider implements EventMetadataProvider {
         Long xmin = sourceInfo.getInt64(SourceInfo.XMIN_KEY);
 
         Map<String, String> r = Collect.hashMapOf(
-                SourceInfo.LSN_KEY, Long.toString(sourceInfo.getInt64(SourceInfo.LSN_KEY))
-        );
+                SourceInfo.LSN_KEY, Long.toString(sourceInfo.getInt64(SourceInfo.LSN_KEY)));
         if (xmin != null) {
             r.put(SourceInfo.XMIN_KEY, Long.toString(xmin));
         }

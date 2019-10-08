@@ -39,8 +39,8 @@ public class MicroDuration {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.int64()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**
@@ -73,7 +73,7 @@ public class MicroDuration {
      * @return @return Approximate representation of the given interval as a number of microseconds
     */
     public static long durationMicros(int years, int months, int days, int hours, int minutes, double seconds,
-                                        int micros, Double daysPerMonthAvg) {
+                                      int micros, Double daysPerMonthAvg) {
         if (daysPerMonthAvg == null) {
             daysPerMonthAvg = (double) ChronoUnit.MONTHS.getDuration().toDays();
         }
@@ -96,7 +96,7 @@ public class MicroDuration {
      * @return a {@link BigDecimal} value which contains the number of microseconds, never {@code null}
     */
     public static long durationMicros(int years, int months, int days, int hours, int minutes, double seconds,
-            Double daysPerMonthAvg) {
+                                      Double daysPerMonthAvg) {
         return durationMicros(years, months, days, hours, minutes, seconds, 0, daysPerMonthAvg);
     }
 }

@@ -37,7 +37,7 @@ import io.debezium.document.Value;
 
 public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
 
-    private static final  Logger LOGGER = LoggerFactory.getLogger(NonStreamingWal2JsonMessageDecoder.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(NonStreamingWal2JsonMessageDecoder.class);
 
     private final DateTimeFormat dateTime = DateTimeFormat.get();
     private boolean containsMetadata = false;
@@ -78,16 +78,16 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
         return optionsWithoutMetadata(builder)
-            .withSlotOption("include-not-null", "true");
+                .withSlotOption("include-not-null", "true");
     }
 
     @Override
     public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
         return builder
-            .withSlotOption("pretty-print", 1)
-            .withSlotOption("write-in-chunks", 0)
-            .withSlotOption("include-xids", 1)
-            .withSlotOption("include-timestamp", 1);
+                .withSlotOption("pretty-print", 1)
+                .withSlotOption("write-in-chunks", 0)
+                .withSlotOption("include-xids", 1)
+                .withSlotOption("include-timestamp", 1);
     }
 
     @Override

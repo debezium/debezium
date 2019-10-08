@@ -20,7 +20,9 @@ public class MySqlSystemVariables extends SystemVariables {
 
     public enum MySqlScope implements Scope {
 
-        GLOBAL(2), SESSION(1), LOCAL(1);
+        GLOBAL(2),
+        SESSION(1),
+        LOCAL(1);
 
         private int priority;
 

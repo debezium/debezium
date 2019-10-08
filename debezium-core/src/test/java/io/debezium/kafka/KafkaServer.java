@@ -130,7 +130,7 @@ public class KafkaServer {
      * @return this instance to allow chaining methods; never null
      * @throws IllegalStateException if the server is running when this method is called
      */
-    public KafkaServer setProperties( Properties properties ) {
+    public KafkaServer setProperties(Properties properties) {
         if (server != null) {
             throw new IllegalStateException("Unable to change the properties when already running");
         }
@@ -139,8 +139,6 @@ public class KafkaServer {
         });
         return this;
     }
-
-
 
     /**
      * Set the port for the server.
@@ -218,7 +216,7 @@ public class KafkaServer {
         try {
             LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             server = new kafka.server.KafkaServer(new KafkaConfig(config), Time.SYSTEM, scala.Option.apply(null),
-                                                  new scala.collection.mutable.ArraySeq<>(0));
+                    new scala.collection.mutable.ArraySeq<>(0));
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             adminZkClient = new AdminZkClient(server.zkClient());
@@ -296,7 +294,7 @@ public class KafkaServer {
      */
     public void createTopics(int numPartitions, int replicationFactor, String... topics) {
         for (String topic : topics) {
-            if ( topic != null ) {
+            if (topic != null) {
                 createTopic(topic, numPartitions, replicationFactor);
             }
         }
@@ -309,7 +307,7 @@ public class KafkaServer {
      * @param numPartitions the number of partitions for the topic
      * @param replicationFactor the replication factor for the topic
      */
-    public void createTopic( String topic, int numPartitions, int replicationFactor ) {
+    public void createTopic(String topic, int numPartitions, int replicationFactor) {
         RackAwareMode rackAwareMode = null;
         getAdminZkClient().createTopic(topic, numPartitions, replicationFactor, new Properties(), rackAwareMode);
     }

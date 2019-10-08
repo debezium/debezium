@@ -36,8 +36,9 @@ public class TableSchemaBuilderTest {
 
     private final String prefix = "";
     private final TableId id = new TableId("catalog", "schema", "table");
-    private final Object[] data = new Object[] { "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114}, null, "c7value", "c8value", "c9value" };
-    private final Object[] keyData = new Object[] { "c1value", 3.142d };
+    private final Object[] data = new Object[]{ "c1value", 3.142d, java.sql.Date.valueOf("2001-10-31"), 4, new byte[]{ 71, 117, 110, 110, 97, 114 }, null, "c7value",
+            "c8value", "c9value" };
+    private final Object[] keyData = new Object[]{ "c1value", 3.142d };
     private Table table;
     private Column c1;
     private Column c2;
@@ -59,48 +60,48 @@ public class TableSchemaBuilderTest {
         });
         schema = null;
         table = Table.editor()
-                     .tableId(id)
-                     .addColumns(Column.editor().name("C1")
-                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
-                                       .optional(false)
-                                       .generated(true)
-                                       .create(),
-                                 Column.editor().name("C2")
-                                       .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
-                                       .create(),
-                                 Column.editor().name("C3")
-                                       .type("DATE").jdbcType(Types.DATE).length(4)
-                                       .optional(true)
-                                       .create(),
-                                 Column.editor().name("C4")
-                                       .type("COUNTER").jdbcType(Types.INTEGER)
-                                       .autoIncremented(true)
-                                       .optional(true)
-                                       .create(),
-                                 Column.editor().name("C5")
-                                       .type("BINARY").jdbcType(Types.BINARY)
-                                       .optional(false)
-                                       .length(16)
-                                       .create(),
-                                 Column.editor().name("C6")
-                                       .type("SMALLINT").jdbcType(Types.SMALLINT)
-                                       .optional(false)
-                                       .length(1)
-                                       .create(),
-                                Column.editor().name("7C7") // test invalid Avro name (starts with digit)
-                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
-                                       .optional(false)
-                                       .create(),
-                                 Column.editor().name("C-8") // test invalid Avro name ( contains dash )
-                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
-                                       .optional(false)
-                                       .create(),
-                                 Column.editor().name(AVRO_UNSUPPORTED_NAME)
-                                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
-                                        .optional(false)
-                                        .create())
-                     .setPrimaryKeyNames("C1", "C2")
-                     .create();
+                .tableId(id)
+                .addColumns(Column.editor().name("C1")
+                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                        .optional(false)
+                        .generated(true)
+                        .create(),
+                        Column.editor().name("C2")
+                                .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
+                                .create(),
+                        Column.editor().name("C3")
+                                .type("DATE").jdbcType(Types.DATE).length(4)
+                                .optional(true)
+                                .create(),
+                        Column.editor().name("C4")
+                                .type("COUNTER").jdbcType(Types.INTEGER)
+                                .autoIncremented(true)
+                                .optional(true)
+                                .create(),
+                        Column.editor().name("C5")
+                                .type("BINARY").jdbcType(Types.BINARY)
+                                .optional(false)
+                                .length(16)
+                                .create(),
+                        Column.editor().name("C6")
+                                .type("SMALLINT").jdbcType(Types.SMALLINT)
+                                .optional(false)
+                                .length(1)
+                                .create(),
+                        Column.editor().name("7C7") // test invalid Avro name (starts with digit)
+                                .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                .optional(false)
+                                .create(),
+                        Column.editor().name("C-8") // test invalid Avro name ( contains dash )
+                                .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                .optional(false)
+                                .create(),
+                        Column.editor().name(AVRO_UNSUPPORTED_NAME)
+                                .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                                .optional(false)
+                                .create())
+                .setPrimaryKeyNames("C1", "C2")
+                .create();
         c1 = table.columnWithName("C1");
         c2 = table.columnWithName("C2");
         c3 = table.columnWithName("C3");
@@ -235,7 +236,7 @@ public class TableSchemaBuilderTest {
         assertThat(value.get("C2")).isEqualTo(BigDecimal.valueOf(3.142d));
         assertThat(value.get("C3")).isEqualTo(11626);
         assertThat(value.get("C4")).isEqualTo(4);
-        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114}));
+        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114 }));
         assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
     }
 
@@ -296,7 +297,7 @@ public class TableSchemaBuilderTest {
         assertThat(value.get("C2")).isEqualTo(BigDecimal.valueOf(3.142d));
         assertThat(value.get("C3")).isEqualTo(11626);
         assertThat(value.get("C4")).isEqualTo(4);
-        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114}));
+        assertThat(value.get("C5")).isEqualTo(ByteBuffer.wrap(new byte[]{ 71, 117, 110, 110, 97, 114 }));
         assertThat(value.get("C6")).isEqualTo(Short.valueOf((short) 0));
     }
 
@@ -358,19 +359,19 @@ public class TableSchemaBuilderTest {
     @FixFor("DBZ-1015")
     public void customKeyMapperShouldMapMultipleTables() {
         TableId id2 = new TableId("catalog", "schema", "table2");
-        Table table2 =  Table.editor()
+        Table table2 = Table.editor()
                 .tableId(id2)
                 .addColumns(Column.editor().name("C1")
-                                  .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
-                                  .optional(false)
-                                  .create(),
-                            Column.editor().name("C2")
-                                  .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
-                                  .create(),
-                            Column.editor().name("C3")
-                                  .type("DATE").jdbcType(Types.DATE).length(4)
-                                  .optional(true)
-                                  .create())
+                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                        .optional(false)
+                        .create(),
+                        Column.editor().name("C2")
+                                .type("NUMBER").jdbcType(Types.NUMERIC).length(5).scale(3)
+                                .create(),
+                        Column.editor().name("C3")
+                                .type("DATE").jdbcType(Types.DATE).length(4)
+                                .optional(true)
+                                .create())
                 .create();
 
         KeyMapper keyMapper = CustomKeyMapper.getInstance("(.*).table:C2,C3;(.*).table2:C1");
@@ -403,13 +404,13 @@ public class TableSchemaBuilderTest {
         Table table2 = Table.editor()
                 .tableId(id2)
                 .addColumns(Column.editor().name("t1ID")
-                                    .type("INT").jdbcType(Types.INTEGER)
-                                    .optional(false)
-                                    .create(),
-                            Column.editor().name("t2ID")
-                                    .type("INT").jdbcType(Types.INTEGER)
-                                    .optional(false)
-                                    .create())
+                        .type("INT").jdbcType(Types.INTEGER)
+                        .optional(false)
+                        .create(),
+                        Column.editor().name("t2ID")
+                                .type("INT").jdbcType(Types.INTEGER)
+                                .optional(false)
+                                .create())
                 .setPrimaryKeyNames("t2ID", "t1ID")
                 .create();
 

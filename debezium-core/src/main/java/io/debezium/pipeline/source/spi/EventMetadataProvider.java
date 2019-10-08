@@ -42,8 +42,8 @@ public interface EventMetadataProvider {
      */
     default String toSummaryString(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         return new EventFormatter()
-            .sourcePosition(getEventSourcePosition(source, offset, key, value))
-            .key(key)
-            .toString();
+                .sourcePosition(getEventSourcePosition(source, offset, key, value))
+                .key(key)
+                .toString();
     }
 }

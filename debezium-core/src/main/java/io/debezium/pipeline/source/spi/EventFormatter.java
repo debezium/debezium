@@ -29,9 +29,9 @@ class EventFormatter {
 
     private void printSimpleValue(Object key, Object value) {
         string
-            .append(key)
-            .append(": ")
-            .append(value);
+                .append(key)
+                .append(": ")
+                .append(value);
     }
 
     private void removeDelimiter() {
@@ -62,7 +62,7 @@ class EventFormatter {
         if (key != null) {
             if (key instanceof Struct) {
                 string
-                    .append("key: ");
+                        .append("key: ");
                 printStruct((Struct) key);
             }
             else {
@@ -75,13 +75,13 @@ class EventFormatter {
             final Struct after = value.getStruct(Envelope.FieldName.AFTER);
             if (before != null) {
                 string
-                    .append("before: ");
+                        .append("before: ");
                 printStruct(before);
                 addDelimiter();
             }
             if (after != null) {
                 string
-                    .append("after: ");
+                        .append("after: ");
                 printStruct(after);
                 addDelimiter();
             }
@@ -105,4 +105,3 @@ class EventFormatter {
         return this;
     }
 }
-

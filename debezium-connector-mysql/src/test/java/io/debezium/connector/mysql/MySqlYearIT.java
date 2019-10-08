@@ -29,7 +29,7 @@ import io.debezium.util.Testing;
 public class MySqlYearIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-year.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("yearit", "year_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 

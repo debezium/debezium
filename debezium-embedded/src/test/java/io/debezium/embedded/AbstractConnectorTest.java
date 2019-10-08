@@ -268,11 +268,11 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          CompletionCallback callback, Predicate<SourceRecord> isStopRecord) {
         Configuration config = Configuration.copy(connectorConfig)
-                                            .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                                            .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
-                                            .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                                            .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                                            .build();
+                .with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
+                .with(EmbeddedEngine.CONNECTOR_CLASS, connectorClass.getName())
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .build();
         latch = new CountDownLatch(1);
         CompletionCallback wrapperCallback = (success, msg, error) -> {
             try {
@@ -299,26 +299,26 @@ public abstract class AbstractConnectorTest implements Testing {
 
         // Create the connector ...
         engine = EmbeddedEngine.create()
-                               .using(config)
-                               .notifying((record) -> {
-                                   if (isStopRecord != null && isStopRecord.test(record)) {
-                                       logger.error("Stopping connector after record as requested");
-                                       throw new ConnectException("Stopping connector after record as requested");
-                                   }
-                                   // Test stopped the connector, remaining records are ignored
-                                   if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
-                                       return;
-                                   }
-                                   while (!consumedLines.offer(record)) {
-                                       if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
-                                           return;
-                                       }
-                                   }
-                               })
-                               .using(this.getClass().getClassLoader())
-                               .using(wrapperCallback)
-                               .using(connectorCallback)
-                               .build();
+                .using(config)
+                .notifying((record) -> {
+                    if (isStopRecord != null && isStopRecord.test(record)) {
+                        logger.error("Stopping connector after record as requested");
+                        throw new ConnectException("Stopping connector after record as requested");
+                    }
+                    // Test stopped the connector, remaining records are ignored
+                    if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                        return;
+                    }
+                    while (!consumedLines.offer(record)) {
+                        if (!engine.isRunning() || Thread.currentThread().isInterrupted()) {
+                            return;
+                        }
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .using(wrapperCallback)
+                .using(connectorCallback)
+                .build();
 
         // Submit the connector for asynchronous execution ...
         assertThat(executor).isNull();
@@ -544,7 +544,7 @@ public abstract class AbstractConnectorTest implements Testing {
         long now = System.currentTimeMillis();
         long stop = now + unit.toMillis(timeout);
         while (System.currentTimeMillis() < stop) {
-            if (!consumedLines.isEmpty())  {
+            if (!consumedLines.isEmpty()) {
                 break;
             }
         }
@@ -722,9 +722,9 @@ public abstract class AbstractConnectorTest implements Testing {
     protected <T> Map<Map<String, T>, Map<String, Object>> readLastCommittedOffsets(Configuration config,
                                                                                     Collection<Map<String, T>> partitions) {
         config = config.edit().with(EmbeddedEngine.ENGINE_NAME, "testing-connector")
-                       .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                       .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                       .build();
+                .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .build();
 
         final String engineName = config.getString(EmbeddedEngine.ENGINE_NAME);
         Converter keyConverter = config.getInstance(EmbeddedEngine.INTERNAL_KEY_CONVERTER_CLASS, Converter.class);
@@ -736,7 +736,7 @@ public abstract class AbstractConnectorTest implements Testing {
             valueConverterConfig = config.edit().with(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS + ".schemas.enable", false).build();
         }
         valueConverter.configure(valueConverterConfig.subset(EmbeddedEngine.INTERNAL_VALUE_CONVERTER_CLASS.name() + ".", true).asMap(),
-                                 false);
+                false);
 
         // Create the worker config, adding extra fields that are required for validation of a worker config
         // but that are not used within the embedded engine (since the source records are never serialized) ...
@@ -767,7 +767,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 Assert.fail("Snapshot was not completed on time");
             }
             try {
-                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server), "SnapshotCompleted");
+                final boolean completed = (boolean) mbeanServer
+                        .getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server), "SnapshotCompleted");
                 if (completed) {
                     break;
                 }
@@ -796,7 +797,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 Assert.fail("Streaming was not started on time");
             }
             try {
-                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + contextName + ",server=" + server), "Connected");
+                final boolean completed = (boolean) mbeanServer
+                        .getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + contextName + ",server=" + server), "Connected");
                 if (completed) {
                     break;
                 }

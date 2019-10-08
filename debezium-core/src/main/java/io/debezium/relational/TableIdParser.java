@@ -105,8 +105,7 @@ class TableIdParser {
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken),
                         context.startOfLastToken,
-                        context.lastIdentifierEnd + 1
-                );
+                        context.lastIdentifierEnd + 1);
             }
 
             @Override
@@ -193,8 +192,7 @@ class TableIdParser {
                 context.tokens.addToken(
                         context.input.position(context.startOfLastToken + 1),
                         context.startOfLastToken + 1,
-                        context.lastIdentifierEnd
-                );
+                        context.lastIdentifierEnd);
             }
         };
 

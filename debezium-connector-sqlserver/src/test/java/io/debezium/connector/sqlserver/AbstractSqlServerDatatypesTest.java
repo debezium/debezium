@@ -103,21 +103,19 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
             ")";
 
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
-        new SchemaAndValueField("val_bit", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
-        new SchemaAndValueField("val_tinyint", Schema.OPTIONAL_INT16_SCHEMA, (short) 22),
-        new SchemaAndValueField("val_smallint", Schema.OPTIONAL_INT16_SCHEMA, (short) 333),
-        new SchemaAndValueField("val_int", Schema.OPTIONAL_INT32_SCHEMA, 4444),
-        new SchemaAndValueField("val_bigint", Schema.OPTIONAL_INT64_SCHEMA, 55555l)
-    );
+            new SchemaAndValueField("val_bit", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
+            new SchemaAndValueField("val_tinyint", Schema.OPTIONAL_INT16_SCHEMA, (short) 22),
+            new SchemaAndValueField("val_smallint", Schema.OPTIONAL_INT16_SCHEMA, (short) 333),
+            new SchemaAndValueField("val_int", Schema.OPTIONAL_INT32_SCHEMA, 4444),
+            new SchemaAndValueField("val_bigint", Schema.OPTIONAL_INT64_SCHEMA, 55555l));
 
     private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
-        new SchemaAndValueField("val_decimal", Decimal.builder(3).parameter(PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("1.123")),
-        new SchemaAndValueField("val_numeric", Decimal.builder(0).parameter(PRECISION_PARAMETER_KEY, "18").optional().build(), new BigDecimal("2")),
-        new SchemaAndValueField("val_float", Schema.OPTIONAL_FLOAT64_SCHEMA, 3.323),
-        new SchemaAndValueField("val_real", Schema.OPTIONAL_FLOAT32_SCHEMA, 4.323f),
-        new SchemaAndValueField("val_smallmoney", Decimal.builder(4).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("5.3230")),
-        new SchemaAndValueField("val_money", Decimal.builder(4).parameter(PRECISION_PARAMETER_KEY, "19").optional().build(), new BigDecimal("6.3230"))
-    );
+            new SchemaAndValueField("val_decimal", Decimal.builder(3).parameter(PRECISION_PARAMETER_KEY, "6").optional().build(), new BigDecimal("1.123")),
+            new SchemaAndValueField("val_numeric", Decimal.builder(0).parameter(PRECISION_PARAMETER_KEY, "18").optional().build(), new BigDecimal("2")),
+            new SchemaAndValueField("val_float", Schema.OPTIONAL_FLOAT64_SCHEMA, 3.323),
+            new SchemaAndValueField("val_real", Schema.OPTIONAL_FLOAT32_SCHEMA, 4.323f),
+            new SchemaAndValueField("val_smallmoney", Decimal.builder(4).parameter(PRECISION_PARAMETER_KEY, "10").optional().build(), new BigDecimal("5.3230")),
+            new SchemaAndValueField("val_money", Decimal.builder(4).parameter(PRECISION_PARAMETER_KEY, "19").optional().build(), new BigDecimal("6.3230")));
 
     private static final List<SchemaAndValueField> EXPECTED_STRING = Arrays.asList(
             new SchemaAndValueField("val_char", Schema.OPTIONAL_STRING_SCHEMA, "cc "),
@@ -125,21 +123,19 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
             new SchemaAndValueField("val_text", Schema.OPTIONAL_STRING_SCHEMA, "tc"),
             new SchemaAndValueField("val_nchar", Schema.OPTIONAL_STRING_SCHEMA, "c\u010d "),
             new SchemaAndValueField("val_nvarchar", Schema.OPTIONAL_STRING_SCHEMA, "vc\u010d"),
-            new SchemaAndValueField("val_ntext", Schema.OPTIONAL_STRING_SCHEMA, "t\u010d")
-    );
+            new SchemaAndValueField("val_ntext", Schema.OPTIONAL_STRING_SCHEMA, "t\u010d"));
 
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME = Arrays.asList(
-            new SchemaAndValueField("val_date",  Date.builder().optional().build(), 17_725),
+            new SchemaAndValueField("val_date", Date.builder().optional().build(), 17_725),
             new SchemaAndValueField("val_time_p2", Time.builder().optional().build(), 37_425_680),
             new SchemaAndValueField("val_time", MicroTime.builder().optional().build(), 37_425_679_000L), // value truncated by the driver
             new SchemaAndValueField("val_datetime2", NanoTimestamp.builder().optional().build(), 1_531_481_025_340_000_000L),
             new SchemaAndValueField("val_datetimeoffset", ZonedTimestamp.builder().optional().build(), "2018-07-13T12:23:45.456+11:00"),
             new SchemaAndValueField("val_datetime", Timestamp.builder().optional().build(), 1_531_488_225_780L),
-            new SchemaAndValueField("val_smalldatetime", Timestamp.builder().optional().build(), 1_531_491_840_000L)
-    );
+            new SchemaAndValueField("val_smalldatetime", Timestamp.builder().optional().build(), 1_531_491_840_000L));
 
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME_AS_CONNECT = Arrays.asList(
-            new SchemaAndValueField("val_date",  org.apache.kafka.connect.data.Date.builder().optional().build(),
+            new SchemaAndValueField("val_date", org.apache.kafka.connect.data.Date.builder().optional().build(),
                     java.util.Date.from(LocalDate.of(2018, 7, 13).atStartOfDay()
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
@@ -163,19 +159,17 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
             new SchemaAndValueField("val_smalldatetime", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDateTime.of(2018, 7, 13, 14, 24, 00)
                             .atOffset(ZoneOffset.UTC)
-                            .toInstant()))
-    );
+                            .toInstant())));
 
     private static final List<SchemaAndValueField> EXPECTED_XML = Arrays.asList(
-            new SchemaAndValueField("val_xml", Schema.OPTIONAL_STRING_SCHEMA, "<a>b</a>")
-    );
+            new SchemaAndValueField("val_xml", Schema.OPTIONAL_STRING_SCHEMA, "<a>b</a>"));
 
     private static final String[] ALL_TABLES = {
-        "type_int",
-        "type_fp",
-        "type_string",
-        "type_time",
-        "type_xml"
+            "type_int",
+            "type_fp",
+            "type_string",
+            "type_time",
+            "type_xml"
     };
 
     private static final String[] ALL_DDLS = {
@@ -198,7 +192,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         TestHelper.createTestDatabase();
         try (SqlServerConnection connection = TestHelper.testConnection()) {
             connection.execute(ALL_DDLS);
-            for (String table: ALL_TABLES) {
+            for (String table : ALL_TABLES) {
                 TestHelper.enableTableCdc(connection, table);
             }
             connection.execute(
@@ -206,8 +200,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                     "INSERT INTO type_fp VALUES (0, 1.123, 2, 3.323, 4.323, 5.323, 6.323)",
                     "INSERT INTO type_string VALUES (0, 'c\u010d', 'vc\u010d', 't\u010d', N'c\u010d', N'vc\u010d', N't\u010d')",
                     "INSERT INTO type_time VALUES (0, '2018-07-13', '10:23:45.678', '10:23:45.6789', '2018-07-13 11:23:45.34', '2018-07-13 12:23:45.456+11:00', '2018-07-13 13:23:45.78', '2018-07-13 14:23:45')",
-                    "INSERT INTO type_xml VALUES (0, '<a>b</a>')"
-            );
+                    "INSERT INTO type_xml VALUES (0, '<a>b</a>')");
         }
     }
 
@@ -320,4 +313,5 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
         Thread.sleep(1000);
-    }}
+    }
+}

@@ -12,7 +12,6 @@ public class AlwaysSnapshotter extends QueryingSnapshotter {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(AlwaysSnapshotter.class);
 
-
     @Override
     public boolean shouldStream() {
         return true;

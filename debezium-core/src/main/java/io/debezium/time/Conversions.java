@@ -37,10 +37,10 @@ public final class Conversions {
 
     @SuppressWarnings("deprecation")
     protected static LocalDate toLocalDate(Object obj) {
-        if ( obj == null ) {
+        if (obj == null) {
             return null;
         }
-        if ( obj instanceof LocalDate) {
+        if (obj instanceof LocalDate) {
             return (LocalDate) obj;
         }
         if (obj instanceof LocalDateTime) {
@@ -49,20 +49,20 @@ public final class Conversions {
         if (obj instanceof java.sql.Date) {
             return ((java.sql.Date) obj).toLocalDate();
         }
-        if ( obj instanceof java.sql.Time) {
+        if (obj instanceof java.sql.Time) {
             throw new IllegalArgumentException("Unable to convert to LocalDate from a java.sql.Time value '" + obj + "'");
         }
-        if ( obj instanceof java.util.Date) {
+        if (obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date) obj;
             return LocalDate.of(date.getYear() + 1900,
-                                date.getMonth() + 1,
-                                date.getDate());
+                    date.getMonth() + 1,
+                    date.getDate());
         }
-        if ( obj instanceof Long) {
+        if (obj instanceof Long) {
             // Assume the value is the epoch day number
             return LocalDate.ofEpochDay((Long) obj);
         }
-        if ( obj instanceof Integer) {
+        if (obj instanceof Integer) {
             // Assume the value is the epoch day number
             return LocalDate.ofEpochDay((Integer) obj);
         }
@@ -71,10 +71,10 @@ public final class Conversions {
 
     @SuppressWarnings("deprecation")
     protected static LocalTime toLocalTime(Object obj) {
-        if ( obj == null ) {
+        if (obj == null) {
             return null;
         }
-        if ( obj instanceof LocalTime) {
+        if (obj instanceof LocalTime) {
             return (LocalTime) obj;
         }
         if (obj instanceof LocalDateTime) {
@@ -88,18 +88,18 @@ public final class Conversions {
             long millis = (int) (time.getTime() % Conversions.MILLISECONDS_PER_SECOND);
             int nanosOfSecond = (int) (millis * Conversions.NANOSECONDS_PER_MILLISECOND);
             return LocalTime.of(time.getHours(),
-                                time.getMinutes(),
-                                time.getSeconds(),
-                                nanosOfSecond);
+                    time.getMinutes(),
+                    time.getSeconds(),
+                    nanosOfSecond);
         }
-        if ( obj instanceof java.util.Date) {
+        if (obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date) obj;
             long millis = (int) (date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
             int nanosOfSecond = (int) (millis * Conversions.NANOSECONDS_PER_MILLISECOND);
             return LocalTime.of(date.getHours(),
-                                date.getMinutes(),
-                                date.getSeconds(),
-                                nanosOfSecond);
+                    date.getMinutes(),
+                    date.getSeconds(),
+                    nanosOfSecond);
         }
         if (obj instanceof Duration) {
             Long value = ((Duration) obj).toNanos();
@@ -115,7 +115,7 @@ public final class Conversions {
 
     @SuppressWarnings("deprecation")
     protected static LocalDateTime toLocalDateTime(Object obj) {
-        if ( obj == null ) {
+        if (obj == null) {
             return null;
         }
         if (obj instanceof OffsetDateTime) {
@@ -124,37 +124,37 @@ public final class Conversions {
         if (obj instanceof Instant) {
             return ((Instant) obj).atOffset(ZoneOffset.UTC).toLocalDateTime();
         }
-        if ( obj instanceof LocalDateTime) {
+        if (obj instanceof LocalDateTime) {
             return (LocalDateTime) obj;
         }
-        if ( obj instanceof LocalDate) {
+        if (obj instanceof LocalDate) {
             LocalDate date = (LocalDate) obj;
             return LocalDateTime.of(date, LocalTime.MIDNIGHT);
         }
-        if ( obj instanceof LocalTime) {
+        if (obj instanceof LocalTime) {
             LocalTime time = (LocalTime) obj;
             return LocalDateTime.of(EPOCH, time);
         }
-        if ( obj instanceof java.sql.Date) {
+        if (obj instanceof java.sql.Date) {
             java.sql.Date sqlDate = (java.sql.Date) obj;
             LocalDate date = sqlDate.toLocalDate();
             return LocalDateTime.of(date, LocalTime.MIDNIGHT);
         }
-        if ( obj instanceof java.sql.Time) {
+        if (obj instanceof java.sql.Time) {
             LocalTime localTime = toLocalTime(obj);
             return LocalDateTime.of(EPOCH, localTime);
         }
-        if ( obj instanceof java.sql.Timestamp) {
+        if (obj instanceof java.sql.Timestamp) {
             java.sql.Timestamp timestamp = (java.sql.Timestamp) obj;
             return LocalDateTime.of(timestamp.getYear() + 1900,
-                                    timestamp.getMonth() + 1,
-                                    timestamp.getDate(),
-                                    timestamp.getHours(),
-                                    timestamp.getMinutes(),
-                                    timestamp.getSeconds(),
-                                    timestamp.getNanos());
+                    timestamp.getMonth() + 1,
+                    timestamp.getDate(),
+                    timestamp.getHours(),
+                    timestamp.getMinutes(),
+                    timestamp.getSeconds(),
+                    timestamp.getNanos());
         }
-        if ( obj instanceof java.util.Date) {
+        if (obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date) obj;
             long millis = (int) (date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
             if (millis < 0) {
@@ -162,12 +162,12 @@ public final class Conversions {
             }
             int nanosOfSecond = (int) (millis * Conversions.NANOSECONDS_PER_MILLISECOND);
             return LocalDateTime.of(date.getYear() + 1900,
-                                    date.getMonth() + 1,
-                                    date.getDate(),
-                                    date.getHours(),
-                                    date.getMinutes(),
-                                    date.getSeconds(),
-                                    nanosOfSecond);
+                    date.getMonth() + 1,
+                    date.getDate(),
+                    date.getHours(),
+                    date.getMinutes(),
+                    date.getSeconds(),
+                    nanosOfSecond);
         }
         throw new IllegalArgumentException("Unable to convert to LocalTime from unexpected value '" + obj + "' of type " + obj.getClass().getName());
     }
@@ -179,7 +179,6 @@ public final class Conversions {
     public static Instant toInstantFromMicros(long microsSinceEpoch) {
         return Instant.ofEpochSecond(
                 TimeUnit.MICROSECONDS.toSeconds(microsSinceEpoch),
-                TimeUnit.MICROSECONDS.toNanos(microsSinceEpoch % TimeUnit.SECONDS.toMicros(1))
-        );
+                TimeUnit.MICROSECONDS.toNanos(microsSinceEpoch % TimeUnit.SECONDS.toMicros(1)));
     }
 }

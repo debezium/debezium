@@ -68,8 +68,8 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     private final SnapshotProgressListener snapshotProgressListener;
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-            OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
-            EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
+                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         this.connectorConfig = connectorConfig;
         this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
@@ -80,8 +80,8 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     }
 
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
-            OffsetContext previousOffset, JdbcConnection jdbcConnection,
-            EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+                                               OffsetContext previousOffset, JdbcConnection jdbcConnection,
+                                               EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         this(connectorConfig, previousOffset, jdbcConnection, null, dispatcher, clock, snapshotProgressListener);
     }
 
@@ -165,16 +165,16 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
             snapshotProgressListener.snapshotCompleted();
             return SnapshotResult.completed(ctx.offset);
         }
-        catch(InterruptedException e) {
+        catch (InterruptedException e) {
             LOGGER.warn("Snapshot was interrupted before completion");
             snapshotProgressListener.snapshotAborted();
             throw e;
         }
-        catch(RuntimeException e) {
+        catch (RuntimeException e) {
             snapshotProgressListener.snapshotAborted();
             throw e;
         }
-        catch(Throwable e) {
+        catch (Throwable e) {
             snapshotProgressListener.snapshotAborted();
             throw new RuntimeException(e);
         }
@@ -341,7 +341,8 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
      * Dispatches the data change events for the records of a single table.
      */
     private void createDataEventsForTable(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext, SnapshotReceiver snapshotReceiver,
-            Table table) throws InterruptedException {
+                                          Table table)
+            throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
         LOGGER.info("\t Exporting data from table '{}'", table.id());
@@ -398,7 +399,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
             snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
         }
-        catch(SQLException e) {
+        catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
         }
     }

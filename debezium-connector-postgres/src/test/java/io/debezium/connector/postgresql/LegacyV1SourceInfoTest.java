@@ -28,12 +28,12 @@ public class LegacyV1SourceInfoTest {
 
     @Before
     public void beforeEach() {
-        source = new SourceInfo( new PostgresConnectorConfig(
+        source = new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
-                .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
-                .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
-                .with(PostgresConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
-                .build()));
+                        .with(PostgresConnectorConfig.SERVER_NAME, "serverX")
+                        .with(PostgresConnectorConfig.DATABASE_NAME, "serverX")
+                        .with(PostgresConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Version.V1)
+                        .build()));
         source.update(Conversions.toInstantFromMicros(123_456_789L), new TableId("catalogNameX", "schemaNameX", "tableNameX"));
     }
 

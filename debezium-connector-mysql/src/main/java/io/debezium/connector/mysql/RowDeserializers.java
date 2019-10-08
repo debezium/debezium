@@ -339,7 +339,7 @@ class RowDeserializers {
             seconds = ~seconds & MASK_6_BITS;
             seconds = seconds & ~(1 << 6); // unset sign bit
             nanoSeconds = deserializeFractionalSecondsInNanosNegative(meta, inputStream);
-            if (nanoSeconds == 0  && seconds < 59) { // weird java Duration behavior
+            if (nanoSeconds == 0 && seconds < 59) { // weird java Duration behavior
                 ++seconds;
             }
             hours = -hours;
@@ -541,7 +541,7 @@ class RowDeserializers {
         // Calculate the number of bytes to read, which is
         // '1' when fsp=(1,2) -- 7
         // '2' when fsp=(3,4) and -- 12
-        // '3' when fsp=(5,6)  -- 21
+        // '3' when fsp=(5,6) -- 21
         int length = (fsp + 1) / 2;
         if (length > 0) {
             long fraction = bigEndianLong(inputStream.read(length), 0, length);
@@ -587,7 +587,7 @@ class RowDeserializers {
                 default:
                     break;
             }
-            fraction = ~fraction & ((1 << maskBits) - 1) ;
+            fraction = ~fraction & ((1 << maskBits) - 1);
             fraction = (fraction & ~(1 << maskBits)) + 1; // unset sign bit
             // Convert the fractional value (which has extra trailing digit for fsp=1,3, and 5) to nanoseconds ...
             return (int) (fraction / (0.0000001 * Math.pow(100, length - 1)));

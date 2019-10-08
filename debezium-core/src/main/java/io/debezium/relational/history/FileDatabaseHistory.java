@@ -37,8 +37,8 @@ import io.debezium.util.FunctionalReadWriteLock;
 public final class FileDatabaseHistory extends AbstractDatabaseHistory {
 
     public static final Field FILE_PATH = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")
-                                               .withDescription("The path to the file that will be used to record the database history")
-                                               .withValidation(Field::isRequired);
+            .withDescription("The path to the file that will be used to record the database history")
+            .withValidation(Field::isRequired);
 
     public static Collection<Field> ALL_FIELDS = Collect.arrayListOf(FILE_PATH);
 

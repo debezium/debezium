@@ -38,6 +38,7 @@ public interface Snapshotter {
      * @return true if the snapshotter should take a snapshot
      */
     boolean shouldSnapshot();
+
     /**
      * @return true if the snapshotter should stream after taking a snapshot
      */

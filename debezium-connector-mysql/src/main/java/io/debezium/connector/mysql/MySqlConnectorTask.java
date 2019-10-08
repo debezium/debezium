@@ -93,10 +93,12 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                             throw new ConnectException(msg);
                         }
                         logger.info("The db-history topic is missing but we are in {} snapshot mode. " +
-                                    "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.", SnapshotMode.SCHEMA_ONLY_RECOVERY);
+                                "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.",
+                                SnapshotMode.SCHEMA_ONLY_RECOVERY);
                     }
                     else {
-                        String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to " + SnapshotMode.SCHEMA_ONLY_RECOVERY;
+                        String msg = "The db history topic is missing. You may attempt to recover it by reconfiguring the connector to "
+                                + SnapshotMode.SCHEMA_ONLY_RECOVERY;
                         throw new ConnectException(msg);
                     }
                     taskContext.initializeHistoryStorage();
@@ -146,7 +148,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                     // We're not allowed to take a snapshot, so instead we have to assume that the binlog contains the
                     // full history of the database.
                     logger.info("Found no existing offset and snapshots disallowed, so starting at beginning of binlog");
-                    source.setBinlogStartPoint("", 0L);     // start from the beginning of the binlog
+                    source.setBinlogStartPoint("", 0L); // start from the beginning of the binlog
                     taskContext.initializeHistory();
 
                     // Look to see what the first available binlog file is called, and whether it looks like binlog files have
@@ -195,8 +197,10 @@ public final class MySqlConnectorTask extends BaseSourceTask {
 
                 if (taskContext.isInitialSnapshotOnly()) {
                     logger.warn("This connector will only perform a snapshot, and will stop after that completes.");
-                    chainedReaderBuilder.addReader(new BlockingReader("blocker", "Connector has completed all of its work but will continue in the running state. It can be shut down at any time."));
-                    chainedReaderBuilder.completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
+                    chainedReaderBuilder.addReader(new BlockingReader("blocker",
+                            "Connector has completed all of its work but will continue in the running state. It can be shut down at any time."));
+                    chainedReaderBuilder
+                            .completionMessage("Connector configured to only perform snapshot, and snapshot completed successfully. Connector will terminate.");
                 }
                 else {
                     if (!rowBinlogEnabled) {
@@ -222,26 +226,24 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                             "The MySQL server does not appear to be using a full row-level binlog, which is required for this connector to work properly. Enable this mode and restart the connector.");
                 }
 
-
                 // if there are new tables
                 if (newTablesInConfig()) {
                     // and we are configured to run a parallel snapshot
                     if (taskContext.getConnectorConfig().getSnapshotNewTables() == MySqlConnectorConfig.SnapshotNewTables.PARALLEL) {
-                        ServerIdGenerator serverIdGenerator =
-                            new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID),
-                                                  config.getLong(MySqlConnectorConfig.SERVER_ID_OFFSET));
+                        ServerIdGenerator serverIdGenerator = new ServerIdGenerator(config.getLong(MySqlConnectorConfig.SERVER_ID),
+                                config.getLong(MySqlConnectorConfig.SERVER_ID_OFFSET));
                         ParallelSnapshotReader parallelSnapshotReader = new ParallelSnapshotReader(config,
-                                                                                                   taskContext,
-                                                                                                   getNewFilters(offsets, config),
-                                                                                                   serverIdGenerator);
+                                taskContext,
+                                getNewFilters(offsets, config),
+                                serverIdGenerator);
 
                         MySqlTaskContext unifiedTaskContext = createAndStartTaskContext(config, getAllFilters(config));
                         // we aren't completing a snapshot, but we need to make sure the "snapshot" flag is false for this new context.
                         unifiedTaskContext.source().completeSnapshot();
                         BinlogReader unifiedBinlogReader = new BinlogReader("binlog",
-                                                                            unifiedTaskContext,
-                                                                            null,
-                                                                            serverIdGenerator.getConfiguredServerId());
+                                unifiedTaskContext,
+                                null,
+                                serverIdGenerator.getConfiguredServerId());
                         ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader(unifiedBinlogReader);
 
                         chainedReaderBuilder.addReader(parallelSnapshotReader);

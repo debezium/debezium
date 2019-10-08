@@ -57,7 +57,7 @@ public interface Table {
      * @param predicate the filter predicate; may not be null
      * @return the list of columns that satisfy the predicate; never null but possibly empty
      */
-    default List<Column> filterColumns( Predicate<Column> predicate ) {
+    default List<Column> filterColumns(Predicate<Column> predicate) {
         return columns()
                 .stream()
                 .filter(predicate)
@@ -102,7 +102,7 @@ public interface Table {
      * @param columnName the name of the column
      * @return {@code true} if a column exists in this table and it is part of the primary key, or {@code false} otherwise
      */
-    default boolean isPrimaryKeyColumn( String columnName )  {
+    default boolean isPrimaryKeyColumn(String columnName) {
         Column column = columnWithName(columnName);
         return column == null ? false : primaryKeyColumnNames().contains(column.name());
     }

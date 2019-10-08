@@ -99,6 +99,7 @@ public class DataTypeResolver {
     public static class Builder {
 
         private final Map<String, List<DataTypeEntry>> contextDataTypesMap = new HashMap<>();
+
         /**
          * Registers a data type entries, which will be used for resolving phase.
          *

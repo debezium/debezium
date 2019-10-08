@@ -155,7 +155,7 @@ final class ConvertingValue implements Value {
         if (value.isString()) {
             String str = value.asString();
             Number number = Strings.asNumber(str);
-            if ( number instanceof Short ) {
+            if (number instanceof Short) {
                 // Shorts aren't allowed, so just use an integer ...
                 number = Integer.valueOf(number.intValue());
             }

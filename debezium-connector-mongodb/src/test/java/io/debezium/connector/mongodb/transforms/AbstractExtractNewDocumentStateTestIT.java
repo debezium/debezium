@@ -112,8 +112,7 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConn
     protected MongoPrimary primary() {
         ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
         return context.getConnectionContext().primaryFor(
-                replicaSet, context.filters(), connectionErrorHandler(3)
-        );
+                replicaSet, context.filters(), connectionErrorHandler(3));
     }
 
     private BiConsumer<String, Throwable> connectionErrorHandler(int numErrorsBeforeFailing) {

@@ -58,12 +58,12 @@ class PgProtoReplicationMessage implements ReplicationMessage {
     @Override
     public Operation getOperation() {
         switch (rawMessage.getOp()) {
-        case INSERT:
-            return Operation.INSERT;
-        case UPDATE:
-            return Operation.UPDATE;
-        case DELETE:
-            return Operation.DELETE;
+            case INSERT:
+                return Operation.INSERT;
+            case UPDATE:
+                return Operation.UPDATE;
+            case DELETE:
+                return Operation.DELETE;
         }
         throw new IllegalArgumentException(
                 "Unknown operation '" + rawMessage.getOp() + "' in replication stream message");
@@ -108,9 +108,11 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                     final String columnName = Strings.unquoteIdentifierPart(datum.getColumnName());
                     final PostgresType type = typeRegistry.get((int) datum.getColumnType());
                     if (datum.hasDatumMissing()) {
-                        return new UnchangedToastedReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata());
+                        return new UnchangedToastedReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null),
+                                typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata());
                     }
-                    return new AbstractReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null), typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata()) {
+                    return new AbstractReplicationMessageColumn(columnName, type, typeInfo.map(PgProto.TypeInfo::getModifier).orElse(null),
+                            typeInfo.map(PgProto.TypeInfo::getValueOptional).orElse(Boolean.FALSE), hasTypeMetadata()) {
 
                         @Override
                         public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
@@ -122,10 +124,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                             return datum.toString();
                         }
                     };
-                   })
+                })
                 .collect(Collectors.toList());
     }
-
 
     @Override
     public boolean isLastEventForLsn() {
@@ -272,14 +273,14 @@ class PgProtoReplicationMessage implements ReplicationMessage {
             case PgOid.INT4RANGE_ARRAY:
             case PgOid.NUM_RANGE_ARRAY:
             case PgOid.INT8RANGE_ARRAY:
-            return getArray(datumMessage, connection, columnType);
+                return getArray(datumMessage, connection, columnType);
 
             case PgOid.UNSPECIFIED:
                 return null;
 
             default:
                 PostgresType type = typeRegistry.get(columnType);
-                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid() ) {
+                if (type.getOid() == typeRegistry.geometryOid() || type.getOid() == typeRegistry.geographyOid() || type.getOid() == typeRegistry.citextOid()) {
                     return datumMessage.getDatumBytes().toByteArray();
                 }
                 if (type.getOid() == typeRegistry.hstoreOid()) {
@@ -307,9 +308,9 @@ class PgProtoReplicationMessage implements ReplicationMessage {
         // Reasons for it being sub-optimal include:
         // 1. It requires a Postgres JDBC connection to deserialize
         // 2. The byte-array is a serialised string but we make the assumption its UTF-8 encoded (which it will
-        //    be in most cases)
+        // be in most cases)
         // 3. For larger arrays and especially 64-bit integers and the like it is less efficient sending string
-        //    representations over the wire.
+        // representations over the wire.
         try {
             byte[] data = datumMessage.hasDatumBytes() ? datumMessage.getDatumBytes().toByteArray() : null;
             if (data == null) {

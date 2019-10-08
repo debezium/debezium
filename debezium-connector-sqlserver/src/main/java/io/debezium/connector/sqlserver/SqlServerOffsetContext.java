@@ -66,16 +66,14 @@ public class SqlServerOffsetContext implements OffsetContext {
             return Collect.hashMapOf(
                     SourceInfo.SNAPSHOT_KEY, true,
                     SNAPSHOT_COMPLETED_KEY, snapshotCompleted,
-                    SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString()
-            );
+                    SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
         }
         else {
             return Collect.hashMapOf(
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
                     SourceInfo.CHANGE_LSN_KEY,
-                        sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
-                    SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo
-            );
+                    sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
+                    SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo);
         }
     }
 

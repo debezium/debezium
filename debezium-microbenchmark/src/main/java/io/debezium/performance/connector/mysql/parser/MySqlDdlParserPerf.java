@@ -40,9 +40,8 @@ public class MySqlDdlParserPerf {
         public Tables tables;
         public String ddl;
 
-        @Param({"1", "2", "5", "10", "20", "50"})
+        @Param({ "1", "2", "5", "10", "20", "50" })
         public int columnCount;
-
 
         @Setup(Level.Trial)
         public void doSetup() {

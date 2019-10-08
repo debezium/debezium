@@ -49,7 +49,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private static final String CONTEXT_NAME = "postgres-connector-task";
 
     private static enum State {
-        RUNNING, STOPPED;
+        RUNNING,
+        STOPPED;
     }
 
     private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
@@ -89,7 +90,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final SourceInfo sourceInfo = new SourceInfo(connectorConfig);
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
         try {
-            //Print out the server information
+            // Print out the server information
             SlotState slotInfo = null;
             try (PostgresConnection connection = taskContext.createConnection()) {
                 if (LOGGER.isInfoEnabled()) {
@@ -134,11 +135,11 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
 
             queue = new ChangeEventQueue.Builder<DataChangeEvent>()
-                .pollInterval(connectorConfig.getPollInterval())
-                .maxBatchSize(connectorConfig.getMaxBatchSize())
-                .maxQueueSize(connectorConfig.getMaxQueueSize())
-                .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
-                .build();
+                    .pollInterval(connectorConfig.getPollInterval())
+                    .maxBatchSize(connectorConfig.getMaxBatchSize())
+                    .maxQueueSize(connectorConfig.getMaxQueueSize())
+                    .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                    .build();
 
             errorHandler = new ErrorHandler(PostgresConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
 
@@ -149,8 +150,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     queue,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     DataChangeEvent::new,
-                    PostgresChangeRecordEmitter::updateSchema
-            );
+                    PostgresChangeRecordEmitter::updateSchema);
 
             coordinator = new ChangeEventSourceCoordinator(
                     previousOffset,
@@ -167,11 +167,9 @@ public class PostgresConnectorTask extends BaseSourceTask {
                             schema,
                             taskContext,
                             replicationConnection,
-                            slotCreatedInfo
-                    ),
+                            slotCreatedInfo),
                     dispatcher,
-                    schema
-            );
+                    schema);
 
             coordinator.start(taskContext, this.queue, new PostgresEventMetadataProvider());
         }
@@ -181,7 +179,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
     }
 
     public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, boolean shouldExport,
-                                                             int maxRetries, Duration retryDelay) throws ConnectException {
+                                                             int maxRetries, Duration retryDelay)
+            throws ConnectException {
         final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
         short retryCount = 0;
         ReplicationConnection replicationConnection = null;
@@ -222,8 +221,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final List<DataChangeEvent> records = queue.poll();
 
         final List<SourceRecord> sourceRecords = records.stream()
-            .map(DataChangeEvent::getRecord)
-            .collect(Collectors.toList());
+                .map(DataChangeEvent::getRecord)
+                .collect(Collectors.toList());
 
         if (!sourceRecords.isEmpty()) {
             this.lastOffset = sourceRecords.get(sourceRecords.size() - 1).sourceOffset();

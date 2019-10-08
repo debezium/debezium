@@ -65,8 +65,8 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
             }
         }
         else if (!commitLsn.equals(other.commitLsn)) {
-                return false;
-    }
+            return false;
+        }
         if (inTxLsn == null) {
             if (other.inTxLsn != null) {
                 return false;
@@ -88,8 +88,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         return commitLsn == null && inTxLsn == null ? NULL
                 : new TxLogPosition(
                         commitLsn == null ? Lsn.NULL : commitLsn,
-                        inTxLsn == null ? Lsn.NULL : inTxLsn
-        );
+                        inTxLsn == null ? Lsn.NULL : inTxLsn);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn) {
