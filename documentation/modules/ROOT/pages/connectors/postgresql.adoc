@@ -39,7 +39,7 @@ The connector is also tolerant of failures. As the connector reads changes and p
 [IMPORTANT]
 ====
 The connector's functionality relies on PostgreSQL's logical decoding feature.
-Since this is a relatively new feature, it has some limitations which are also reflected by the connector:
+Please be aware of the following limitations which are also reflected by the connector:
 
 . Logical Decoding does not support DDL changes: this means that the connector is unable to report DDL change events back to consumers.
 . Logical Decoding replication slots are only supported on `primary` servers: this means that when there is a cluster of PostgreSQL servers, the connector can only run on the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector will stop. Once the `primary` has recovered the connector can simply be restarted. If a different PostgreSQL server has been promoted to `primary`, the connector configuration must be adjusted before the connector is restarted. Make sure you read more about how the connector behaves link:#when-things-go-wrong[when things go wrong].
@@ -164,12 +164,7 @@ max_replication_slots = 1       //<3>
 <2> tells the server that it should use a maximum of `1` separate processes for processing WAL changes
 <3> tells the server that it should allow a maximum of `1` replication slots to be created for streaming WAL changes
 
-Debezium needs a PostgreSQL's WAL to be kept during Debezium outages.
-If your WAL retention is too small and outages too long then Debezium will not be able to recover after restart as it will miss part of the data changes.
-The usual indicator is an error similar to this thrown during the startup: `ERROR: requested WAL segment 000000010000000000000001 has already been removed`.
-
-When this happens then it is necessary to re-execute the snapshot of the database.
-We also recommend to set parameter `wal_keep_segments = 0`. Please follow PostgreSQL official documentation for fine-tuning of WAL retention.
+Debezium uses PostgreSQL's logical decoding, which uses replication slots.  Replication slots are guaranteed to retain all WAL required for Debezium even during Debezium outages. It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a Debezium slot stays unused for too long. For more information please see the official Postgres docs on this subject: https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS
 
 [TIP]
 ====
@@ -233,7 +228,7 @@ Most PostgreSQL servers are configured to not retain the complete history of the
 5. Commit the transaction.
 6. Record the successful completion of the snapshot in the connector offsets.
 
-If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 6 completes, upon restart the connector will begin a new snapshot. Once the connector does complete its initial snapshot, the PostgreSQL connector then continues streaming from the position read during step 3, ensuring that it does not miss any updates. If the connector stops again for any reason, upon restart it will simply continue streaming changes from where it previously left off. However, if the connector remains stopped for long enough, PostgreSQL might purge older WAL segments and the connector's last known position may be lost. In this case, when the connector configured with *initial* snapshot mode (the default) is finally restarted, the PostgreSQL server will no longer have the starting point and the connector will not be able to relay the changes that are not available in the write ahead log.
+If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 6 completes, upon restart the connector will begin a new snapshot. Once the connector does complete its initial snapshot, the PostgreSQL connector then continues streaming from the position read during step 3, ensuring that it does not miss any updates. If the connector stops again for any reason, upon restart it will simply continue streaming changes from where it previously left off.
 
 A second snapshot mode allows the connector to perform snapshots *always*. This behavior tells the connector to _always_ perform a snapshot when it starts up, and after the snapshot completes to continue streaming changes from step 3 in the above sequence. This mode can be used in cases when it's known that some WAL segments have been deleted and are no longer available, or in case of a cluster failure after a new primary has been promoted so that the connector doesn't miss out on any potential changes that could've taken place after the new primary had been promoted but before the connector was restarted on the new primary.
 
@@ -1335,17 +1330,22 @@ In these cases, the error will have more details about the problem and possibly 
 
 Once the connector is running, if the PostgreSQL server it has been connected to becomes unavailable for any reason, the connector will fail with an error and the connector will stop. Simply restart the connector when the server is available.
 
-The PostgreSQL connector stores externally the last processed offset (in the form of a PostgreSQL `log sequence number` value). Once a connector is restarted and connects to a server instance, if it has a previously stored offset it will ask the server to continue streaming from that particular offset. However, depending on the server configuration, this particular offset may or may not be available in the server's write-ahead log segments. If it is available, then the connector will simply resume streaming changes without missing anything. If however this information is not available, the connector cannot relay back the changes that occurred while it was not online.
+The PostgreSQL connector stores externally the last processed offset (in the form of a PostgreSQL `log sequence number` value). Once a connector is restarted and connects to a server instance, it will ask the server to continue streaming from that particular offset. This offset will always remain available so long as the Debezium replication slot remains intact.  Never drop a replication slot on the primary or you will lose data. See the next section for failure cases when a slot has been removed. 
 
 ==== Cluster Failures
 
-As of `9.6`, PostgreSQL allows logical replication slots _only on primary servers_, which means that a PostgreSQL connector can only be pointed to the active `primary` of a database cluster. If this machine goes down, only after a new `primary` has been promoted (with the link:#output-plugin[logical decoding plugin] installed) can the connector be restarted and pointed to the new server.
+As of `12`, PostgreSQL allows logical replication slots _only on primary servers_, which means that a PostgreSQL connector can only be pointed to the active `primary` of a database cluster. If this machine goes down, only after a new `primary` has been promoted (with the link:#output-plugin[logical decoding plugin] installed) can the connector be restarted and pointed to the new server.
 
-One potential issue with this is that if there's a _large enough delay_ between the new server's promotion and the installation of the plugin together with the restart of the connector, the PostgreSQL server may have removed some WAL information. If this happens, the connector will miss out on all the changes that took place _after the election of the new primary_ and _before the restart of the connector_.
+There are some really important caveats to failovers, and you should pause Debezium until you can verify that you have a replication slot intact which has not lost data.  After a failover, you will lose data unless your administration of failovers includes a process to recreate the Debezium replication slot before the application is allowed to write to the *new* primary. You also may need to verify in a failover situation that Debezium was able to read all changes in the slot **before the old primary failed**.
+
+One reliable method of recovering and verifying any lost changes (yet administratively difficult) is to recover a backup of your failed primary to the point immediately before it failed, which would allow you to inspect the replication slot for any unconsumed changes.  In any case, it is crucial that you recreate the replication slot on the new primary prior to allowing writes to it. 
 
 [NOTE]
 ====
-There are discussions in the PostgreSQL community around a feature called `failover slots` which would help mitigate this problem, but as of `9.6` they have not been implemented yet. You can find out more about this particular issue from http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post]
+There are discussions in the PostgreSQL community around a feature called `failover slots` which would help mitigate this problem, but as of `12` they have not been implemented yet.  However, there is active development for Postgres 13 to support logical decoding on standbys, which is a major requirement to make failover possible.  You can find more about this on the community thread:
+https://www.postgresql.org/message-id/CAJ3gD9fE=0w50sRagcs+jrktBXuJAWGZQdSTMa57CCY+Dh-xbg@mail.gmail.com
+
+You can find out more about the concept of failover slots here http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post]
 ====
 
 ==== Kafka Connect Process Stops Gracefully
@@ -1371,12 +1371,7 @@ As the connector generates change events, the Kafka Connect framework records th
 
 If the connector is gracefully stopped, the database can continue to be used and any new changes will be recorded in the PostgreSQL WAL. When the connector is restarted, it will resume streaming changes where it last left off, recording change events for all of the changes that were made while the connector was stopped.
 
-A properly configured Kafka cluster is able to https://engineering.linkedin.com/kafka/benchmarking-apache-kafka-2-million-writes-second-three-cheap-machines[massive throughput]. Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events. Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in PostgreSQL.
-
-[NOTE]
-====
-If the connector remains stopped for long enough, PostgreSQL might purge older WAL segments and the connector's last known position may be lost. In this case, when the connector configured with _initial_ snapshot mode (the default) is finally restarted, the PostgreSQL server will no longer have the starting point and the connector will perform an initial snapshot. On the other hand, if the connector's snapshot mode is disabled, then the connector will fail with an error.
-====
+A properly configured Kafka cluster is able to handle https://engineering.linkedin.com/kafka/benchmarking-apache-kafka-2-million-writes-second-three-cheap-machines[massive throughput]. Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events. Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in PostgreSQL.
 
 [[configuration]]
 [[deploying-a-connector]]
