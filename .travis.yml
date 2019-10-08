@@ -5,6 +5,10 @@ cache:
 
 sudo: required
 
+# Xenial does not support OracleJDK8
+# To keep using OracleJDK8, we must explicitly specify to run builds on Trusty.
+dist: trusty
+
 jdk:
   - oraclejdk8
 
