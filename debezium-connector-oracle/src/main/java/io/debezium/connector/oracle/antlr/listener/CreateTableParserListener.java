@@ -85,7 +85,7 @@ public class CreateTableParserListener extends BaseParserListener {
 
     @Override
     public void exitOut_of_line_constraint(PlSqlParser.Out_of_line_constraintContext ctx) {
-        if(ctx.PRIMARY() != null) {
+        if (ctx.PRIMARY() != null) {
             List<String> pkColumnNames = ctx.column_name().stream()
                     .map(this::getColumnName)
                     .collect(Collectors.toList());

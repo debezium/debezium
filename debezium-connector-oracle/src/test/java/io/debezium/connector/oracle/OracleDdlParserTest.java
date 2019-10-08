@@ -35,7 +35,7 @@ public class OracleDdlParserTest {
     private Tables tables;
 
     @Before
-    public void setUp(){
+    public void setUp() {
         parser = new OracleDdlParser(true, null, null);
         tables = new Tables();
     }
@@ -165,7 +165,7 @@ public class OracleDdlParserTest {
         assertThat(column.typeName()).isEqualTo(typeName);
         assertThat(column.length()).isEqualTo(length);
         Optional<Integer> oScale = column.scale();
-        if (oScale.isPresent()){
+        if (oScale.isPresent()) {
             assertThat(oScale.get()).isEqualTo(scale);
         }
         assertThat(column.hasDefaultValue()).isEqualTo(hasDefault);

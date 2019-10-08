@@ -59,14 +59,14 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         try {
             // 1. connect
-            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition() : convertScnToPosition(offsetContext.getScn()); 
+            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition() : convertScnToPosition(offsetContext.getScn());
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
                     startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
             LcrEventHandler handler = new LcrEventHandler(errorHandler, dispatcher, clock, schema, offsetContext, this.tablenameCaseInsensitive);
 
             // 2. receive events while running
-            while(context.isRunning()) {
+            while (context.isRunning()) {
                 LOGGER.trace("Receiving LCR");
                 xsOut.receiveLCRCallback(handler, XStreamOut.DEFAULT_MODE);
             }

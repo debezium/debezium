@@ -125,7 +125,7 @@ public class AlterTableParserListener extends BaseParserListener {
         parser.runIfNotNull(() -> {
             List<PlSqlParser.Column_nameContext> columnNameContexts = ctx.column_name();
             columnEditors = new ArrayList<>(columnNameContexts.size());
-            for (PlSqlParser.Column_nameContext columnNameContext : columnNameContexts){
+            for (PlSqlParser.Column_nameContext columnNameContext : columnNameContexts) {
                 String columnName = getColumnName(columnNameContext);
                 tableEditor.removeColumn(columnName);
             }

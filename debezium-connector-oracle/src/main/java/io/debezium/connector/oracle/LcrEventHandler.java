@@ -71,7 +71,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         offsetContext.setTableId(new TableId(lcr.getSourceDatabaseName(), lcr.getObjectOwner(), lcr.getObjectName()));
 
         try {
-            if(lcr instanceof RowLCR) {
+            if (lcr instanceof RowLCR) {
                 dispatchDataChangeEvent((RowLCR) lcr);
             }
             else if (lcr instanceof DDLLCR) {
@@ -92,7 +92,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private void dispatchDataChangeEvent(RowLCR lcr) throws InterruptedException {
         LOGGER.debug("Processing DML event {}", lcr);
 
-        if(RowLCR.COMMIT.equals(lcr.getCommandType())) {
+        if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
             return;
         }
 
@@ -124,7 +124,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         else {
             return new TableId(lcr.getSourceDatabaseName().toLowerCase(), lcr.getObjectOwner(), lcr.getObjectName().toLowerCase());
         }
-        
     }
 
     @Override

@@ -55,7 +55,7 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
     }
 
     // todo use dataTypeResolver instead
-    private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx){
+    private void resolveColumnDataType(PlSqlParser.Column_definitionContext ctx) {
             PlSqlParser.Precision_partContext precisionPart = ctx.datatype().precision_part();
 
             columnEditor.name(getColumnName(ctx.column_name()));
