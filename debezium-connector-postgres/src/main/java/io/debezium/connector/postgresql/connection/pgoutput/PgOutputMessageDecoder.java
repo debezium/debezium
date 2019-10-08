@@ -6,6 +6,7 @@
 package io.debezium.connector.postgresql.connection.pgoutput;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -494,7 +495,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         int length = buffer.getInt();
         byte[] value = new byte[length];
         buffer.get(value, 0, length);
-        return new String(value);
+        return new String(value, Charset.forName("UTF-8"));
     }
 
     /**
