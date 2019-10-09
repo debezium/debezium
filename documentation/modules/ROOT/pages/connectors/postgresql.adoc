@@ -164,11 +164,14 @@ max_replication_slots = 1       //<3>
 <2> tells the server that it should use a maximum of `1` separate processes for processing WAL changes
 <3> tells the server that it should allow a maximum of `1` replication slots to be created for streaming WAL changes
 
-Debezium uses PostgreSQL's logical decoding, which uses replication slots.  Replication slots are guaranteed to retain all WAL required for Debezium even during Debezium outages. It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a Debezium slot stays unused for too long. For more information please see the official Postgres docs on this subject: https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS
+Debezium uses PostgreSQL's logical decoding, which uses replication slots.
+Replication slots are guaranteed to retain all WAL required for Debezium even during Debezium outages.
+It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
+For more information please see the official Postgres docs on https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[this subject].
 
 [TIP]
 ====
-We strongly recommend reading and understanding https://www.postgresql.org/docs/current/static/wal-configuration.html[the official documentation] regarding the mechanics and configuration of the PostgreSQL write-ahead log
+We strongly recommend reading and understanding https://www.postgresql.org/docs/current/static/wal-configuration.html[the official documentation] regarding the mechanics and configuration of the PostgreSQL write-ahead log.
 ====
 
 [[PostgreSQL-permissions]]
@@ -1345,7 +1348,7 @@ One reliable method of recovering and verifying any lost changes (yet administra
 There are discussions in the PostgreSQL community around a feature called `failover slots` which would help mitigate this problem, but as of `12` they have not been implemented yet.  However, there is active development for Postgres 13 to support logical decoding on standbys, which is a major requirement to make failover possible.  You can find more about this on the community thread:
 https://www.postgresql.org/message-id/CAJ3gD9fE=0w50sRagcs+jrktBXuJAWGZQdSTMa57CCY+Dh-xbg@mail.gmail.com
 
-You can find out more about the concept of failover slots here http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post]
+You can find out more about the concept of failover slots here http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post].
 ====
 
 ==== Kafka Connect Process Stops Gracefully

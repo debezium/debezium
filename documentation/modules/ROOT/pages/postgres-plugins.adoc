@@ -177,7 +177,7 @@ and https://github.com/eulerto/wal2json/blob/master/Makefile[wal2json] Makefiles
 <3> tells the server that it should use a maximum of `4` separate processes for processing WAL changes
 <4> tells the server that it should allow a maximum of `4` replication slots to be created for streaming WAL changes
 
-Debezium uses PostgreSQL's logical decoding, which uses replication slots.  Replication slots are guaranteed to retain all WAL required for Debezium even during Debezium outages. It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a Debezium slot stays unused for too long. For more information please see the official Postgres docs on this subject: https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS
+Debezium uses PostgreSQL's logical decoding, which uses replication slots.  Replication slots are guaranteed to retain all WAL required for Debezium even during Debezium outages. It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a Debezium slot stays unused for too long. For more information please see the official Postgres docs on https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[this subject].
 
 [TIP]
 ====
