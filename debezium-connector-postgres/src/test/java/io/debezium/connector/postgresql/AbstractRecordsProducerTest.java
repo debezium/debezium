@@ -588,7 +588,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
     protected List<SchemaAndValueField> schemaAndValuesForIntervalAsString() {
         //1 year, 2 months, 3 days, 4 hours, 5 minutes, 6 seconds, 78000 ms
-        final String expectedInterval = "P1Y2M3DT4H5M" + 6.78 + "S";
+        final String expectedInterval = "P1Y2M3DT4H5M6.78S";
         return Arrays.asList(
                 new SchemaAndValueField("it", Interval.builder().optional().build(), expectedInterval)
          );

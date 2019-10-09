@@ -69,8 +69,8 @@ public class Interval {
     */
     public static String toIsoString(int years, int months, int days, int hours, int minutes, BigDecimal seconds) {
         // ISO pattern - PnYnMnDTnHnMnS
-        if (seconds.scale() > 6) {
-            seconds = seconds.setScale(6, RoundingMode.DOWN);
+        if (seconds.scale() > 9) {
+            seconds = seconds.setScale(9, RoundingMode.DOWN);
         }
         return "P" + years + "Y" + months + "M" + days + "D" + "T" + hours + "H" + minutes + "M" + seconds.stripTrailingZeros().toPlainString() + "S";
     }

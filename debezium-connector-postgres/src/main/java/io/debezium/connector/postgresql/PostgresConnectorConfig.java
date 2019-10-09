@@ -120,7 +120,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Represents interval as inexact microseconds count
          */
-        MICROSECONDS("microseconds"),
+        NUMERIC("numeric"),
 
         /**
          * Represents interval as ISO 8601 time interval
@@ -770,12 +770,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
                                                             .withDisplayName("Interval Handling")
-                                                            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.MICROSECONDS)
+                                                            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
                                                             .withWidth(Width.MEDIUM)
                                                             .withImportance(Importance.LOW)
                                                             .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
-                                                                  + "'string' represents values as exact ISO formatted string"
-                                                                  + "'microseconds' (default) represents values using inexact conversion into microseconds");
+                                                                  + "'string' represents values as an exact ISO formatted string"
+                                                                  + "'numeric' (default) represents values using the inexact conversion into microseconds");
 
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
                                                           .withDisplayName("Status update interval (ms)")
