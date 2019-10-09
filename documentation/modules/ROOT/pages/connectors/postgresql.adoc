@@ -913,8 +913,15 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 
 |`INTERVAL [P]`
 |`INT64`
-|`io.debezium.time.MicroDuration`
+|`io.debezium.time.MicroDuration` +
+(default)
 |The approximate number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average
+
+|`INTERVAL [P]`
+|`String`
+|`io.debezium.time.Interval` +
+(when `interval.handling.mode` is set to `string`)
+|The string representation of the interval value that follows pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`
 
 |`BYTEA`
 |`BYTES`
@@ -1529,6 +1536,10 @@ Debezium will instead use the publication as defined.
 |`hstore.handling.mode`
 |`map`
 | Specifies how the connector should handle values for `hstore` columns: `map` (the default) represents using `MAP`; or `json` represents them using `json string`.`json` option encodes values as formatted string such as `{"key" : "val"}`. See <<hstore-values>>.
+
+|`interval.handling.mode`
+|`numeric`
+| Specifies how the connector should handle values for `interval` columns: `numeric` (the default) represents interval using approximate number of microseconds; `string` represents them using exact string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`. See <<data-types>>.
 
 |`database.sslmode`
 |`disable`
