@@ -8,11 +8,11 @@ include::../_attributes.adoc[]
 
 toc::[]
 
-Debezium's PostgreSQL Connector can monitor and record the row-level changes in the schemas of a PostgreSQL database. This connector was added in Debezium 0.4.0.
+Debezium's PostgreSQL Connector can monitor and record the row-level changes in the schemas of a PostgreSQL database.
 
 The first time it connects to a PostgreSQL server/cluster, it reads a consistent snapshot of all of the schemas. When that snapshot is complete, the connector continuously streams the changes that were committed to PostgreSQL 9.6 or later and generates corresponding insert, update and delete events. All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
 
-The connector works with Postgres 9.6, 10 and 11 (support for the latter has been added in Debezium 0.9).
+The connector works with Postgres 9.6, 10 and 11.
 
 [[overview]]
 == Overview
@@ -921,7 +921,7 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |`String`
 |`io.debezium.time.Interval` +
 (when `interval.handling.mode` is set to `string`)
-|The string representation of the interval value that follows pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`
+|The string representation of the interval value that follows pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, e.g. `P1Y2M3DT4H5M6.78S`
 
 |`BYTEA`
 |`BYTES`
@@ -1539,7 +1539,7 @@ Debezium will instead use the publication as defined.
 
 |`interval.handling.mode`
 |`numeric`
-| Specifies how the connector should handle values for `interval` columns: `numeric` (the default) represents interval using approximate number of microseconds; `string` represents them using exact string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`. See <<data-types>>.
+| Specifies how the connector should handle values for `interval` columns: `numeric` (the default) represents interval using approximate number of microseconds; `string` represents them exactly, using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, e.g. `P1Y2M3DT4H5M6.78S`. See <<data-types>>.
 
 |`database.sslmode`
 |`disable`
