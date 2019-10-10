@@ -314,11 +314,13 @@ public class RecordMakersTest {
         assertThat(key.schema()).isSameAs(record.keySchema());
         assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
         assertThat(value.schema()).isSameAs(record.valueSchema());
+        // @foramtter:off
         assertThat(value.getString(FieldName.AFTER)).isEqualTo("{"
-                + "\"_id\": {\"$oid\": \"" + objId + "\"},"
-                + "\"name\": \"Sally\","
-                + "\"ref\": {\"$ref\": \"othercollection\",\"$id\": 15}"
+                    + "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                    + "\"name\": \"Sally\","
+                    + "\"ref\": {\"$ref\": \"othercollection\",\"$id\": 15}"
                 + "}");
+        // @formatter:on
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
