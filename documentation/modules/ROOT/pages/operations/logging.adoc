@@ -3,6 +3,10 @@ include::../_attributes.adoc[]
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+:toc:
+:toc-placement: macro
+
+toc::[]
 
 Debezium has extensive logging built into its connectors, and you can easily change the logging configuration to control which of these log statements appear in the logs and where those logs are sent. Debezium (and Kafka, Kafka Connect, and Zookeeper) use the ubiquitous https://logging.apache.org/log4j/1.2/[Log4J] logging framework for Java.
 
