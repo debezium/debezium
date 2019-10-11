@@ -2,6 +2,10 @@
 include::../_attributes.adoc[]
 :linkattrs:
 :icons: font
+:toc:
+:toc-placement: macro
+
+toc::[]
 
 The following describes how to set up the https://developers.redhat.com/products/amq/download/[Debezium 1.0.0 Developer Preview connectors] for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
 

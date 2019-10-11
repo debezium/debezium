@@ -2,6 +2,10 @@
 include::../_attributes.adoc[]
 :linkattrs:
 :icons: font
+:toc:
+:toc-placement: macro
+
+toc::[]
 
 Debezium uses Kafka and Zookeeper, and all of these support monitoring via JMX. In fact, there are a lot of https://zookeeper.apache.org/doc/r3.1.2/zookeeperJMX.html[Zookeeper metrics] and even more http://docs.confluent.io/3.0.0/kafka/monitoring.html[Kafka metrics] available. But how JMX is enabled in these services depends on whether you're running them in Docker containers or using the standard installations.
 
