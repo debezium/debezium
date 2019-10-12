@@ -264,7 +264,7 @@ $ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAG
 
 This runs a new Docker container named `connect` using version {debezium-docker-label} of the `debezium/connect` image. The `-it` flag makes the container interactive, meaning it attaches the terminal's standard input and output to the container so that you can see what is going on in the container. The `--rm` flag instructs Docker to remove the container when it is stopped. The command maps port 8083 in the container to the same port on the Docker host so that software outside of the container can use Kafka Connect's REST API to set up and manage new connector instances. The command uses the `--link zookeeper:zookeeper`, `--link kafka:kafka`, and `--link mysql:mysql`, arguments to tell the container that it can find ZooKeeper running in the container named `zookeeper`, the Kafka broker running in the container named `kafka`, and the MySQL server running in the container named `mysql`, all running on the same Docker host. And finally, it also uses the `-e` option three times to set the `GROUP_ID`, `CONFIG_STORAGE_TOPIC`, `OFFSET_STORAGE_TOPIC`, and `STATUS_STORAGE_TOPIC` environment variables, which are all required by this Debezium image (though you can use different values as desired).
 
-You should see in your terminal the typical output of Kafka, ending with:
+You should see in your terminal the typical output of Kafka Connect terminal, ending with:
 
 [listing,indent=0,options="nowrap"]
 ----
