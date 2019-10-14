@@ -27,6 +27,8 @@ import io.debezium.function.BlockingConsumer;
  */
 public interface Heartbeat {
 
+    public static final String HEARTBEAT_INTERVAL_PROPERTY_NAME = "heartbeat.interval.ms";
+
     /**
      * Returns the offset to be used when emitting a heartbeat event. This supplier
      * interface allows for a lazy creation of the offset only when a heartbeat
@@ -37,7 +39,7 @@ public interface Heartbeat {
         Map<String, ?> offset();
     }
 
-    public static final Field HEARTBEAT_INTERVAL = Field.create("heartbeat.interval.ms")
+    public static final Field HEARTBEAT_INTERVAL = Field.create(HEARTBEAT_INTERVAL_PROPERTY_NAME)
             .withDisplayName("Conector heartbeat interval (milli-seconds)")
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
@@ -76,6 +78,11 @@ public interface Heartbeat {
         public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer,
                 BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         }
+
+        @Override
+        public boolean isEnabled() {
+            return false;
+        }
     };
 
     /**
@@ -108,6 +115,11 @@ public interface Heartbeat {
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext,
     // too
     void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+
+    /**
+     * Whether heartbeats are enabled or not.
+     */
+    boolean isEnabled();
 
     /**
      * Provide an instance of Heartbeat object

@@ -99,6 +99,11 @@ class HeartbeatImpl implements Heartbeat {
         consumer.accept(heartbeatRecord(partition, offset));
     }
 
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
     /**
      * Produce a key struct based on the server name and KEY_SCHEMA
      *
