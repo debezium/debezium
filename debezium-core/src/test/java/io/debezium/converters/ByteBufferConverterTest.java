@@ -64,7 +64,8 @@ public class ByteBufferConverterTest {
         try {
             converter.fromConnectData(TOPIC, Schema.BOOLEAN_SCHEMA, null);
             fail("now expected exception thrown");
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             assertThat(e).isExactlyInstanceOf(DataException.class);
         }
     }
@@ -74,7 +75,8 @@ public class ByteBufferConverterTest {
         try {
             converter.fromConnectData(TOPIC, Schema.BOOLEAN_SCHEMA, null);
             fail("now expected exception thrown");
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             assertThat(e).isExactlyInstanceOf(DataException.class);
         }
 
