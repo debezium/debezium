@@ -119,12 +119,15 @@ public class EventDispatcher<T extends DataCollectionId> {
      * case, one event will be emitted, but e.g. in case of PK updates, it may be a deletion and a creation event). The
      * receiving coordinator creates {@link SourceRecord}s for all emitted events and passes them to this dispatcher's
      * {@link ChangeEventCreator} for converting them into data change events.
+     *
+     * @return {@code true} if an event was dispatched (i.e. sent to the message broker), {@code false} otherwise.
      */
-    public void dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
-
+    public boolean dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
         if (!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Filtered data change event for {}", dataCollectionId);
             eventListener.onFilteredEvent("source = " + dataCollectionId);
+
+            return false;
         }
         else {
             DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
@@ -133,7 +136,7 @@ public class EventDispatcher<T extends DataCollectionId> {
             if (dataCollectionSchema == null) {
                 final Optional<DataCollectionSchema> replacementSchema = inconsistentSchemaHandler.handle(dataCollectionId, changeRecordEmitter);
                 if (!replacementSchema.isPresent()) {
-                    return;
+                    return false;
                 }
                 dataCollectionSchema = replacementSchema.get();
             }
@@ -154,6 +157,8 @@ public class EventDispatcher<T extends DataCollectionId> {
                 changeRecordEmitter.getOffset().getOffset(),
                 this::enqueueHeartbeat
         );
+
+        return true;
     }
 
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {
@@ -188,6 +193,10 @@ public class EventDispatcher<T extends DataCollectionId> {
                 offset.getOffset(),
                 this::enqueueHeartbeat
         );
+    }
+
+    public boolean heartbeatsEnabled() {
+        return heartbeat.isEnabled();
     }
 
     private void enqueueHeartbeat(SourceRecord record) throws InterruptedException {

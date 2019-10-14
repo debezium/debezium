@@ -20,6 +20,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -32,6 +33,12 @@ import io.debezium.util.Metronome;
  * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec
  */
 public class PostgresStreamingChangeEventSource implements StreamingChangeEventSource {
+
+    /**
+     * Number of received events without sending anything to Kafka which will
+     * trigger a "WAL backlog growing" warning.
+     */
+    private static final int GROWING_WAL_WARNING_LOG_INTERVAL = 10_000;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresStreamingChangeEventSource.class);
 
@@ -49,9 +56,15 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final PostgresTaskContext taskContext;
     private final ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
-    private Long lastCompletelyProcessedLsn;
     private final Snapshotter snapshotter;
     private final Metronome pauseNoMessage;
+
+    /**
+     * The minimum of (number of event received since the last event sent to Kafka,
+     * number of event received since last WAL growing warning issued).
+     */
+    private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
+    private Long lastCompletelyProcessedLsn;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext offsetContext, PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
         this.connectorConfig = connectorConfig;
@@ -114,8 +127,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     Objects.requireNonNull(tableId);
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId, taskContext.getSlotXmin(connection));
-                    dispatcher
-                        .dispatchDataChangeEvent(
+                    boolean dispatched = dispatcher.dispatchDataChangeEvent(
                                 tableId,
                                 new PostgresChangeRecordEmitter(
                                         offsetContext,
@@ -126,6 +138,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                                         message
                                 )
                         );
+
+                    maybeWarnAboutGrowingWalBacklog(dispatched);
+
                 })) {
                     if (offsetContext.hasCompletelyProcessedPosition()) {
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
@@ -156,6 +171,42 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 catch (Exception e) {
                 }
             }
+        }
+    }
+
+    /**
+     * If we receive change events but all of them get filtered out, we cannot
+     * commit any new offset with Apache Kafka. This in turn means no LSN is ever
+     * acknowledged with the replication slot, causing any ever growing WAL backlog.
+     * <p>
+     * This situation typically occurs if there are changes on the database server,
+     * (e.g. in a blacklisted database), but none of them is in a whitelisted table.
+     * To prevent this, heartbeats can be used, as they will allow us to commit
+     * offsets also when not propagating any "real" change event.
+     * <p>
+     * The purpose of this method is to detect this situation and log a warning
+     * every {@link #GROWING_WAL_WARNING_LOG_INTERVAL} filtered events.
+     *
+     * @param dispatched
+     *            Whether an event was sent to the broker or not
+     */
+    private void maybeWarnAboutGrowingWalBacklog(boolean dispatched) {
+        if (dispatched) {
+            numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
+        }
+        else {
+            numberOfEventsSinceLastEventSentOrWalGrowingWarning++;
+        }
+
+        if (numberOfEventsSinceLastEventSentOrWalGrowingWarning > GROWING_WAL_WARNING_LOG_INTERVAL && !dispatcher.heartbeatsEnabled()) {
+            LOGGER.warn("Received {} events which were all filtered out, so no offset could be committed."
+                    + "This prevents the replication slot from acknowledging the processed WAL offsets,"
+                    + "causing a growing backlog of non-removeable WAL segments on the database server."
+                    + "Consider to either adjust your filter configuration or enable heartbeat events "
+                    + "(via the {} option) to avoid this situation.",
+                    numberOfEventsSinceLastEventSentOrWalGrowingWarning, Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME);
+
+            numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
         }
     }
 
