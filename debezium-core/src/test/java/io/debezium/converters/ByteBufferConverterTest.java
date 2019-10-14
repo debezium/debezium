@@ -61,20 +61,20 @@ public class ByteBufferConverterTest {
 
     @Test
     public void shouldThrowWhenConvertNonByteSchemaFromConnectData() {
-        try{
+        try {
             converter.fromConnectData(TOPIC, Schema.BOOLEAN_SCHEMA, null);
             fail("now expected exception thrown");
-        } catch (Exception e){
+        } catch (Exception e) {
             assertThat(e).isExactlyInstanceOf(DataException.class);
         }
     }
 
     @Test
     public void shouldThrowWhenConvertRawByteArrayFromConnectData() {
-        try{
+        try {
             converter.fromConnectData(TOPIC, Schema.BOOLEAN_SCHEMA, null);
             fail("now expected exception thrown");
-        } catch (Exception e){
+        } catch (Exception e) {
             assertThat(e).isExactlyInstanceOf(DataException.class);
         }
 
