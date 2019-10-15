@@ -464,7 +464,7 @@ Debezium and Kafka Connect are designed around _continuous streams of event mess
 [[change-events-key]]
 ==== Change Event's Key
 
-For a given table, the change event's key will have a structure that contains a field for each column in the primary key (or unique key constraint) of the table at the time the event was created.
+For a given table, the change event's key will have a structure that contains a field for each column in the primary key (or unique key constraint with `REPLICA IDENTITY` set to `FULL` or `USING INDEX` on the table) of the table at the time the event was created.
 
 Consider a `customers` table defined in the `public` database schema:
 
