@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -46,6 +47,75 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         if (connection != null) {
             connection.close();
         }
+    }
+
+    @Test
+    @FixFor("DBZ-1546")
+    public void shouldParseWhitespaceChars() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.car, dbo.person")
+                .build();
+
+        connection.execute(
+                "CREATE TABLE car (id int primary key, name varchar(30))",
+                "CREATE TABLE person (id int primary key, name varchar(30))",
+                "INSERT INTO car VALUES(1, 'honda')",
+                "INSERT INTO person VALUES(1, 'Jack')"
+        );
+        TestHelper.enableTableCdc(connection, "car");
+        TestHelper.enableTableCdc(connection, "person");
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.car")).hasSize(1);
+        Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.person")).hasSize(1);
+
+        List<SourceRecord> carRecords = actualRecords.recordsForTopic("server1.dbo.car");
+        Assertions.assertThat(carRecords.size()).isEqualTo(1);
+        SourceRecord carRecord = carRecords.get(0);
+
+        assertSchemaMatchesStruct(
+                (Struct) ((Struct) carRecord.value()).get("after"),
+                SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.dbo.car.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()
+        );
+        assertSchemaMatchesStruct(
+                (Struct) carRecord.key(),
+                SchemaBuilder.struct()
+                        .name("server1.dbo.car.Key")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .build()
+        );
+        Assertions.assertThat(((Struct) carRecord.value()).getStruct("after").getString("name")).isEqualTo("honda");
+
+        List<SourceRecord> personRecords = actualRecords.recordsForTopic("server1.dbo.person");
+        Assertions.assertThat(personRecords.size()).isEqualTo(1);
+        SourceRecord personRecord = personRecords.get(0);
+
+        assertSchemaMatchesStruct(
+                (Struct) ((Struct) personRecord.value()).get("after"),
+                SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.dbo.person.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()
+        );
+        assertSchemaMatchesStruct(
+                (Struct) personRecord.key(),
+                SchemaBuilder.struct()
+                        .name("server1.dbo.person.Key")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .build()
+        );
+        Assertions.assertThat(((Struct) personRecord.value()).getStruct("after").getString("name")).isEqualTo("Jack");
     }
 
     @Test
