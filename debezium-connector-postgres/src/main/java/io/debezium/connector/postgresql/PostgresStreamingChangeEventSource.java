@@ -102,6 +102,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     if (message == null) {
                         LOGGER.trace("Received empty message");
                         lastCompletelyProcessedLsn = lsn;
+                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
                         return;
                     }
