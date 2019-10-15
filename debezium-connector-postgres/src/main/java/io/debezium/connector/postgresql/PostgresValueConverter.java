@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -151,7 +152,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = column.nativeType();
+        return schemaBuilder(oidValue, column);
+    }
 
+    private SchemaBuilder schemaBuilder(int oidValue, Column column) {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
@@ -278,6 +282,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (oidValue == typeRegistry.ltreeArrayOid()) {
                     return SchemaBuilder.array(Ltree.builder().optional().build());
                 }
+
+                if (column.jdbcType() == Types.DISTINCT) {
+                    final PostgresType domainType = typeRegistry.get(oidValue);
+                    if (domainType != null) {
+                        final PostgresType baseType = domainType.getBaseType();
+                        if (baseType != null) {
+                            return schemaBuilder(baseType.getOid(), column);
+                        }
+                    }
+                }
+
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
                     return includeUnknownDatatypes ? SchemaBuilder.bytes() : null;
@@ -310,7 +325,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = column.nativeType();
+        return converter(oidValue, column, fieldDefn);
+    }
 
+    private ValueConverter converter(int oidValue, Column column, Field fieldDefn) {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.VARBIT:
@@ -418,6 +436,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         oidValue == typeRegistry.hstoreArrayOid()) {
                     return createArrayConverter(column, fieldDefn);
                 }
+
+                if (column.jdbcType() == Types.DISTINCT) {
+                    // The driver represents domain types as 'd', DISTINCT
+                    final PostgresType domainType = typeRegistry.get(oidValue);
+                    if (domainType != null) {
+                        final PostgresType baseType = domainType.getBaseType();
+                        if (baseType != null) {
+                            return converter(baseType.getOid(), column, fieldDefn);
+                        }
+                    }
+                }
+
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
                 if (jdbcConverter == null) {
                     return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data) : null;

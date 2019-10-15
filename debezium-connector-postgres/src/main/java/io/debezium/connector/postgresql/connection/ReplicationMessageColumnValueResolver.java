@@ -40,6 +40,10 @@ public class ReplicationMessageColumnValueResolver {
             return null;
         }
 
+        if (!type.isBaseType()) {
+            return resolveValue(columnName, type.getBaseType(), fullType, value, connection, includeUnknownDatatypes);
+        }
+
         if (type.isArrayType()) {
             try {
                 final String dataString = value.asString();

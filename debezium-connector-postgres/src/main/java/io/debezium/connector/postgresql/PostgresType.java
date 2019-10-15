@@ -19,25 +19,29 @@ import org.postgresql.core.TypeInfo;
  */
 public class PostgresType {
 
-    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, null);
+    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, null, null, null);
 
     private final String name;
     private final int oid;
     private final int jdbcId;
+    private final PostgresType baseType;
     private final PostgresType elementType;
     private final TypeInfo typeInfo;
+    private final int modifiers;
 
-    public PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo) {
-        this(name, oid, jdbcId, typeInfo, null);
+    public PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
+        this(name, oid, jdbcId, TypeRegistry.NO_TYPE_MODIFIER, typeInfo, baseType, elementType);
     }
 
-    public PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, PostgresType elementType) {
+    public PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
         this.jdbcId = jdbcId;
-        this.elementType = elementType;
         this.typeInfo = typeInfo;
+        this.baseType = baseType;
+        this.elementType = elementType;
+        this.modifiers = modifiers;
     }
 
     /**
@@ -45,6 +49,13 @@ public class PostgresType {
      */
     public boolean isArrayType() {
         return elementType != null;
+    }
+
+    /**
+     * @return true if this type is a base type
+     */
+    public boolean isBaseType() {
+        return baseType == null;
     }
 
     /**
@@ -81,18 +92,29 @@ public class PostgresType {
 
     /**
      *
+     * @return the base postgres type this type is based upon
+     */
+    public PostgresType getBaseType() {
+        return baseType;
+    }
+
+    /**
+     *
      * @return the default length of the type
      */
-    public int getDefaultLength() {
-        if (typeInfo == null) {
-            return TypeRegistry.UNKNOWN_LENGTH;
-        }
-        int size = typeInfo.getPrecision(oid, TypeRegistry.NO_TYPE_MODIFIER);
-        if (size == 0) {
-            size = typeInfo.getDisplaySize(oid, TypeRegistry.NO_TYPE_MODIFIER);
-        }
-        return size;
-    }
+   public int getDefaultLength() {
+       if (typeInfo == null) {
+           return TypeRegistry.UNKNOWN_LENGTH;
+       }
+       if (modifiers == TypeRegistry.NO_TYPE_MODIFIER && baseType != null) {
+           return baseType.getDefaultLength();
+       }
+       int size = typeInfo.getPrecision(oid, modifiers);
+       if (size == 0) {
+           size = typeInfo.getDisplaySize(oid, modifiers);
+       }
+       return size;
+   }
 
     /**
      *
@@ -102,7 +124,10 @@ public class PostgresType {
         if (typeInfo == null) {
             return TypeRegistry.UNKNOWN_LENGTH;
         }
-        return typeInfo.getScale(oid, TypeRegistry.NO_TYPE_MODIFIER);
+        if (modifiers == TypeRegistry.NO_TYPE_MODIFIER && baseType != null) {
+            return baseType.getDefaultScale();
+        }
+        return typeInfo.getScale(oid, modifiers);
     }
 
     /**
@@ -179,7 +204,7 @@ public class PostgresType {
 
     @Override
     public String toString() {
-        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", defaultLength=" + getDefaultLength()
-                + ", defaultScale=" + getDefaultScale() + ", elementType=" + elementType + "]";
+        return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", modifiers=" + modifiers + ", defaultLength=" + getDefaultLength()
+                + ", defaultScale=" + getDefaultScale() + ", baseType=" + baseType + ", elementType=" + elementType + "]";
     }
 }
