@@ -1070,7 +1070,7 @@ public final class Strings {
                 if (part.length() == 0) {
                     continue;
                 }
-                parts.add(part.replace("\\,", ","));
+                parts.add(part.trim().replace("\\,", ","));
             }
 
             return parts.toArray(new String[parts.size()]);

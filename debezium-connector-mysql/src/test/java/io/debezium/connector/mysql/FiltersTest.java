@@ -189,6 +189,15 @@ public class FiltersTest {
     }
 
     @Test
+    @FixFor("DBZ-1546")
+    public void shouldAllowTableListedWithWhitespaceCharactersInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
+        filters = build.includeTables("connector_test.table1, connector_test.table2").createFilters();
+        assertTableIncluded("connector_test.table1");
+        assertTableIncluded("connector_test.table2");
+        assertTableExcluded("connector_test.table3");
+    }
+
+    @Test
     public void shouldAllowTableListedWithMultipleRegexInWhitelistAndNoTableBlacklistWhenDatabaseIncluded() {
         filters = build.includeTables("connector_test.table[x]?1,connector_test[.](.*)2").createFilters();
         assertTableIncluded("connector_test.table1");

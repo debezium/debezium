@@ -724,6 +724,37 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1546")
+    public void shouldRemoveWhiteSpaceChars() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT +
+                "CREATE TABLE s1.b (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.b (aa) VALUES (123);";
+
+        String tableWhitelistWithWhitespace = "s1.a, s1.b";
+
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, tableWhitelistWithWhitespace);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("s1.b"));
+        assertThat(records.size()).isEqualTo(1);
+
+        SourceRecord record = records.get(0);
+        VerifyRecord.isValidRead(record, PK_FIELD, 1);
+
+        String sourceTable = ((Struct) record.value()).getStruct("source").getString("table");
+        assertThat(sourceTable).isEqualTo("b");
+    }
+
+    @Test
     @FixFor("DBZ-878")
     public void shouldReplaceInvalidTopicNameCharacters() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +

@@ -993,6 +993,33 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-683")
+    public void shouldHandleWhitelistedTables() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tables = String.format("%s.customers, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, tables)
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, ".*")
+                .build();
+
+        dropDatabases();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        // Two databases
+        // SET + USE + DROP DB + CREATE DB + 4 tables (2 whitelisted) (DROP + CREATE) TABLE
+        // USE + DROP DB + CREATE DB + (DROP + CREATE) TABLE
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 2 + 2 * 4 + 1 + 2 + 2);
+        // Records for one of the databases only
+        assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(1 + 2 + 2 * 4);
+        stopConnector();
+    }
+
     private void dropDatabases() throws SQLException {
         try (MySQLConnection db = MySQLConnection.forTestDatabase("mysql");) {
             try (JdbcConnection connection = db.connect()) {
