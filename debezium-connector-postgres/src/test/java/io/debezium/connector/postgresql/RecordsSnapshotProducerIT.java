@@ -13,6 +13,7 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -22,7 +23,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
@@ -478,6 +481,41 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.mv_real_table", schemaAndValueForMaterializedViewBaseType());
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-1413")
+    public void shouldGenerateSnapshotForDataTypeAlias() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE DOMAIN float83 AS numeric(8,3) DEFAULT 0.0;");
+        TestHelper.execute("CREATE DOMAIN money2 AS MONEY DEFAULT 0.0;");
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, salary money, salary2 money2, a numeric(8,3), area float83, PRIMARY KEY(pk));");
+        TestHelper.execute("INSERT INTO alias_table (salary, salary2, a, area) values (7.25, 8.25, 12345.123, 12345.123);");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                                      .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                                      .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                                      .with("column.propagate.source.type", "public.alias_table.area"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // Specifying alias money2 results in JDBC type '2001' for 'salary2'
+        // Specifying money results in JDBC type '8' for 'salary'
+
+        consumer.process(record ->assertReadRecord(record, Collect.hashMapOf("public.alias_table", schemaAndValueForMoneyAliasType())));
+    }
+
+    private List<SchemaAndValueField> schemaAndValueForMoneyAliasType() {
+        return Arrays.asList(
+                new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), BigDecimal.valueOf(7.25)),
+                new SchemaAndValueField("salary2", Decimal.builder(2).optional().build(), BigDecimal.valueOf(8.25)),
+                new SchemaAndValueField("a", SchemaBuilder.float64().optional().build(), 12345.123),
+                new SchemaAndValueField("area", SchemaBuilder.float64().optional()
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "FLOAT83")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2147483647")
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), 12345.123));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {

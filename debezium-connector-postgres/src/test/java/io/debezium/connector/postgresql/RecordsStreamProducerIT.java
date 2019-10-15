@@ -57,6 +57,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Stopwatch;
@@ -842,7 +843,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldReceiveNumericTypeAsDouble() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
-        startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.DOUBLE));
+        startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE));
 
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, 1, schemasAndValuesForDoubleEncodedNumericTypes());
     }
@@ -852,7 +853,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     public void shouldReceiveNumericTypeAsString() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
-        startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, PostgresConnectorConfig.DecimalHandlingMode.STRING));
+        startConnector(config -> config.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING));
 
         assertInsert(INSERT_NUMERIC_DECIMAL_TYPES_STMT, 1, schemasAndValuesForStringEncodedNumericTypes());
     }
@@ -1456,6 +1457,80 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("TRUNCATE TABLE public.test_table;");
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
         assertTrue(consumer.isEmpty());
+    }
+
+    @Test
+    @FixFor("DBZ-1413")
+    public void shouldStreamChangesForDataTypeAlias() throws Exception {
+        TestHelper.execute("CREATE DOMAIN money2 AS money DEFAULT 0.0;");
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, salary2 money2, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                               .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                               .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                               .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table"),
+                       false
+        );
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO alias_table (data, salary, salary2) values ('hello', 7.25, 8.25);");
+
+        SourceRecord rec = assertRecordInserted("public.alias_table", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "alias_table");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("data", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "hello"),
+                new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), new BigDecimal(7.25)),
+                new SchemaAndValueField("salary2", Decimal.builder(2).optional().build(), new BigDecimal(8.25))
+        );
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1413")
+    public void shouldStreamChangesForDomainAliasAlterTable() throws Exception {
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, data VARCHAR(50), salary money, PRIMARY KEY(pk));");
+        startConnector(config -> config
+                               .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                               .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                               .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                               .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table")
+                               .with("column.propagate.source.type", "public.alias_table.salary3"),
+                       false
+        );
+
+        waitForStreamingToStart();
+
+        // Now that streaming has started, alter the table schema
+        TestHelper.execute("CREATE DOMAIN money2 AS money DEFAULT 0.0;");
+        TestHelper.execute("CREATE DOMAIN money3 AS numeric(8,3) DEFAULT 0.0;");
+        TestHelper.execute("ALTER TABLE alias_table ADD COLUMN salary2 money2 NOT NULL");
+        TestHelper.execute("ALTER TABLE alias_table ADD COLUMN salary3 money3 NOT NULL");
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO alias_table (data, salary, salary2, salary3) values ('hello', 7.25, 8.25, 123.456);");
+
+        SourceRecord rec = assertRecordInserted("public.alias_table", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "alias_table");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("data", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "hello"),
+                new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), new BigDecimal(7.25)),
+                new SchemaAndValueField("salary2", Decimal.builder(2).build(), new BigDecimal(8.25)),
+                new SchemaAndValueField("salary3", SchemaBuilder.float64()
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY3")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2147483647")
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), 123.456)
+        );
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
     }
 
     private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart)
