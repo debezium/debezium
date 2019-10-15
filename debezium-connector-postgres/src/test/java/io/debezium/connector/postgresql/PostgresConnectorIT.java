@@ -810,7 +810,52 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             }
         }
         // Theoretically the LSN should change for each record but in reality there can be
-        // unfortunate timings so let's suppose the chane will happen in 75 % of cases
+        // unfortunate timings so let's suppose the change will happen in 75 % of cases
+        Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
+    }
+
+    @Test
+    @FixFor("DBZ-892")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason ="Only wal2json decoder emits empty events and passes them to streaming source")
+    public void shouldFlushLsnOnEmptyMessage() throws InterruptedException, SQLException {
+        final String DDL_STATEMENT = "CREATE TEMPORARY TABLE xx(id INT);";
+
+        final int recordCount = 10;
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                                         .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                                         .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1.a")
+                                         .with(Heartbeat.HEARTBEAT_INTERVAL, 1_000)
+                                         .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+        // there shouldn't be any snapshot records
+        assertNoRecordsToConsume();
+
+        final Set<String> flushLsn = new HashSet<>();
+        TestHelper.execute(INSERT_STMT);
+        final SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+        assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
+
+        try (final PostgresConnection connection = TestHelper.create()) {
+            flushLsn.add(getConfirmedFlushLsn(connection));
+            for (int i = 0; i < recordCount; i++) {
+                TestHelper.execute(DDL_STATEMENT);
+
+                // Wait max 2 seconds for LSN change
+                try {
+                    Awaitility.await().atMost(Duration.FIVE_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                }
+                catch (ConditionTimeoutException e) {
+                    // We do not require all flushes to succeed in time
+                }
+            }
+        }
+        // Theoretically the LSN should change for each record but in reality there can be
+        // unfortunate timings so let's suppose the change will happen in 75 % of cases
         Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
