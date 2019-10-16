@@ -74,6 +74,16 @@ public interface DatabaseHistory {
                                                         + "from processing and storing into schema history evolution.")
                                                 .withValidation(Field::isListOfRegex);
 
+    public static final Field USE_CATALOG_BEFORE_SCHEMA = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "use.catalog.before.schema")
+            .withDisplayName("Parse tables as catalog.table or schema.table")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("true if the parsed string for a table contains only 2 items and the first should be used as " + 
+                             "the catalog and the second as the table name, or false if the first should be used as the schema and the " + 
+                             "second as the table name")
+            .withDefault(true);
+    
     /**
      * Configure this instance.
      *
