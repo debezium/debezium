@@ -80,12 +80,12 @@ public interface Snapshotter {
         String lineSeparator = System.lineSeparator();
         StringBuilder statements = new StringBuilder();
         statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
-        // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
+        // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
         // this does not prevent writes to the table, but prevents changes to the table's schema....
         // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
         tableIds.forEach(tableId -> statements.append("LOCK TABLE ")
                 .append(tableId.toDoubleQuotedString())
-                .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
+                .append(" IN ACCESS SHARE MODE;")
                 .append(lineSeparator));
         return Optional.of(statements.toString());
     }
