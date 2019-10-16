@@ -216,6 +216,33 @@ The PostgreSQL connector can be used with a standalone PostgreSQL server or with
 
 As mentioned link:#limitations[in the beginning], PostgreSQL (for all versions <= 12) only supports logical replication slots on `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the Debezium PostgreSQL Connector can only connect and communicate with the primary server. Should this server fail, the connector will stop. When the cluster is repaired, if the original primary server is once again promoted to `primary`, the connector can simply be restarted. However, if a different PostgreSQL server _with the plugin and proper configuration_ is promoted to `primary`, the connector configuration must be changed to point to the new `primary` server and then can be restarted.
 
+[[wal-disk-space]]
+== WAL Disk Space Consumption
+In certain cases, it is possible that PostgreSQL disk space consumed by WAL file either experiences spikes or increases out of usual proportions.
+Three reasons that explain the situation
+
+ * Debezium regularly confirms LSN of processed events to the database.
+This is visible as `confirmed_flush_lsn` in `pg_replication_slots` slots table.
+The database is responsible for reclaiming the disk space and the WAL size can be calculated from `restart_lsn` of the same table.
+So if the `confirmed_flush_lsn` is regularly increasing and `restart_lsn` lags then the database does need to reclaim the space.
+Disk space is usually reclaimed in batch blocks so this is expected behaviour and no action on a user's side is necessary.
+ * There are many updates in a monitored database but only minuscule amount relates to the monitored tables and/or schemas.
+This situation can be easily solved by enabling periodic heartbeat events using `heartbeat.interval.ms` configuration option
+ * The PostgreSQL instance contains multiple databases where one of them is a high-traffic database.
+ Debezium monitors another database that is low-traffic in comparison to the other one.
+ Debezium then cannot confirm the LSN as replication slot works per-database and Debezium is not invoked.
+ As WAL is shared by all databases it tends to grow until an event is emitted by the database monitored by Debezium.
+
+To overcome the third cause it is necessary to
+
+ * enable periodic heartbeat record generation using `heartbeat.interval.ms` configuration option
+ * regularly emit change events by Debezium monitored database
+ ** In the case of `wal2json` decoder plugin, it is sufficient to generate empty events.
+ This can be achieved for example by truncating an empty temporary table.
+ ** For other decoder plug-ins, it is recommended to create a supplementary table that is not monitored by Debezium.
+ A separate process would then periodically update the table (either inserting a new event or updating the same row all over).
+ PostgreSQL then will invoke Debezium which will confirm the lastest LSN and allow the database to reclaim the WAL space.
+
 [[how-the-postgresql-connector-works]]
 == How the PostgreSQL connector works
 
