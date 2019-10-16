@@ -252,7 +252,7 @@ To overcome the third cause it is necessary to
 Most PostgreSQL servers are configured to not retain the complete history of the database in the WAL segments, so the PostgreSQL connector would be unable to see the entire history of the database by simply reading the WAL. So, by default the connector will upon first startup perform an initial _consistent snapshot_ of the database. Each snapshot consists of the following steps (when using the builtin snapshot modes, *custom* snapshot modes may override this):
 
 1. Start a transaction with a https://www.postgresql.org/docs/current/static/sql-set-transaction.html[SERIALIZABLE, READ ONLY, DEFERRABLE] isolation level to ensure that all subsequent reads within this transaction are done against a single consistent version of the data. Any changes to the data due to subsequent `INSERT`, `UPDATE`, and `DELETE` operations by other clients will not be visible to this transaction.
-2. Obtain a `SHARE UPDATE EXCLUSIVE MODE` lock on each of the monitored tables to ensure that no structural changes can occur to any of the tables while the snapshot is taking place. Note that these locks do not prevent table `INSERTS`, `UPDATES` and `DELETES` from taking place during the operation.  _This step is omitted when using the exported snapshot mode to allow for a lock-free snapshots_.
+2. Obtain a `ACCESS SHARE MODE` lock on each of the monitored tables to ensure that no structural changes can occur to any of the tables while the snapshot is taking place. Note that these locks do not prevent table `INSERTS`, `UPDATES` and `DELETES` from taking place during the operation.  _This step is omitted when using the exported snapshot mode to allow for a lock-free snapshots_.
 3. Read the current position in the server's transaction log.
 4. Scan all of the database tables and schemas, and generate a `READ` event for each row and write that event to the appropriate table-specific Kafka topic.
 5. Commit the transaction.
@@ -345,12 +345,12 @@ public interface Snapshotter {
         String lineSeparator = System.lineSeparator();
         StringBuilder statements = new StringBuilder();
         statements.append("SET lock_timeout = ").append(lockTimeout.toMillis()).append(";").append(lineSeparator);
-        // we're locking in SHARE UPDATE EXCLUSIVE MODE to avoid concurrent schema changes while we're taking the snapshot
+        // we're locking in ACCESS SHARE MODE to avoid concurrent schema changes while we're taking the snapshot
         // this does not prevent writes to the table, but prevents changes to the table's schema....
         // DBZ-298 Quoting name in case it has been quoted originally; it doesn't do harm if it hasn't been quoted
         tableIds.forEach(tableId -> statements.append("LOCK TABLE ")
                 .append(tableId.toDoubleQuotedString())
-                .append(" IN SHARE UPDATE EXCLUSIVE MODE;")
+                .append(" IN ACCESS SHARE MODE;")
                 .append(lineSeparator));
         return Optional.of(statements.toString());
     }
