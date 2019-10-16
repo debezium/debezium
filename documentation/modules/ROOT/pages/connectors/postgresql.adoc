@@ -218,25 +218,25 @@ As mentioned link:#limitations[in the beginning], PostgreSQL (for all versions <
 
 [[wal-disk-space]]
 == WAL Disk Space Consumption
-In certain cases, it is possible that PostgreSQL disk space consumed by WAL file either experiences spikes or increases out of usual proportions.
-Three reasons that explain the situation
+In certain cases, it is possible that PostgreSQL disk space consumed by WAL files either experiences spikes or increases out of usual proportions.
+There are three potential reasons that explain the situation:
 
  * Debezium regularly confirms LSN of processed events to the database.
-This is visible as `confirmed_flush_lsn` in `pg_replication_slots` slots table.
+This is visible as `confirmed_flush_lsn` in the `pg_replication_slots` slots table.
 The database is responsible for reclaiming the disk space and the WAL size can be calculated from `restart_lsn` of the same table.
 So if the `confirmed_flush_lsn` is regularly increasing and `restart_lsn` lags then the database does need to reclaim the space.
 Disk space is usually reclaimed in batch blocks so this is expected behaviour and no action on a user's side is necessary.
- * There are many updates in a monitored database but only minuscule amount relates to the monitored tables and/or schemas.
-This situation can be easily solved by enabling periodic heartbeat events using `heartbeat.interval.ms` configuration option
+ * There are many updates in a monitored database but only a minuscule amount relates to the monitored table(s) and/or schema(s).
+This situation can be easily solved by enabling periodic heartbeat events using `heartbeat.interval.ms` configuration option.
  * The PostgreSQL instance contains multiple databases where one of them is a high-traffic database.
  Debezium monitors another database that is low-traffic in comparison to the other one.
- Debezium then cannot confirm the LSN as replication slot works per-database and Debezium is not invoked.
+ Debezium then cannot confirm the LSN as replication slots work per-database and Debezium is not invoked.
  As WAL is shared by all databases it tends to grow until an event is emitted by the database monitored by Debezium.
 
 To overcome the third cause it is necessary to
 
- * enable periodic heartbeat record generation using `heartbeat.interval.ms` configuration option
- * regularly emit change events by Debezium monitored database
+ * enable periodic heartbeat record generation using the `heartbeat.interval.ms` configuration option
+ * regularly emit change events from the database tracked by Debezium
  ** In the case of `wal2json` decoder plugin, it is sufficient to generate empty events.
  This can be achieved for example by truncating an empty temporary table.
  ** For other decoder plug-ins, it is recommended to create a supplementary table that is not monitored by Debezium.
