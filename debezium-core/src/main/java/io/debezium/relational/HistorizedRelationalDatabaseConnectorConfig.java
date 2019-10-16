@@ -27,6 +27,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 public abstract class HistorizedRelationalDatabaseConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
+    private boolean useCatalogBeforeSchema;
 
     /**
      * The database history class is hidden in the {@link #configDef()} since that is designed to work with a user interface,
@@ -43,12 +44,14 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter) {
+    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, boolean useCatalogBeforeSchema) {
         super(config, logicalName, systemTablesFilter, TableId::toString, DEFAULT_SNAPSHOT_FETCH_SIZE);
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper) {
+    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper, boolean useCatalogBeforeSchema) {
         super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE);
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
     /**
@@ -70,7 +73,7 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                 .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
-        databaseHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(this)); // validates
+        databaseHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(this), useCatalogBeforeSchema); // validates
 
         return databaseHistory;
     }

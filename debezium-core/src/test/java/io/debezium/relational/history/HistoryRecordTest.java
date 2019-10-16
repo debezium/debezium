@@ -66,7 +66,7 @@ public class HistoryRecordTest {
         assertThat(deserialized.ddl()).isEqualTo(ddl);
 
         System.out.println(record);
-        assertThat((Object) TableChanges.fromArray(deserialized.tableChanges())).isEqualTo(tableChanges);
+        assertThat((Object) TableChanges.fromArray(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
 
     }
 }

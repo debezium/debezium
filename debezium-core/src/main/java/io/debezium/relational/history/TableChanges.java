@@ -36,11 +36,16 @@ public class TableChanges implements Iterable<TableChange> {
         this.changes = new ArrayList<>();
     }
 
-    public static TableChanges fromArray(Array array) {
+    /**
+     * useCatalogBeforeSchema is true if the parsed string contains only 2 items and the first should be used as
+     * the catalog and the second as the table name, or false if the first should be used as the schema and the
+     * second as the table name
+     */
+    public static TableChanges fromArray(Array array, boolean useCatalogBeforeSchema) {
         TableChanges tableChanges = new TableChanges();
 
         for (Entry entry : array) {
-            TableChange change = TableChange.fromDocument(entry.getValue().asDocument());
+            TableChange change = TableChange.fromDocument(entry.getValue().asDocument(), useCatalogBeforeSchema);
 
             if (change.getType() == TableChangeType.CREATE) {
                 tableChanges.create(change.table);
@@ -118,9 +123,9 @@ public class TableChanges implements Iterable<TableChange> {
             this.id = table.id();
         }
 
-        public static TableChange fromDocument(Document document) {
+        public static TableChange fromDocument(Document document, boolean useCatalogBeforeSchema) {
             TableChangeType type = TableChangeType.valueOf(document.getString("type"));
-            TableId id = TableId.parse(document.getString("id"));
+            TableId id = TableId.parse(document.getString("id"), useCatalogBeforeSchema);
             Table table = null;
 
             if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {

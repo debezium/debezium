@@ -73,6 +73,7 @@ public interface DatabaseHistory {
                     + "from processing and storing into schema history evolution.")
             .withValidation(Field::isListOfRegex);
 
+    
     /**
      * Configure this instance.
      *
@@ -81,8 +82,11 @@ public interface DatabaseHistory {
      *            {@link #recover(Map, Map, Tables, DdlParser) recovery}; may be null if the
      *            {@link HistoryRecordComparator#INSTANCE default comparator} is to be used
      * @param listener TODO
+     * @param useCatalogBeforeSchema true if the parsed string for a table contains only 2 items and the first should be used as 
+                             the catalog and the second as the table name, or false if the first should be used as the schema and the 
+                             second as the table name
      */
-    void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener);
+    void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema);
 
     /**
      * Start the history.
