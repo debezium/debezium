@@ -380,7 +380,7 @@ public class Replicator {
             return false;
         }
 
-        if (collections.isEmpty()) {
+        if (collections.isEmpty() && isInitialSyncExpected()) {
             LOGGER.warn("After applying blacklist/whitelist filters there are no tables to monitor, please check your configuration");
         }
 

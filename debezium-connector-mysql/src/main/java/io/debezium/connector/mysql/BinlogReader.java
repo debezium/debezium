@@ -85,6 +85,7 @@ public class BinlogReader extends AbstractReader {
     private static final long MAX_POLL_PERIOD_IN_MILLIS = TimeUnit.HOURS.toMillis(1);
 
     private final boolean recordSchemaChangesInSourceRecords;
+    private final boolean startWithSnapshot;
     private final RecordMakers recordMakers;
     private final SourceInfo source;
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
@@ -170,8 +171,8 @@ public class BinlogReader extends AbstractReader {
      * @param context the task context in which this reader is running; may not be null
      * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
      */
-    public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue) {
-        this(name, context, acceptAndContinue, context.serverId());
+    public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue, boolean startWithSnapshot) {
+        this(name, context, acceptAndContinue, startWithSnapshot, context.serverId());
     }
 
     /**
@@ -182,9 +183,9 @@ public class BinlogReader extends AbstractReader {
      * @param acceptAndContinue see {@link AbstractReader#AbstractReader(String, MySqlTaskContext, Predicate)}
      * @param serverId the server id to use for the {@link BinaryLogClient}
      */
-    public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue, long serverId) {
+    public BinlogReader(String name, MySqlTaskContext context, HaltingPredicate acceptAndContinue, boolean startWithSnapshot, long serverId) {
         super(name, context, acceptAndContinue);
-
+        this.startWithSnapshot = startWithSnapshot;
         connectionContext = context.getConnectionContext();
         source = context.source();
         recordMakers = context.makeRecord();
@@ -300,7 +301,9 @@ public class BinlogReader extends AbstractReader {
 
     @Override
     protected void doStart() {
-        context.dbSchema().assureNonEmptySchema();
+        if (this.startWithSnapshot) {
+            context.dbSchema().assureNonEmptySchema();
+        }
 
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);

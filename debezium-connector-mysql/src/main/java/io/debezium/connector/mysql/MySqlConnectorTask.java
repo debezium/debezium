@@ -204,7 +204,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                                 + "required for this connector to work properly. Change the MySQL configuration to use a "
                                 + "row-level binlog and restart the connector.");
                     }
-                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
+                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null, true);
                     chainedReaderBuilder.addReader(binlogReader);
                 }
             }
@@ -241,6 +241,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                         BinlogReader unifiedBinlogReader = new BinlogReader("binlog",
                                                                             unifiedTaskContext,
                                                                             null,
+                                                            false,
                                                                             serverIdGenerator.getConfiguredServerId());
                         ReconcilingBinlogReader reconcilingBinlogReader = parallelSnapshotReader.createReconcilingBinlogReader(unifiedBinlogReader);
 
@@ -253,7 +254,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 }
                 else {
                     // We're going to start by reading the binlog ...
-                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null);
+                    BinlogReader binlogReader = new BinlogReader("binlog", taskContext, null, false);
                     chainedReaderBuilder.addReader(binlogReader);
                 }
 

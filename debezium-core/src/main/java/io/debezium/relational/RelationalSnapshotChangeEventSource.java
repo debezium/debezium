@@ -92,7 +92,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
         // Neither schema nor data require snapshotting
         if (!snapshottingTask.snapshotSchema() && !snapshottingTask.snapshotData()) {
             LOGGER.debug("Skipping snapshotting");
-            return SnapshotResult.completed(previousOffset);
+            return SnapshotResult.skipped(previousOffset);
         }
 
         delaySnapshotIfNeeded(context);
