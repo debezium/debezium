@@ -2,6 +2,52 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.0.Beta1
+October 17th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12341896)
+
+### New features since 0.10.0.Final
+
+* Provide alternative mapping for INTERVAL [DBZ-1498](https://issues.jboss.org/browse/DBZ-1498)
+* Ensure message keys have correct field order [DBZ-1507](https://issues.jboss.org/browse/DBZ-1507)
+* Image incorrect on Deploying Debezium on OpenShift [DBZ-1545](https://issues.jboss.org/browse/DBZ-1545)
+* Indicate table locking issues in log [DBZ-1280](https://issues.jboss.org/browse/DBZ-1280)
+
+
+### Breaking changes since 0.10.0.Final
+
+The ExtractNewDocumentState and EventRouter SMTs now propagate any heartbeat or schema change messages unchanged instead of dropping them as before. This is to ensure consistency with the ExtractNewRecordState SMT ([DBZ-1513](https://issues.jboss.org/browse/DBZ-1513)).
+
+The new Postgres connector option `interval.handling.mode` allows to control whether `INTERVAL` columns should be exported as microseconds (previous behavior, remains the default) or as ISO 8601 formatted string ([DBZ-1498](https://issues.jboss.org/browse/DBZ-1498)). The following upgrade order must be maintained when existing connectors capture `INTERVAL` columns:
+
+1. Upgrade the Debezium Kafka Connect Postgres connector
+2. Upgrade the logical decoding plug-in installed in the database
+3. (Optionally) switch `interval.handling.mode` to string
+
+In particular it should be avoided to upgrade the logical decoding plug-in before the connector, as this will cause no value to be exported for `INTERVAL` columns.
+
+
+### Fixes since 0.10.0.Final
+
+* Debezium fails to snapshot large databases [DBZ-685](https://issues.jboss.org/browse/DBZ-685)
+* Connector Postgres runs out of disk space [DBZ-892](https://issues.jboss.org/browse/DBZ-892)
+* Debezium-MySQL Connector Fails while parsing AWS RDS internal events [DBZ-1492](https://issues.jboss.org/browse/DBZ-1492)
+* MongoDB ExtractNewDocumentState SMT blocks heartbeat messages [DBZ-1513](https://issues.jboss.org/browse/DBZ-1513)
+* pgoutput string decoding depends on JVM default charset [DBZ-1532](https://issues.jboss.org/browse/DBZ-1532)
+* Whitespaces not stripped from table.whitelist [DBZ-1546](https://issues.jboss.org/browse/DBZ-1546)
+
+
+### Other changes since 0.10.0.Final
+
+* Upgrade to latest JBoss Parent POM [DBZ-675](https://issues.jboss.org/browse/DBZ-675)
+* CheckStyle: Flag missing whitespace [DBZ-1341](https://issues.jboss.org/browse/DBZ-1341)
+* Upgrade to the latest Checkstyle plugin [DBZ-1355](https://issues.jboss.org/browse/DBZ-1355)
+* CheckStyle: no code after closing braces [DBZ-1391](https://issues.jboss.org/browse/DBZ-1391)
+* Add "adopters" file [DBZ-1460](https://issues.jboss.org/browse/DBZ-1460)
+* Add Google Analytics to Antora-published pages [DBZ-1526](https://issues.jboss.org/browse/DBZ-1526)
+* Create 0.10 RPM for postgres-decoderbufs [DBZ-1540](https://issues.jboss.org/browse/DBZ-1540)
+* Postgres documentation fixes [DBZ-1544](https://issues.jboss.org/browse/DBZ-1544)
+
+
 ## 0.10.0.Final
 October 2nd, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12339267)
 
