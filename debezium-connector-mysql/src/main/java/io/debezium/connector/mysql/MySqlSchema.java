@@ -74,6 +74,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     private final HistoryRecordComparator historyComparator;
     private final boolean skipUnparseableDDL;
     private final boolean storeOnlyMonitoredTablesDdl;
+    private boolean recoveredTables;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -131,7 +132,6 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             }
         };
         this.dbHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(configuration), true); // validates
-
     }
 
     private static MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
@@ -248,6 +248,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     public void loadHistory(SourceInfo startingPoint) {
         tables().clear();
         dbHistory.recover(startingPoint.partition(), startingPoint.offset(), tables(), ddlParser);
+        recoveredTables = !tableIds().isEmpty();
         refreshSchemas();
     }
 
@@ -375,5 +376,10 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      */
     public boolean isStoreOnlyMonitoredTablesDdl() {
         return storeOnlyMonitoredTablesDdl;
+    }
+
+    @Override
+    public boolean tableInformationComplete() {
+        return recoveredTables;
     }
 }
