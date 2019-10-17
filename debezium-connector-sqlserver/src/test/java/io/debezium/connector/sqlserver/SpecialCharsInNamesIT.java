@@ -54,26 +54,26 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
     public void shouldParseWhitespaceChars() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.car, dbo.person")
+                .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*, dbo\\.UAT WAG CZ\\$Fixed Prop.*")
                 .build();
 
         connection.execute(
-                "CREATE TABLE car (id int primary key, name varchar(30))",
-                "CREATE TABLE person (id int primary key, name varchar(30))",
-                "INSERT INTO car VALUES(1, 'honda')",
-                "INSERT INTO person VALUES(1, 'Jack')"
+                "CREATE TABLE [UAT WAG CZ$Fixed Asset] (id int primary key, [my col$a] varchar(30))",
+                "CREATE TABLE [UAT WAG CZ$Fixed Prop] (id int primary key, [my col$a] varchar(30))",
+                "INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(1, 'asset')",
+                "INSERT INTO [UAT WAG CZ$Fixed Prop] VALUES(1, 'prop')"
         );
-        TestHelper.enableTableCdc(connection, "car");
+        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset");
         TestHelper.enableTableCdc(connection, "person");
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords actualRecords = consumeRecordsByTopic(2);
-        Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.car")).hasSize(1);
-        Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.person")).hasSize(1);
+        Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
+        Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.UAT_WAG_CZ_Fixed_Prop")).hasSize(1);
 
-        List<SourceRecord> carRecords = actualRecords.recordsForTopic("server1.dbo.car");
+        List<SourceRecord> carRecords = actualRecords.recordsForTopic("server1.dbo.UAT_WAG_CZ_Fixed_Asset");
         Assertions.assertThat(carRecords.size()).isEqualTo(1);
         SourceRecord carRecord = carRecords.get(0);
 
@@ -81,21 +81,21 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 (Struct) ((Struct) carRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.dbo.car.Value")
+                        .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
         );
         assertSchemaMatchesStruct(
                 (Struct) carRecord.key(),
                 SchemaBuilder.struct()
-                        .name("server1.dbo.car.Key")
+                        .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset.Key")
                         .field("id", Schema.INT32_SCHEMA)
                         .build()
         );
-        Assertions.assertThat(((Struct) carRecord.value()).getStruct("after").getString("name")).isEqualTo("honda");
+        Assertions.assertThat(((Struct) carRecord.value()).getStruct("after").getString("my col$a")).isEqualTo("asset");
 
-        List<SourceRecord> personRecords = actualRecords.recordsForTopic("server1.dbo.person");
+        List<SourceRecord> personRecords = actualRecords.recordsForTopic("server1.dbo.UAT_WAG_CZ_Fixed_Prop");
         Assertions.assertThat(personRecords.size()).isEqualTo(1);
         SourceRecord personRecord = personRecords.get(0);
 
@@ -103,19 +103,19 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 (Struct) ((Struct) personRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.dbo.person.Value")
+                        .name("server1.dbo.UAT_WAG_CZ_Fixed_Prop.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("name", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build()
         );
         assertSchemaMatchesStruct(
                 (Struct) personRecord.key(),
                 SchemaBuilder.struct()
-                        .name("server1.dbo.person.Key")
+                        .name("server1.dbo.UAT_WAG_CZ_Fixed_Prop.Key")
                         .field("id", Schema.INT32_SCHEMA)
                         .build()
         );
-        Assertions.assertThat(((Struct) personRecord.value()).getStruct("after").getString("name")).isEqualTo("Jack");
+        Assertions.assertThat(((Struct) personRecord.value()).getStruct("after").getString("my col$a")).isEqualTo("prop");
     }
 
     @Test
