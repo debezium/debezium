@@ -87,9 +87,11 @@ public class ChangeEventSourceCoordinator {
                 SnapshotResult snapshotResult = snapshotSource.execute(context);
                 LOGGER.info("Snapshot ended with {}", snapshotResult);
 
-                schema.assureNonEmptySchema();
+                if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
+                    schema.assureNonEmptySchema();
+                }
 
-                if (running && snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED) {
+                if (running && snapshotResult.isCompletedOrSkipped()) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
                     eventDispatcher.setEventListener(streamingMetrics);
                     streamingMetrics.connected(true);

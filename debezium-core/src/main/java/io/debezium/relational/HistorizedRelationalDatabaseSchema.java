@@ -28,6 +28,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         implements HistorizedDatabaseSchema<TableId> {
 
     private final DatabaseHistory databaseHistory;
+    private boolean recoveredTables;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicSelector<TableId> topicSelector,
                                                  TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
@@ -41,6 +42,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     @Override
     public void recover(OffsetContext offset) {
         databaseHistory.recover(offset.getPartition(), offset.getOffset(), tables(), getDdlParser());
+        recoveredTables = !tableIds().isEmpty();
         for (TableId tableId : tableIds()) {
             buildAndRegisterSchema(tableFor(tableId));
         }
@@ -80,5 +82,10 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     protected void record(SchemaChangeEvent schemaChange, TableChanges tableChanges) {
         databaseHistory.record(schemaChange.getPartition(), schemaChange.getOffset(), schemaChange.getDatabase(),
                 schemaChange.getSchema(), schemaChange.getDdl(), tableChanges);
+    }
+
+    @Override
+    public boolean tableInformationComplete() {
+        return recoveredTables;
     }
 }

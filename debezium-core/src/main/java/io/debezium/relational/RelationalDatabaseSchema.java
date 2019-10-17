@@ -176,4 +176,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     protected TableFilter getTableFilter() {
         return tableFilter;
     }
+
+    @Override
+    public boolean tableInformationComplete() {
+        return false;
+    }
 }

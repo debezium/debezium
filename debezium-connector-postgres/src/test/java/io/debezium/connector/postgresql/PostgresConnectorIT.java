@@ -1285,6 +1285,30 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     }
 
+    @Test
+    @FixFor("DBZ-1519")
+    public void shouldNotIssueWarningForNoMonitoredTablesAfterApplyingFilters() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+        TestHelper.execute(INSERT_STMT);
+        Configuration config = TestHelper.defaultConfig().with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s2").build();
+
+        // Start connector, verify that it does not log no monitored tables warning
+        start(PostgresConnector.class, config);
+        waitForSnapshotToBeCompleted();
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(logInterceptor.containsMessage(NO_MONITORED_TABLES_WARNING)).isFalse();
+        stopConnector();
+
+        // Restart connector, verify it does not log no monitored tables warning
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+        assertThat(logInterceptor.containsMessage(NO_MONITORED_TABLES_WARNING)).isFalse();
+
+        stopConnector();
+    }
+
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {
         String insertStmt = "INSERT INTO text_table(j, jb, x, u) " +
                 "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +

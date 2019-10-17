@@ -285,4 +285,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         LOGGER.debug("Relation '{}' resolved to table '{}'", relationId, tableId);
         return tableFor(tableId);
     }
+
+    @Override
+    public boolean tableInformationComplete() {
+        // PostgreSQL does not support HistorizedDatabaseSchema - so no tables are recovered
+        return false;
+    }
 }
