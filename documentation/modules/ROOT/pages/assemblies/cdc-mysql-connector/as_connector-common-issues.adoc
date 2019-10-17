@@ -1,0 +1,23 @@
+// Metadata created by nebel
+//
+// UserStory: As a Developer, I want to troubleshoot any common issues that may arise with the CDC MySQL connector, so that I can continue development.
+:attributes: _attributes
+:context: cdc
+include::../../{attributes}.adoc[]
+[id="connector-common-issues"]
+= MySQL connector common issues
+
+* xref:configuration-and-startup-errors_{context}[Configuration and startup errors]
+* xref:mysql-is-unavailable_{context}[MySQL is unavailable]
+* xref:kafka-connect-stops_{context}[Kafka Connect stops]
+* xref:mysql-purges-binlog-files_{context}[MySQL purges binlog files]
+
+// ../../modules
+
+include::../../modules/cdc-mysql-connector/r_configuration-and-startup-errors.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/r_mysql-is-unavailable.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/r_kafka-connect-stops.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/r_mysql-purges-binlog-files.adoc[leveloffset=+1]

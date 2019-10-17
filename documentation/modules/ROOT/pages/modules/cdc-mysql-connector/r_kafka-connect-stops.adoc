@@ -1,0 +1,32 @@
+// Metadata created by nebel
+//
+
+[id="kafka-connect-stops_{context}"]
+= Kafka Connect stops
+
+There are three scenarios that cause some issues when Kafka Connect stops:
+
+* <<Kafka Connect stops gracefully>>
+* <<Kafka Connect process crashes>>
+* <<Kafka becomes unavailable>>
+
+== Kafka Connect stops gracefully
+
+When Kafka Connect stops gracefully, there is only a short delay while the {prodname} MySQL connector tasks are stopped and restarted on new Kafka Connect processes.
+
+== Kafka Connect process crashes
+
+If Kafka Connect crashes, the process stops and any {prodname} MySQL connector tasks terminate without their most recently-processed offsets being recorded. In distributed mode, Kafka Connect restarts the connector tasks on other processes. However, the MySQL connector resumes from the last offset recorded by the earlier processes. This means that the replacement tasks may generate some of the same events processed prior to the crash, creating duplicate events.
+
+=====
+TIP: Each change event message includes source-specific information about:
+
+* the event origin
+* the MySQL server's event time
+* the binlog filename and position
+* GTIDs (if used)
+=====
+
+== Kafka becomes unavailable
+
+The Kafka Connect framework records {prodname} change events in Kafka using the Kafka producer API. If the Kafka brokers become unavailable, the {prodname} MySQL connector pauses until the connection is reestablished and the connector resumes where it last left off.

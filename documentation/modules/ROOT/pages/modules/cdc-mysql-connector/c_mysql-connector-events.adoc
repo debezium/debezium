@@ -1,0 +1,395 @@
+// Metadata created by nebel
+//
+[id="mysql-connector-events_{context}"]
+= MySQL connector events
+
+All data change events produced by the {prodname} MySQL connector contain a key and a value. The change event key and the change event value each contain a _schema_ and a _payload_ where the schema describes the structure of the payload and the payload contains the data.
+
+WARNING: The MySQL connector ensures that all Kakfa Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This is important as any character that is not a latin letter or underscore is replaced by an underscore which can lead to unexpected conflicts in schema names when the logical server names, database names, and table names container other characters that are replaced with these underscores.
+
+== Change event key 
+
+For any given table, the change event's key has a structure that contains a field for each column in the `PRIMARY KEY` (or unique constraint) at the time the event was created. Let us look at an example table and then how the schema and payload would appear for the table.
+
+.example table
+[source,sql]
+----
+CREATE TABLE customers (
+  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE KEY
+) AUTO_INCREMENT=1001;
+----
+
+=====
+.example change event key
+[source,json]
+----
+{
+ "schema": { <1>
+    "type": "struct",
+ "name": "mysql-server-1.inventory.customers.Key", <2>
+ "optional": false, <3>
+ "fields": [ <4>
+      {
+        "field": "id",
+        "type": "int32",
+        "optional": false
+      }
+    ]
+  },
+ "payload": { <5>
+    "id": 1001
+  }
+}
+----
+
+
+. `schema` describes what is in the `payload` 
+. `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database and `customers` is the table
+. denotes that the `payload` is not optional
+. specifies the type of fields expected in the `payload`
+. the payload itself which in this case only contains a single `id` field
+
+This key describes the row in the `inventory.customers` table which is out from the connector entitled `mysql-server-1` whose `id` primary key column has a value of `1001`.
+=====
+
+== Change event value
+
+The change event value contains a schema and a payload section. There are three types of change event values which have an envelope structure. The fields in this structure are explained below and marked on each of the change event value examples.
+
+* <<Create change event value>> 
+* <<Update change event value>>
+* <<Delete change event value>>
+
+[cols="1,2,7"]
+|===
+|Item |Field name |Description
+
+|1
+| `name`
+| `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database and `customers` is the table
+
+|2
+|`op`
+a| A *mandatory* string that describes the type of operation.
+
+.values
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (non _initial snapshot_ only)
+
+|3
+|`before`
+| An optional field that specifies the state of the row before the event occurred.
+
+|4
+|`after`
+| An optional field that specifies the state of the row after the event occurred.
+
+|5
+|`source`
+a| A *mandatory* field that describes the source metadata for the event including:
+
+* the {prodname} version
+* the connector name
+* the binlog name where the event was recorded
+* the binlog position
+* the row within the event
+* if the event was part of a snapshot
+* the name of the affected database and table
+* the id of the MySQL thread creating the event (non-snapshot only)
+* the MySQL server ID (if available)
+* timestamp
+
+NOTE: If the xref:assemblies/cdc-mysql-connector/as_setup-the-mysql-server.adoc#enable-query-log-events-for-cdc_{context}[binlog_rows_query_log_events] option is enabled and the connector has the `include.query` option enabled, a `query` field displays which contains the original SQL statement that generated the event.
+
+|6
+|`ts_ms`
+a| An optional field that displays the time at which the connector processed the event.
+
+NOTE: The time is based on the system clock in the JVM running the Kakfa Connect task.
+
+|===
+
+Let us look at an example table and then how the schema and payload would appear for the table. 
+
+.example table
+[source,sql]
+----
+CREATE TABLE customers (
+  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE KEY
+) AUTO_INCREMENT=1001;
+----
+
+=== Create change event value
+
+[source,json]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "mysql-server-1.inventory.customers.Value",
+        "field": "before"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "mysql-server-1.inventory.customers.Value",
+        "field": "after"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "string",
+            "optional": false,
+            "field": "version"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "connector"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "name"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ms"
+          },
+          {
+            "type": "boolean",
+            "optional": true,
+            "default": false,
+            "field": "snapshot"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "db"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "table"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "server_id"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "gtid"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "file"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "pos"
+          },
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "row"
+          },
+          {
+            "type": "int64",
+            "optional": true,
+            "field": "thread"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "query"
+          }
+        ],
+        "optional": false,
+        "name": "io.product.connector.mysql.Source",
+        "field": "source"
+      },
+      {
+        "type": "string",
+        "optional": false,
+        "field": "op"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ms"
+      }
+    ],
+    "optional": false,
+    "name": "mysql-server-1.inventory.customers.Envelope" <1>
+  },
+  "payload": {
+    "op": "c", <2>
+    "ts_ms": 1465491411815,
+    "before": null, <3>
+    "after": { <4>
+      "id": 1004,
+      "first_name": "Anne",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "source": { <5>
+      "version": "0.10.0.Beta4",
+      "connector": "mysql",
+      "name": "mysql-server-1",
+      "ts_ms": 0, <6>
+      "snapshot": false,
+      "db": "inventory",
+      "table": "customers",
+      "server_id": 0,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 154,
+      "row": 0,
+      "thread": 7,
+      "query": "INSERT INTO customers (first_name, last_name, email) VALUES ('Anne', 'Kretchmar', 'annek@noanswer.org')"
+    }
+  }
+}
+----
+
+
+=== Update change event value
+
+[source,json]
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": { <3>
+      "id": 1004,
+      "first_name": "Anne",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "after": { <4>
+      "id": 1004,
+      "first_name": "Anne Marie",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "source": { <5>
+      "version": "0.10.0.Beta4",
+      "name": "mysql-server-1",
+      "connector": "mysql",
+      "name": "mysql-server-1",
+      "ts_ms": 1465581, <6>
+      "snapshot": false,
+      "db": "inventory",
+      "table": "customers",
+      "server_id": 223344,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 484,
+      "row": 0,
+      "thread": 7,
+      "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
+    },
+    "op": "u", <2>
+    "ts_ms": 1465581029523
+  }
+}
+----
+
+
+=== Delete change event value
+
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": { <3>
+      "id": 1004,
+      "first_name": "Anne Marie",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "after": null, <4>
+    "source": { <5>
+      "version": "0.10.0.Beta4",
+      "connector": "mysql",
+      "name": "mysql-server-1",
+      "ts_ms": 1465581, <6>
+      "snapshot": false,
+      "db": "inventory",
+      "table": "customers",
+      "server_id": 223344,
+      "gtid": null,
+      "file": "mysql-bin.000003",
+      "pos": 805,
+      "row": 0,
+      "thread": 7,
+      "query": "DELETE FROM customers WHERE id=1004"
+    },
+    "op": "d", <2>
+    "ts_ms": 1465581902461
+  }
+}
+----
+

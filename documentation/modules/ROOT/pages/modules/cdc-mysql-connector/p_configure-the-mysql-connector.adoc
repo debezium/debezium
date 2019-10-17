@@ -1,0 +1,57 @@
+// Metadata created by nebel
+//
+
+[id="configure-the-mysql-connector_{context}"]
+= Configuring the MySQL connector
+// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
+
+Typically, you configure the {prodname} MySQL connector in a `JSON` file using the configuration properties available for the connector.
+
+.Prerequisites
+* You should have completed the xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#install-the-mysql-connector_{context}[installation process] for the connector.
+
+
+.Procedure
+
+. Set the `"name"` of the connector in the JSON file.
+. Set the configuration properties that you require for your {prodname} MySQL connector.
+
+TIP: For a complete list of configuration properties, see xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+
+.MySQL connector example configuration
+=========
+[source,json]
+----
+{
+  "name": "inventory-connector", <1>
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector", <2>
+    "database.hostname": "192.168.99.100", <3>
+    "database.port": "3306", <4>
+    "database.user": "{prodname}-user", <5> 
+    "database.password": "thePassword", <6>
+    "database.server.id": "184054", <7>
+    "database.server.name": "fullfillment", <8> 
+    "database.whitelist": "inventory", <9>
+    "database.history.kafka.bootstrap.servers": "kafka:9092", <10> 
+    "database.history.kafka.topic": "dbhistory.fullfillment", <11>
+    "include.schema.changes": "true" <12>
+  }
+}
+----
+=========
+
+== Example configuration properties explained
+
+. The connector's name when registered with the Kafka Connect service.
+. The connector's class name.
+. The MySQL server address.
+. The MySQL server port number.
+. The MySQL user with the appropriate privileges.
+. The MySQL user's password.
+. The unique ID of the connector.
+. The logical name of the MySQL server or cluster.
+. A list of all databases hosted by the specified server.
+. A list of Kafka brokers that the connector uses to write and recover DDL statements to the database history topic.
+. The name of the database history topic.
+. The flag that specifies if the connector should generate on the schema change topic named `fulfillment` events with DDL changes that can be used by consumers.
