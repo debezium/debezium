@@ -1,0 +1,304 @@
+// Metadata created by nebel
+//
+
+[id="how-the-mysql-connector-maps-data-types_{context}"]
+= How the MySQL connector maps data types
+
+The {prodname} MySQL connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. The MySQL data type of that column dictates how the value is represented in the event.
+
+Columns that store strings are defined in MySQL with a character set and collation. The MySQL connector uses the column's character set when reading the binary representation of the column values in the binlog events. The following table shows how the connector maps the MySQL data types to both _literal_ and _semantic_ types.
+
+* *literal type* : how the value is represented using Kakfa Connect schema types
+* *semantic type* : how the Kakfa Connect schema captures the meaning of the field (schema name) 
+
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`BOOLEAN, BOOL`
+|`BOOLEAN`
+a| _n/a_
+
+|`BIT(1)`
+|`BOOLEAN`
+a| _n/a_
+
+|`BIT(>1)`
+|`BYTES`
+a| io.debezium.data.Bits
+
+NOTE: The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits.
+
+.example (where n is bits)
+----
+numBytes = n/8 + (n%8== 0 ? 0 : 1)
+----
+
+|`TINYINT`
+|`INT8`
+a| _n/a_
+
+|`SMALLINT[(M)]`
+|`INT16`
+a| _n/a_
+
+|`MEDIUMINT[(M)]`
+|`INT32`
+a| _n/a_
+
+|`INT, INTEGER[(M)]`
+|`INT32`
+a| _n/a_
+
+|`BIGINT[(M)]`
+|`INT64`
+a| _n/a_
+
+|`REAL[(M,D)]`
+|`FLOAT32`
+a| _n/a_
+
+|`FLOAT[(M,D)]`
+|`FLOAT64`
+a| _n/a_
+
+|`DOUBLE[(M,D)]`
+|`FLOAT64`
+a| _n/a_
+
+|`CHAR(M)]`
+|`STRING`
+a| _n/a_
+
+|`VARCHAR(M)]`
+|`STRING`
+a| _n/a_
+
+|`BINARY(M)]`
+|`BYTES`
+a| _n/a_
+
+|`VARBINARY(M)]`
+|`BYTES`
+a| _n/a_
+
+|`TINYBLOB`
+|`BYTES`
+a| _n/a_
+
+|`TINYTEXT`
+|`STRING`
+a| _n/a_
+
+|`BLOB`
+|`BYTES`
+a| _n/a_
+
+|`TEXT`
+|`STRING`
+a| _n/a_
+
+|`MEDIUMBLOB`
+|`BYTES`
+a| _n/a_
+
+|`MEDIUMTEXT`
+|`STRING`
+a| _n/a_
+
+|`LONGBLOB`
+|`BYTES`
+a| _n/a_
+
+|`LONGTEXT`
+|`STRING`
+a| _n/a_
+
+|`JSON`
+|`STRING`
+a| io.debezium.data.Json
+
+NOTE: Contains the string representation of a `JSON` document, array, or scalar.
+
+|`ENUM`
+|`STRING`
+a| io.debezium.data.Enum
+
+NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
+
+|`SET`
+|`STRING`
+a| io.debezium.data.EnumSet
+
+NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
+
+|`YEAR[(2\|4)]`
+|`INT32`
+| io.debezium.time.Year
+
+|`TIMESTAMP[(M)]`
+|`STRING`
+a| io.debezium.time.ZonedTimestamp
+
+NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision. MySQL allows `M` to be in the range of `0-6`.
+
+|===
+
+== Temporal values
+
+Excluding the `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property.
+
+TIP: See xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+
+Temporal values without timezones are converted from UTC to milliseconds or microseconds (`DATETIME`) or to the configured database timezone (`TIMESTAMP`).
+
+* `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
+* `TIMESTAMP` with a value of `2018-06-20 06:37:03` becomes `2018-06-20T13:37:03Z`.
+
+NOTE: MySQL allows zero-values for ``DATE``, ``DATETIME``, and ``TIMESTAMP`` columns, which are sometimes preferred over null values. However, the MySQL connector represents them as null values when the column definition allows nulls, or as the epoch day when the column does not allow nulls.
+
+time.precision.mode=adaptive_time_microseconds(default)::
+    The MySQL connector determins the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database; all time fields are in microseconds.
++
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a| io.debezium.time.Date
+
+NOTE: Represents the number of days since epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a| io.debezium.time.MicroTime
+
+NOTE: Represents the time value in microseconds and does not include timezone information. MySQL allows `M` to be in the range of `0-6`.
+
+|`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
+|`INT64`
+a| io.debezium.time.Timestamp
+
+NOTE: Represents the number of milliseconds past epoch and does not include timezone information.
+
+|`DATETIME(4), DATETIME(5), DATETIME(6)`
+|`INT64`
+a| io.debezium.time.MicroTimestamp
+
+NOTE: Represents the number of microseconds past epoch and does not include timezone information.
+
+|===
++
+
+time.precision.mode=connect::
+    The MySQL connector uses the predefined Kakfa Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`.
++
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a| org.apache.kafka.connect.data.Date
+
+NOTE: Represents the number of days since epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a| org.apache.kafka.connect.data.Time
+
+NOTE: Represents the time value in microseconds since midnight and does not include timezone information.
+
+|`DATETIME[(M)]`
+|`INT64`
+a| org.apache.kafka.connect.data.Timestamp
+
+NOTE: Represents the number of milliseconds since epoch, and does not include timezone information. 
+
+|===
++
+
+
+== Decimal values
+
+Decimals are handled via the `decimal.handling.mode` property.
+
+TIP: See xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+
+decimal.handling.mode=precise::
++
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`BYTES`
+a| org.apache.kafka.connect.data.Decimal
+
+NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`DECIMAL[(M[,D])]`
+|`BYTES`
+a| org.apache.kafka.connect.data.Decimal
+
+NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|===
++
+
+
+decimal.handling.mode=double::
++
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a| _n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a| _n/a_
+
+|===
++
+
+
+decimal.handling.mode=string::
++
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+a| _n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+a| _n/a_
+
+|===
++
+
+
+== Spatial data types
+
+Currently, the {prodname} MySQL connector supports the following spatial data types:
+
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`GEOMETRY, LINESTRING, POLYGON, MULTIPOINT, MULTILINESTRING, MULTIPOLYGON, GEOMETRYCOLLECTION`
+|`STRUCT`
+a| io.debezium.data.geometry.Geometry
+
+NOTE: Contains a structure with two fields:
+
+* `srid (INT32`: a spatial reference system id that defines the type of geometry object stored in the structure
+* `wkb (BYTES)`: a binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format. See the link:https://www.opengeospatial.org/standards/sfa[Open Geospatial Consortium] for more details.
+
+|===
