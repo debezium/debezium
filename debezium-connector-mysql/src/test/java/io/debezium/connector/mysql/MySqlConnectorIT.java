@@ -994,7 +994,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-683")
+    @FixFor("DBZ-1546")
     public void shouldHandleWhitelistedTables() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
 
