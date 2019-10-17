@@ -1,4 +1,4 @@
-= Debezium Connector for MySQL
+= {prodname} Connector for MySQL
 include::../_attributes.adoc[]
 :toc:
 :toc-placement: macro
@@ -8,16 +8,16 @@ include::../_attributes.adoc[]
 
 toc::[]
 
-Debezium's MySQL Connector can monitor and record all of the row-level changes in the databases on a MySQL server or HA MySQL cluster. The first time it connects to a MySQL server/cluster, it reads a consistent snapshot of all of the databases. When that snapshot is complete, the connector continuously reads the changes that were committed to MySQL 5.6 or later and generates corresponding insert, update and delete events. All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
+{prodname}'s MySQL Connector can monitor and record all of the row-level changes in the databases on a MySQL server or HA MySQL cluster. The first time it connects to a MySQL server/cluster, it reads a consistent snapshot of all of the databases. When that snapshot is complete, the connector continuously reads the changes that were committed to MySQL 5.6 or later and generates corresponding insert, update and delete events. All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
 
-As of Debezium 0.4.0, this connector adds preliminary support for https://aws.amazon.com/rds/mysql/[Amazon RDS] and https://aws.amazon.com/rds/aurora/[Amazon Aurora (MySQL compatibility)]. However, due to limitations of these hosted forms of MySQL, the connector retains locks during an initial consistent snapshot link:#snapshots-without-global-read-locks[for the duration of the snapshot].
+As of {prodname} 0.4.0, this connector adds preliminary support for https://aws.amazon.com/rds/mysql/[Amazon RDS] and https://aws.amazon.com/rds/aurora/[Amazon Aurora (MySQL compatibility)]. However, due to limitations of these hosted forms of MySQL, the connector retains locks during an initial consistent snapshot link:#snapshots-without-global-read-locks[for the duration of the snapshot].
 
 [[overview]]
 == Overview
 
 MySQL's http://dev.mysql.com/doc/refman/5.7/en/binary-log.html[_binary log_], or _binlog_, records all operations in the same order they are committed by the database, including changes to the schemas of tables or changes to data stored within the tables. MySQL uses its binlog for replication and recovery.
 
-Debezium's MySQL connector reads MySQL's binary log to understand what and in what order data has changed. It then produces a _change event_ for every row-level insert, update, and delete operation in the binlog, recording all the change events for each table in a separate Kafka topic. Your client applications read the Kafka topics that correspond to the database tables it's interested in following, and react to every row-level event it sees in those topics.
+{prodname}'s MySQL connector reads MySQL's binary log to understand what and in what order data has changed. It then produces a _change event_ for every row-level insert, update, and delete operation in the binlog, recording all the change events for each table in a separate Kafka topic. Your client applications read the Kafka topics that correspond to the database tables it's interested in following, and react to every row-level event it sees in those topics.
 
 MySQL is usually set up to purge the binary logs after some period of time. This means that the binary log won't have the complete history of all changes that have been made to the database. Therefore, when the MySQL connector first connects to a particular MySQL sever or cluster, it starts by performing a link:#snapshot[_consistent snapshot_] of each of the databases. When the connector completes the snapshot, it then starts reading the binlog from the exact point at which the snapshot was made. This way, we start with a consistent view of all of the data, yet continue reading without having lost any of the changes made while the snapshot was being made.
 
@@ -27,7 +27,7 @@ The connector is also very tolerant of failures. As the connector reads the binl
 [[setting-up-mysql]]
 == Setting up MySQL
 
-Before the Debezium MySQL connector can be used to monitor the changes committed on a MySQL server, the server must be set up to use _row-level binary logging_ and have a database user with appropriate privileges. If MySQL is configured to use global transaction identifiers (GTIDs), then the Debezium connector can more easily reestablish connection should one of the MySQL servers fail.
+Before the {prodname} MySQL connector can be used to monitor the changes committed on a MySQL server, the server must be set up to use _row-level binary logging_ and have a database user with appropriate privileges. If MySQL is configured to use global transaction identifiers (GTIDs), then the {prodname} connector can more easily reestablish connection should one of the MySQL servers fail.
 
 The following sections outline in more detail how to set up these features in MySQL.
 
@@ -55,7 +55,7 @@ where:
 
 [TIP]
 ====
-Running a MySQL server with binary logging enabled does slightly reduce performance of the MySQL server, but the benefits generally outweigh the costs. Each binlog reader will also place a small load on the server, so using Debezium is a great way to minimize this load while providing the change events to a large variety and number of consumers.
+Running a MySQL server with binary logging enabled does slightly reduce performance of the MySQL server, but the benefits generally outweigh the costs. Each binlog reader will also place a small load on the server, so using {prodname} is a great way to minimize this load while providing the change events to a large variety and number of consumers.
 ====
 
 [WARNING]
@@ -134,15 +134,15 @@ A MySQL user must be defined that has all of the following permissions on all of
 * http://dev.mysql.com/doc/refman/5.7/en/privileges-provided.html#priv_replication-slave[`REPLICATION SLAVE`] - enables the connector to connect to and read the binlog of its MySQL server; always required for the connector
 * http://dev.mysql.com/doc/refman/5.7/en/privileges-provided.html#priv_replication-client[`REPLICATION CLIENT`] - enables the use of `SHOW MASTER STATUS`, `SHOW SLAVE STATUS`, and `SHOW BINARY LOGS`; always required for the connector
 
-For example, the following statement grants these permissions for a user `debezium` that authenticates with the password `dbz`, where the user can be on any machine:
+For example, the following statement grants these permissions for a user `{prodname}` that authenticates with the password `dbz`, where the user can be on any machine:
 
-    GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium' IDENTIFIED BY 'dbz';
+    GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '{prodname}' IDENTIFIED BY 'dbz';
 
 [WARNING]
 ====
 Choose a good password that is different from what we use above.
 
-Also, the above grant is equivalent to specifying any authenticating client on _any_ hosts, so obviously this is not recommended for production. Instead, in production you would almost certainly limit the replication user to the machine(s) where the MySQL connector is running within a Kafka Connect service, such as `... 'debezium'@'connect.host.acme.com' ...`.
+Also, the above grant is equivalent to specifying any authenticating client on _any_ hosts, so obviously this is not recommended for production. Instead, in production you would almost certainly limit the replication user to the machine(s) where the MySQL connector is running within a Kafka Connect service, such as `... '{prodname}'@'connect.host.acme.com' ...`.
 ====
 
 [IMPORTANT]
@@ -181,19 +181,19 @@ A https://dev.mysql.com/doc/mysql-ha-scalability/en/[variety of high availabilit
 
 A https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-replication-multi-master.html[multi-master MySQL] topology uses one or more MySQL slaves that each replicate from _multiple_ masters. This is a powerful way to aggregate the replication of multiple MySQL clusters, and requires using GTIDs.
 
-As of Debezium 0.3.5, the Debezium MySQL connector can use these multi-master MySQL slaves as sources, and can fail over to _different_ multi-master MySQL slaves as long as thew new slave is caught up to the old slave (e.g., the new slave has all of the transactions that were last seen on the first slave). This works even if the connector is only using a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-master MySQL slave and find the correct position in the binlog.
+As of {prodname} 0.3.5, the {prodname} MySQL connector can use these multi-master MySQL slaves as sources, and can fail over to _different_ multi-master MySQL slaves as long as thew new slave is caught up to the old slave (e.g., the new slave has all of the transactions that were last seen on the first slave). This works even if the connector is only using a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-master MySQL slave and find the correct position in the binlog.
 
 [[hosted-mysql]]
 === Hosted MySQL
 
-As of Debezium 0.4.0, the MySQL connector adds preliminary support for https://aws.amazon.com/rds/mysql/[Amazon RDS] and https://aws.amazon.com/rds/aurora/[Amazon Aurora (MySQL compatibility)]. The connector works as usual when reading the binlog, but in these environments the link:#snapshots-without-global-read-locks[connector does perform snapshots differently]. This is because these hosted forms of MySQL prevent database users from being able to obtain a global read lock, so the only way for the connector to obtain a consistent snapshot is to use table-level locks instead. Unfortunately, table-level locks link:https://dev.mysql.com/doc/refman/5.7/en/lock-tables-and-transactions.html[affect current transactions], and this means that the locks cannot be released until after the connector completes reading all data and commits its transaction.
+As of {prodname} 0.4.0, the MySQL connector adds preliminary support for https://aws.amazon.com/rds/mysql/[Amazon RDS] and https://aws.amazon.com/rds/aurora/[Amazon Aurora (MySQL compatibility)]. The connector works as usual when reading the binlog, but in these environments the link:#snapshots-without-global-read-locks[connector does perform snapshots differently]. This is because these hosted forms of MySQL prevent database users from being able to obtain a global read lock, so the only way for the connector to obtain a consistent snapshot is to use table-level locks instead. Unfortunately, table-level locks link:https://dev.mysql.com/doc/refman/5.7/en/lock-tables-and-transactions.html[affect current transactions], and this means that the locks cannot be released until after the connector completes reading all data and commits its transaction.
 
 
 [[how-it-works]]
 [[how-the-mysql-connector-works]]
 == How the MySQL connector works
 
-This section goes into detail about how the MySQL connector tracks the structure of the tables, performs snapshots, transform binlog events into Debezium change events, where those events are recorded in Kafka, and how the connector behaves when things go wrong.
+This section goes into detail about how the MySQL connector tracks the structure of the tables, performs snapshots, transform binlog events into {prodname} change events, where those events are recorded in Kafka, and how the connector behaves when things go wrong.
 
 [[database-schema-history]]
 === Database schema history
@@ -284,7 +284,7 @@ Note that the _table-level locks are held for nearly all of the consistent snaps
 
 The MySQL connector will typically spend the vast majority of its time reading the binlog of the MySQL server to which it is connected.
 
-As the MySQL connector reads the binlog, it transforms the binary log events into Debezium _create_, _update_, or _delete_ events that include the position in the binlog (including GTIDs if they are used) where the event was found. The MySQL connector forwards these change events to the Kafka Connect framework (running in the same process), which then synchronously writes them to the appropriate Kafka topic. Kafka Connect uses the term _offset_ for the source-specific position information that Debezium includes with each event, and Kafka Connect periodically records the most recent offset in another Kafka topic.
+As the MySQL connector reads the binlog, it transforms the binary log events into {prodname} _create_, _update_, or _delete_ events that include the position in the binlog (including GTIDs if they are used) where the event was found. The MySQL connector forwards these change events to the Kafka Connect framework (running in the same process), which then synchronously writes them to the appropriate Kafka topic. Kafka Connect uses the term _offset_ for the source-specific position information that {prodname} includes with each event, and Kafka Connect periodically records the most recent offset in another Kafka topic.
 
 When Kafka Connect gracefully shuts down, it stops the connectors, flushes all events to Kafka, and records the last offset received from each connector. Upon restart, Kafka Connect reads the last recorded offset for each connector, and starts the connector from that point. The MySQL connector uses the binlog filename, the position in that file, and the GTIDs (if they are enabled in MySQL server) recorded in its offset to request that MySQL send it the binlog events starting just after that position.
 
@@ -324,7 +324,7 @@ Each message written to the schema change topic will have a message key that con
   {
     "schema": {
       "type": "struct",
-      "name": "io.debezium.connector.mysql.SchemaChangeKey",
+      "name": "io.{prodname}.connector.mysql.SchemaChangeKey",
       "optional": false,
       "fields": [
         {
@@ -347,7 +347,7 @@ Meanwhile, the schema change event message's value will contain a structure cont
   {
     "schema": {
       "type": "struct",
-      "name": "io.debezium.connector.mysql.SchemaChangeValue",
+      "name": "io.{prodname}.connector.mysql.SchemaChangeValue",
       "optional": false,
       "fields": [
         {
@@ -363,7 +363,7 @@ Meanwhile, the schema change event message's value will contain a structure cont
         {
           "field": "source",
           "type": "struct",
-          "name": "io.debezium.connector.mysql.Source",
+          "name": "io.{prodname}.connector.mysql.Source",
           "optional": false,
           "fields": [
             {
@@ -440,7 +440,7 @@ Meanwhile, the schema change event message's value will contain a structure cont
       "databaseName": "inventory",
       "ddl": "CREATE TABLE products ( id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, description VARCHAR(512), weight FLOAT ); ALTER TABLE products AUTO_INCREMENT = 101;",
       "source" : {
-        "version": "{debezium-version}",
+        "version": "{{prodname}-version}",
         "name": "mysql-server-1",
         "server_id": 0,
         "ts_sec": 0,
@@ -479,12 +479,12 @@ Starting with Kafka 0.10, Kafka can optionally record with the message key and v
 
 [WARNING]
 ====
-As of Debezium 0.3, the Debezium MySQL connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and table names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
+As of {prodname} 0.3, the {prodname} MySQL connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and table names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
 
 This can lead to unexpected conflicts in schemas names when the logical server name, database names, and table names contain other characters, and the only distinguishing characters between table full names are invalid and thus replaced with underscores.
 ====
 
-Debezium and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time. This could be difficult for consumers to deal with, so to make it very easy Kafka Connect makes each event self-contained. Every message key and value has two parts: a _schema_ and _payload_. The schema describes the structure of the payload, while the payload contains the actual data.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time. This could be difficult for consumers to deal with, so to make it very easy Kafka Connect makes each event self-contained. Every message key and value has two parts: a _schema_ and _payload_. The schema describes the structure of the payload, while the payload contains the actual data.
 
 [[change-events-key]]
 ==== Change event's key
@@ -541,12 +541,12 @@ If the table does not have a primary or unique key, then the change event's key 
 [[change-events-value]]
 ==== Change event's value
 
-The value of the change event message is a bit more complicated. Like the key message, it has a _schema_ section and _payload_ section. Starting with Debezium 0.2, the payload section of every change event value produced by the MySQL connector has an _envelope_ structure with the following fields:
+The value of the change event message is a bit more complicated. Like the key message, it has a _schema_ section and _payload_ section. Starting with {prodname} 0.2, the payload section of every change event value produced by the MySQL connector has an _envelope_ structure with the following fields:
 
 * `op` is a mandatory field that contains a string value describing the type of operation. Values for the MySQL connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a non-initial snapshot).
 * `before` is an optional field that if present contains the state of the row _before_ the event occurred. The structure will  be described by the `mysql-server-1.inventory.customers.Value` Kafka Connect schema, which the `mysql-server-1` connector uses for all rows in the `inventory.customers` table.
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `mysql-server-1.inventory.customers.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of MySQL contains several fields: the Debezium version, the connector name, the name of the binlog file where the event was recorded, the position in that binlog file where the event appeared, the row within the event (if there is more than one), whether this event was part of a snapshot, name of the affected database and table, id of the MySQL thread creating the event (non-snapshot events only), and if available the MySQL server ID, and the timestamp in seconds.  For non-snapshot events, if the MySQL server has the link:#enabling-query-log-events-optional[binlog_rows_query_log_events] option enabled, and the connector is configured with the `include.query` option enabled, the query field will contain the original SQL statement that generated the event.
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of MySQL contains several fields: the {prodname} version, the connector name, the name of the binlog file where the event was recorded, the position in that binlog file where the event appeared, the row within the event (if there is more than one), whether this event was part of a snapshot, name of the affected database and table, id of the MySQL thread creating the event (non-snapshot events only), and if available the MySQL server ID, and the timestamp in seconds.  For non-snapshot events, if the MySQL server has the link:#enabling-query-log-events-optional[binlog_rows_query_log_events] option enabled, and the connector is configured with the `include.query` option enabled, the query field will contain the original SQL statement that generated the event.
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
@@ -692,7 +692,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           }
         ],
         "optional": false,
-        "name": "io.debezium.connector.mysql.Source",
+        "name": "io.{prodname}.connector.mysql.Source",
         "field": "source"
       },
       {
@@ -720,7 +720,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
       "email": "annek@noanswer.org"
     },
     "source": {
-      "version": "{debezium-version}",
+      "version": "{{prodname}-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 0,
@@ -776,7 +776,7 @@ Here's that new event's _value_ formatted to be easier to read:
       "email": "annek@noanswer.org"
     },
     "source": {
-      "version": "{debezium-version}",
+      "version": "{{prodname}-version}",
       "name": "mysql-server-1",
       "connector": "mysql",
       "name": "mysql-server-1",
@@ -804,13 +804,13 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 * The `before` field now has the state of the row with the values before the database commit
 * The `after` field now has the updated state of the row, and here was can see that the `first_name` value is now `Anne Marie`.
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the binlog.
-* The `ts_ms` shows the timestamp that Debezium processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 There are several things we can learn by just looking at this `payload` section. We can compare the `before` and `after` structures to determine what actually changed in this row because of the commit. The `source` structure tells us information about MySQL's record of this change (providing traceability), but more importantly this has information we can compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events.
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so Debezium will output _three_ events: a `DELETE` event and link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[delete-events]]
@@ -829,7 +829,7 @@ So far we've seen samples of _create_ and _update_ events. Now, let's look at th
     },
     "after": null,
     "source": {
-      "version": "{debezium-version}",
+      "version": "{{prodname}-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
       "ts_ms": 1465581,
@@ -856,14 +856,14 @@ If we look at the `payload` portion, we see a number of differences compared wit
 * The `before` field now has the state of the row that was deleted with the database commit
 * The `after` field is null, signifying that the row no longer exists
 * The `source` field structure has many of the same values as before, except the `ts_sec` and `pos` fields have changed (and the `file` might have changed in other circumstances).
-* The `ts_ms` shows the timestamp that Debezium processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 This event gives a consumer all kinds of information that it can use to process the removal of this row. We include the old values so that some consumers might require them in order to properly handle the removal, and without it they may have to resort to far more complex behavior.
 
 The MySQL connector's events are designed to work with https://cwiki.apache.org/confluence/display/KAFKA/Log+Compaction[Kafka log compaction], which allows for the removal of some older messages as long as at least the most recent message for every key is kept. This allows Kafka to reclaim storage space while ensuring the topic contains a complete dataset and can be used for reloading key-based state.
 
 [[tombstone-events]]
-When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key. But only if the message value is null will Kafka know that it can remove _all messages_ with that same key. To make this possible, Debezium's MySQL connector always follows _delete_ event with a special _tombstone_ event that has the same key but null value.
+When a row is deleted, the _delete_ event value listed above still works with log compaction, since Kafka can still remove all earlier messages with that same key. But only if the message value is null will Kafka know that it can remove _all messages_ with that same key. To make this possible, {prodname}'s MySQL connector always follows _delete_ event with a special _tombstone_ event that has the same key but null value.
 
 [[data-types]]
 === Data types
@@ -891,7 +891,7 @@ The following table describes how the connector maps each of the MySQL data type
 
 |`BIT( > 1)`
 |`BYTES`
-|`io.debezium.data.Bits`
+|`io.{prodname}.data.Bits`
 |The `length` schema parameter contains an integer representing the number of bits. The resulting `byte[]` will contain the bits in little-endian form and will be sized to contain at least the specified number of bits (e.g., `numBytes = n/8 + (n%8== 0 ? 0 : 1)` where `n` is the number of bits).
 
 |`TINYINT`
@@ -996,27 +996,27 @@ The following table describes how the connector maps each of the MySQL data type
 
 |`JSON`
 |`STRING`
-|`io.debezium.data.Json`
+|`io.{prodname}.data.Json`
 |Contains the string representation of a JSON document, array, or scalar.
 
 |`ENUM`
 |`STRING`
-|`io.debezium.data.Enum`
+|`io.{prodname}.data.Enum`
 |The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
 |`STRING`
-|`io.debezium.data.EnumSet`
+|`io.{prodname}.data.EnumSet`
 |The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
 |`INT32`
-|`io.debezium.time.Year`
+|`io.{prodname}.time.Year`
 |
 
 |`TIMESTAMP[(M)]`
 |`STRING`
-|`io.debezium.time.ZonedTimestamp`
+|`io.{prodname}.time.ZonedTimestamp`
 | Contains an ISO8601 formatted date and time (with up to microsecond precision) in a particular time zone. MySQL allows `M` to be in the range 0-6 to store up to microsecond precision.
 
 |=======================
@@ -1038,9 +1038,9 @@ Other than MySQL's `TIMESTAMP` data type, the MySQL temporal types depend on the
 
 [NOTE]
 ====
-As of Debezium 0.7 `adaptive_time_microseconds` mode was introduced and is the default `time.precision.mode` for the MySQL connector. Mode `adaptive` was marked as deprecated.
+As of {prodname} 0.7 `adaptive_time_microseconds` mode was introduced and is the default `time.precision.mode` for the MySQL connector. Mode `adaptive` was marked as deprecated.
 
-As of Debezium 0.10 `adaptive` mode was removed and can longer be used.
+As of {prodname} 0.10 `adaptive` mode was removed and can longer be used.
 ====
 
 [WARNING]
@@ -1048,7 +1048,7 @@ As of Debezium 0.10 `adaptive` mode was removed and can longer be used.
 When the `time.precision.mode` is set to `adaptive`, only positive TIME field values in the range of 00:00:00.000000 to 23:59:59.999999 can be captured correctly.
 When the `time.precision.mode` is set to `connect` only values in the range of `00:00:00.000` to `23:59:59.999` can be handled.
 
-The `adaptive` and `connect` time precision modes should only be used if you can make sure that the TIME values in your tables will never exceed the supported ranges. These modes will be removed in a future version of Debezium.
+The `adaptive` and `connect` time precision modes should only be used if you can make sure that the TIME values in your tables will never exceed the supported ranges. These modes will be removed in a future version of {prodname}.
 ====
 
 When the `time.precision.mode` configuration property is set to `adaptive_time_microseconds` (the default), then the connector will determine the literal type and semantic type for MySQL types `TIME`, `DATE` and `DATETIME` based on the column's data type definition so that events _exactly_ represent the values in the database, all TIME fields will be captured as microseconds:
@@ -1062,22 +1062,22 @@ When the `time.precision.mode` configuration property is set to `adaptive_time_m
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
+|`io.{prodname}.time.Date`
 | Represents the number of days since epoch.
 
 |`TIME[(M)]`
 |`INT64`
-|`io.debezium.time.MicroTime`
+|`io.{prodname}.time.MicroTime`
 | Represents the time value in microseconds and does not include timezone information. MySQL allows `M` to be in the range 0-6 to store up to microsecond precision.
 
 |`DATETIME`, `DATETIME(0)`, `DATETIME(1)`, `DATETIME(2)`, `DATETIME(3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
+|`io.{prodname}.time.Timestamp`
 | Represents the number of milliseconds past epoch, and does not include timezone information.
 
 |`DATETIME(4)`, `DATETIME(5)`, `DATETIME(6)`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
+|`io.{prodname}.time.MicroTimestamp`
 | Represents the number of microseconds past epoch, and does not include timezone information.
 
 |=======================
@@ -1093,27 +1093,27 @@ When the `time.precision.mode` configuration property is set to `adaptive` (depr
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date`
+|`io.{prodname}.time.Date`
 | Represents the number of days since epoch.
 
 |`TIME`, `TIME(0)`, `TIME(1)`, `TIME(2)`, `TIME(3)`
 |`INT32`
-|`io.debezium.time.Time`
+|`io.{prodname}.time.Time`
 | Represents the number of milliseconds past midnight, and does not include timezone information.
 
 |`TIME(4)`, `TIME(5)`, `TIME(6)`
 |`INT64`
-|`io.debezium.time.MicroTime`
+|`io.{prodname}.time.MicroTime`
 | Represents the number of microseconds past midnight, and does not include timezone information.
 
 |`DATETIME`, `DATETIME(0)`, `DATETIME(1)`, `DATETIME(2)`, `DATETIME(3)`
 |`INT64`
-|`io.debezium.time.Timestamp`
+|`io.{prodname}.time.Timestamp`
 | Represents the number of milliseconds past epoch, and does not include timezone information.
 
 |`DATETIME(4)`, `DATETIME(5)`, `DATETIME(6)`
 |`INT64`
-|`io.debezium.time.MicroTimestamp`
+|`io.{prodname}.time.MicroTimestamp`
 | Represents the number of microseconds past epoch, and does not include timezone information.
 
 |=======================
@@ -1156,13 +1156,13 @@ Such columns are converted into epoch milli-seconds or micro-seconds (based on t
 So e.g. the value "2018-06-20 06:37:03" of a column of type `DATETIME` (no precision given) will be represented by the value 1529476623000.
 
 The `TIMESTAMP` type represents a timestamp without time zone information and is converted by MySQL from the server (or session's) current time zone into UTC when writing and vice versa when reading back the value.
-Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session's) current time zone.
+Such columns are converted into an equivalent `io.{prodname}.time.ZonedTimestamp` in UTC based on the server (or session's) current time zone.
 The timezone will be queried from the server by default.
 If this fails, it must be specified explicitly as a connector option using the `database.serverTimezone` option.
 So if for instance the database's time zone (either globally or configured for the connector by means of aforementioned option) is "America/Los_Angeles",
 the `TIMESTAMP` value "2018-06-20 06:37:03" will be represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
 
-Note that the timezone of the JVM running Kafka Connect and Debezium does not affect these conversions.
+Note that the timezone of the JVM running Kafka Connect and {prodname} does not affect these conversions.
 
 [WARNING]
 ====
@@ -1251,7 +1251,7 @@ As of version 0.5.1, the MySQL connector also has limited support for some of th
 
 |`POINT`
 |`STRUCT`
-|`io.debezium.data.geometry.Point`
+|`io.{prodname}.data.geometry.Point`
 |Contains a structure with 2 `FLOAT64` fields - `(x,y)` - each representing the coordinates of a geometric point and 1 optional `BYTES` field - `wkb` - representing the Well-Known Binary (WKB) of the coordinates of a geometric point
 
 |=======================
@@ -1272,7 +1272,7 @@ As of version 0.7.2, the MySQL connector has full support for all of the followi
 `MULTIPOLYGON` +
 `GEOMETRYCOLLECTION`
 |`STRUCT`
-|`io.debezium.data.geometry.Geometry`
+|`io.{prodname}.data.geometry.Geometry`
 |Contains a structure with 2 fields +
 
 * `srid (INT32)` - Spatial Reference System Identifier defining what type of geometry object is stored in the structure
@@ -1285,9 +1285,9 @@ Please see http://www.opengeospatial.org/standards/sfa[Open Geospatial Consortiu
 [[when-things-go-wrong]]
 === When things go wrong
 
-Debezium is a distributed system that captures all changes in multiple upstream databases, and will never miss or lose an event. Of course, when the system is operating nominally or being administered carefully, then Debezium provides _exactly once_ delivery of every change event. However, if a fault does happen then the system will still not lose any events, although while it is recovering from the fault it may repeat some change events. Thus, in these abnormal situations Debezium (like Kafka) provides _at least once_ delivery of change events.
+{prodname} is a distributed system that captures all changes in multiple upstream databases, and will never miss or lose an event. Of course, when the system is operating nominally or being administered carefully, then {prodname} provides _exactly once_ delivery of every change event. However, if a fault does happen then the system will still not lose any events, although while it is recovering from the fault it may repeat some change events. Thus, in these abnormal situations {prodname} (like Kafka) provides _at least once_ delivery of change events.
 
-The rest of this section describes how Debezium handles various kinds of faults and problems.
+The rest of this section describes how {prodname} handles various kinds of faults and problems.
 
 ==== Configuration and startup errors
 
@@ -1313,9 +1313,9 @@ If the Kafka Connector process stops unexpectedly, then any connector tasks it w
 
 [TIP]
 ====
-Because there is a chance that some events may be duplicated during a recovery from failure, consumers should always anticipate some events may be duplicated. Debezium change are idempotent, so a sequence of events always results in the same state.
+Because there is a chance that some events may be duplicated during a recovery from failure, consumers should always anticipate some events may be duplicated. {prodname} change are idempotent, so a sequence of events always results in the same state.
 
-Debezium also includes with each change event message the source-specific information about the origin of the event, including the MySQL server's time of the event, its binlog filename and position, and GTID (if used). Consumers can keep track of this information (especially GTIDs) to know whether it has already seen a particular event.
+{prodname} also includes with each change event message the source-specific information about the origin of the event, including the MySQL server's time of the event, its binlog filename and position, and GTID (if used). Consumers can keep track of this information (especially GTIDs) to know whether it has already seen a particular event.
 ====
 
 ==== Kafka becomes unavailable
@@ -1337,9 +1337,9 @@ If the connector remains stopped for long enough, MySQL might purge older binlog
 [[deploying-a-connector]]
 == Deploying a connector
 
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's MySQL connector is easy. Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to https://docs.confluent.io/current/connect/userguide.html#installing-plugins[Kafka Connect's classpath]. Restart your Kafka Connect process to pick up the new JARs.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using {prodname}'s MySQL connector is easy. Simply download the https://repo1.maven.org/maven2/io/{prodname}/{prodname}-connector-mysql/{{prodname}-version}/{prodname}-connector-mysql-{{prodname}-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to https://docs.confluent.io/current/connect/userguide.html#installing-plugins[Kafka Connect's classpath]. Restart your Kafka Connect process to pick up the new JARs.
 
-If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Docker images] for Zookeeper, Kafka, and Kafka Connect with the MySQL connector already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about. You can even link:/blog/2016/05/31/Debezium-on-Kubernetes/[run Debezium on Kubernetes and OpenShift].
+If immutable containers are your thing, then check out https://hub.docker.com/r/{prodname}/[{prodname}'s Docker images] for Zookeeper, Kafka, and Kafka Connect with the MySQL connector already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about. You can even link:/blog/2016/05/31/{prodname}-on-Kubernetes/[run {prodname} on Kubernetes and OpenShift].
 
 To use the connector to produce change events for a particular MySQL server or cluster, simply create a link:#configuration[configuration file for the MySQL Connector] and use the link:https://docs.confluent.io/current/connect/references/restapi.html[Kafka Connect REST API] to add that connector to your Kafka Connect cluster. When the connector starts, it will grab a consistent snapshot of the databases in your MySQL server and start reading the MySQL binlog, producing events for every inserted, updated, and deleted row. The connector can optionally produce events with the DDL statements that were applied, and you can even choose to produce events for a subset of the databases and tables. Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
@@ -1352,7 +1352,7 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 [[snapshot-metrics]]
 ==== Snapshot Metrics
 
-===== *MBean: debezium.mysql:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
+===== *MBean: {prodname}.mysql:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
 
 [cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
 |=======================
@@ -1427,7 +1427,7 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 [[binlog-metrics]]
 ==== Binlog Metrics
 
-===== *MBean: debezium.mysql:type=connector-metrics,context=binlog,server=_<database.server.name>_*
+===== *MBean: {prodname}.mysql:type=connector-metrics,context=binlog,server=_<database.server.name>_*
 
 [cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
 |=======================
@@ -1505,7 +1505,7 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 
 |`MonitoredTables`
 |`string[]`
-|The list of tables that are monitored by Debezium.
+|The list of tables that are monitored by {prodname}.
 
 |`QueueTotalCapcity`
 |`int`
@@ -1538,7 +1538,7 @@ _Note:_ The transactions related attributes are available only if binlog event b
 [[schema-history-metrics]]
 ==== Schema History Metrics
 
-===== *MBean: debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_*
+===== *MBean: {prodname}.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_*
 
 [cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
 |=======================
@@ -1592,10 +1592,10 @@ Using the MySQL connector is straightforward. Here is an example of the configur
 {
   "name": "inventory-connector",  // <1>
   "config": {
-    "connector.class": "io.debezium.connector.mysql.MySqlConnector", // <2>
+    "connector.class": "io.{prodname}.connector.mysql.MySqlConnector", // <2>
     "database.hostname": "192.168.99.100", // <3>
     "database.port": "3306", // <4>
-    "database.user": "debezium", // <5>
+    "database.user": "{prodname}", // <5>
     "database.password": "dbz", // <6>
     "database.server.id": "184054", // <7>
     "database.server.name": "fullfillment", // <8>
@@ -1641,7 +1641,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |`connector.class`
 |
-|The name of the Java class for the connector. Always use a value of `io.debezium{zwsp}.connector.mysql.MySqlConnector` for the MySQL connector.
+|The name of the Java class for the connector. Always use a value of `io.{prodname}{zwsp}.connector.mysql.MySqlConnector` for the MySQL connector.
 
 |`tasks.max`
 |`1`
@@ -1710,7 +1710,7 @@ The following configuration properties are _required_ unless a default value is 
 |`column.propagate.source.type`
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
-The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
+The schema parameters `pass:[_]pass:[_]{prodname}.source.column.type`, `pass:[_]pass:[_]{prodname}.source.column.length` and `pass:[_]{prodname}.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
@@ -1778,7 +1778,7 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 
 |`gtid.new.channel.position`
 |`latest`
-| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest`, the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where Debezium is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before Debezium is connected. These writes would be lost when using `latest`.
+| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest`, the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
 
 |`tombstones.on.delete`
 |`true`
@@ -1827,7 +1827,7 @@ Skipping should be used only with care as it can lead to data loss or mangling w
 
 |`database.history.store.only.monitored.tables.ddl`
 |`false`
-|Boolean value that specifies if connector should should record all DDL statements or (when `true`) only those that are relevant to tables that are monitored by Debezium (via filter configuration).
+|Boolean value that specifies if connector should should record all DDL statements or (when `true`) only those that are relevant to tables that are monitored by {prodname} (via filter configuration).
 The safe default is `false`.
 This feature should be used only with care as the missing data might be necessary when the filters are changed.
 
@@ -1848,9 +1848,9 @@ The `verify_identity` option behaves like `verify_ca` but additionally verifies 
 |The size of a look-ahead buffer used by the binlog reader. +
 Under specific conditions it is possible that MySQL binlog contains uncommitted data finished by a `ROLLBACK` statement.
 Typical examples are using savepoints or mixing temporary and regular table changes in a single transaction. +
-When a beginning of a transaction is detected then Debezium tries to roll forward the binlog position and find either `COMMIT` or `ROLLBACK` so it can decide whether the changes from  the transaction will be streamed or not.
-The size of the buffer defines the maximum number of changes in the transaction that Debezium can buffer while searching for transaction boundaries.
-If the size of transaction is larger than the buffer then Debezium needs to rewind and re-read the events that has not fit into the buffer while streaming. Value `0` disables buffering. +
+When a beginning of a transaction is detected then {prodname} tries to roll forward the binlog position and find either `COMMIT` or `ROLLBACK` so it can decide whether the changes from  the transaction will be streamed or not.
+The size of the buffer defines the maximum number of changes in the transaction that {prodname} can buffer while searching for transaction boundaries.
+If the size of transaction is larger than the buffer then {prodname} needs to rewind and re-read the events that has not fit into the buffer while streaming. Value `0` disables buffering. +
 Disabled by default. +
 _Note:_ This feature should be considered an incubating one. We need a feedback from customers but it is expected that it is not completely polished.
 
@@ -1888,7 +1888,7 @@ Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
 |`heartbeat.topics.prefix`
-|`__debezium-heartbeat`
+|`__{prodname}-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
@@ -1913,16 +1913,16 @@ The connector will read the table contents in multiple batches of this size.
 |MySQL allows user to insert year value as either 2-digit or 4-digit.
 In case of two digits the value is automatically mapped to 1970 - 2069 range.
 This is usually done by database. +
-Set to `true` (the default) when Debezium should do the conversion. +
+Set to `true` (the default) when {prodname} should do the conversion. +
 Set to `false` when conversion is fully delegated to the database.
 
 |`source.struct.version`
 |v2
-|Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
+|Schema version for the `source` block in CDC events; {prodname} 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
-Note that this setting is not recommended and is planned for removal in a future Debezium version.
+Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.

@@ -11,3 +11,5 @@
 :install-version: 0.10
 :confluent-platform-version: 5.1.2
 :strimzi-version: 0.9.0
+
+:prodname: Debezium
