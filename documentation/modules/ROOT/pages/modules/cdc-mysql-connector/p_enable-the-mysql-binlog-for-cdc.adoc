@@ -1,0 +1,76 @@
+// Metadata created by nebel
+//
+
+[id="enable-the-mysql-binlog-for-cdc_{context}"]
+= Enabling the MySQL binlog for {prodname}
+// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
+
+You must enable binary logging for MySQL replication. The binary logs record transaction updates for replication tools to propogate changes. 
+
+.Prerequisites
+
+* You must have a MySQL server.
+* You should have appropriate MySQL user privileges.
+
+.Procedure
+
+. Check if the `log-bin` option is already on or not.
+[source,SQL]
+----
+mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM information_schema_global_variables WHERE variable_name='log-bin';
+----
+
+[start=2]
+. If `OFF`, configure your MySQL server configuration file with the following:
+
+TIP: See xref:binlog-configuration-properties-mysql-connector[Binlog config properties] for notes on each property.
+
+[source,properties]
+----
+server-id         = 223344 <1>
+log_bin           = mysql-bin <2>
+binlog_format     = ROW <3>
+binlog_row_image  = FULL <4>
+expire_logs_days  = 10 <5>
+----
+
+[start=3]
+. Confirm your changes by checking the binlog status once more.
+[source,SQL]
+----
+mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM information_schema_global_variables WHERE variable_name='log-bin';
+----
+
+
+== Binlog configuration properties
+[[binlog-configuration-properties-mysql-connector]]
+
+[cols="1,2,7"]
+|===
+|Number |Property |Description
+
+|1
+|`server-id`
+| The value for the `server-id` must be unique for each server and replication client within the MySQL cluster. When the MySQL connector is setup, we assign the connector a unique server ID.
+
+|2
+|`log_bin`
+| The value of `log-bin` is the base name of the sequence of binlog files.
+
+|3
+|`binlog_format`
+| The `binlog-format` must be set to `ROW` or `row`.
+
+|4
+|`binlog_row_image`
+| The `binlog_row_image` must be set to `FULL` or `full`.
+
+|5
+|`expire_logs_days`
+a| This is the number of days for automatic binlog file removal. The default is `0` which means no automatic removal.
+
+TIP: Set the value to match the needs of your environment.
+
+|===

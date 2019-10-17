@@ -1,0 +1,46 @@
+// Metadata created by nebel
+//
+
+[id="setup-session-timeouts-for-cdc_{context}"]
+= Setting up session timeouts for {prodname}
+
+When an initial consistent snapshot is made for large databases, your established connection could timeout while the tables are being read. You can prevent this behavior by configuring `interactive_timeout` and `wait_timeout` in your MySQL configuration file.
+
+.Prerequisites
+
+* You must have a MySQL server.
+* You must know basic SQL commands.
+* You must have access to the MySQL configuration file.
+
+.Procedure
+
+. Configure `interactive_timeout`:
+[source,SQL]
+----
+mysql> interactive_timeout=<duration-in-seconds>
+----
+
+[start=2]
+. Configure `wait_timeout`:
+[source,SQL]
+----
+mysql> wait_timeout= <duration-in-seconds>
+----
+
+== Options explained
+
+[cols="3,7"]
+|===
+|Permission/item |Description
+
+|`interactive_timeout`
+a| The number of seconds the server waits for activity on an interactive connection before closing it.
+
+TIP: See link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL's documentation] for more details.
+
+|`wait_timeout`
+a| The number of seconds the server waits for activity on a noninteractive connection before closing it.
+
+TIP: See link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_wait_timeout[MySQL's documentation] for more details.
+
+|===
