@@ -31,6 +31,8 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
@@ -53,6 +55,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Stopwatch;
@@ -1032,6 +1035,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         for (int i = 0; i < expectedHeartbeats; i++) {
             assertHeartBeatRecordInserted();
         }
+    }
+
+    @Test
+    @FixFor("DBZ-1565")
+    public void shouldWarnOnMissingHeartbeatForFilteredEvents() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor();
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.b")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
+                false
+        );
+        waitForStreamingToStart();
+
+        String statement = "CREATE SCHEMA s1;" +
+                           "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                           "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
+                           "INSERT INTO s1.a (aa) VALUES (11);" +
+                           "INSERT INTO s1.b (bb) VALUES (22);";
+
+        consumer = testConsumer(1);
+        executeAndWait(statement);
+
+        final int filteredCount = 10_100;
+        TestHelper.execute(
+                IntStream.range(0, filteredCount)
+                    .mapToObj(x -> "INSERT INTO s1.a (pk) VALUES (default);")
+                    .collect(Collectors.joining())
+        );
+        Awaitility.await().alias("WAL growing log message").pollInterval(Duration.ONE_SECOND).atMost(Duration.TEN_SECONDS).until(() ->
+            logInterceptor.containsWarnMessage("Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation.")
+        );
     }
 
     @Test
