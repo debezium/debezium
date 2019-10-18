@@ -281,6 +281,9 @@ public class SnapshotReader extends AbstractReader {
                         // Continue anyway, since RDS (among others) don't allow setting a global lock
                         assert !isLocked;
                     }
+                    // FLUSH TABLES resets TX and isolation level
+                    sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+                    mysql.executeWithoutCommitting(sql.get());
                 }
 
                 // ------
