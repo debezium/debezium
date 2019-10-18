@@ -199,9 +199,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         if (numberOfEventsSinceLastEventSentOrWalGrowingWarning > GROWING_WAL_WARNING_LOG_INTERVAL && !dispatcher.heartbeatsEnabled()) {
-            LOGGER.warn("Received {} events which were all filtered out, so no offset could be committed."
-                    + "This prevents the replication slot from acknowledging the processed WAL offsets,"
-                    + "causing a growing backlog of non-removeable WAL segments on the database server."
+            LOGGER.warn("Received {} events which were all filtered out, so no offset could be committed. "
+                    + "This prevents the replication slot from acknowledging the processed WAL offsets, "
+                    + "causing a growing backlog of non-removeable WAL segments on the database server. "
                     + "Consider to either adjust your filter configuration or enable heartbeat events "
                     + "(via the {} option) to avoid this situation.",
                     numberOfEventsSinceLastEventSentOrWalGrowingWarning, Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME);
