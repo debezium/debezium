@@ -15,11 +15,13 @@ import java.io.InputStream;
 import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,6 +56,28 @@ public class MySqlAntlrDdlParserTest {
         listener = new SimpleDdlParserListener();
         parser = new MysqlDdlParserWithSimpleTestListener(listener);
         tables = new Tables();
+    }
+
+    @Test
+    @FixFor("DBZ-1560")
+    public void shouldDropPrimaryKeyColumn() {
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, id2 INT, val INT)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "mytable");
+        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id"));
+
+        parser.parse("ALTER TABLE mytable DROP COLUMN id", tables);
+        table = tables.forTable(null, null, "mytable");
+        Assertions.assertThat(table.primaryKeyColumnNames()).isEmpty();
+        Assertions.assertThat(table.primaryKeyColumns()).isEmpty();
+
+        parser.parse("ALTER TABLE mytable ADD PRIMARY KEY(id2)", tables);
+        table = tables.forTable(null, null, "mytable");
+        Assertions.assertThat(table.primaryKeyColumnNames()).isEqualTo(Collections.singletonList("id2"));
+        Assertions.assertThat(table.primaryKeyColumns()).hasSize(1);
     }
 
     @Test
