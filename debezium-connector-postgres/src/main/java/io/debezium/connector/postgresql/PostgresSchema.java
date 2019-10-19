@@ -222,6 +222,9 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                     toastableColumns.add(rs.getString(1));
                 }
             });
+            if (!connection.connection().getAutoCommit()) {
+                connection.connection().commit();
+            }
         }
         catch (SQLException e) {
             throw new ConnectException("Unable to refresh toastable columns mapping", e);
