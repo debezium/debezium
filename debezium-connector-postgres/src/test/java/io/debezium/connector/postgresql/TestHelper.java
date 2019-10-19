@@ -20,6 +20,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
+import org.junit.Assert;
+import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -305,6 +307,19 @@ public final class TestHelper {
                     },
                     rs -> rs.next()
                ));
+        }
+    }
+
+    protected static void noTransactionActive() throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.setAutoCommit(true);
+            int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
+            String connectionStateQuery = "SELECT state FROM pg_stat_activity WHERE pid <> " + connectionPID;
+            connection.query(connectionStateQuery, rs -> {
+                while (rs.next()) {
+                    Assert.assertNotEquals(rs.getString(1), "idle in transaction");
+                }
+            });
         }
     }
 }

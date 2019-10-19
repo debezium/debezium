@@ -11,7 +11,6 @@ import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion.POSTGRES_10;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.Arrays;
@@ -23,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import io.debezium.connector.postgresql.connection.PostgresConnection;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -45,7 +43,6 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
-import org.postgresql.jdbc.PgConnection;
 
 /**
  * Integration test for {@link RecordsSnapshotProducerIT}
@@ -215,16 +212,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         waitForStreamingToStart();
 
-        try (PostgresConnection connection = TestHelper.create()) {
-            connection.setAutoCommit(true);
-            int connectionPID = ((PgConnection) connection.connection()).getBackendPID();
-            String connectionStateQuery = "SELECT state FROM pg_stat_activity WHERE pid <> " + connectionPID;
-            connection.query(connectionStateQuery, rs -> {
-                while (rs.next()) {
-                    assertNotEquals(rs.getString(1), "idle in transaction");
-                }
-            });
-        }
+        TestHelper.noTransactionActive();
 
         stopConnector();
     }

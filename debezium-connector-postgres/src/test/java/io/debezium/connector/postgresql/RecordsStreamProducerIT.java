@@ -1103,6 +1103,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table"));
             assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
         });
+
+        TestHelper.noTransactionActive();
     }
 
     @Test
