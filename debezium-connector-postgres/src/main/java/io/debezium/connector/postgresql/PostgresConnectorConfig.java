@@ -550,6 +550,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                                               .withWidth(Width.MEDIUM)
                                               .withImportance(Importance.MEDIUM)
                                               .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                                              .withValidation(PostgresConnectorConfig::validateReplicationSlotName)
                                               .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
                                                                "Defaults to 'debezium");
 
@@ -1024,6 +1025,19 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             return 1;
         }
         return 0;
+    }
+
+    // Source of the validation rules - https://doxygen.postgresql.org/slot_8c.html#afac399f07320b9adfd2c599cf822aaa3
+    private static int validateReplicationSlotName(Configuration config, Field field, Field.ValidationOutput problems) {
+        final String name = config.getString(field);
+        int errors = 0;
+        if (name != null) {
+            if (!name.matches("[a-z0-9_]{1,63}")) {
+                problems.accept(field, name, "Valid replication slot name must contain only digits, lowercase characters and underscores with length <= 63");
+                ++errors;
+            }
+        }
+        return errors;
     }
 
     @Override

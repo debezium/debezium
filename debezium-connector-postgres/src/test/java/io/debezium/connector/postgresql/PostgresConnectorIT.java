@@ -182,6 +182,17 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
    }
 
     @Test
+    public void shouldValidateReplicationSlotName() throws Exception {
+        Configuration config = Configuration.create()
+                .with(PostgresConnectorConfig.SLOT_NAME, "xx-aa")
+                .build();
+        PostgresConnector connector = new PostgresConnector();
+        Config validatedConfig = connector.validate(config.asMap());
+
+        assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.SLOT_NAME, 1);
+   }
+
+    @Test
     public void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
