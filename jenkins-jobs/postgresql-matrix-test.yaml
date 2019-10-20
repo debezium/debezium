@@ -21,9 +21,11 @@
           values:
             - 10
             - 11
+            - 12
             - 9.6-alpine
             - 10-alpine
             - 11-alpine
+            - 12-alpine
     node: Slave
     properties:
       - build-discarder:
