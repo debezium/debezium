@@ -1,4 +1,4 @@
-= Deploying the Debezium 1.0 Developer Preview with AMQ Streams
+= Deploying the Debezium 1.0 Technology Preview with AMQ Streams
 include::../_attributes.adoc[]
 :linkattrs:
 :icons: font
@@ -7,11 +7,11 @@ include::../_attributes.adoc[]
 
 toc::[]
 
-The following describes how to set up the https://developers.redhat.com/products/amq/download/[Debezium 1.0.0 Developer Preview connectors] for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
+The following describes how to set up the https://developers.redhat.com/products/amq/download/[Debezium 1.0.0 Technology Preview connectors] for change data capture on Red Hat's https://www.openshift.com/[OpenShift] container platform.
 
 [NOTE]
 ====
-This and other documentation pages mention ```Debezium 1.0.0 Developer Preview```, please note that this version corresponds to version ```0.10.0.Beta2``` of upstream https://github.com/debezium/debezium/tree/v0.10.0.Beta2[Debezium project].
+This and other documentation pages mention ```Debezium 1.0.0 Technology Preview```, please note that this version corresponds to version ```1.0.0.Beta1``` of upstream https://github.com/debezium/debezium/tree/v1.0.0.Beta1[Debezium project].
 ====
 
 == Apache Kafka Deployment
@@ -51,7 +51,7 @@ In this case the last item in the list above can be omitted.
 
 == Debezium Deployment
 
-To deploy a Kafka Cluster with the Debezium Developer Preview connectors we need to
+To deploy a Kafka Cluster with the Debezium Technology Preview connectors we need to
 
 * Download the connector archives
 * Download the associated database drivers
@@ -60,7 +60,7 @@ To deploy a Kafka Cluster with the Debezium Developer Preview connectors we need
 
 === Downloading Database Drivers
 
-The Debezium Developer Preview comes without database drivers included. The table below links to driver dependencies which need to be included in a directory of each repsective connector prior to triggering the ```s2i``` build.
+The Debezium Technology Preview comes without database drivers included. The table below links to driver dependencies which need to be included in a directory of each repsective connector prior to triggering the ```s2i``` build.
 
 [cols="25%a,75%a", options="header", role="table table-bordered table-striped"]
 |===
@@ -71,7 +71,7 @@ The Debezium Developer Preview comes without database drivers included. The tabl
 | http://central.maven.org/maven2/mysql/mysql-connector-java/8.0.16/mysql-connector-java-8.0.16.jar[mysql-connector-java-8.0.16.jar]
 
 | PostgreSQL
-| http://central.maven.org/maven2/org/postgresql/postgresql/42.2.5/postgresql-42.2.5.jar[postgresql-42.2.5.jar]
+| http://central.maven.org/maven2/org/postgresql/postgresql/42.2.8/postgresql-42.2.8.jar[postgresql-42.2.8.jar]
 
 | SQL Server
 | http://central.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/7.2.2.jre8/mssql-jdbc-7.2.2.jre8.jar[mssql-jdbc-7.2.2.jre8.jar]
@@ -84,7 +84,7 @@ The Debezium Developer Preview comes without database drivers included. The tabl
 
 === Preparing Directory Structure
 
-Download the connector archives from https://developers.redhat.com/products/amq/download[Red Hat Developer Portal], extract the archives, and download the required driver denendencies.
+Download the connector archives from https://developers.redhat.com/products/amq/download[Red Hat Developer Portal], extract the archives, and download the required driver dependencies.
 Once complete you should end with the following directory structure:
 
 [source%nowrap,bash]
@@ -100,8 +100,8 @@ plugins
 │   ├── LICENSE.txt
 │   ├── README.md
 │   ├── bson-3.9.1.jar
-│   ├── debezium-connector-mongodb-0.10.0.Beta1-redhat-00001.jar
-│   ├── debezium-core-0.10.0.Beta1-redhat-00001.jar
+│   ├── debezium-connector-mongodb-1.0.0.Beta1-redhat-00001.jar
+│   ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
 │   ├── mongodb-driver-3.9.1.jar
 │   └── mongodb-driver-core-3.9.1.jar
 ├── debezium-connector-mysql
@@ -112,9 +112,9 @@ plugins
 │   ├── LICENSE.txt
 │   ├── README.md
 │   ├── antlr4-runtime-4.7.0.redhat-00007.jar
-│   ├── debezium-connector-mysql-0.10.0.Beta1-redhat-00001.jar
-│   ├── debezium-core-0.10.0.Beta1-redhat-00001.jar
-│   ├── debezium-ddl-parser-0.10.0.Beta1-redhat-00001.jar
+│   ├── debezium-connector-mysql-1.0.0.Beta1-redhat-00001.jar
+│   ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
+│   ├── debezium-ddl-parser-1.0.0.Beta1-redhat-00001.jar
 │   ├── mysql-binlog-connector-java-0.19.1.redhat-00002.jar
 │   └── mysql-connector-java-8.0.16.jar
 ├── debezium-connector-postgres
@@ -124,9 +124,9 @@ plugins
 │   ├── LICENSE-3rd-PARTIES.txt
 │   ├── LICENSE.txt
 │   ├── README.md
-│   ├── debezium-connector-postgres-0.10.0.Beta1-redhat-00001.jar
-│   ├── debezium-core-0.10.0.Beta1-redhat-00001.jar
-│   ├── postgresql-42.2.5.jar
+│   ├── debezium-connector-postgres-1.0.0.Beta1-redhat-00001.jar
+│   ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
+│   ├── postgresql-42.2.8.jar
 │   └── protobuf-java-2.6.1.redhat-1.jar
 └── debezium-connector-sqlserver
     ├── CHANGELOG.md
@@ -135,12 +135,12 @@ plugins
     ├── LICENSE-3rd-PARTIES.txt
     ├── LICENSE.txt
     ├── README.md
-    ├── debezium-connector-sqlserver-0.10.0.Beta1-redhat-00001.jar
-    ├── debezium-core-0.10.0.Beta1-redhat-00001.jar
+    ├── debezium-connector-sqlserver-1.0.0.Beta1-redhat-00001.jar
+    ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
     └── mssql-jdbc-7.2.2.jre8.jar
 ----
 
-=== Deploying Kafka Connect with the Debezium Developer Preview
+=== Deploying Kafka Connect with the Debezium Technology Preview
 
 With plugin directory structure ready, all we have to do now in order to deploy our Kafka Connect cluster is triggering the ```s2i``` build.
 
@@ -185,5 +185,5 @@ You will want to change the pod names to correspond with your AMQ Streams deploy
 ====
 
 == Questions and Resources
-In case of any requests or questions related to running the Debezium Developer Preview with AMQ Streams on OpenShift,
+In case of any requests or questions related to running the Debezium Technology Preview with AMQ Streams on OpenShift,
 please let us know by sending an e-mail to mailto:debezium-cdc-preview@redhat.com[debezium-cdc-preview] mailing list.
