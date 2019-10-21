@@ -651,7 +651,7 @@ RELOAD:                              'RELOAD';
 SHUTDOWN:                            'SHUTDOWN';
 SUPER:                               'SUPER';
 PRIVILEGES:                          'PRIVILEGES';
-
+SESSION_VARIABLES_ADMIN:             (SINGLE_QUOTE_SYMB | DOUBLE_QUOTE_SYMB | REVERSE_QUOTE_SYMB)? 'SESSION_VARIABLES_ADMIN' (SINGLE_QUOTE_SYMB | DOUBLE_QUOTE_SYMB | REVERSE_QUOTE_SYMB)?;
 
 // Charsets
 
