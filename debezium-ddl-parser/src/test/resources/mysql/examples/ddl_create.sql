@@ -14,6 +14,8 @@ create table `actor` (`last_update` timestamp default CURRENT_TIMESTAMP, `birthd
 create table boolean_table(c1 bool, c2 boolean default true);
 create table table_with_character_set_eq (id int, data varchar(50)) character set = default;
 create table table_with_character_set (id int, data varchar(50)) character set default;
+create table table_with_visible_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC) VISIBLE);
+create table table_with_index (id int, data varchar(50), UNIQUE INDEX `data_UNIQUE` (`data` ASC));
 #end
 #begin
 -- Rename table
