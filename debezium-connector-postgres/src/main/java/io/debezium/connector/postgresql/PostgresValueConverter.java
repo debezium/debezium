@@ -46,10 +46,10 @@ import com.fasterxml.jackson.core.JsonGenerator;
 
 import io.debezium.connector.postgresql.PostgresConnectorConfig.HStoreHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
+import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
-import io.debezium.data.Ltree;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
