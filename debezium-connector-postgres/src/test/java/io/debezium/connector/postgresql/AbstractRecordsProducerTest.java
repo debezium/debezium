@@ -56,9 +56,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
-import io.debezium.data.Ltree;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
