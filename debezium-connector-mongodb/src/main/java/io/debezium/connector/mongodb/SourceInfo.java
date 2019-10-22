@@ -232,7 +232,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
-        onEvent(replicaSetName, CollectionId.parse(replicaSetName + "." + namespace), position);
+        onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
     }
 
     /**

@@ -198,13 +198,13 @@ public class FiltersTest {
     }
 
     protected void assertCollectionIncluded(String fullyQualifiedCollectionName) {
-        CollectionId id = CollectionId.parse("rs1." + fullyQualifiedCollectionName);
+        CollectionId id = CollectionId.parse("rs1.", fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.collectionFilter().test(id)).isTrue();
     }
 
     protected void assertCollectionExcluded(String fullyQualifiedCollectionName) {
-        CollectionId id = CollectionId.parse("rs1." + fullyQualifiedCollectionName);
+        CollectionId id = CollectionId.parse("rs1.", fullyQualifiedCollectionName);
         assertThat(id).isNotNull();
         assertThat(filters.collectionFilter().test(id)).isFalse();
     }
