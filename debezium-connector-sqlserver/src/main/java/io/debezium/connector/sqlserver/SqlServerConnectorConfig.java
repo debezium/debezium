@@ -38,6 +38,8 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  */
 public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
+    protected static final int DEFAULT_PORT = 1433;
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -192,6 +194,38 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
     }
 
+    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+            .withDisplayName("Hostname")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Resolvable hostname or IP address of the SQL Server database server.");
+
+    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
+            .withDisplayName("Port")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withDefault(DEFAULT_PORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isInteger)
+            .withDescription("Port of the SQL Server database server.");
+
+    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+            .withDisplayName("User")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Name of the SQL Server database user to be used when connecting to the database.");
+
+    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
+            .withDisplayName("Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Password of the SQL Server database user to be used when connecting to the database.");
+
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
@@ -231,6 +265,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static Field.Set ALL_FIELDS = Field.setOf(
             SERVER_NAME,
             DATABASE_NAME,
+            HOSTNAME,
+            PORT,
+            USER,
+            PASSWORD,
             SNAPSHOT_MODE,
             RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
@@ -254,7 +292,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "SQL Server", SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
+        Field.group(config, "SQL Server", SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
+                USER, PASSWORD, SNAPSHOT_MODE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
