@@ -301,7 +301,8 @@ indexOption
     | indexType
     | WITH PARSER uid
     | COMMENT STRING_LITERAL
-    | (INVISIBLE | VISIBLE)
+    | INVISIBLE
+    | VISIBLE
     ;
 
 procedureParameter
