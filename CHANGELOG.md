@@ -2,6 +2,41 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.0.Beta2
+October 24th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343067)
+
+### New features since 1.0.0.Beta1
+
+* Update tooling image to use latest kafkacat [DBZ-1522](https://issues.jboss.org/browse/DBZ-1522)
+* Validate configured replication slot names [DBZ-1525](https://issues.jboss.org/browse/DBZ-1525)
+* Make password field to be hidden for MS SQL connector [DBZ-1554](https://issues.jboss.org/browse/DBZ-1554)
+* Raise a warning about growing backlog [DBZ-1565](https://issues.jboss.org/browse/DBZ-1565)
+* Support Postgres LTREE columns [DBZ-1336](https://issues.jboss.org/browse/DBZ-1336)
+
+
+### Breaking changes since 1.0.0.Beta1
+
+None
+
+
+### Fixes since 1.0.0.Beta1
+
+
+* Aborting snapshot due to error when last running 'UNLOCK TABLES': Only REPEATABLE READ isolation level is supported for START TRANSACTION WITH CONSISTENT SNAPSHOT in RocksDB Storage Engine. [DBZ-1428](https://issues.jboss.org/browse/DBZ-1428)
+* MySQL Connector fails to parse DDL containing the keyword VISIBLE for index definitions [DBZ-1534](https://issues.jboss.org/browse/DBZ-1534)
+* MySQL connector fails to parse DDL - GRANT SESSION_VARIABLES_ADMIN... [DBZ-1535](https://issues.jboss.org/browse/DBZ-1535)
+* Mysql connector: The primary key cannot reference a non-existant column 'id' in table '***' [DBZ-1560](https://issues.jboss.org/browse/DBZ-1560)
+* Incorrect source struct's collection field when dot is present in collection name [DBZ-1563](https://issues.jboss.org/browse/DBZ-1563)
+* Transaction left open after db snapshot [DBZ-1564](https://issues.jboss.org/browse/DBZ-1564)
+
+
+### Other changes since 1.0.0.Beta1
+
+* Add Postgres 12 to testing matrix [DBZ-1542](https://issues.jboss.org/browse/DBZ-1542)
+* Update Katacoda learning experience [DBZ-1548](https://issues.jboss.org/browse/DBZ-1548)
+
+
+
 ## 1.0.0.Beta1
 October 17th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12341896)
 
@@ -46,6 +81,7 @@ In particular it should be avoided to upgrade the logical decoding plug-in befor
 * Add Google Analytics to Antora-published pages [DBZ-1526](https://issues.jboss.org/browse/DBZ-1526)
 * Create 0.10 RPM for postgres-decoderbufs [DBZ-1540](https://issues.jboss.org/browse/DBZ-1540)
 * Postgres documentation fixes [DBZ-1544](https://issues.jboss.org/browse/DBZ-1544)
+
 
 
 ## 0.10.0.Final
