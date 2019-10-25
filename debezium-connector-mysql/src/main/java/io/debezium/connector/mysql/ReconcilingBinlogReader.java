@@ -97,7 +97,6 @@ public class ReconcilingBinlogReader implements Reader {
             reconcilingReader = new BinlogReader("innerReconcilingReader",
                                                  laggingReaderContext,
                                                  offsetLimitPredicate,
-                                                 false,
                                                  serverId);
             reconcilingReader.start();
         }

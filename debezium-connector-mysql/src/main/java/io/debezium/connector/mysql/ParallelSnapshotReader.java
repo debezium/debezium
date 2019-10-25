@@ -59,7 +59,6 @@ public class ParallelSnapshotReader implements Reader {
         this.oldTablesReader = new BinlogReader("oldBinlog",
                                                 noSnapshotContext,
                                                 oldTablesReaderHaltingPredicate,
-                                                false,
                                                 serverIdGenerator.getNextServerId());
 
         MySqlTaskContext newTablesContext = new MySqlTaskContext(config,
@@ -71,7 +70,6 @@ public class ParallelSnapshotReader implements Reader {
         this.newTablesBinlogReader = new BinlogReader("newBinlog",
                                                       newTablesContext,
                                                       newTablesReaderHaltingPredicate,
-                                                      true,
                                                       serverIdGenerator.getNextServerId());
         this.newTablesReader = new ChainedReader.Builder().addReader(newTablesSnapshotReader).addReader(newTablesBinlogReader).build();
     }
