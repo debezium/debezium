@@ -51,6 +51,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private final Map<TableId, List<String>> tableIdToToastableColumns;
     private final Map<Integer, TableId> relationIdToTableId;
     private final boolean readToastableColumns;
+    private final boolean tableInformationPresent;
 
     /**
      * Create a schema component given the supplied {@link PostgresConnectorConfig Postgres connector configuration}.
@@ -67,6 +68,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         this.tableIdToToastableColumns = new HashMap<>();
         this.relationIdToTableId = new HashMap<>();
         this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
+        this.tableInformationPresent = false;
     }
 
     private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, TypeRegistry typeRegistry, Charset databaseCharset) {
@@ -285,5 +287,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         }
         LOGGER.debug("Relation '{}' resolved to table '{}'", relationId, tableId);
         return tableFor(tableId);
+    }
+
+    @Override
+    public boolean tableInformationComplete() {
+        return this.tableInformationPresent;
     }
 }

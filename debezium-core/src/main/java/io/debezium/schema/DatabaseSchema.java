@@ -18,4 +18,12 @@ public interface DatabaseSchema<I extends DataCollectionId> {
     void close();
 
     DataCollectionSchema schemaFor(I id);
+
+    /**
+     * Indicates whether or not table names are guaranteed to be fully present, regardless of whether or not a
+     * snapshot has been performed.
+     *
+     * @return boolean indicating if table names are present
+     */
+    boolean tableInformationComplete();
 }

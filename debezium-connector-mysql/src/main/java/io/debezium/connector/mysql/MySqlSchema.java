@@ -74,6 +74,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
     private final HistoryRecordComparator historyComparator;
     private final boolean skipUnparseableDDL;
     private final boolean storeOnlyMonitoredTablesDdl;
+    private final boolean tableInformationPresent;
 
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
@@ -133,6 +134,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         };
         this.dbHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(configuration)); // validates
 
+        this.tableInformationPresent = true;
     }
 
     private static MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
@@ -376,5 +378,10 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      */
     public boolean isStoreOnlyMonitoredTablesDdl() {
         return storeOnlyMonitoredTablesDdl;
+    }
+
+    @Override
+    public boolean tableInformationComplete() {
+        return this.tableInformationPresent;
     }
 }

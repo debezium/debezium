@@ -80,7 +80,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     }
 
     public void assureNonEmptySchema() {
-        if (tableIds().isEmpty()) {
+        if (tableIds().isEmpty() && this.tableInformationComplete()) {
             LOG.warn("After applying blacklist/whitelist filters there are no tables to monitor, please check your configuration");
         }
     }
