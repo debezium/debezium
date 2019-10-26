@@ -32,13 +32,13 @@
           description: "Repository from which Debezium is built"
       - string:
           name: BRANCH
-          default: master
+          default: "*/master"
           description: "A branch from which Debezium is built"
     scm:
       - git:
          url: $REPOSITORY
          branches:
-          - "*/$BRANCH"
+          - "$BRANCH"
     wrappers:
       - timeout:
           timeout: 45
