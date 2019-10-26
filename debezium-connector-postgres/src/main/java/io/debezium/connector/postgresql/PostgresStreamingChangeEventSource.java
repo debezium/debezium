@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -101,13 +102,17 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.info("no previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming());
             }
+            // for large dbs, the refresh of schema can take too much time
+            // such that the connection times out. We must enable keep
+            // alive to ensure that it doesn't time out
+            final ReplicationStream stream = this.replicationStream.get();
+            stream.startKeepAlive(Executors.newSingleThreadExecutor());
 
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(connection, true);
 
             this.lastCompletelyProcessedLsn = offsetContext.lsn();
 
-            final ReplicationStream stream = this.replicationStream.get();
             while (context.isRunning()) {
                 int noMessageIterations = 0;
                 if (!stream.readPending(message -> {
@@ -163,6 +168,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         finally {
             if (replicationConnection != null) {
                 LOGGER.debug("stopping streaming...");
+                // stop the keep alive thread, this also shuts down the
+                // executor pool
+                ReplicationStream stream = replicationStream.get();
+                if (stream != null) {
+                    stream.stopKeepAlive();
+                }
                 //TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
                 //replicationStream.close();
                 // close the connection - this should also disconnect the current stream even if it's blocking
