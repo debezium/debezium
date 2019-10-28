@@ -1,0 +1,5 @@
+:attributes: _attributes
+= MySQL connector
+include::../{attributes}.adoc[]
+
+include::{assemblies}/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[leveloffset=+1]

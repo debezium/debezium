@@ -1,0 +1,26 @@
+Category,UserStory,Type,ModuleID,Implement,Title,Comments
+cdc-mysql-connector,"As a Developer, I want to set up the MySQL server, so that I can more efficiently deploy the CDC MySQL connector.",assembly,setup-the-mysql-server-for-cdc,yes,Setting up the MySQL server for CDC,
+cdc-mysql-connector,,procedure,enable-the-mysql-binlog-for-cdc,yes,Enabling the MySQL binlog for CDC,
+cdc-mysql-connector,,procedure,create-a-mysql-user-for-cdc,yes,Creating a MySQL user for CDC,
+cdc-mysql-connector,,procedure,enable-mysql-gtids-for-cdc,yes,Enabling MySQL Global Transaction Identifiers for CDC,
+cdc-mysql-connector,,procedure,setup-session-timeouts-for-cdc,yes,Setting up session timeouts for CDC,
+cdc-mysql-connector,,procedure,enable-query-log-events-for-cdc,yes,Enabling query log events for CDC,
+,,,,yes,,
+cdc-mysql-connector,"As an Evaluator or Developer, I want to gain a general understanding of how the CDC's MySQL connector functions so that I can better use the application.",assembly,overview-of-how-the-mysql-connector-works,yes,Overview of how the MySQL connector works,binlog and initial overview can be used together as it's essentially the same information
+cdc-mysql-connector,,concept,how-the-mysql-connector-uses-database-schemas,yes,How the MySQL connector uses database schemas,
+cdc-mysql-connector,,concept,how-the-mysql-connector-performs-database-snapshots,yes,How the MySQL connector performs database snapshots,
+cdc-mysql-connector,,reference,the-mysql-connector-and-kafka-topics,yes,The MySQL connector and Kakfa topics,"reference for formatting - not sure if it's substantial enough to justify a module, but we'll see"
+cdc-mysql-connector,,concept,how-the-mysql-connector-handles-schema-change-topics,yes,How the MySQL connector handles schema change topics,
+cdc-mysql-connector,,concept,understanding-mysql-connector-events,yes,Understanding MySQL connector events,
+cdc-mysql-connector,,concept,how-the-mysql-connector-maps-data-types,yes,How the MySQL connector maps data types,
+,,,,yes,,
+cdc-mysql-connector,"As a Developer, I want to troubleshoot any common issues that may arise with the CDC MySQL connector, so that I can continue development.",assembly,troubleshoot-the-mysql-connector,yes,Troubleshooting the MySQL connector,
+cdc-mysql-connector,,reference,configuration-and-startup-errors,yes,Configuration and startup errors,
+cdc-mysql-connector,,reference,mysql-is-unavailable,yes,MySQL is unavailable,
+cdc-mysql-connector,,reference,kakfa-connect-stops,yes,Kakfa Connect stops,
+cdc-mysql-connector,,reference,mysql-purges-binlog-files,yes,MySQL purges binlog files,
+,,,,yes,,
+cdc-mysql-connector,"As a Developer, I want to deploy the CDC MySQL connector, so my applications can capture row-level changes from my databases as streams.",assembly,deploy-the-mysql-connector,yes,Deploying the MySQL connector,
+cdc-mysql-connector,,procedure,install-the-mysql-connector,yes,Installing the MySQL connector,
+cdc-mysql-connector,,procedure,configure-the-mysql-connector,yes,Configuring the MySQL connector,this should include the properties as part of the procedure so that they can be easily inserted - instead of a reference file?
+cdc-mysql-connector,,reference,mysql-connector-monitoring-metrics,yes,MySQL connector monitoring metrics,

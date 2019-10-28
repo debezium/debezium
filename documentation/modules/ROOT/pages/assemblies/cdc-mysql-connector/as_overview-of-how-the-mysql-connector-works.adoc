@@ -1,0 +1,35 @@
+// Metadata created by nebel
+//
+// UserStory: As an Evaluator or Developer, I want to gain a general understanding of how the CDC's MySQL connector functions so that I can better use the application.
+:context: cdc
+[id="overview-of-how-the-mysql-connector-works_{context}"]
+= Overview of how the MySQL connector works
+
+NOTE: Add some to the overview here {prodname-abbr}
+
+* xref:how-the-mysql-connector-uses-database-schemas_{context}[How the connector uses database schemas]
+* xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
+* xref:how-the-mysql-connector-handles-schema-change-topics_{context}[How the connector handles schema change topics]
+* xref:understanding-mysql-connector-events_{context}[Understanding MySQL connector events]
+* xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
+* xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
+
+// modules
+
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/c_understanding-mysql-connector-events.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
+
+== Additional resources (or Next steps)
+
+NOTE: Next steps would be nice here.
+
+:context: cdc

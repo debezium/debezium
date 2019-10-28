@@ -12,7 +12,7 @@
 ** xref:configuration/outbox-event-router.adoc[Outbox Event Router]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
-** xref:connectors/mysql.adoc[MySQL]
+** xref:mysql-connector/master.adoc[MySQL]
 ** xref:connectors/mongodb.adoc[MongoDB]
 ** xref:connectors/postgresql.adoc[PostgreSQL]
 ** xref:connectors/oracle.adoc[Oracle]

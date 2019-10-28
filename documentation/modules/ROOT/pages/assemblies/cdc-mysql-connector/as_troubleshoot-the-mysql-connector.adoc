@@ -1,0 +1,31 @@
+// Metadata created by nebel
+//
+// UserStory: As a Developer, I want to troubleshoot any common issues that may arise with the CDC MySQL connector, so that I can continue development.
+
+[id="troubleshoot-the-mysql-connector"]
+= Troubleshooting the MySQL connector
+//If the assembly covers a task, start the title with a verb in the gerund form, such as Creating or Configuring.
+
+This paragraph is the assembly introduction. It explains what the user will accomplish by working through the modules in the assembly and sets the context for the user story the assembly is based on. Can include more than one paragraph. Consider using the information from the user story.
+
+.Prerequisites
+
+* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
+* You can also link to other modules or assemblies the user must follow before starting this assembly.
+* Delete the section title and bullets if the assembly has no prerequisites.
+
+// The following include statements pull in the sub-assemblies and the module files that comprise the assembly. Include any combination of concept, procedure, or reference modules required to cover the user story.
+
+\include::../../assemblies/CATEGORY/as_sub-assembly-id.adoc[leveloffset=+1]
+// [leveloffset=+1] ensures that when a module starts with a level-1 heading (= Heading), the heading will be interpreted as a level-2 heading (== Heading) in the assembly.
+
+\include::../../modules/CATEGORY/TYPE_use-module-id-here.adoc[leveloffset=+1]
+// Where TYPE_ can be one of p_, c_, or r_ for 'procedure', 'concept', or 'reference'
+
+//INCLUDES
+
+== Additional resources (or Next steps)
+
+* A bulleted list of links to other material closely related to the contents of the concept module.
+* For more details on writing assemblies, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
