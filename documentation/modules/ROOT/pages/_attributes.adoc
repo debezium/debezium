@@ -13,3 +13,4 @@
 :strimzi-version: 0.13.0
 :jira-url: https://issues.redhat.com
 :prodname: Debezium
+:assemblies: ../assemblies

@@ -1,0 +1,28 @@
+// Metadata created by nebel
+//
+
+[id="configure-the-mysql-connector"]
+= Configuring the MySQL connector
+// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
+
+This paragraph is the procedure module introduction: a short description of the procedure.
+
+.Prerequisites
+
+* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
+* You can also link to other modules or assemblies the user must follow before starting this assembly.
+* Delete the section title and bullets if the assembly has no prerequisites.
+
+.Procedure
+
+. Start each step with an active verb.
+
+. Include one command or action per step.
+
+. Use an unnumbered bullet (*) if the procedure includes only one step.
+
+.Additional resources
+
+* A bulleted list of links to other material closely related to the contents of the procedure module.
+* For more details on writing procedure modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
