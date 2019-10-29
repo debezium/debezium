@@ -2,4 +2,6 @@
 = MySQL connector
 include::../{attributes}.adoc[]
 
+HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
+
 include::{assemblies}/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[leveloffset=+1]
