@@ -6,7 +6,7 @@
 
 When your {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database. The following flow describes how this snapshot is completed.
 
-NOTE: This is the default snapshot mode which is set as `inital` in the `snapshot.mode` property. For other snapshots modes, please check out the 
+NOTE: This is the default snapshot mode which is set as `inital` in the `snapshot.mode` property. For other snapshots modes, please check out the xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 ifeval::["{isImageReady}" == "true"]
 image:../../../assets/images/debezium-architecture.png[]
