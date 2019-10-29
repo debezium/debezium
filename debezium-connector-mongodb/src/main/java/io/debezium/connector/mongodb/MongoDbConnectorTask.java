@@ -154,7 +154,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         if (replicatorError != null) {
-            throw new ConnectException("Failing connector task, at least one of the replicators has failed");
+            throw new ConnectException("Failing connector task, at least one of the replicators has failed", replicatorError);
         }
         List<SourceRecord> records = queue.poll();
         recordSummarizer.accept(records);
