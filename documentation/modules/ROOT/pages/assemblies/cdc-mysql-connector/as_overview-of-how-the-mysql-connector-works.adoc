@@ -5,7 +5,7 @@
 [id="overview-of-how-the-mysql-connector-works_{context}"]
 = Overview of how the MySQL connector works
 
-NOTE: Add some to the overview here {prodname-abbr}
+The {prodname} MySQL connector tracks the structure of the tables, performs snapshots, transforms binlog events into {prodname} change events as well as where those events are recorded in Kafka, and how the connector behaves when things go wrong.
 
 * xref:how-the-mysql-connector-uses-database-schemas_{context}[How the connector uses database schemas]
 * xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
@@ -27,9 +27,5 @@ include::../../modules/cdc-mysql-connector/c_understanding-mysql-connector-event
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
-
-== Additional resources (or Next steps)
-
-NOTE: Next steps would be nice here.
 
 :context: cdc
