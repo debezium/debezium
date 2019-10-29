@@ -4,28 +4,26 @@
 
 [id="troubleshoot-the-mysql-connector"]
 = Troubleshooting the MySQL connector
-//If the assembly covers a task, start the title with a verb in the gerund form, such as Creating or Configuring.
 
-This paragraph is the assembly introduction. It explains what the user will accomplish by working through the modules in the assembly and sets the context for the user story the assembly is based on. Can include more than one paragraph. Consider using the information from the user story.
+* xref:how-the-mysql-connector-uses-database-schemas_{context}[How the connector uses database schemas]
+* xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
+* xref:how-the-mysql-connector-handles-schema-change-topics_{context}[How the connector handles schema change topics]
+* xref:understanding-mysql-connector-events_{context}[Understanding MySQL connector events]
+* xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
+* xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
 
-.Prerequisites
+// modules
 
-* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
-* You can also link to other modules or assemblies the user must follow before starting this assembly.
-* Delete the section title and bullets if the assembly has no prerequisites.
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
 
-// The following include statements pull in the sub-assemblies and the module files that comprise the assembly. Include any combination of concept, procedure, or reference modules required to cover the user story.
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
 
-\include::../../assemblies/CATEGORY/as_sub-assembly-id.adoc[leveloffset=+1]
-// [leveloffset=+1] ensures that when a module starts with a level-1 heading (= Heading), the heading will be interpreted as a level-2 heading (== Heading) in the assembly.
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
 
-\include::../../modules/CATEGORY/TYPE_use-module-id-here.adoc[leveloffset=+1]
-// Where TYPE_ can be one of p_, c_, or r_ for 'procedure', 'concept', or 'reference'
+include::../../modules/cdc-mysql-connector/c_understanding-mysql-connector-events.adoc[leveloffset=+1]
 
-//INCLUDES
+include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
 
-== Additional resources (or Next steps)
+include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
 
-* A bulleted list of links to other material closely related to the contents of the concept module.
-* For more details on writing assemblies, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+:context: cdc
