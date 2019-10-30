@@ -3,7 +3,7 @@
 // UserStory: As a Developer, I want to set up the MySQL server, so that I can more efficiently deploy the CDC MySQL connector.
 
 [id="setup-the-mysql-server-for-cdc"]
-= Setting up the MySQL server for {prodname}
+= Setting up MySQL server for {prodname}
 
 * xref:enable-the-mysql-binlog-for-cdc_{context}[Enable the MySQL binlog]
 * xref:create-a-mysql-user-for-cdc_{context}[Create MySQL user]
