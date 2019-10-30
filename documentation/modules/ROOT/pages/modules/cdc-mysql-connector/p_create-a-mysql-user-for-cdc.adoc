@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="create-a-mysql-user-for-cdc"]
+[id="create-a-mysql-user-for-cdc_{context}"]
 = Creating a MySQL user for CDC
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 

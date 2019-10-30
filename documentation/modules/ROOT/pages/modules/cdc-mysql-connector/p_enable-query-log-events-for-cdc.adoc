@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="enable-query-log-events-for-cdc"]
+[id="enable-query-log-events-for-cdc_{context}"]
 = Enabling query log events for CDC
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 

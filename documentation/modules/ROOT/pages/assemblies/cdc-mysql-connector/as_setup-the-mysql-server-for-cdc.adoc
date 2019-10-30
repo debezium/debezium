@@ -5,25 +5,20 @@
 [id="setup-the-mysql-server-for-cdc"]
 = Setting up the MySQL server for CDC
 
-* xref:how-the-mysql-connector-uses-database-schemas_{context}[How the connector uses database schemas]
-* xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
-* xref:how-the-mysql-connector-handles-schema-change-topics_{context}[How the connector handles schema change topics]
-* xref:understanding-mysql-connector-events_{context}[Understanding MySQL connector events]
-* xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
-* xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
+* xref:enable-the-mysql-binlog-for-cdc_{context}[Enable the MySQL binlog]
+* xref:create-a-mysql-user-for-cdc_{context}[Create MySQL user]
+* xref:enable-mysql-gtids-for-cdc_{context}[Enable MySQL GTIDs]
+* xref:setup-session-timeouts-for-cdc_{context}[Set up session timeouts]
+* xref:enable-query-log-events-for-cdc_{context}[Enable query log events]
 
 // modules
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
+include::../../modules/cdc-mysql-connector/p_enable-the-mysql-binlog-for-cdc.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
+include::../../modules/cdc-mysql-connector/p_create-a-mysql-user-for-cdc.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
+include::../../modules/cdc-mysql-connector/p_enable-mysql-gtids-for-cdc.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_understanding-mysql-connector-events.adoc[leveloffset=+1]
+include::../../modules/cdc-mysql-connector/p_setup-session-timeouts-for-cdc.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
-
-include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
-
-:context: cdc
+include::../../modules/cdc-mysql-connector/p_enable-query-log-events-for-cdc.adoc[leveloffset=+1]

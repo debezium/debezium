@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="enable-the-mysql-binlog-for-cdc"]
+[id="enable-the-mysql-binlog-for-cdc_{context}"]
 = Enabling the MySQL binlog for CDC
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
