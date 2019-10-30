@@ -5,7 +5,7 @@
 [id="deploy-the-mysql-connector"]
 = Deploying the MySQL connector
 
-* xref:how-the-mysql-connector-uses-database-schemas_{context}[How the connector uses database schemas]
+* xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties]
 * xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
 * xref:how-the-mysql-connector-handles-schema-change-topics_{context}[How the connector handles schema change topics]
 * xref:understanding-mysql-connector-events_{context}[Understanding MySQL connector events]
@@ -14,7 +14,7 @@
 
 // modules
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
+include::../../modules/cdc-mysql-connector/r_mysql-connector-configuration-properties.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
 

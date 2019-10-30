@@ -7,3 +7,7 @@ HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
 include::{assemblies}/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[leveloffset=+1]
 
 include::{assemblies}/cdc-mysql-connector/as_setup-the-mysql-server-for-cdc.adoc[leveloffset=+1]
+
+include::{assemblies}/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc[leveloffset=+1]
+
+include::{assemblies}/cdc-mysql-connector/as_troubleshoot-the-mysql-connector.adoc[leveloffset=+1]
