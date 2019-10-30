@@ -1,5 +1,5 @@
 :attributes: _attributes
-= MySQL connector
+= {prodname} connector for MySQL
 include::../{attributes}.adoc[]
 
 HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
