@@ -52,6 +52,15 @@ a| Records the completed snapshot in the connector offsets.
 
 |===
 
+== What happens if the connector fails?
+
+If the connector fails, stops, or is rebalanced while making the _initial snapshot_, the connector creates a new snapshot once restarted. Once that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates. 
+
+NOTE: If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connecotr reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector].
+
+{sp} +
+
 .Additional resources
 
-text
+* xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector]
+* xref:mysql-connector-configuration-properties_{context}[MySQL configuration properties]
