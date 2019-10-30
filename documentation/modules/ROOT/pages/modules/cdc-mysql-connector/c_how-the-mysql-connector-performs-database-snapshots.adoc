@@ -58,6 +58,50 @@ If the connector fails, stops, or is rebalanced while making the _initial snapsh
 
 NOTE: If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connecotr reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector].
 
+== What if Global Read Locks are not allowed?
+
+Some environments do not allow a *global read lock*. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method.
+
+IMPORTANT: The user must have `LOCK_TABLES` privileges. 
+
+:snapshotStep-noLock: 0
+
+The connector...::
+[cols="1,9"]
+|===
+|Step |Action
+
+|``{counter:snapshotStep-noLock}``
+a| Starts a transaction with link:https://dev.mysql.com/doc/refman/5.6/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
+
+|``{counter:snapshotStep-noLock}``
+| Reads and filters the names of the databases and tables.
+
+|``{counter:snapshotStep-noLock}``
+a| Reads the current binlog position.
+
+|``{counter:snapshotStep-noLock}``
+a| Reads the schema of the databases and tables allowed by the connector's configuration.
+
+|``{counter:snapshotStep-noLock}``
+a| Writes the DDL changes to the schema change topic, including all necessary `DROP...` and `CREATE...` DDL statements.
+
+NOTE: This happens if applicable.
+
+|``{counter:snapshotStep-noLock}``
+a| Scans the database tables and generates `CREATE` events on the relevant table-specific Kakfa topics for each row.
+
+|``{counter:snapshotStep-noLock}``
+a| Commits the transaction.
+
+|``{counter:snapshotStep-noLock}``
+| Releases the table-level locks.
+
+|``{counter:snapshotStep-noLock}``
+a| Records the completed snapshot in the connector offsets.
+
+|===
+
 {sp} +
 
 .Additional resources
