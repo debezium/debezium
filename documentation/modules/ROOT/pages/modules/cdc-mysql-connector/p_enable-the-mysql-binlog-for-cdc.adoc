@@ -2,7 +2,7 @@
 //
 
 [id="enable-the-mysql-binlog-for-cdc_{context}"]
-= Enabling the MySQL binlog for CDC
+= Enabling the MySQL binlog for {prodname}
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
 This paragraph is the procedure module introduction: a short description of the procedure.
