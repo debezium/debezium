@@ -66,8 +66,8 @@ public class ToAvroMongoDataConverterTest {
         final GenericData.Record avro = (GenericData.Record) avroData.fromConnectData(finalSchema, struct);
         assertThat(avro.toString()).isEqualTo(
                 "{\"_id\": 1, " +
-                 "\"s1\": {\"s1f1\": \"field1s1\", \"s1f2\": \"field2s1\"}, " +
-                 "\"s2\": {\"s2f1\": \"field1s2\", \"s2f2\": {\"in1\": 1}}}");
+                        "\"s1\": {\"s1f1\": \"field1s1\", \"s1f2\": \"field2s1\"}, " +
+                        "\"s2\": {\"s2f1\": \"field1s2\", \"s2f2\": {\"in1\": 1}}}");
     }
 
     @Test
@@ -81,25 +81,24 @@ public class ToAvroMongoDataConverterTest {
         final org.apache.avro.Schema avroSchema = avroData.fromConnectSchema(finalSchema);
         assertThat(avroSchema.toString()).isEqualTo(
                 "{\"type\":\"record\",\"name\":\"complex\",\"fields\":[" +
-                    "{\"name\":\"_id\",\"type\":[\"null\",\"int\"],\"default\":null}," +
-                    "{\"name\":\"s1\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s1\",\"namespace\":\"complex\",\"fields\":[" +
+                        "{\"name\":\"_id\",\"type\":[\"null\",\"int\"],\"default\":null}," +
+                        "{\"name\":\"s1\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s1\",\"namespace\":\"complex\",\"fields\":[" +
                         "{\"name\":\"s1f1\",\"type\":[\"null\",\"string\"],\"default\":null}," +
                         "{\"name\":\"s1f2\",\"type\":[\"null\",\"string\"],\"default\":null}]," +
-                    "\"connect.name\":\"complex.s1\"}],\"default\":null}," +
-                    "{\"name\":\"s2\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s2\",\"namespace\":\"complex\",\"fields\":[" +
+                        "\"connect.name\":\"complex.s1\"}],\"default\":null}," +
+                        "{\"name\":\"s2\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s2\",\"namespace\":\"complex\",\"fields\":[" +
                         "{\"name\":\"s2f1\",\"type\":[\"null\",\"string\"],\"default\":null}," +
                         "{\"name\":\"s2f2\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"s2f2\",\"namespace\":\"complex.s2\",\"fields\":[" +
-                            "{\"name\":\"in1\",\"type\":[\"null\",\"int\"],\"default\":null}]," +
+                        "{\"name\":\"in1\",\"type\":[\"null\",\"int\"],\"default\":null}]," +
                         "\"connect.name\":\"complex.s2.s2f2\"}],\"default\":null}]," +
-                    "\"connect.name\":\"complex.s2\"}],\"default\":null}]," +
-                "\"connect.name\":\"complex\"}");
+                        "\"connect.name\":\"complex.s2\"}],\"default\":null}]," +
+                        "\"connect.name\":\"complex\"}");
     }
 
     private String getFile(String fileName) throws IOException, URISyntaxException {
         URL jsonResource = getClass().getClassLoader().getResource(fileName);
         return new String(
                 Files.readAllBytes(Paths.get(jsonResource.toURI())),
-                StandardCharsets.UTF_8
-        );
+                StandardCharsets.UTF_8);
     }
 }

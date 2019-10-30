@@ -66,22 +66,22 @@ public class TestHelper {
 
     public static JdbcConfiguration adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                                .withDefault(JdbcConfiguration.DATABASE, "master")
-                                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
-                                .withDefault(JdbcConfiguration.PORT, 1433)
-                                .withDefault(JdbcConfiguration.USER, "sa")
-                                .withDefault(JdbcConfiguration.PASSWORD, "Password!")
-                                .build();
+                .withDefault(JdbcConfiguration.DATABASE, "master")
+                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.PORT, 1433)
+                .withDefault(JdbcConfiguration.USER, "sa")
+                .withDefault(JdbcConfiguration.PASSWORD, "Password!")
+                .build();
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                                .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
-                                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
-                                .withDefault(JdbcConfiguration.PORT, 1433)
-                                .withDefault(JdbcConfiguration.USER, "sa")
-                                .withDefault(JdbcConfiguration.PASSWORD, "Password!")
-                                .build();
+                .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
+                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.PORT, 1433)
+                .withDefault(JdbcConfiguration.USER, "sa")
+                .withDefault(JdbcConfiguration.PASSWORD, "Password!")
+                .build();
     }
 
     /**
@@ -93,8 +93,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
-        );
+                (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
                 .with(SqlServerConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
@@ -205,8 +204,7 @@ public class TestHelper {
         String tableEnabledStmt = IS_CDC_TABLE_ENABLED.replace(STATEMENTS_PLACEHOLDER, name);
         return connection.queryAndMap(
                 tableEnabledStmt,
-                connection.singleResultMapper(rs -> rs.getInt(1) > 0, "Cannot get CDC status of the table")
-        );
+                connection.singleResultMapper(rs -> rs.getInt(1) > 0, "Cannot get CDC status of the table"));
     }
 
     /**
@@ -247,7 +245,8 @@ public class TestHelper {
                 Assert.fail("Snapshot was not completed on time");
             }
             try {
-                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"), "SnapshotCompleted");
+                final boolean completed = (boolean) mbeanServer.getAttribute(new ObjectName("debezium.sql_server:type=connector-metrics,context=snapshot,server=server1"),
+                        "SnapshotCompleted");
                 if (completed) {
                     break;
                 }

@@ -39,7 +39,8 @@ public class PostgresOffsetContext implements OffsetContext {
     private boolean lastSnapshotRecord;
     private Long lastCompletelyProcessedLsn;
 
-    private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Long lsn, Long lastCompletelyProcessedLsn, Long txId, Instant time, boolean snapshot, boolean lastSnapshotRecord) {
+    private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Long lsn, Long lastCompletelyProcessedLsn, Long txId, Instant time, boolean snapshot,
+                                  boolean lastSnapshotRecord) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 

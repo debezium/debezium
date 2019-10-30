@@ -24,9 +24,8 @@ import io.debezium.util.Testing;
  */
 public class MySqlTableMaintenanceStatementsIT extends AbstractConnectorTest {
 
-
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-table-maintenance.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private final UniqueDatabase DATABASE = new UniqueDatabase("tablemaintenanceit", "table_maintenance_test")
             .withDbHistoryPath(DB_HISTORY_PATH);
 
@@ -64,7 +63,7 @@ public class MySqlTableMaintenanceStatementsIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Consume all of the events due to startup and initialization of the database
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
+        // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 1;
         int numTableMaintenanceStatements = 3;
@@ -75,7 +74,7 @@ public class MySqlTableMaintenanceStatementsIT extends AbstractConnectorTest {
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size()).isEqualTo(numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
         assertThat(records.databaseNames()).containsOnly(DATABASE.getDatabaseName());
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size()).isEqualTo(
-            numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
+                numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
 
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);

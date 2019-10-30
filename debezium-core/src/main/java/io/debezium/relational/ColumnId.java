@@ -39,7 +39,7 @@ public final class ColumnId implements Comparable<ColumnId> {
         Map<TableId, Set<String>> excludedColumnNamesByTable = new HashMap<>();
         columnExclusions.forEach(columnId -> {
             excludedColumnNamesByTable.compute(columnId.tableId(), (tableId, columns) -> {
-                if ( columns == null ) {
+                if (columns == null) {
                     columns = new HashSet<String>();
                 }
                 columns.add(columnId.columnName().toLowerCase());
@@ -48,7 +48,7 @@ public final class ColumnId implements Comparable<ColumnId> {
         });
         Map<TableId, Predicate<Column>> exclusionFilterByTable = new HashMap<>();
         excludedColumnNamesByTable.forEach((tableId, excludedColumnNames) -> {
-            exclusionFilterByTable.put(tableId, (col)->!excludedColumnNames.contains(col.name().toLowerCase()));
+            exclusionFilterByTable.put(tableId, (col) -> !excludedColumnNames.contains(col.name().toLowerCase()));
         });
         return exclusionFilterByTable;
     }
@@ -77,14 +77,14 @@ public final class ColumnId implements Comparable<ColumnId> {
      */
     private static ColumnId parse(String str, boolean useCatalogBeforeSchema) {
         String[] parts = IDENTIFIER_SEPARATOR_PATTERN.split(str);
-        if ( parts.length < 2 ) {
+        if (parts.length < 2) {
             return null;
         }
         TableId tableId = TableId.parse(parts, parts.length - 1, useCatalogBeforeSchema);
-        if ( tableId == null ) {
+        if (tableId == null) {
             return null;
         }
-        return new ColumnId(tableId, parts[parts.length-1]);
+        return new ColumnId(tableId, parts[parts.length - 1]);
     }
 
     private final TableId tableId;

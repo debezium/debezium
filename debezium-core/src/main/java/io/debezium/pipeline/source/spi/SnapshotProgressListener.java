@@ -15,11 +15,15 @@ import io.debezium.relational.TableId;
 public interface SnapshotProgressListener {
 
     void snapshotStarted();
+
     void monitoredTablesDetermined(Iterable<TableId> tableIds);
+
     void snapshotCompleted();
+
     void snapshotAborted();
 
     void tableSnapshotCompleted(TableId tableId, long numRows);
+
     void rowsScanned(TableId tableId, long numRows);
 
     public static SnapshotProgressListener NO_OP = new SnapshotProgressListener() {

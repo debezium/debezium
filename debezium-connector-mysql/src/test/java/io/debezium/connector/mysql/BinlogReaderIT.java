@@ -127,10 +127,10 @@ public class BinlogReaderIT {
 
     protected Configuration.Builder simpleConfig() {
         return DATABASE.defaultConfig()
-                            .with(MySqlConnectorConfig.USER, "replicator")
-                            .with(MySqlConnectorConfig.PASSWORD, "replpass")
-                            .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                            .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false);
+                .with(MySqlConnectorConfig.USER, "replicator")
+                .with(MySqlConnectorConfig.PASSWORD, "replpass")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false);
     }
 
     @Test
@@ -212,7 +212,7 @@ public class BinlogReaderIT {
         // Testing.Print.enable();
         int expectedSchemaChangeCount = 5 + 2; // 5 tables plus 2 alters
         int expected = (9 + 9 + 4 + 5 + 1) + expectedSchemaChangeCount; // only the inserts for our 4 tables in this database, plus
-                                                                    // schema changes
+        // schema changes
         int consumed = consumeAtLeast(expected);
         assertThat(consumed).isGreaterThanOrEqualTo(expected);
 
@@ -226,7 +226,7 @@ public class BinlogReaderIT {
                 "customers", // CREATE TABLE
                 "orders", // CREATE TABLE
                 "dbz_342_timetest" // CREATE TABLE
-            );
+        );
         final List<String> affectedTables = new ArrayList<>();
         schemaChanges.forEach(record -> {
             affectedTables.add(((Struct) record.value()).getStruct("source").getString("table"));
@@ -279,12 +279,12 @@ public class BinlogReaderIT {
      * Verify numberOfFilteredEvents metric is incremented correctly.
      */
     @Test
-    @FixFor( "DBZ-1206" )
+    @FixFor("DBZ-1206")
     public void shouldFilterAllRecordsBasedOnDatabaseWhitelistFilter() throws Exception {
         // Define configuration that will ignore all events from MySQL source.
         config = simpleConfig()
-            .with(MySqlConnectorConfig.DATABASE_WHITELIST, "db-does-not-exist")
-            .build();
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "db-does-not-exist")
+                .build();
 
         final Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
@@ -314,7 +314,7 @@ public class BinlogReaderIT {
     }
 
     @Test
-    @FixFor( "DBZ-183" )
+    @FixFor("DBZ-183")
     public void shouldHandleTimestampTimezones() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(DB_HISTORY_PATH);
@@ -322,9 +322,9 @@ public class BinlogReaderIT {
 
         String tableName = "dbz_85_fractest";
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
-                               .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
-                               .build();
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
+                .build();
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
@@ -345,9 +345,8 @@ public class BinlogReaderIT {
         // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
         ZonedDateTime expectedTimestamp = ZonedDateTime.of(
                 LocalDateTime.parse("2014-09-08T17:51:04.780"),
-                UniqueDatabase.TIMEZONE
-        )
-        .withZoneSameInstant(ZoneOffset.UTC);
+                UniqueDatabase.TIMEZONE)
+                .withZoneSameInstant(ZoneOffset.UTC);
 
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
         SourceRecord sourceRecord = sourceRecords.get(0);
@@ -358,7 +357,7 @@ public class BinlogReaderIT {
     }
 
     @Test
-    @FixFor( "DBZ-342" )
+    @FixFor("DBZ-342")
     public void shouldHandleMySQLTimeCorrectly() throws Exception {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(DB_HISTORY_PATH);
@@ -366,9 +365,9 @@ public class BinlogReaderIT {
 
         String tableName = "dbz_342_timetest";
         config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                               .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
-                               .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
-                               .build();
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, REGRESSION_DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
+                .build();
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
@@ -462,16 +461,16 @@ public class BinlogReaderIT {
     }
 
     @Test(expected = ConnectException.class)
-    @FixFor( "DBZ-1208" )
+    @FixFor("DBZ-1208")
     public void shouldFailOnUnknownTlsProtocol() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(DB_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         config = simpleConfig()
-            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-            .with(SET_TLS_PROTOCOLS, "TLSv1.7")
-            .build();
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
+                .with(SET_TLS_PROTOCOLS, "TLSv1.7")
+                .build();
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();
@@ -484,16 +483,16 @@ public class BinlogReaderIT {
     }
 
     @Test
-    @FixFor( "DBZ-1208" )
+    @FixFor("DBZ-1208")
     public void shouldAcceptTls12() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-            .withDbHistoryPath(DB_HISTORY_PATH);
+                .withDbHistoryPath(DB_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         config = simpleConfig()
-            .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-            .with(SET_TLS_PROTOCOLS, "TLSv1.2")
-            .build();
+                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
+                .with(SET_TLS_PROTOCOLS, "TLSv1.2")
+                .build();
         Filters filters = new Filters.Builder(config).build();
         context = new MySqlTaskContext(config, filters);
         context.start();

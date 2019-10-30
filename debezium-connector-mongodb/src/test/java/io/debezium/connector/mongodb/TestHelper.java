@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -39,5 +40,11 @@ public class TestHelper {
                 db1.getCollection(x).drop();
             }));
         });
+    }
+
+    public static String lines(String... lines) {
+        final StringBuilder sb = new StringBuilder();
+        Arrays.stream(lines).forEach(line -> sb.append(line).append(System.lineSeparator()));
+        return sb.toString();
     }
 }

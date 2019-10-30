@@ -21,7 +21,6 @@ public class UnwrapFromMongoDbEnvelope<R extends ConnectRecord<R>> extends Extra
         LOGGER.warn(
                 "{} has been deprecated and is scheduled for removal. Use {} instead.",
                 getClass().getSimpleName(),
-                ExtractNewDocumentState.class.getName()
-        );
+                ExtractNewDocumentState.class.getName());
     }
 }

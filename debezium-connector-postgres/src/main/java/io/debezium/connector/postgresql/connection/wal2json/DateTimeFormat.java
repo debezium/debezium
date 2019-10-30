@@ -32,15 +32,21 @@ import org.slf4j.LoggerFactory;
  */
 public interface DateTimeFormat {
     public Instant timestampToInstant(final String s);
+
     public OffsetDateTime timestampWithTimeZoneToOffsetDateTime(final String s);
+
     public Instant systemTimestampToInstant(final String s);
+
     public LocalDate date(final String s);
+
     public LocalTime time(final String s);
+
     public OffsetTime timeWithTimeZone(final String s);
 
     public static DateTimeFormat get() {
         return new ISODateTimeFormat();
     }
+
     public static class ISODateTimeFormat implements DateTimeFormat {
         private static final Logger LOGGER = LoggerFactory.getLogger(ISODateTimeFormat.class);
 

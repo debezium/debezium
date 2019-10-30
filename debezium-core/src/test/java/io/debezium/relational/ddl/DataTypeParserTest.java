@@ -55,7 +55,7 @@ public class DataTypeParserTest {
         assertType("BOOLEAN", "BOOLEAN", Types.BOOLEAN);
         assertType("BOOL", "BOOL", Types.BOOLEAN);
         assertType("TINYINT(1)", "TINYINT", Types.BOOLEAN, 1);
-        assertType("BIT(-3)", "BIT", Types.BOOLEAN);  // matches "BIT" thru "BIT[(1)]", leaving "(-3)" on stream
+        assertType("BIT(-3)", "BIT", Types.BOOLEAN); // matches "BIT" thru "BIT[(1)]", leaving "(-3)" on stream
         assertNoType("BOOLE");
     }
 
@@ -86,7 +86,7 @@ public class DataTypeParserTest {
         assertType("INTEGER", "INTEGER", Types.INTEGER);
         assertType("INTEGER(2)", "INTEGER", Types.INTEGER, 2);
         assertType("INTEGER(10)", "INTEGER", Types.INTEGER, 10);
-        assertType("INTEGER(-2)", "INTEGER", Types.INTEGER);  // leaves "(-2)" on stream
+        assertType("INTEGER(-2)", "INTEGER", Types.INTEGER); // leaves "(-2)" on stream
     }
 
     @Test
@@ -111,22 +111,22 @@ public class DataTypeParserTest {
     public void shouldDetermineTypeWithWildcard() {
         assertType("ENUM('a','b','c')", "ENUM", Types.CHAR);
         assertEnumType("ENUM('a','multi','multi with () paren', 'other') followed by",
-                       "ENUM('a','multi','multi with () paren', 'other')");
+                "ENUM('a','multi','multi with () paren', 'other')");
     }
 
-    protected void assertType( String content, String typeName, int jdbcType ) {
-        assertType(content, typeName, jdbcType, - 1, - 1, null);
+    protected void assertType(String content, String typeName, int jdbcType) {
+        assertType(content, typeName, jdbcType, -1, -1, null);
     }
 
-    protected void assertType( String content, String typeName, int jdbcType, long length ) {
-        assertType(content, typeName, jdbcType, length, - 1, null);
+    protected void assertType(String content, String typeName, int jdbcType, long length) {
+        assertType(content, typeName, jdbcType, length, -1, null);
     }
 
-    protected void assertType( String content, String typeName, int jdbcType, long precision, int scale ) {
+    protected void assertType(String content, String typeName, int jdbcType, long precision, int scale) {
         assertType(content, typeName, jdbcType, precision, scale, null);
     }
 
-    protected void assertType( String content, String typeName, int jdbcType, long length, int scale, int[] arrayDims ) {
+    protected void assertType(String content, String typeName, int jdbcType, long length, int scale, int[] arrayDims) {
         DataType type = parser.parse(text(content), null);
         assertThat(type).isNotNull();
         assertThat(type.jdbcType()).isEqualTo(jdbcType);
@@ -136,7 +136,7 @@ public class DataTypeParserTest {
         assertThat(type.arrayDimensions()).isEqualTo(arrayDims);
     }
 
-    protected void assertEnumType( String content, String expression ) {
+    protected void assertEnumType(String content, String expression) {
         DataType type = parser.parse(text(content), null);
         assertThat(type).isNotNull();
         assertThat(type.jdbcType()).isEqualTo(Types.CHAR);
@@ -145,7 +145,7 @@ public class DataTypeParserTest {
         assertThat(type.expression()).isEqualTo(expression);
     }
 
-    protected void assertNoType( String content ) {
+    protected void assertNoType(String content) {
         DataType type = parser.parse(text(content), null);
         assertThat(type).isNull();
     }

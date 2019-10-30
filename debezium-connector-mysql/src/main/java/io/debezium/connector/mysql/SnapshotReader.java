@@ -198,9 +198,8 @@ public class SnapshotReader extends AbstractReader {
         }
 
         try {
-            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8")), column, table) ?
-                    null :
-                    rs.getTimestamp(fieldNo, Calendar.getInstance());
+            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8")), column, table) ? null
+                    : rs.getTimestamp(fieldNo, Calendar.getInstance());
         }
         catch (UnsupportedEncodingException e) {
             logger.error("Could not read MySQL TIME value as UTF-8");
@@ -220,7 +219,8 @@ public class SnapshotReader extends AbstractReader {
         final SourceInfo source = context.source();
         final Clock clock = context.getClock();
         final long ts = clock.currentTimeInMillis();
-        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", connectionContext.connectionString(), mysql.username(), snapshotLockingMode.getValue());
+        logger.info("Starting snapshot for {} with user '{}' with locking mode '{}'", connectionContext.connectionString(), mysql.username(),
+                snapshotLockingMode.getValue());
         logRolesForCurrentUser(mysql);
         logServerInformation(mysql);
         boolean isLocked = false;
@@ -380,19 +380,21 @@ public class SnapshotReader extends AbstractReader {
                         logger.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
                     }
                 }
-                /* To achieve an ordered snapshot, we would first get a list of Regex tables.whitelist regex patterns
-+                   and then sort the tableIds list based on the above list
-+                 */
+                /*
+                 * To achieve an ordered snapshot, we would first get a list of Regex tables.whitelist regex patterns
+                 * + and then sort the tableIds list based on the above list
+                 * +
+                 */
                 List<Pattern> tableWhitelistPattern = Strings.listOfRegex(context.config().getString(MySqlConnectorConfig.TABLE_WHITELIST), Pattern.CASE_INSENSITIVE);
                 List<TableId> tableIdsSorted = new ArrayList<>();
                 tableWhitelistPattern.forEach(pattern -> {
                     List<TableId> tablesMatchedByPattern = capturedTableIds.stream().filter(t -> pattern.asPredicate().test(t.toString()))
                             .collect(Collectors.toList());
-                                        tablesMatchedByPattern.forEach(t -> {
-                                                if (!tableIdsSorted.contains(t)) {
-                                                    tableIdsSorted.add(t);
-                                                }
-                                        });
+                    tablesMatchedByPattern.forEach(t -> {
+                        if (!tableIdsSorted.contains(t)) {
+                            tableIdsSorted.add(t);
+                        }
+                    });
                 });
                 capturedTableIds.sort(Comparator.comparing(tableIdsSorted::indexOf));
                 final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
@@ -409,14 +411,14 @@ public class SnapshotReader extends AbstractReader {
                         if (!connectionContext.userHasPrivileges("LOCK TABLES")) {
                             // We don't have the right privileges
                             throw new ConnectException("User does not have the 'LOCK TABLES' privilege required to obtain a "
-                                + "consistent snapshot by preventing concurrent writes to tables.");
+                                    + "consistent snapshot by preventing concurrent writes to tables.");
                         }
                         // We have the required privileges, so try to lock all of the tables we're interested in ...
                         logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, knownTableIds.size());
                         String tableList = capturedTableIds.stream()
-                            .map(tid -> quote(tid))
-                            .reduce((r, element) -> r + "," + element)
-                            .orElse(null);
+                                .map(tid -> quote(tid))
+                                .reduce((r, element) -> r + "," + element)
+                                .orElse(null);
                         if (tableList != null) {
                             sql.set("FLUSH TABLES " + tableList + " WITH READ LOCK");
                             mysql.executeWithoutCommitting(sql.get());
@@ -446,18 +448,18 @@ public class SnapshotReader extends AbstractReader {
 
                     // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
                     knownTableIds.stream()
-                               .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                               .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
-                                                                   "DROP TABLE IF EXISTS " + quote(tableId),
-                                                                   this::enqueueSchemaChanges));
+                            .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
+                            .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
+                                    "DROP TABLE IF EXISTS " + quote(tableId),
+                                    this::enqueueSchemaChanges));
 
                     // Add a DROP DATABASE statement for each database that we no longer know about ...
                     schema.tableIds().stream().map(TableId::catalog)
-                          .filter(Predicates.not(readableDatabaseNames::contains))
-                          .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                          .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
-                                                                    "DROP DATABASE IF EXISTS " + quote(missingDbName),
-                                                                    this::enqueueSchemaChanges));
+                            .filter(Predicates.not(readableDatabaseNames::contains))
+                            .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
+                            .forEach(missingDbName -> schema.applyDdl(source, missingDbName,
+                                    "DROP DATABASE IF EXISTS " + quote(missingDbName),
+                                    this::enqueueSchemaChanges));
 
                     // Now process all of our tables for each database ...
                     for (Map.Entry<String, List<TableId>> entry : createTablesMap.entrySet()) {
@@ -484,7 +486,7 @@ public class SnapshotReader extends AbstractReader {
                     context.makeRecord().regenerate();
                 }
                 // most likely, something went wrong while writing the history topic
-                catch(Exception e) {
+                catch (Exception e) {
                     interrupted.set(true);
                     throw e;
                 }
@@ -514,7 +516,7 @@ public class SnapshotReader extends AbstractReader {
                         long lockReleased = clock.currentTimeInMillis();
                         metrics.globalLockReleased();
                         logger.info("Step {}: blocked writes to MySQL for a total of {}", step++,
-                                    Strings.duration(lockReleased - lockAcquired));
+                                Strings.duration(lockReleased - lockAcquired));
                     }
                 }
 
@@ -613,7 +615,7 @@ public class SnapshotReader extends AbstractReader {
                                                 if (logger.isInfoEnabled()) {
                                                     long stop = clock.currentTimeInMillis();
                                                     logger.info("Step {}: - {} of {} rows scanned from table '{}' after {}",
-                                                                stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
+                                                            stepNum, rowNum, rowCountStr, tableId, Strings.duration(stop - start));
                                                 }
                                                 metrics.rowsScanned(tableId, rowNum.get());
                                             }
@@ -624,7 +626,7 @@ public class SnapshotReader extends AbstractReader {
                                             if (logger.isInfoEnabled()) {
                                                 long stop = clock.currentTimeInMillis();
                                                 logger.info("Step {}: - Completed scanning a total of {} rows from table '{}' after {}",
-                                                            stepNum, rowNum, tableId, Strings.duration(stop - start));
+                                                        stepNum, rowNum, tableId, Strings.duration(stop - start));
                                             }
                                             metrics.rowsScanned(tableId, rowNum.get());
                                         }
@@ -661,7 +663,7 @@ public class SnapshotReader extends AbstractReader {
                         bufferedRecordQueue.close(this::replaceOffsetAndSource);
                         if (logger.isInfoEnabled()) {
                             logger.info("Step {}: scanned {} rows in {} tables in {}",
-                                        step, totalRowCount, capturedTableIds.size(), Strings.duration(stop - startScan));
+                                    step, totalRowCount, capturedTableIds.size(), Strings.duration(stop - startScan));
                         }
                     }
                     catch (InterruptedException e) {
@@ -669,7 +671,7 @@ public class SnapshotReader extends AbstractReader {
                         // We were not able to finish all rows in all tables ...
                         if (logger.isInfoEnabled()) {
                             logger.info("Step {}: aborting the snapshot after {} rows in {} of {} tables {}",
-                                        step, totalRowCount, completedCounter, capturedTableIds.size(), Strings.duration(stop - startScan));
+                                    step, totalRowCount, completedCounter, capturedTableIds.size(), Strings.duration(stop - startScan));
                         }
                         interrupted.set(true);
                     }
@@ -756,12 +758,11 @@ public class SnapshotReader extends AbstractReader {
                     // are not denoted as a snapshot ...
                     source.completeSnapshot();
                     Heartbeat
-                        .create(
-                                context.config(),
-                                context.topicSelector().getHeartbeatTopic(),
-                                context.getConnectorConfig().getLogicalName()
-                        )
-                        .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
+                            .create(
+                                    context.config(),
+                                    context.topicSelector().getHeartbeatTopic(),
+                                    context.getConnectorConfig().getLogicalName())
+                            .forcedBeat(source.partition(), source.offset(), this::enqueueRecord);
                 }
                 finally {
                     // Set the completion flag ...
@@ -828,7 +829,7 @@ public class SnapshotReader extends AbstractReader {
                         String gtidSet = rs.getString(5); // GTID set, may be null, blank, or contain a GTID set
                         source.setCompletedGtidSet(gtidSet);
                         logger.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
-                                    gtidSet);
+                                gtidSet);
                     }
                     else {
                         logger.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
@@ -905,8 +906,8 @@ public class SnapshotReader extends AbstractReader {
             mysql.query("SHOW VARIABLES WHERE Variable_name REGEXP 'version|binlog|tx_|gtid|character_set|collation|time_zone'", rs -> {
                 while (rs.next()) {
                     logger.info("\t{} = {}",
-                                Strings.pad(rs.getString(1), 45, ' '),
-                                Strings.pad(rs.getString(2), 45, ' '));
+                            Strings.pad(rs.getString(1), 45, ' '),
+                            Strings.pad(rs.getString(2), 45, ' '));
                 }
             });
         }
@@ -927,7 +928,7 @@ public class SnapshotReader extends AbstractReader {
                 logger.warn("Snapshot is using user '{}' but it likely doesn't have proper privileges. " +
                         "If tables are missing or are empty, ensure connector is configured with the correct MySQL user " +
                         "and/or ensure that the MySQL user has the required privileges.",
-                            mysql.username());
+                        mysql.username());
             }
             else {
                 logger.info("Snapshot is using user '{}' with these MySQL grants:", mysql.username());

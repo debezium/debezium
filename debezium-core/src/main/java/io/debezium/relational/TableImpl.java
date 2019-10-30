@@ -112,8 +112,8 @@ final class TableImpl implements Table {
     @Override
     public TableEditor edit() {
         return new TableEditorImpl().tableId(id)
-                                    .setColumns(columnDefs)
-                                    .setPrimaryKeyNames(pkColumnNames)
-                                    .setDefaultCharsetName(defaultCharsetName);
+                .setColumns(columnDefs)
+                .setPrimaryKeyNames(pkColumnNames)
+                .setDefaultCharsetName(defaultCharsetName);
     }
 }

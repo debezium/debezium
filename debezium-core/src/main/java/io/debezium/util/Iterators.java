@@ -300,7 +300,7 @@ public class Iterators {
 
             @Override
             public boolean hasNext() {
-                if (! completedFirst) {
+                if (!completedFirst) {
                     if (first.hasNext()) {
                         return true;
                     }
@@ -311,7 +311,7 @@ public class Iterators {
 
             @Override
             public T next() {
-                if (! completedFirst) {
+                if (!completedFirst) {
                     if (first.hasNext()) {
                         return first.next();
                     }

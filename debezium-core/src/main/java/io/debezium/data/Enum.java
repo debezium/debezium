@@ -27,9 +27,9 @@ public class Enum {
      */
     public static SchemaBuilder builder(String allowedValues) {
         return SchemaBuilder.string()
-                            .name(LOGICAL_NAME)
-                            .parameter(VALUES_FIELD, allowedValues)
-                            .version(1);
+                .name(LOGICAL_NAME)
+                .parameter(VALUES_FIELD, allowedValues)
+                .version(1);
     }
 
     /**

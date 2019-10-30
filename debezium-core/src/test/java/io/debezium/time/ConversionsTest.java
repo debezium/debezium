@@ -65,7 +65,7 @@ public class ConversionsTest {
             Conversions.toLocalDate(time);
             fail("Should not accept java.sql.Time values");
         }
-        catch ( IllegalArgumentException e ) {
+        catch (IllegalArgumentException e) {
             // expected
         }
     }
@@ -76,8 +76,6 @@ public class ConversionsTest {
         long epochDay = now.toEpochDay();
         assertThat(Conversions.toLocalDate(epochDay)).isEqualTo(now);
     }
-
-
 
     @Test
     public void shouldReturnSameLocalDateTimeInstanceWhenConvertingToLocalDateTime() {
@@ -102,12 +100,12 @@ public class ConversionsTest {
     public void shouldReturnLocalDateTimeInstanceWhenConvertingUtilTimeToLocalDateTime() {
         LocalDateTime now = LocalDateTime.now();
         java.util.Date date = new java.util.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth(),
-                                                 now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
+                now.getHour(), now.getMinute(), now.getSecond()); // 0 nanos!
         assertThat(Conversions.toLocalDateTime(date)).isEqualTo(now.withNano(0));
     }
 
     @SuppressWarnings("deprecation")
-   @Test
+    @Test
     public void shouldReturnLocalDateTimeInstanceWhenConvertingSqlDateToLocalDateTime() {
         LocalDate now = LocalDate.now();
         java.sql.Date date = new java.sql.Date(now.getYear() - 1900, now.getMonthValue() - 1, now.getDayOfMonth());
@@ -128,11 +126,10 @@ public class ConversionsTest {
             Conversions.toLocalDateTime(Long.valueOf(1));
             fail("Should not accept Long values");
         }
-        catch ( IllegalArgumentException e ) {
+        catch (IllegalArgumentException e) {
             // expected
         }
     }
-
 
     @Test
     public void shouldReturnSameLocalTimeInstanceWhenConvertingToLocalTime() {
@@ -161,7 +158,7 @@ public class ConversionsTest {
             Conversions.toLocalTime(date);
             fail("Should not accept java.sql.Date values");
         }
-        catch ( IllegalArgumentException e ) {
+        catch (IllegalArgumentException e) {
             // expected
         }
     }

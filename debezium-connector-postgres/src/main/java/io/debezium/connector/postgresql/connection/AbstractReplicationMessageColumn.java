@@ -29,9 +29,10 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         private static final String[] NO_MODIFIERS = new String[0];
 
-        public static final Pattern TYPE_PATTERN = Pattern.compile("^(?<schema>[^\\.\\(]+\\.)?(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
+        public static final Pattern TYPE_PATTERN = Pattern
+                .compile("^(?<schema>[^\\.\\(]+\\.)?(?<full>(?<base>[^(\\[]+)(?:\\((?<mod>.+)\\))?(?<suffix>.*?))(?<array>\\[\\])?$");
         private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
-            // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"; "myschema.geometry"
+        // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"; "myschema.geometry"
 
         /**
          * Length of the type, if present

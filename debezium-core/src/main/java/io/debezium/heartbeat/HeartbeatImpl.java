@@ -50,13 +50,13 @@ class HeartbeatImpl implements Heartbeat {
     private static final String SERVER_NAME_KEY = "serverName";
 
     private static Schema KEY_SCHEMA = SchemaBuilder.struct()
-                                                    .name(schemaNameAdjuster.adjust("io.debezium.connector.common.ServerNameKey"))
-                                                    .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-                                                    .build();
+            .name(schemaNameAdjuster.adjust("io.debezium.connector.common.ServerNameKey"))
+            .field(SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+            .build();
     private static Schema VALUE_SCHEMA = SchemaBuilder.struct()
-                                                    .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
-                                                    .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                                                    .build();
+            .name(schemaNameAdjuster.adjust("io.debezium.connector.common.Heartbeat"))
+            .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+            .build();
 
     private final String topicName;
     private final Duration heartbeatInterval;

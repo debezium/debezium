@@ -84,17 +84,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * updates to the server
      */
     private PostgresReplicationConnection(Configuration config,
-                                         String slotName,
-                                         String publicationName,
-                                         PostgresConnectorConfig.LogicalDecoder plugin,
-                                         boolean dropSlotOnClose,
-                                         boolean exportSnapshot,
-                                         Duration statusUpdateInterval,
-                                         TypeRegistry typeRegistry,
-                                         Properties streamParams,
-                                         PostgresSchema schema
-    ) {
-        super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection :: defaultSettings);
+                                          String slotName,
+                                          String publicationName,
+                                          PostgresConnectorConfig.LogicalDecoder plugin,
+                                          boolean dropSlotOnClose,
+                                          boolean exportSnapshot,
+                                          Duration statusUpdateInterval,
+                                          TypeRegistry typeRegistry,
+                                          Properties streamParams,
+                                          PostgresSchema schema) {
+        super(config, PostgresConnection.FACTORY, null, PostgresReplicationConnection::defaultSettings);
 
         this.originalConfig = config;
         this.slotName = slotName;
@@ -123,17 +122,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 try (Statement stmt = pgConnection().createStatement()) {
                     ResultSet rs = stmt.executeQuery(String.format(
                             "SELECT COUNT(1) FROM pg_publication WHERE pubname = '%s'",
-                            publicationName
-                    ));
+                            publicationName));
                     if (rs.next()) {
                         Long count = rs.getLong(1);
                         if (count == 0L) {
                             LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
                             // Publication doesn't exist, create it.
                             // todo: DBZ-766 - Change this to be restricted based on configured whitelist tables?
-                            //      For situations where no publication exists, we likely cannot create it for all tables.
-                            //      This is because postgres requires certain super user permissions to use "ALL TABLES".
-                            //      We should restrict this to the configured tables here.
+                            // For situations where no publication exists, we likely cannot create it for all tables.
+                            // This is because postgres requires certain super user permissions to use "ALL TABLES".
+                            // We should restrict this to the configured tables here.
                             stmt.execute(String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName));
                         }
                         else {
@@ -250,7 +248,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         try {
             return createReplicationStream(lsn, skipFirstFlushRecord);
         }
-        catch(Exception e) {
+        catch (Exception e) {
             throw new ConnectException("Failed to start replication stream at " + lsn, e);
         }
     }
@@ -287,8 +285,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     "CREATE_REPLICATION_SLOT %s %s LOGICAL %s",
                     slotName,
                     tempPart,
-                    plugin.getPostgresPluginName()
-            );
+                    plugin.getPostgresPluginName());
             LOGGER.info("Creating replication slot with command {}", createCommand);
             stmt.execute(createCommand);
             // when we are in pg94+, we can parse the slot creation info, otherwise, it returns
@@ -323,7 +320,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             throw new ConnectException("unable to parse create_replication_slot", ex);
         }
     }
-
 
     private ReplicationStream createReplicationStream(final LogSequenceNumber startLsn, boolean skipFirstFlushRecord) throws SQLException, InterruptedException {
         PGReplicationStream s;
@@ -365,7 +361,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
             else if (e.getMessage().matches("(?s)ERROR: requested WAL segment .* has already been removed.*")) {
                 LOGGER.error("Cannot rewind to last processed WAL position", e);
-                throw new ConnectException("The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
+                throw new ConnectException(
+                        "The offset to start reading from has been removed from the database write-ahead log. Create a new snapshot and consider setting of PostgreSQL parameter wal_keep_segments = 0.");
             }
             else {
                 throw e;
@@ -482,7 +479,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         };
     }
 
-    private PGReplicationStream startPgReplicationStream(final LogSequenceNumber lsn, Function<ChainedLogicalStreamBuilder, ChainedLogicalStreamBuilder> configurator) throws SQLException {
+    private PGReplicationStream startPgReplicationStream(final LogSequenceNumber lsn, Function<ChainedLogicalStreamBuilder, ChainedLogicalStreamBuilder> configurator)
+            throws SQLException {
         assert lsn != null;
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
                 .getReplicationAPI()
@@ -535,7 +533,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         PostgresConnection.defaultSettings(builder);
         // then set some additional replication specific settings
         builder.with("replication", "database")
-               .with("preferQueryMode", "simple"); // replication protocol only supports simple query mode
+                .with("preferQueryMode", "simple"); // replication protocol only supports simple query mode
     }
 
     protected static class ReplicationConnectionBuilder implements Builder {
@@ -612,7 +610,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             this.exportSnapshot = exportSnapshot;
             return this;
         }
-
 
         @Override
         public ReplicationConnection build() {

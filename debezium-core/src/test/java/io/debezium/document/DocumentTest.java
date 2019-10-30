@@ -60,13 +60,13 @@ public class DocumentTest {
         assertThat(values).containsExactly(1, 2, 3);
     }
 
-    protected void assertPair( Iterator<Map.Entry<Path, Value>> iterator, String path, Object value ) {
+    protected void assertPair(Iterator<Map.Entry<Path, Value>> iterator, String path, Object value) {
         Map.Entry<Path, Value> entry = iterator.next();
         assertThat((Object) entry.getKey()).isEqualTo(Path.parse(path));
         assertThat(entry.getValue()).isEqualTo(Value.create(value));
     }
 
-    protected void assertNoMore( Iterator<Map.Entry<Path, Value>> iterator ) {
+    protected void assertNoMore(Iterator<Map.Entry<Path, Value>> iterator) {
         assertThat(iterator.hasNext()).isFalse();
     }
 

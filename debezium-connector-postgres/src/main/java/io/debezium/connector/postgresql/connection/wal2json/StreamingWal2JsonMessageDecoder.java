@@ -161,7 +161,8 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
     }
 
     protected void nonInitialChunk(ReplicationMessageProcessor processor, TypeRegistry typeRegistry,
-            final byte[] content) throws IOException, SQLException, InterruptedException {
+                                   final byte[] content)
+            throws IOException, SQLException, InterruptedException {
         byte firstChar = getFirstNonWhiteChar(content);
         // We are receiving changes in chunks
         if (firstChar == LEFT_BRACE) {
@@ -259,16 +260,16 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder optionsWithMetadata(ChainedLogicalStreamBuilder builder) {
         return optionsWithoutMetadata(builder)
-            .withSlotOption("include-not-null", "true");
+                .withSlotOption("include-not-null", "true");
     }
 
     @Override
     public ChainedLogicalStreamBuilder optionsWithoutMetadata(ChainedLogicalStreamBuilder builder) {
         return builder
-            .withSlotOption("pretty-print", 1)
-            .withSlotOption("write-in-chunks", 1)
-            .withSlotOption("include-xids", 1)
-            .withSlotOption("include-timestamp", 1);
+                .withSlotOption("pretty-print", 1)
+                .withSlotOption("write-in-chunks", 1)
+                .withSlotOption("include-xids", 1)
+                .withSlotOption("include-timestamp", 1);
     }
 
     @Override

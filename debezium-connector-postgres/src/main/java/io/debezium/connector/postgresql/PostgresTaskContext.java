@@ -78,7 +78,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         if (config.xminFetchInterval().toMillis() <= 0) {
             return null;
         }
-        assert(this.refreshXmin != null);
+        assert (this.refreshXmin != null);
 
         if (this.refreshXmin.hasElapsed()) {
             lastXmin = getCurrentSlotState(connection).slotCatalogXmin();
@@ -101,16 +101,16 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
 
     protected ReplicationConnection createReplicationConnection(boolean exportSnapshot) throws SQLException {
         return ReplicationConnection.builder(config.jdbcConfig())
-                                    .withSlot(config.slotName())
-                                    .withPublication(config.publicationName())
-                                    .withPlugin(config.plugin())
-                                    .dropSlotOnClose(config.dropSlotOnStop())
-                                    .streamParams(config.streamParams())
-                                    .statusUpdateInterval(config.statusUpdateInterval())
-                                    .withTypeRegistry(schema.getTypeRegistry())
-                                    .exportSnapshotOnCreate(exportSnapshot)
-                                    .withSchema(schema)
-                                    .build();
+                .withSlot(config.slotName())
+                .withPublication(config.publicationName())
+                .withPlugin(config.plugin())
+                .dropSlotOnClose(config.dropSlotOnStop())
+                .streamParams(config.streamParams())
+                .statusUpdateInterval(config.statusUpdateInterval())
+                .withTypeRegistry(schema.getTypeRegistry())
+                .exportSnapshotOnCreate(exportSnapshot)
+                .withSchema(schema)
+                .build();
     }
 
     protected PostgresConnection createConnection() {

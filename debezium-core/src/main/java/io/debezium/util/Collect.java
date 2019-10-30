@@ -240,7 +240,8 @@ public class Collect {
         return props;
     }
 
-    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5, String value5) {
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5,
+                                          String value5) {
         Properties props = new Properties();
         props.put(key1, value1);
         props.put(key2, value2);
@@ -250,7 +251,8 @@ public class Collect {
         return props;
     }
 
-    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5, String value5, String key6, String value6) {
+    public static Properties propertiesOf(String key1, String value1, String key2, String value2, String key3, String value3, String key4, String value4, String key5,
+                                          String value5, String key6, String value6) {
         Properties props = new Properties();
         props.put(key1, value1);
         props.put(key2, value2);

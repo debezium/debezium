@@ -31,8 +31,7 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
     @Test
     public void shouldTransformOperationBitAnd() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$bit': {dataInt: {and: NumberInt(1010)}}}"
-        );
+                "{'$bit': {dataInt: {and: NumberInt(1010)}}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -50,8 +49,7 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
     @Test
     public void shouldTransformOperationBitOr() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$bit': {dataInt: {or: NumberInt(1001)}}}"
-        );
+                "{'$bit': {dataInt: {or: NumberInt(1001)}}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();
@@ -69,8 +67,7 @@ public class ExtractNewDocumentStateUpdateBitOperatorTestIT extends AbstractExtr
     @Test
     public void shouldTransformOperationBitXor() throws InterruptedException {
         SourceRecord updateRecord = executeSimpleUpdateOperation(
-                "{'$bit': {dataInt: {xor: NumberInt(111)}}}"
-        );
+                "{'$bit': {dataInt: {xor: NumberInt(111)}}}");
 
         final SourceRecord transformedUpdate = transformation.apply(updateRecord);
         final Struct transformedUpdateValue = (Struct) transformedUpdate.value();

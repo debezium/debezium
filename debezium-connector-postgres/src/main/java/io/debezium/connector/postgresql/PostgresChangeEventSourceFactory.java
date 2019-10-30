@@ -33,8 +33,9 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotCreationResult slotCreatedInfo;
 
     public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
-            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema, PostgresTaskContext taskContext,
-            ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo) {
+                                            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
+                                            PostgresTaskContext taskContext,
+                                            ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;
@@ -58,8 +59,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 dispatcher,
                 clock,
                 snapshotProgressListener,
-                slotCreatedInfo
-            );
+                slotCreatedInfo);
     }
 
     @Override
@@ -74,7 +74,6 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 clock,
                 schema,
                 taskContext,
-                replicationConnection
-        );
+                replicationConnection);
     }
 }

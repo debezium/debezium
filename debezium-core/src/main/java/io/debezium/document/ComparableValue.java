@@ -166,15 +166,15 @@ final class ComparableValue implements Value {
             }
             return this.asBigInteger().compareTo(that.asBigInteger());
         }
-        if ( this.isDocument() && that.isDocument()) {
+        if (this.isDocument() && that.isDocument()) {
             return this.asDocument().compareTo(that.asDocument());
         }
-        if ( this.isArray() && that.isArray() ) {
+        if (this.isArray() && that.isArray()) {
             return this.asArray().compareTo(that.asArray());
         }
         Comparable<Object> thisValue = (Comparable<Object>) this.asObject();
         Comparable<Object> thatValue = (Comparable<Object>) ((ComparableValue) that.comparable()).asObject();
-        if ( thisValue.getClass().isAssignableFrom(thatValue.getClass())) {
+        if (thisValue.getClass().isAssignableFrom(thatValue.getClass())) {
             return thisValue.compareTo(thatValue);
         }
         else if (thatValue.getClass().isAssignableFrom(thisValue.getClass())) {

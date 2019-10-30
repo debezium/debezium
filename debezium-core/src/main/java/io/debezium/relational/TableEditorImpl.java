@@ -181,7 +181,8 @@ final class TableEditorImpl implements TableEditor {
         Column afterColumn = afterColumnName == null ? null : columnWithName(afterColumnName);
         if (afterColumn != null && (afterColumn.position() + 1) == columnToMove.position()) {
             // nothing to do ...
-        } else if ( afterColumn == null && columnToMove.position() == 1) {
+        }
+        else if (afterColumn == null && columnToMove.position() == 1) {
             // nothing to do ...
         }
         if (afterColumn != null && afterColumn.position() == sortedColumns.size()) {
@@ -218,9 +219,9 @@ final class TableEditorImpl implements TableEditor {
         Column newColumn = existing.edit().name(newName).create();
         // Determine the primary key names ...
         List<String> newPkNames = null;
-        if ( !hasUniqueValues() && primaryKeyColumnNames().contains(existing.name())) {
+        if (!hasUniqueValues() && primaryKeyColumnNames().contains(existing.name())) {
             newPkNames = new ArrayList<>(primaryKeyColumnNames());
-            newPkNames.replaceAll(name->existing.name().equals(name) ? newName : name);
+            newPkNames.replaceAll(name -> existing.name().equals(name) ? newName : name);
         }
         // Add the new column, move it before the existing column, and remove the old column ...
         addColumn(newColumn);
@@ -260,7 +261,7 @@ final class TableEditorImpl implements TableEditor {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();
-        sortedColumns.values().forEach(column-> {
+        sortedColumns.values().forEach(column -> {
             column = column.edit().charsetNameOfTable(defaultCharsetName).create();
             columns.add(column);
         });

@@ -112,7 +112,8 @@ public class MySqlAntlrDdlParserTest {
                 "  `cost_value` float DEFAULT NULL,\n" +
                 "  `last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
                 "  `comment` varchar(1024) DEFAULT NULL,\n" +
-                "  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'io_block_read_cost' then 1.0 when _utf8mb3'memory_block_read_cost' then 0.25 else NULL end)) VIRTUAL,\n" +
+                "  `default_value` float GENERATED ALWAYS AS ((case `cost_name` when _utf8mb3'io_block_read_cost' then 1.0 when _utf8mb3'memory_block_read_cost' then 0.25 else NULL end)) VIRTUAL,\n"
+                +
                 "  PRIMARY KEY (`cost_name`,`engine_name`,`device_type`)\n" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 STATS_PERSISTENT=0" + System.lineSeparator();
         parser.parse(ddl, tables);
@@ -150,8 +151,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1220")
     public void shouldParseFloatVariants() {
-        final String ddl =
-                "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4));";
+        final String ddl = "CREATE TABLE mytable (id SERIAL, f1 FLOAT, f2 FLOAT(4), f3 FLOAT(7,4));";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
@@ -177,8 +177,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1185")
     public void shouldProcessSerialDatatype() {
-        final String ddl =
-                "CREATE TABLE foo1 (id SERIAL, val INT);" +
+        final String ddl = "CREATE TABLE foo1 (id SERIAL, val INT);" +
                 "CREATE TABLE foo2 (id SERIAL PRIMARY KEY, val INT);" +
                 "CREATE TABLE foo3 (id SERIAL, val INT, PRIMARY KEY(id));" +
 
@@ -193,57 +192,52 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
-        Stream.of("foo1", "foo2", "foo3"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    final Column id = table.columnWithName("id");
-                    assertThat(id.name()).isEqualTo("id");
-                    assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
-                    assertThat(id.length()).isEqualTo(-1);
-                    assertThat(id.isRequired()).isTrue();
-                    assertThat(id.isAutoIncremented()).isTrue();
-                    assertThat(id.isGenerated()).isTrue();
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
-                });
+        Stream.of("foo1", "foo2", "foo3").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            final Column id = table.columnWithName("id");
+            assertThat(id.name()).isEqualTo("id");
+            assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
+            assertThat(id.length()).isEqualTo(-1);
+            assertThat(id.isRequired()).isTrue();
+            assertThat(id.isAutoIncremented()).isTrue();
+            assertThat(id.isGenerated()).isTrue();
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+        });
 
-        Stream.of("foo4", "foo5"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
-                });
+        Stream.of("foo4", "foo5").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
+        });
 
-        Stream.of("foo6"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    final Column id = table.columnWithName("id");
-                    assertThat(id.name()).isEqualTo("id");
-                    assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
-                    assertThat(id.length()).isEqualTo(-1);
-                    assertThat(id.isOptional()).isTrue();
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
-                });
+        Stream.of("foo6").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            final Column id = table.columnWithName("id");
+            assertThat(id.name()).isEqualTo("id");
+            assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
+            assertThat(id.length()).isEqualTo(-1);
+            assertThat(id.isOptional()).isTrue();
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+        });
 
-        Stream.of("foo7"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    final Column id = table.columnWithName("id");
-                    assertThat(id.name()).isEqualTo("id");
-                    assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
-                    assertThat(id.length()).isEqualTo(-1);
-                    assertThat(id.isRequired()).isTrue();
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
-                });
+        Stream.of("foo7").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            final Column id = table.columnWithName("id");
+            assertThat(id.name()).isEqualTo("id");
+            assertThat(id.typeName()).isEqualTo("BIGINT UNSIGNED");
+            assertThat(id.length()).isEqualTo(-1);
+            assertThat(id.isRequired()).isTrue();
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+        });
     }
 
     @Test
     @FixFor("DBZ-1185")
     public void shouldProcessSerialDefaultValue() {
-        final String ddl =
-                "CREATE TABLE foo1 (id SMALLINT SERIAL DEFAULT VALUE, val INT);" +
+        final String ddl = "CREATE TABLE foo1 (id SMALLINT SERIAL DEFAULT VALUE, val INT);" +
                 "CREATE TABLE foo2 (id SMALLINT SERIAL DEFAULT VALUE PRIMARY KEY, val INT);" +
                 "CREATE TABLE foo3 (id SMALLINT SERIAL DEFAULT VALUE, val INT, PRIMARY KEY(id));" +
 
@@ -256,59 +250,54 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
 
-        Stream.of("foo1", "foo2", "foo3"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    final Column id = table.columnWithName("id");
-                    assertThat(id.name()).isEqualTo("id");
-                    assertThat(id.typeName()).isEqualTo("SMALLINT");
-                    assertThat(id.length()).isEqualTo(-1);
-                    assertThat(id.isRequired()).isTrue();
-                    assertThat(id.isAutoIncremented()).isTrue();
-                    assertThat(id.isGenerated()).isTrue();
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
-                });
+        Stream.of("foo1", "foo2", "foo3").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            final Column id = table.columnWithName("id");
+            assertThat(id.name()).isEqualTo("id");
+            assertThat(id.typeName()).isEqualTo("SMALLINT");
+            assertThat(id.length()).isEqualTo(-1);
+            assertThat(id.isRequired()).isTrue();
+            assertThat(id.isAutoIncremented()).isTrue();
+            assertThat(id.isGenerated()).isTrue();
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+        });
 
-        Stream.of("foo4", "foo5"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
-                });
+        Stream.of("foo4", "foo5").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("val");
+        });
 
-        Stream.of("foo6"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    final Column id = table.columnWithName("id");
-                    assertThat(id.name()).isEqualTo("id");
-                    assertThat(id.typeName()).isEqualTo("SMALLINT");
-                    assertThat(id.length()).isEqualTo(3);
-                    assertThat(id.isOptional()).isTrue();
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
-                });
+        Stream.of("foo6").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            final Column id = table.columnWithName("id");
+            assertThat(id.name()).isEqualTo("id");
+            assertThat(id.typeName()).isEqualTo("SMALLINT");
+            assertThat(id.length()).isEqualTo(3);
+            assertThat(id.isOptional()).isTrue();
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+        });
 
-        Stream.of("foo7"
-                ).forEach(tableName -> {
-                    final Table table = tables.forTable(null, null, tableName);
-                    assertThat(table.columns().size()).isEqualTo(2);
-                    final Column id = table.columnWithName("id");
-                    assertThat(id.name()).isEqualTo("id");
-                    assertThat(id.typeName()).isEqualTo("SMALLINT UNSIGNED");
-                    assertThat(id.length()).isEqualTo(5);
-                    assertThat(id.isRequired()).isTrue();
-                    assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
-                });
+        Stream.of("foo7").forEach(tableName -> {
+            final Table table = tables.forTable(null, null, tableName);
+            assertThat(table.columns().size()).isEqualTo(2);
+            final Column id = table.columnWithName("id");
+            assertThat(id.name()).isEqualTo("id");
+            assertThat(id.typeName()).isEqualTo("SMALLINT UNSIGNED");
+            assertThat(id.length()).isEqualTo(5);
+            assertThat(id.isRequired()).isTrue();
+            assertThat(table.primaryKeyColumnNames()).hasSize(1).containsOnly("id");
+        });
     }
 
     @Test
     @FixFor("DBZ-1123")
     public void shouldParseGeneratedColumn() {
-        String ddl =
-                "CREATE TABLE t1 (id binary(16) NOT NULL, val char(32) GENERATED ALWAYS AS (hex(id)) STORED, PRIMARY KEY (id));"
-              + "CREATE TABLE t2 (id binary(16) NOT NULL, val char(32) AS (hex(id)) STORED, PRIMARY KEY (id));"
-              + "CREATE TABLE t3 (id binary(16) NOT NULL, val char(32) GENERATED ALWAYS AS (hex(id)) VIRTUAL, PRIMARY KEY (id))";
+        String ddl = "CREATE TABLE t1 (id binary(16) NOT NULL, val char(32) GENERATED ALWAYS AS (hex(id)) STORED, PRIMARY KEY (id));"
+                + "CREATE TABLE t2 (id binary(16) NOT NULL, val char(32) AS (hex(id)) STORED, PRIMARY KEY (id));"
+                + "CREATE TABLE t3 (id binary(16) NOT NULL, val char(32) GENERATED ALWAYS AS (hex(id)) VIRTUAL, PRIMARY KEY (id))";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(3);
@@ -317,10 +306,9 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1186")
     public void shouldParseAlterTableMultiTableOptions() {
-        String ddl =
-                "CREATE TABLE t1 (id int, PRIMARY KEY (id)) STATS_PERSISTENT=1, STATS_AUTO_RECALC=1, STATS_SAMPLE_PAGES=25;"
-              + "ALTER TABLE t1 STATS_AUTO_RECALC=DEFAULT STATS_SAMPLE_PAGES=50;"
-              + "ALTER TABLE t1 STATS_AUTO_RECALC=DEFAULT, STATS_SAMPLE_PAGES=50";
+        String ddl = "CREATE TABLE t1 (id int, PRIMARY KEY (id)) STATS_PERSISTENT=1, STATS_AUTO_RECALC=1, STATS_SAMPLE_PAGES=25;"
+                + "ALTER TABLE t1 STATS_AUTO_RECALC=DEFAULT STATS_SAMPLE_PAGES=50;"
+                + "ALTER TABLE t1 STATS_AUTO_RECALC=DEFAULT, STATS_SAMPLE_PAGES=50";
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
@@ -329,8 +317,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1150")
     public void shouldParseCheckTableKeywords() {
-        String ddl =
-                "CREATE TABLE my_table (\n" +
+        String ddl = "CREATE TABLE my_table (\n" +
                 "  user_id varchar(64) NOT NULL,\n" +
                 "  upgrade varchar(256),\n" +
                 "  quick varchar(256),\n" +
@@ -355,7 +342,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1233")
     public void shouldParseCheckTableSomeOtherKeyword() {
-        String[] otherKeywords = new String[] { "cache", "close", "des_key_file", "end", "export", "flush", "found",
+        String[] otherKeywords = new String[]{ "cache", "close", "des_key_file", "end", "export", "flush", "found",
                 "general", "handler", "help", "hosts", "install", "mode", "next", "open", "relay", "reset", "slow",
                 "soname", "traditional", "triggers", "uninstall", "until", "use_frm", "user_resources" };
         for (String keyword : otherKeywords) {
@@ -512,9 +499,9 @@ public class MySqlAntlrDdlParserTest {
     @FixFor("DBZ-1059")
     public void shouldParseAlterTableRename() {
         final String ddl = "USE db;"
-                  + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY);"
-                  + "ALTER TABLE `t1` RENAME TO `t2`;"
-                  + "ALTER TABLE `db`.`t2` RENAME TO `db`.`t3`;";
+                + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY);"
+                + "ALTER TABLE `t1` RENAME TO `t2`;"
+                + "ALTER TABLE `db`.`t2` RENAME TO `db`.`t3`;";
         parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -621,13 +608,12 @@ public class MySqlAntlrDdlParserTest {
     public void shouldParseConstraintCheck() {
         parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
 
-        final String ddl =
-                "CREATE TABLE t1 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CHECK (c2 IN ('A', 'B', 'C')));"
-              + "CREATE TABLE t2 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT c1 CHECK (c2 IN ('A', 'B', 'C')));"
-              + "CREATE TABLE t3 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT CHECK (c2 IN ('A', 'B', 'C')));"
-              + "ALTER TABLE t1 ADD CONSTRAINT CHECK (c1 IN (1, 2, 3, 4));"
-              + "ALTER TABLE t1 ADD CONSTRAINT c2 CHECK (c1 IN (1, 2, 3, 4))"
-              + "ALTER TABLE t1 ADD CHECK (c1 IN (1, 2, 3, 4))";
+        final String ddl = "CREATE TABLE t1 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CHECK (c2 IN ('A', 'B', 'C')));"
+                + "CREATE TABLE t2 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT c1 CHECK (c2 IN ('A', 'B', 'C')));"
+                + "CREATE TABLE t3 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT CHECK (c2 IN ('A', 'B', 'C')));"
+                + "ALTER TABLE t1 ADD CONSTRAINT CHECK (c1 IN (1, 2, 3, 4));"
+                + "ALTER TABLE t1 ADD CONSTRAINT c2 CHECK (c1 IN (1, 2, 3, 4))"
+                + "ALTER TABLE t1 ADD CHECK (c1 IN (1, 2, 3, 4))";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(3);
 
@@ -639,8 +625,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1028")
     public void shouldParseCommentWithEngineName() {
-        final String ddl =
-                "CREATE TABLE t1 ("
+        final String ddl = "CREATE TABLE t1 ("
                 + "`id` int(11) NOT NULL AUTO_INCREMENT, "
                 + "`field_1` int(11) NOT NULL,  "
                 + "`field_2` int(11) NOT NULL,  "
@@ -682,8 +667,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-959")
     public void parseAddPartition() {
-        String ddl =
-                "CREATE TABLE flat_view_request_log (" +
+        String ddl = "CREATE TABLE flat_view_request_log (" +
                 "  id INT NOT NULL, myvalue INT DEFAULT -10," +
                 "  PRIMARY KEY (`id`)" +
                 ")" +
@@ -692,7 +676,7 @@ public class MySqlAntlrDdlParserTest {
                 "(PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17') ENGINE = InnoDB, " +
                 "PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18') ENGINE = InnoDB, " +
                 "PARTITION p_max VALUES LESS THAN MAXVALUE ENGINE = InnoDB);"
-            + "ALTER TABLE flat_view_request_log ADD PARTITION (PARTITION p201901 VALUES LESS THAN (737425) ENGINE = InnoDB);";
+                + "ALTER TABLE flat_view_request_log ADD PARTITION (PARTITION p201901 VALUES LESS THAN (737425) ENGINE = InnoDB);";
 
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -712,19 +696,18 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1203")
     public void parseAlterEnumColumnWithNewCharacterSet() {
-        String ddl =
-                "CREATE TABLE `test_stations_10` (\n" +
-                        "    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
-                        "    `name` varchar(500) COLLATE utf8_unicode_ci NOT NULL,\n" +
-                        "    `type` enum('station', 'post_office') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'station',\n" +
-                        "    `created` datetime DEFAULT CURRENT_TIMESTAMP,\n" +
-                        "    `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
-                        "    PRIMARY KEY (`id`)\n" +
-                        ");\n" +
-                        "\n" +
-                        "ALTER TABLE `test_stations_10`\n" +
-                        "    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now')\n" +
-                        "    CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';\n";
+        String ddl = "CREATE TABLE `test_stations_10` (\n" +
+                "    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
+                "    `name` varchar(500) COLLATE utf8_unicode_ci NOT NULL,\n" +
+                "    `type` enum('station', 'post_office') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'station',\n" +
+                "    `created` datetime DEFAULT CURRENT_TIMESTAMP,\n" +
+                "    `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "    PRIMARY KEY (`id`)\n" +
+                ");\n" +
+                "\n" +
+                "ALTER TABLE `test_stations_10`\n" +
+                "    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now')\n" +
+                "    CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';\n";
 
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -734,19 +717,18 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1226")
     public void parseAlterEnumColumnWithEmbeddedOrEscapedCharacters() {
-        String ddl =
-                "CREATE TABLE `test_stations_11` (\n" +
-                        "    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
-                        "    `name` varchar(500) COLLATE utf8_unicode_ci NOT NULL,\n" +
-                        "    `type` enum('station', 'post_office') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'station',\n" +
-                        "    `created` datetime DEFAULT CURRENT_TIMESTAMP,\n" +
-                        "    `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
-                        "    PRIMARY KEY (`id`)\n" +
-                        ");\n" +
-                        "\n" +
-                        "ALTER TABLE `test_stations_11`\n" +
-                        "    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now', 'a,b', 'c,\\'b')\n" +
-                        "    CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';\n";
+        String ddl = "CREATE TABLE `test_stations_11` (\n" +
+                "    `id` int(10) unsigned NOT NULL AUTO_INCREMENT,\n" +
+                "    `name` varchar(500) COLLATE utf8_unicode_ci NOT NULL,\n" +
+                "    `type` enum('station', 'post_office') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'station',\n" +
+                "    `created` datetime DEFAULT CURRENT_TIMESTAMP,\n" +
+                "    `modified` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "    PRIMARY KEY (`id`)\n" +
+                ");\n" +
+                "\n" +
+                "ALTER TABLE `test_stations_11`\n" +
+                "    MODIFY COLUMN `type` ENUM('station', 'post_office', 'plane', 'ahihi_dongok', 'now', 'a,b', 'c,\\'b')\n" +
+                "    CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL DEFAULT 'station';\n";
 
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -765,7 +747,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor({"DBZ-476", "DBZ-1226"})
+    @FixFor({ "DBZ-476", "DBZ-1226" })
     public void shouldParseEscapedEnumOptions() {
         assertParseEnumAndSetOptions("ENUM('a''','b','c')", "a'", "b", "c");
         assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a'", "b", "c");
@@ -895,9 +877,9 @@ public class MySqlAntlrDdlParserTest {
                 + " c2 VARCHAR(22) " + System.lineSeparator()
                 + ") engine=TokuDB compression='tokudb_zlib';";
         String ddl3 = "CREATE TABLE baz ( " + System.lineSeparator()
-        + " c1 INTEGER NOT NULL, " + System.lineSeparator()
-        + " c2 VARCHAR(22) " + System.lineSeparator()
-        + ") engine=Aria;";
+                + " c1 INTEGER NOT NULL, " + System.lineSeparator()
+                + " c2 VARCHAR(22) " + System.lineSeparator()
+                + ") engine=Aria;";
         parser.parse(ddl1 + ddl2 + ddl3, tables);
         assertThat(tables.size()).isEqualTo(3);
         listener.assertNext().createTableNamed("foo").ddlStartsWith("CREATE TABLE foo (");
@@ -921,10 +903,10 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tables.size()).isEqualTo(4);
 
         assertThat(tables.tableIds()
-                           .stream()
-                           .map(TableId::table)
-                           .collect(Collectors.toSet()))
-                .containsOnly("t1", "t2", "t3", "t4");
+                .stream()
+                .map(TableId::table)
+                .collect(Collectors.toSet()))
+                        .containsOnly("t1", "t2", "t3", "t4");
     }
 
     @Test
@@ -1276,7 +1258,6 @@ public class MySqlAntlrDdlParserTest {
         ddl = "ALTER TABLE t ADD CONSTRAINT xy UNIQUE KEY (col1);";
         parser.parse(ddl, tables);
     }
-
 
     @Test
     public void shouldParseCreateTableWithEnumAndSetColumns() {
@@ -1711,8 +1692,8 @@ public class MySqlAntlrDdlParserTest {
     @FixFor("DBZ-1329")
     public void shouldParseAlterTableWithIndex() {
         final String ddl = "USE db;"
-                  + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));"
-                  + "ALTER TABLE db.t1 RENAME INDEX myidx to myidx2;";
+                + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));"
+                + "ALTER TABLE db.t1 RENAME INDEX myidx to myidx2;";
         parser = new MysqlDdlParserWithSimpleTestListener(listener, true);
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -1725,7 +1706,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     public void shouldParseStringSameAsKeyword() {
         parser.parse(readFile("ddl/mysql-dbz-437.ddl"), tables);
-//        Testing.Print.enable();
+        // Testing.Print.enable();
         listener.forEach(this::printEvent);
         assertThat(tables.size()).isEqualTo(0);
         assertThat(listener.total()).isEqualTo(0);
@@ -1742,10 +1723,10 @@ public class MySqlAntlrDdlParserTest {
         Table t = tables.forTable(new TableId(null, null, "customfield"));
         assertThat(t).isNotNull();
         assertThat(t.retrieveColumnNames()).containsExactly("ENCODEDKEY", "ID", "CREATIONDATE", "LASTMODIFIEDDATE", "DATATYPE",
-                                                            "ISDEFAULT", "ISREQUIRED", "NAME", "VALUES", "AMOUNTS", "DESCRIPTION",
-                                                            "TYPE", "VALUELENGTH", "INDEXINLIST", "CUSTOMFIELDSET_ENCODEDKEY_OID",
-                                                            "STATE", "VALIDATIONPATTERN", "VIEWUSAGERIGHTSKEY", "EDITUSAGERIGHTSKEY",
-                                                            "BUILTINCUSTOMFIELDID", "UNIQUE", "STORAGE");
+                "ISDEFAULT", "ISREQUIRED", "NAME", "VALUES", "AMOUNTS", "DESCRIPTION",
+                "TYPE", "VALUELENGTH", "INDEXINLIST", "CUSTOMFIELDSET_ENCODEDKEY_OID",
+                "STATE", "VALIDATIONPATTERN", "VIEWUSAGERIGHTSKEY", "EDITUSAGERIGHTSKEY",
+                "BUILTINCUSTOMFIELDID", "UNIQUE", "STORAGE");
         assertColumn(t, "ENCODEDKEY", "VARCHAR", Types.VARCHAR, 32, -1, false, false, false);
         assertColumn(t, "ID", "VARCHAR", Types.VARCHAR, 32, -1, true, false, false);
         assertColumn(t, "CREATIONDATE", "DATETIME", Types.TIMESTAMP, -1, -1, true, false, false);
@@ -1858,8 +1839,7 @@ public class MySqlAntlrDdlParserTest {
 
     @Test
     public void shouldParseCreateTableUnionStatement() {
-        final String ddl =
-                "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) UNION = (`table1`,`table2`) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;";
+        final String ddl = "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) UNION = (`table1`,`table2`) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;";
 
         parser.parse(ddl, tables);
         Testing.print(tables);
@@ -1870,9 +1850,9 @@ public class MySqlAntlrDdlParserTest {
     @FixFor("DBZ-346")
     @Test
     public void shouldParseAlterTableUnionStatement() {
-        final String ddl =
-                "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;" +
-                        "ALTER TABLE `merge_table` UNION = (`table1`,`table2`)";
+        final String ddl = "CREATE TABLE `merge_table` (`id` int(11) NOT NULL, `name` varchar(45) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=MRG_MyISAM DEFAULT CHARSET=latin1;"
+                +
+                "ALTER TABLE `merge_table` UNION = (`table1`,`table2`)";
 
         parser.parse(ddl, tables);
         Testing.print(tables);
@@ -1883,8 +1863,7 @@ public class MySqlAntlrDdlParserTest {
     @FixFor("DBZ-419")
     @Test
     public void shouldParseCreateTableWithUnnamedPrimaryKeyConstraint() {
-        final String ddl =
-                "CREATE TABLE IF NOT EXISTS tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
+        final String ddl = "CREATE TABLE IF NOT EXISTS tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
 
         parser.parse(ddl, tables);
         Testing.print(tables);
@@ -1963,7 +1942,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor({"DBZ-408", "DBZ-412"})
+    @FixFor({ "DBZ-408", "DBZ-412" })
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithoutColumnWord() {
         String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
                 + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
@@ -2026,7 +2005,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor({"DBZ-408", "DBZ-412", "DBZ-524"})
+    @FixFor({ "DBZ-408", "DBZ-412", "DBZ-524" })
     public void shouldParseAlterTableStatementWithColumnNamedColumnWithColumnWord() {
         String ddl = "CREATE TABLE `mytable` ( " + System.lineSeparator()
                 + " `def` int(11) unsigned NOT NULL AUTO_INCREMENT, " + System.lineSeparator()
@@ -2111,7 +2090,7 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
-    @FixFor({"DBZ-615", "DBZ-727"})
+    @FixFor({ "DBZ-615", "DBZ-727" })
     public void parseDdlForUnscaledDecAndFixed() {
         String ddl = "CREATE TABLE t ( c1 DEC NOT NULL, c2 FIXED(3) NOT NULL, c3 NUMERIC NOT NULL);";
         parser.parse(ddl, tables);
@@ -2127,9 +2106,8 @@ public class MySqlAntlrDdlParserTest {
 
     @Test
     public void parseTableWithPageChecksum() {
-        String ddl =
-                "CREATE TABLE t (id INT NOT NULL, PRIMARY KEY (`id`)) PAGE_CHECKSUM=1;" +
-                        "ALTER TABLE t PAGE_CHECKSUM=0;";
+        String ddl = "CREATE TABLE t (id INT NOT NULL, PRIMARY KEY (`id`)) PAGE_CHECKSUM=1;" +
+                "ALTER TABLE t PAGE_CHECKSUM=0;";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
@@ -2142,8 +2120,7 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-429")
     public void parseTableWithNegativeDefault() {
-        String ddl =
-                "CREATE TABLE t (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));";
+        String ddl = "CREATE TABLE t (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         Table t = tables.forTable(new TableId(null, null, "t"));
@@ -2156,12 +2133,11 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-475")
     public void parseUserDdlStatements() {
-        String ddl =
-                "CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';"
-                        + "RENAME USER 'jeffrey'@'localhost' TO 'jeff'@'127.0.0.1';"
-                        + "DROP USER 'jeffrey'@'localhost';"
-                        + "SET PASSWORD FOR 'jeffrey'@'localhost' = 'auth_string';"
-                        + "ALTER USER 'jeffrey'@'localhost' IDENTIFIED BY 'new_password' PASSWORD EXPIRE;";
+        String ddl = "CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'password';"
+                + "RENAME USER 'jeffrey'@'localhost' TO 'jeff'@'127.0.0.1';"
+                + "DROP USER 'jeffrey'@'localhost';"
+                + "SET PASSWORD FOR 'jeffrey'@'localhost' = 'auth_string';"
+                + "ALTER USER 'jeffrey'@'localhost' IDENTIFIED BY 'new_password' PASSWORD EXPIRE;";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(0);
     }
@@ -2169,9 +2145,8 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-530")
     public void parsePartitionReorganize() {
-        String ddl =
-                "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));"
-                        + "ALTER TABLE flat_view_request_log REORGANIZE PARTITION p_max INTO ( PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17'), PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18'), PARTITION p_max VALUES LESS THAN (MAXVALUE));";
+        String ddl = "CREATE TABLE flat_view_request_log (id INT NOT NULL, myvalue INT DEFAULT -10, PRIMARY KEY (`id`));"
+                + "ALTER TABLE flat_view_request_log REORGANIZE PARTITION p_max INTO ( PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17'), PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18'), PARTITION p_max VALUES LESS THAN (MAXVALUE));";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
     }
@@ -2179,16 +2154,15 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-641")
     public void parsePartitionWithEngine() {
-        String ddl =
-                "CREATE TABLE flat_view_request_log (" +
-                        "  id INT NOT NULL, myvalue INT DEFAULT -10," +
-                        "  PRIMARY KEY (`id`)" +
-                        ")" +
-                        "ENGINE=InnoDB DEFAULT CHARSET=latin1 " +
-                        "PARTITION BY RANGE (to_days(`CreationDate`)) " +
-                        "(PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17') ENGINE = InnoDB, " +
-                        "PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18') ENGINE = InnoDB, " +
-                        "PARTITION p_max VALUES LESS THAN MAXVALUE ENGINE = InnoDB);";
+        String ddl = "CREATE TABLE flat_view_request_log (" +
+                "  id INT NOT NULL, myvalue INT DEFAULT -10," +
+                "  PRIMARY KEY (`id`)" +
+                ")" +
+                "ENGINE=InnoDB DEFAULT CHARSET=latin1 " +
+                "PARTITION BY RANGE (to_days(`CreationDate`)) " +
+                "(PARTITION p_2018_01_17 VALUES LESS THAN ('2018-01-17') ENGINE = InnoDB, " +
+                "PARTITION p_2018_01_18 VALUES LESS THAN ('2018-01-18') ENGINE = InnoDB, " +
+                "PARTITION p_max VALUES LESS THAN MAXVALUE ENGINE = InnoDB);";
 
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2198,9 +2172,8 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-1113")
     public void parseAddMultiplePartitions() {
-        String ddl =
-                "CREATE TABLE test (id INT, PRIMARY KEY (id));"
-                        + "ALTER TABLE test ADD PARTITION (PARTITION p1 VALUES LESS THAN (10), PARTITION p_max VALUES LESS THAN MAXVALUE);";
+        String ddl = "CREATE TABLE test (id INT, PRIMARY KEY (id));"
+                + "ALTER TABLE test ADD PARTITION (PARTITION p1 VALUES LESS THAN (10), PARTITION p_max VALUES LESS THAN MAXVALUE);";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
     }
@@ -2208,11 +2181,10 @@ public class MySqlAntlrDdlParserTest {
     @Test
     @FixFor("DBZ-767")
     public void shouldParseChangeColumnAndKeepName() {
-        final String create =
-                "CREATE TABLE test (" +
-                        "  id INT NOT NULL, myvalue ENUM('Foo','Bar','Baz') NOT NULL DEFAULT 'Foo'," +
-                        "  PRIMARY KEY (`id`)" +
-                        ");";
+        final String create = "CREATE TABLE test (" +
+                "  id INT NOT NULL, myvalue ENUM('Foo','Bar','Baz') NOT NULL DEFAULT 'Foo'," +
+                "  PRIMARY KEY (`id`)" +
+                ");";
 
         parser.parse(create, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2220,9 +2192,8 @@ public class MySqlAntlrDdlParserTest {
         assertThat(table).isNotNull();
         assertThat(table.columns().size()).isEqualTo(2);
 
-        final String alter1 =
-                "ALTER TABLE test " +
-                        "  CHANGE myvalue myvalue INT;";
+        final String alter1 = "ALTER TABLE test " +
+                "  CHANGE myvalue myvalue INT;";
 
         parser.parse(alter1, tables);
         table = tables.forTable(new TableId(null, null, "test"));
@@ -2231,9 +2202,8 @@ public class MySqlAntlrDdlParserTest {
         assertThat(col.name()).isEqualTo("myvalue");
         assertThat(col.typeName()).isEqualTo("INT");
 
-        final String alter2 =
-                "ALTER TABLE test " +
-                        "  CHANGE myvalue myvalue TINYINT;";
+        final String alter2 = "ALTER TABLE test " +
+                "  CHANGE myvalue myvalue TINYINT;";
 
         parser.parse(alter2, tables);
         table = tables.forTable(new TableId(null, null, "test"));
@@ -2439,10 +2409,9 @@ public class MySqlAntlrDdlParserTest {
             super(false,
                     includeViews,
                     new MySqlValueConverters(
-                        JdbcValueConverters.DecimalMode.DOUBLE,
-                        TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
-                        JdbcValueConverters.BigIntUnsignedMode.PRECISE
-                    ),
+                            JdbcValueConverters.DecimalMode.DOUBLE,
+                            TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+                            JdbcValueConverters.BigIntUnsignedMode.PRECISE),
                     tableFilter);
             this.ddlChanges = changesListener;
         }

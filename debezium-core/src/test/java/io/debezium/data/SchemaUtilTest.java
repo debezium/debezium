@@ -27,14 +27,14 @@ public class SchemaUtilTest {
     @Test
     @FixFor("DBZ-759")
     public void correctlySerializesByteArray() {
-        assertThat(SchemaUtil.asString(new byte[]{1, 3, 5, 7})).isEqualTo("[1, 3, 5, 7]");
+        assertThat(SchemaUtil.asString(new byte[]{ 1, 3, 5, 7 })).isEqualTo("[1, 3, 5, 7]");
     }
 
     @Test
     @FixFor("DBZ-759")
     public void correctlySerializesByteBuffer() {
         final ByteBuffer buffer = ByteBuffer.allocate(3);
-        buffer.put(new byte[]{11, 13, 17});
+        buffer.put(new byte[]{ 11, 13, 17 });
         assertThat(SchemaUtil.asString(buffer)).isEqualTo("[11, 13, 17]");
     }
 
@@ -42,10 +42,10 @@ public class SchemaUtilTest {
     @FixFor("DBZ-759")
     public void correctlySerializesStructWithByteArray() {
         Schema schema = SchemaBuilder.struct()
-                    .field("some_field", SchemaBuilder.bytes().build())
-                    .build();
+                .field("some_field", SchemaBuilder.bytes().build())
+                .build();
 
-        Struct struct = new Struct(schema).put("some_field", new byte[]{1, 3, 5, 7});
+        Struct struct = new Struct(schema).put("some_field", new byte[]{ 1, 3, 5, 7 });
         assertThat(SchemaUtil.asString(struct)).isEqualTo("{\"some_field\" : [1, 3, 5, 7]}");
     }
 }

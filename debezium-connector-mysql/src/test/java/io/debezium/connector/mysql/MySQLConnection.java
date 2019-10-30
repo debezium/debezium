@@ -21,7 +21,8 @@ import io.debezium.jdbc.JdbcConnection;
 public class MySQLConnection extends JdbcConnection {
 
     public enum MySqlVersion {
-        MYSQL_5, MYSQL_8;
+        MYSQL_5,
+        MYSQL_8;
     }
 
     private DatabaseDifferences databaseAsserts;
@@ -35,10 +36,10 @@ public class MySQLConnection extends JdbcConnection {
      */
     public static MySQLConnection forTestDatabase(String databaseName) {
         return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                                                    .withDatabase(databaseName)
-                                                    .with("useSSL", false)
-                                                    .with("characterEncoding", "utf8")
-                                                    .build());
+                .withDatabase(databaseName)
+                .with("useSSL", false)
+                .with("characterEncoding", "utf8")
+                .build());
     }
 
     /**
@@ -49,9 +50,9 @@ public class MySQLConnection extends JdbcConnection {
      */
     public static MySQLConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
         JdbcConfiguration.Builder builder = JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                                                    .withDatabase(databaseName)
-                                                    .with("useSSL", false)
-                                                    .with("characterEncoding", "utf8");
+                .withDatabase(databaseName)
+                .with("useSSL", false)
+                .with("characterEncoding", "utf8");
         urlProperties.forEach(builder::with);
         return new MySQLConnection(builder.build());
     }
@@ -66,18 +67,18 @@ public class MySQLConnection extends JdbcConnection {
      */
     public static MySQLConnection forTestDatabase(String databaseName, String username, String password) {
         return new MySQLConnection(JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                                                    .withDatabase(databaseName)
-                                                    .withUser(username)
-                                                    .withPassword(password)
-                                                    .with("useSSL", false)
-                                                    .build());
+                .withDatabase(databaseName)
+                .withUser(username)
+                .withPassword(password)
+                .with("useSSL", false)
+                .build());
     }
 
     protected static void addDefaults(Configuration.Builder builder) {
         builder.withDefault(JdbcConfiguration.HOSTNAME, "localhost")
-               .withDefault(JdbcConfiguration.PORT, 3306)
-               .withDefault(JdbcConfiguration.USER, "mysqluser")
-               .withDefault(JdbcConfiguration.PASSWORD, "mysqlpw");
+                .withDefault(JdbcConfiguration.PORT, 3306)
+                .withDefault(JdbcConfiguration.USER, "mysqluser")
+                .withDefault(JdbcConfiguration.PASSWORD, "mysqlpw");
     }
 
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mysql://${hostname}:${port}/${dbname}");

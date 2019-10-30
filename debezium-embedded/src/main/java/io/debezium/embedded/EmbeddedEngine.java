@@ -72,25 +72,25 @@ public final class EmbeddedEngine implements Runnable {
      * A required field for an embedded connector that specifies the unique name for the connector instance.
      */
     public static final Field ENGINE_NAME = Field.create("name")
-                                                 .withDescription("Unique name for this connector instance.")
-                                                 .withValidation(Field::isRequired);
+            .withDescription("Unique name for this connector instance.")
+            .withValidation(Field::isRequired);
 
     /**
      * A required field for an embedded connector that specifies the name of the normal Debezium connector's Java class.
      */
     public static final Field CONNECTOR_CLASS = Field.create("connector.class")
-                                                     .withDescription("The Java class for the connector")
-                                                     .withValidation(Field::isRequired);
+            .withDescription("The Java class for the connector")
+            .withValidation(Field::isRequired);
 
     /**
      * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,
      * and that will be used to store offsets recorded by the connector.
      */
     public static final Field OFFSET_STORAGE = Field.create("offset.storage")
-                                                    .withDescription("The Java class that implements the `OffsetBackingStore` "
-                                                            + "interface, used to periodically store offsets so that, upon "
-                                                            + "restart, the connector can resume where it last left off.")
-                                                    .withDefault(FileOffsetBackingStore.class.getName());
+            .withDescription("The Java class that implements the `OffsetBackingStore` "
+                    + "interface, used to periodically store offsets so that, upon "
+                    + "restart, the connector can resume where it last left off.")
+            .withDefault(FileOffsetBackingStore.class.getName());
 
     /**
      * An optional field that specifies the file location for the {@link FileOffsetBackingStore}.
@@ -98,10 +98,10 @@ public final class EmbeddedEngine implements Runnable {
      * @see #OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
-                                                                  .withDescription("The file where offsets are to be stored. Required when "
-                                                                          + "'offset.storage' is set to the " +
-                                                                          FileOffsetBackingStore.class.getName() + " class.")
-                                                                  .withDefault("");
+            .withDescription("The file where offsets are to be stored. Required when "
+                    + "'offset.storage' is set to the " +
+                    FileOffsetBackingStore.class.getName() + " class.")
+            .withDefault("");
 
     /**
      * An optional field that specifies the topic name for the {@link KafkaOffsetBackingStore}.
@@ -109,10 +109,10 @@ public final class EmbeddedEngine implements Runnable {
      * @see #OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
-                                                                .withDescription("The name of the Kafka topic where offsets are to be stored. "
-                                                                        + "Required with other properties when 'offset.storage' is set to the "
-                                                                        + KafkaOffsetBackingStore.class.getName() + " class.")
-                                                                .withDefault("");
+            .withDescription("The name of the Kafka topic where offsets are to be stored. "
+                    + "Required with other properties when 'offset.storage' is set to the "
+                    + KafkaOffsetBackingStore.class.getName() + " class.")
+            .withDefault("");
 
     /**
      * An optional field that specifies the number of partitions for the {@link KafkaOffsetBackingStore}.
@@ -120,10 +120,10 @@ public final class EmbeddedEngine implements Runnable {
      * @see #OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG)
-                                                                     .withType(ConfigDef.Type.INT)
-                                                                     .withDescription("The number of partitions used when creating the offset storage topic. "
-                                                                             + "Required with other properties when 'offset.storage' is set to the "
-                                                                             + KafkaOffsetBackingStore.class.getName() + " class.");
+            .withType(ConfigDef.Type.INT)
+            .withDescription("The number of partitions used when creating the offset storage topic. "
+                    + "Required with other properties when 'offset.storage' is set to the "
+                    + KafkaOffsetBackingStore.class.getName() + " class.");
 
     /**
      * An optional field that specifies the replication factor for the {@link KafkaOffsetBackingStore}.
@@ -131,45 +131,45 @@ public final class EmbeddedEngine implements Runnable {
      * @see #OFFSET_STORAGE
      */
     public static final Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG)
-                                                                             .withType(ConfigDef.Type.SHORT)
-                                                                             .withDescription("Replication factor used when creating the offset storage topic. "
-                                                                                     + "Required with other properties when 'offset.storage' is set to the "
-                                                                                     + KafkaOffsetBackingStore.class.getName() + " class.");
+            .withType(ConfigDef.Type.SHORT)
+            .withDescription("Replication factor used when creating the offset storage topic. "
+                    + "Required with other properties when 'offset.storage' is set to the "
+                    + KafkaOffsetBackingStore.class.getName() + " class.");
 
     /**
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
      * for an offset commit to complete.
      */
     public static final Field OFFSET_FLUSH_INTERVAL_MS = Field.create("offset.flush.interval.ms")
-                                                              .withDescription("Interval at which to try committing offsets. The default is 1 minute.")
-                                                              .withDefault(60000L)
-                                                              .withValidation(Field::isNonNegativeInteger);
+            .withDescription("Interval at which to try committing offsets. The default is 1 minute.")
+            .withDefault(60000L)
+            .withValidation(Field::isNonNegativeInteger);
 
     /**
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait
      * for an offset commit to complete.
      */
     public static final Field OFFSET_COMMIT_TIMEOUT_MS = Field.create("offset.flush.timeout.ms")
-                                                              .withDescription("Maximum number of milliseconds to wait for records to flush and partition offset data to be"
-                                                                      + " committed to offset storage before cancelling the process and restoring the offset "
-                                                                      + "data to be committed in a future attempt.")
-                                                              .withDefault(5000L)
-                                                              .withValidation(Field::isPositiveInteger);
+            .withDescription("Maximum number of milliseconds to wait for records to flush and partition offset data to be"
+                    + " committed to offset storage before cancelling the process and restoring the offset "
+                    + "data to be committed in a future attempt.")
+            .withDefault(5000L)
+            .withValidation(Field::isPositiveInteger);
 
     public static final Field OFFSET_COMMIT_POLICY = Field.create("offset.commit.policy")
-                                                          .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
-                                                                      + OffsetCommitPolicy.class.getName()
-                                                                      + ". The default is a periodic commit policy based upon time intervals.")
-                                                          .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
-                                                          .withValidation(Field::isClassName);
+            .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
+                    + OffsetCommitPolicy.class.getName()
+                    + ". The default is a periodic commit policy based upon time intervals.")
+            .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
+            .withValidation(Field::isClassName);
 
     protected static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
-                                                                     .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
-                                                                     .withDefault(JsonConverter.class.getName());
+            .withDescription("The Converter class that should be used to serialize and deserialize key data for offsets.")
+            .withDefault(JsonConverter.class.getName());
 
     protected static final Field INTERNAL_VALUE_CONVERTER_CLASS = Field.create("internal.value.converter")
-                                                                       .withDescription("The Converter class that should be used to serialize and deserialize value data for offsets.")
-                                                                       .withDefault(JsonConverter.class.getName());
+            .withDescription("The Converter class that should be used to serialize and deserialize value data for offsets.")
+            .withDefault(JsonConverter.class.getName());
 
     /**
      * The array of fields that are required by each connectors.
@@ -180,8 +180,8 @@ public final class EmbeddedEngine implements Runnable {
      * The array of all exposed fields.
      */
     protected static final Field.Set ALL_FIELDS = CONNECTOR_FIELDS.with(OFFSET_STORAGE, OFFSET_STORAGE_FILE_FILENAME,
-                                                                        OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
-                                                                        INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
+            OFFSET_FLUSH_INTERVAL_MS, OFFSET_COMMIT_TIMEOUT_MS,
+            INTERNAL_KEY_CONVERTER_CLASS, INTERNAL_VALUE_CONVERTER_CLASS);
 
     private static final Duration WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT = Duration.ofSeconds(2);
     private static final String WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP = "debezium.embedded.shutdown.pause.before.interrupt.ms";
@@ -851,7 +851,7 @@ public final class EmbeddedEngine implements Runnable {
                         if (handlerError != null) {
                             // There was an error in the handler so make sure it's always captured...
                             fail("Stopping connector after error in the application's handler method: " + handlerError.getMessage(),
-                                 handlerError);
+                                    handlerError);
                         }
                         try {
                             // First stop the task ...
@@ -1006,7 +1006,10 @@ public final class EmbeddedEngine implements Runnable {
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
             try {
-                latch.await(Long.valueOf(System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))), TimeUnit.MILLISECONDS);
+                latch.await(
+                        Long.valueOf(
+                                System.getProperty(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP, Long.toString(WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT.toMillis()))),
+                        TimeUnit.MILLISECONDS);
             }
             catch (InterruptedException e) {
             }

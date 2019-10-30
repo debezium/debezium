@@ -24,27 +24,27 @@ public class TableTest {
     @Before
     public void beforeEach() {
         table = Table.editor()
-                     .tableId(id)
-                     .addColumns(Column.editor().name("C1")
-                                       .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
-                                       .generated(true)
-                                       .optional(false)
-                                       .create(),
-                                 Column.editor().name("C2")
-                                       .type("NUMBER").jdbcType(Types.NUMERIC).length(5)
-                                       .optional(false)
-                                       .create(),
-                                 Column.editor().name("C3")
-                                       .type("DATE").jdbcType(Types.DATE).length(4)
-                                       .optional(true)
-                                       .create(),
-                                 Column.editor().name("C4")
-                                       .type("COUNTER").jdbcType(Types.INTEGER)
-                                       .autoIncremented(true)
-                                       .optional(true)
-                                       .create())
-                     .setPrimaryKeyNames("C1", "C2")
-                     .create();
+                .tableId(id)
+                .addColumns(Column.editor().name("C1")
+                        .type("VARCHAR").jdbcType(Types.VARCHAR).length(10)
+                        .generated(true)
+                        .optional(false)
+                        .create(),
+                        Column.editor().name("C2")
+                                .type("NUMBER").jdbcType(Types.NUMERIC).length(5)
+                                .optional(false)
+                                .create(),
+                        Column.editor().name("C3")
+                                .type("DATE").jdbcType(Types.DATE).length(4)
+                                .optional(true)
+                                .create(),
+                        Column.editor().name("C4")
+                                .type("COUNTER").jdbcType(Types.INTEGER)
+                                .autoIncremented(true)
+                                .optional(true)
+                                .create())
+                .setPrimaryKeyNames("C1", "C2")
+                .create();
         c1 = table.columnWithName("C1");
         c2 = table.columnWithName("C2");
         c3 = table.columnWithName("C3");

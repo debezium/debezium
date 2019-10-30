@@ -122,7 +122,7 @@ public class ConnectionContext implements AutoCloseable {
     }
 
     public MongoClient clientFor(List<ServerAddress> addresses) {
-        if ( this.useHostsAsSeeds || addresses.isEmpty() ) {
+        if (this.useHostsAsSeeds || addresses.isEmpty()) {
             return pool.clientForMembers(addresses);
         }
         return pool.clientFor(addresses.get(0));
@@ -172,7 +172,7 @@ public class ConnectionContext implements AutoCloseable {
             }
             else {
                 logger().error("Error while attempting to connect to primary node of '{}' after attempt #{} ({} remaining): {}", replicaSet,
-                             attempts, remaining, error.getMessage(), error);
+                        attempts, remaining, error.getMessage(), error);
             }
         });
     }
@@ -426,7 +426,7 @@ public class ConnectionContext implements AutoCloseable {
         MongoClient replicaSetClient = clientForReplicaSet(replicaSet);
         ReplicaSetStatus rsStatus = replicaSetClient.getReplicaSetStatus();
         if (rsStatus == null) {
-            if ( !this.useHostsAsSeeds ) {
+            if (!this.useHostsAsSeeds) {
                 // No replica set status is available, but it may still be a replica set ...
                 return replicaSetClient;
             }

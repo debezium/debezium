@@ -191,7 +191,7 @@ class EventBuffer {
             wellFormed = false;
         }
         LOGGER.debug("Executing events from buffer");
-        for (Event e: buffer) {
+        for (Event e : buffer) {
             reader.handleEvent(e);
         }
         LOGGER.debug("Executing events from binlog that have not fit into buffer");

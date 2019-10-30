@@ -53,8 +53,8 @@ public class DdlParserSql2003Test {
         assertThat(foo).isNotNull();
         assertThat(foo.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(foo.primaryKeyColumnNames()).containsExactly("c1");
-        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, - 1, - 1, false, true, true);
-        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, - 1, true, false, false);
+        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
     }
 
     @Test
@@ -70,15 +70,15 @@ public class DdlParserSql2003Test {
         assertThat(foo).isNotNull();
         assertThat(foo.retrieveColumnNames()).containsExactly("c1", "c2");
         assertThat(foo.primaryKeyColumnNames()).containsExactly("c1");
-        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, - 1, - 1, false, true, true);
-        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, - 1, true, false, false);
+        assertColumn(foo, "c1", "INTEGER", Types.INTEGER, -1, -1, false, true, true);
+        assertColumn(foo, "c2", "VARCHAR", Types.VARCHAR, 22, -1, true, false, false);
 
         parser.parse("DROP TABLE my.foo", tables);
         assertThat(tables.size()).isEqualTo(0);
     }
 
     protected void assertColumn(Table table, String name, String typeName, int jdbcType, int length, int scale,
-                                boolean optional, boolean generated, boolean autoIncremented ) {
+                                boolean optional, boolean generated, boolean autoIncremented) {
         Column column = table.columnWithName(name);
         assertThat(column.name()).isEqualTo(name);
         assertThat(column.typeName()).isEqualTo(typeName);

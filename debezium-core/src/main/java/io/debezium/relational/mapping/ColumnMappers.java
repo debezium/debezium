@@ -51,7 +51,7 @@ public class ColumnMappers {
         config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", builder::maskStrings);
         config.forEachMatchingFieldName("column\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameter);
 
-        return  builder.build();
+        return builder.build();
     }
 
     /**
@@ -275,11 +275,11 @@ public class ColumnMappers {
 
     protected static ColumnMapper instantiateMapper(Class<ColumnMapper> clazz, Configuration config) {
         try {
-             ColumnMapper mapper = clazz.newInstance();
-             if ( config != null ) {
-                 mapper.initialize(config);
-             }
-             return mapper;
+            ColumnMapper mapper = clazz.newInstance();
+            if (config != null) {
+                mapper.initialize(config);
+            }
+            return mapper;
         }
         catch (InstantiationException e) {
             throw new ConnectException("Unable to instantiate column mapper class " + clazz.getName() + ": " + e.getMessage(), e);

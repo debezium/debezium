@@ -123,32 +123,28 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         Headers headers = r.headers();
         headers.add("id", eventId, eventIdField.schema());
 
-        final Schema structValueSchema = onlyHeadersInOutputMessage ? null :
-            (fieldSchemaVersion == null)
-                ? getValueSchema(eventValueSchema)
-                : getValueSchema(eventValueSchema, eventStruct.getInt32(fieldSchemaVersion));
+        final Schema structValueSchema = onlyHeadersInOutputMessage ? null
+                : (fieldSchemaVersion == null)
+                        ? getValueSchema(eventValueSchema)
+                        : getValueSchema(eventValueSchema, eventStruct.getInt32(fieldSchemaVersion));
 
-        final Struct structValue = onlyHeadersInOutputMessage ? null :
-            new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
+        final Struct structValue = onlyHeadersInOutputMessage ? null : new Struct(structValueSchema).put(ENVELOPE_PAYLOAD, payload);
 
         additionalFields.forEach((additionalField -> {
             switch (additionalField.getPlacement()) {
                 case ENVELOPE:
                     structValue.put(
                             additionalField.getAlias(),
-                            eventStruct.get(additionalField.getField())
-                    );
+                            eventStruct.get(additionalField.getField()));
                     break;
                 case HEADER:
                     headers.add(
                             additionalField.getAlias(),
                             eventStruct.get(additionalField.getField()),
-                            eventValueSchema.field(additionalField.getField()).schema()
-                    );
+                            eventValueSchema.field(additionalField.getField()).schema());
                     break;
             }
         }));
-
 
         boolean isDeleteEvent = payload == null || payload.toString().trim().isEmpty();
 
@@ -176,8 +172,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 updatedSchema,
                 updatedValue,
                 timestamp,
-                headers
-        );
+                headers);
 
         return regexRouter.apply(newRecord);
     }
@@ -224,8 +219,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         }
 
         invalidOperationBehavior = EventRouterConfigDefinition.InvalidOperationBehavior.parse(
-                config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR)
-        );
+                config.getString(EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR));
 
         fieldEventId = config.getString(EventRouterConfigDefinition.FIELD_EVENT_ID);
         fieldEventKey = config.getString(EventRouterConfigDefinition.FIELD_EVENT_KEY);
@@ -282,8 +276,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
             if (additionalField.getPlacement() == EventRouterConfigDefinition.AdditionalFieldPlacement.ENVELOPE) {
                 schemaBuilder.field(
                         additionalField.getAlias(),
-                        debeziumEventSchema.field(additionalField.getField()).schema()
-                );
+                        debeziumEventSchema.field(additionalField.getField()).schema());
             }
         }));
 

@@ -25,8 +25,8 @@ public class Ltree {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.string()
-                            .name(LOGICAL_NAME)
-                            .version(1);
+                .name(LOGICAL_NAME)
+                .version(1);
     }
 
     /**

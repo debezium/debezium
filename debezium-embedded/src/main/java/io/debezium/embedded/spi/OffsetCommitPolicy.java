@@ -47,7 +47,7 @@ public interface OffsetCommitPolicy {
 
         @Override
         public boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit) {
-                return timeSinceLastCommit.compareTo(minimumTime) >= 0;
+            return timeSinceLastCommit.compareTo(minimumTime) >= 0;
         }
     }
 
@@ -76,7 +76,7 @@ public interface OffsetCommitPolicy {
      * @return the resulting policy; never null
      */
     default OffsetCommitPolicy or(OffsetCommitPolicy other) {
-        if ( other == null ) {
+        if (other == null) {
             return this;
         }
         return (number, time) -> this.performCommit(number, time) || other.performCommit(number, time);
@@ -89,7 +89,7 @@ public interface OffsetCommitPolicy {
      * @return the resulting policy; never null
      */
     default OffsetCommitPolicy and(OffsetCommitPolicy other) {
-        if ( other == null ) {
+        if (other == null) {
             return this;
         }
         return (number, time) -> this.performCommit(number, time) && other.performCommit(number, time);

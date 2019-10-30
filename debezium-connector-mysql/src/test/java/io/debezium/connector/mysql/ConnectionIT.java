@@ -31,16 +31,16 @@ public class ConnectionIT implements Testing {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",
-                         "CREATE TABLE person ("
-                                 + "  name VARCHAR(255) primary key,"
-                                 + "  birthdate DATE NULL,"
-                                 + "  age INTEGER NULL DEFAULT 10,"
-                                 + "  salary DECIMAL(5,2),"
-                                 + "  bitStr BIT(18)"
-                                 + ")");
+                    "CREATE TABLE person ("
+                            + "  name VARCHAR(255) primary key,"
+                            + "  birthdate DATE NULL,"
+                            + "  age INTEGER NULL DEFAULT 10,"
+                            + "  salary DECIMAL(5,2),"
+                            + "  bitStr BIT(18)"
+                            + ")");
             conn.execute("SELECT * FROM person");
             try (ResultSet rs = conn.connection().getMetaData().getColumns("readbinlog_test", null, null, null)) {
-                //if ( Testing.Print.isEnabled() ) conn.print(rs);
+                // if ( Testing.Print.isEnabled() ) conn.print(rs);
             }
         }
     }

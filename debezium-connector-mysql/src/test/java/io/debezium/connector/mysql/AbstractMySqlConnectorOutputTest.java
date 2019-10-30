@@ -161,7 +161,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
 
     @Override
     protected String[] globallyIgnorableFieldNames() {
-        return new String[]{"VALUE/source/thread"};
+        return new String[]{ "VALUE/source/thread" };
     }
 
     @Override
@@ -170,11 +170,11 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
         comparatorsByPath.accept("SOURCEOFFSET/gtids", this::assertSameGtidSet);
     }
 
-//    @Override
-//    protected void addValueComparatorsBySchemaName(BiConsumer<String, RecordValueComparator> comparatorsBySchemaName) {
-//        super.addValueComparatorsBySchemaName(comparatorsBySchemaName);
-//        comparatorsBySchemaName.accept(ZonedTimestamp.SCHEMA_NAME, this::assertSameZonedTimestamps);
-//    }
+    // @Override
+    // protected void addValueComparatorsBySchemaName(BiConsumer<String, RecordValueComparator> comparatorsBySchemaName) {
+    // super.addValueComparatorsBySchemaName(comparatorsBySchemaName);
+    // comparatorsBySchemaName.accept(ZonedTimestamp.SCHEMA_NAME, this::assertSameZonedTimestamps);
+    // }
 
     protected void assertSameGtidSet(String pathToField, Object actual, Object expected) {
         assertThat(actual).isInstanceOf(String.class);

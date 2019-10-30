@@ -65,22 +65,22 @@ public class RecordMakers {
      * @see MySqlConnectorTask#getRestartOffset(Map)
      */
     public RecordMakers(MySqlSchema schema, SourceInfo source, TopicSelector<TableId> topicSelector,
-            boolean emitTombstoneOnDelete, Map<String, ?> restartOffset) {
+                        boolean emitTombstoneOnDelete, Map<String, ?> restartOffset) {
         this.schema = schema;
         this.source = source;
         this.topicSelector = topicSelector;
         this.emitTombstoneOnDelete = emitTombstoneOnDelete;
         this.restartOffset = restartOffset;
         this.schemaChangeKeySchema = SchemaBuilder.struct()
-                                                  .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeKey"))
-                                                  .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
-                                                  .build();
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeKey"))
+                .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                .build();
         this.schemaChangeValueSchema = SchemaBuilder.struct()
-                                                    .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeValue"))
-                                                    .field(Fields.SOURCE, source.schema())
-                                                    .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
-                                                    .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
-                                                    .build();
+                .name(schemaNameAdjuster.adjust("io.debezium.connector.mysql.SchemaChangeValue"))
+                .field(Fields.SOURCE, source.schema())
+                .field(Fields.DATABASE_NAME, Schema.STRING_SCHEMA)
+                .field(Fields.DDL_STATEMENTS, Schema.STRING_SCHEMA)
+                .build();
     }
 
     /**
@@ -105,7 +105,7 @@ public class RecordMakers {
      */
     public boolean hasTable(TableId tableId) {
         Long tableNumber = tableNumbersByTableId.get(tableId);
-        if ( tableNumber == null ) {
+        if (tableNumber == null) {
             return false;
         }
         Converter converter = convertersByTableNumber.get(tableNumber);
@@ -349,7 +349,8 @@ public class RecordMakers {
                 final int expectedColumnsCount = schema.tableFor(tableSchema.id()).columns().size();
                 if (expectedColumnsCount != row.length) {
                     logger.error("Invalid number of columns, expected '{}' arrived '{}'", expectedColumnsCount, row.length);
-                    throw new ConnectException("The binlog event does not contain expected number of columns; the internal schema representation is probably out of sync with the real database schema, or the binlog contains events recorded with binlog_row_image other than FULL or the table in question is an NDB table");
+                    throw new ConnectException(
+                            "The binlog event does not contain expected number of columns; the internal schema representation is probably out of sync with the real database schema, or the binlog contains events recorded with binlog_row_image other than FULL or the table in question is an NDB table");
                 }
             }
         };

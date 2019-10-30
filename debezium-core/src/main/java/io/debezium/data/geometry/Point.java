@@ -29,8 +29,8 @@ public class Point extends Geometry {
     public static final String X_FIELD = "x";
     public static final String Y_FIELD = "y";
 
-    private static final int WKB_POINT = 1;  // type constant
-    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8);  // fixed size
+    private static final int WKB_POINT = 1; // type constant
+    private static final int WKB_POINT_SIZE = (1 + 4 + 8 + 8); // fixed size
 
     /**
      * Returns a {@link SchemaBuilder} for a Point field.
@@ -90,7 +90,7 @@ public class Point extends Geometry {
 
         double x = reader.getDouble();
         double y = reader.getDouble();
-        return new double[] {x, y};
+        return new double[]{ x, y };
     }
 
     /**

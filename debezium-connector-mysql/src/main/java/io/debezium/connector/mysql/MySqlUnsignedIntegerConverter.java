@@ -29,7 +29,7 @@ public class MySqlUnsignedIntegerConverter {
     private static final int SMALLINT_CORRECTION = SMALLINT_MAX_VALUE + 1;
     private static final int MEDIUMINT_CORRECTION = MEDIUMINT_MAX_VALUE + 1;
     private static final long INT_CORRECTION = INT_MAX_VALUE + 1;
-    private static final BigDecimal BIGINT_CORRECTION = BIGINT_MAX_VALUE .add(BigDecimal.ONE);
+    private static final BigDecimal BIGINT_CORRECTION = BIGINT_MAX_VALUE.add(BigDecimal.ONE);
 
     /**
      * Private constructor

@@ -52,8 +52,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "123123",
                 null,
-                null
-        );
+                null);
         final SourceRecord eventRouted = router.apply(eventRecord);
 
         assertThat(eventRouted).isNull();
@@ -81,8 +80,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 envelope.schema(),
-                payload
-        );
+                payload);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
@@ -110,8 +108,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 valueSchema,
-                value
-        );
+                value);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
@@ -139,8 +136,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 valueSchema,
-                value
-        );
+                value);
 
         exceptionRule.expect(DataException.class);
         exceptionRule.expectMessage("op is not a valid field name");
@@ -170,8 +166,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 valueSchema,
-                value
-        );
+                value);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
@@ -200,8 +195,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 null,
-                value
-        );
+                value);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
@@ -230,8 +224,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 envelope.schema(),
-                payload
-        );
+                payload);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
 
@@ -244,8 +237,7 @@ public class EventRouterTest {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
-                EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue()
-        );
+                EventRouterConfigDefinition.InvalidOperationBehavior.FATAL.getValue());
         router.configure(config);
 
         final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.string()).build();
@@ -264,8 +256,7 @@ public class EventRouterTest {
                 SchemaBuilder.STRING_SCHEMA,
                 "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5",
                 envelope.schema(),
-                payload
-        );
+                payload);
 
         router.apply(eventRecord);
     }
@@ -347,8 +338,7 @@ public class EventRouterTest {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
         config.put(
-                EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP.name(), "event_timestamp"
-        );
+                EventRouterConfigDefinition.FIELD_EVENT_TIMESTAMP.name(), "event_timestamp");
         router.configure(config);
 
         Long expectedTimestamp = 14222264625338L;
@@ -366,8 +356,7 @@ public class EventRouterTest {
                 "User",
                 "{}",
                 extraFields,
-                extraValues
-        );
+                extraValues);
         final SourceRecord userEventRouted = router.apply(userEventRecord);
 
         assertThat(userEventRecord.timestamp()).isNull();
@@ -380,8 +369,7 @@ public class EventRouterTest {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 EventRouterConfigDefinition.ROUTE_BY_FIELD.name(),
-                "aggregatetype"
-        );
+                "aggregatetype");
         router.configure(config);
 
         final SourceRecord userEventRecord = createEventRecord();
@@ -395,8 +383,7 @@ public class EventRouterTest {
                 "UserUpdate",
                 "10711fa5",
                 "User",
-                "{}"
-        );
+                "{}");
         final SourceRecord userUpdatedEventRouted = router.apply(userUpdatedEventRecord);
 
         assertThat(userUpdatedEventRouted).isNotNull();
@@ -407,8 +394,7 @@ public class EventRouterTest {
                 "AddressCreated",
                 "10711fa5",
                 "Address",
-                "{}"
-        );
+                "{}");
         final SourceRecord addressCreatedEventRouted = router.apply(addressCreatedEventRecord);
 
         assertThat(addressCreatedEventRouted).isNotNull();
@@ -539,8 +525,7 @@ public class EventRouterTest {
                 "User",
                 "{}",
                 extraFields,
-                extraValuesV1
-        );
+                extraValuesV1);
         final SourceRecord eventRoutedV1 = router.apply(eventRecordV1);
 
         assertThat(eventRoutedV1.valueSchema().version()).isEqualTo(1);
@@ -555,8 +540,7 @@ public class EventRouterTest {
                 "User",
                 "{}",
                 extraFields,
-                extraValuesV3
-        );
+                extraValuesV3);
         final SourceRecord eventRoutedV3 = router.apply(eventRecordV3);
 
         assertThat(eventRoutedV3.valueSchema().version()).isEqualTo(3);
@@ -569,8 +553,7 @@ public class EventRouterTest {
                 "User",
                 "{}",
                 extraFields,
-                extraValuesV1
-        );
+                extraValuesV1);
         final SourceRecord eventRoutedV1E2 = router.apply(eventRecordV1E2);
 
         assertThat(eventRoutedV1E2.valueSchema().version()).isEqualTo(1);
@@ -610,8 +593,7 @@ public class EventRouterTest {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
-                "type:envelope:payloadType,aggregateid:envelope:payloadId,type:header:payloadType"
-        );
+                "type:envelope:payloadType,aggregateid:envelope:payloadId,type:header:payloadType");
         router.configure(config);
 
         final SourceRecord eventRecord = createEventRecord();
@@ -661,12 +643,10 @@ public class EventRouterTest {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
-                "is_deleted:envelope:deleted"
-        );
+                "is_deleted:envelope:deleted");
         config.put(
                 EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD.name(),
-                "true"
-        );
+                "true");
         router.configure(config);
 
         final Map<String, Schema> extraFields = new HashMap<>();
@@ -710,8 +690,7 @@ public class EventRouterTest {
         final Map<String, String> config = new HashMap<>();
         config.put(
                 EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(),
-                "is_deleted:envelope:deleted"
-        );
+                "is_deleted:envelope:deleted");
         router.configure(config);
 
         final Map<String, Schema> extraFields = new HashMap<>();
@@ -758,17 +737,15 @@ public class EventRouterTest {
                 "UserCreated",
                 "10711fa5",
                 "User",
-                "{}"
-        );
+                "{}");
     }
 
     private SourceRecord createEventRecord(
-            String eventId,
-            String eventType,
-            String payloadId,
-            String payloadType,
-            String payload
-    ) {
+                                           String eventId,
+                                           String eventType,
+                                           String payloadId,
+                                           String payloadType,
+                                           String payload) {
         return createEventRecord(
                 eventId,
                 eventType,
@@ -776,19 +753,17 @@ public class EventRouterTest {
                 payloadType,
                 payload,
                 new HashMap<>(),
-                new HashMap<>()
-        );
+                new HashMap<>());
     }
 
     private SourceRecord createEventRecord(
-            String eventId,
-            String eventType,
-            String payloadId,
-            String payloadType,
-            String payload,
-            Map<String, Schema> extraFields,
-            Map<String, Object> extraValues
-    ) {
+                                           String eventId,
+                                           String eventType,
+                                           String payloadId,
+                                           String payloadType,
+                                           String payload,
+                                           Map<String, Schema> extraFields,
+                                           Map<String, Object> extraValues) {
         SchemaBuilder schemaBuilder = SchemaBuilder.struct()
                 .field("id", SchemaBuilder.string())
                 .field("aggregatetype", SchemaBuilder.string())

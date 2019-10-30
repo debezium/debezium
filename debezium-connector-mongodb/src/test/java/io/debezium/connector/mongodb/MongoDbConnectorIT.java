@@ -79,8 +79,8 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldNotStartWithInvalidConfiguration() {
         config = Configuration.create()
-                              .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, "true")
-                              .build();
+                .with(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS, "true")
+                .build();
 
         // we expect the engine will log at least one error, so preface it ...
         logger.info("Attempting to start the connector with an INVALID configuration, so MULTIPLE error messages & one exceptions will appear in the log");
@@ -156,10 +156,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
-                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                              .build();
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
@@ -254,9 +254,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // ---------------------------------------------------------------------------------------------------------------
         // Create and then update a document
         // ---------------------------------------------------------------------------------------------------------------
-        //Testing.Debug.enable();
+        // Testing.Debug.enable();
         AtomicReference<String> id = new AtomicReference<>();
-        primary().execute("create", mongo-> {
+        primary().execute("create", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
             coll.drop();
@@ -273,7 +273,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Testing.debug("Document ID: " + id.get());
         });
 
-        primary().execute("update", mongo-> {
+        primary().execute("update", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
 
@@ -318,10 +318,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
-                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.dbz865.*")
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                              .build();
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.dbz865.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
@@ -329,7 +329,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Cleanup database
         TestHelper.cleanDatabase(primary(), "dbit");
 
-        primary().execute("create", mongo-> {
+        primary().execute("create", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("dbz865_my@collection");
             coll.drop();
@@ -383,7 +383,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Cleanup database
         TestHelper.cleanDatabase(primary(), "dbit");
 
-        primary().execute("create", mongo-> {
+        primary().execute("create", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("dbz865_my@collection");
             coll.drop();
@@ -497,12 +497,12 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     public void shouldUseSSL() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
-                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                              .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
-                              .with(MongoDbConnectorConfig.SSL_ENABLED, true)
-                              .build();
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 0)
+                .with(MongoDbConnectorConfig.SSL_ENABLED, true)
+                .build();
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
@@ -518,11 +518,11 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         Testing.Print.enable();
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
-                              .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                              .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.mhb")
-                              .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                              .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
-                              .build();
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.mhb")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
+                .build();
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
@@ -530,7 +530,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // Cleanup database
         TestHelper.cleanDatabase(primary(), "dbit");
 
-        primary().execute("create", mongo-> {
+        primary().execute("create", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll1 = db1.getCollection("mhb");
             coll1.drop();
@@ -548,7 +548,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(records.allRecordsInOrder()).hasSize(1);
         assertThat(records.recordsForTopic("mongo.dbit.mhb")).hasSize(1);
 
-        primary().execute("insert-monitored", mongo-> {
+        primary().execute("insert-monitored", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("mhb");
 
@@ -568,7 +568,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(monitoredTs).isEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.TIMESTAMP));
         assertThat(monitoredOrd).isEqualTo((Integer) hbAfterMonitoredOffset.get(SourceInfo.ORDER));
 
-        primary().execute("insert-nonmonitored", mongo-> {
+        primary().execute("insert-nonmonitored", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("nmhb");
 

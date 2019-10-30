@@ -21,16 +21,16 @@ public class LegacyV1MongoDbSourceInfoStructMaker extends LegacyV1AbstractSource
     public LegacyV1MongoDbSourceInfoStructMaker(String connector, String version, CommonConnectorConfig connectorConfig) {
         super(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
-            .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
-            .version(SourceInfo.SCHEMA_VERSION)
-            .field(SourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-            .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
-            .field(SourceInfo.NAMESPACE, Schema.STRING_SCHEMA)
-            .field(SourceInfo.TIMESTAMP, Schema.INT32_SCHEMA)
-            .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
-            .field(SourceInfo.OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
-            .field(SourceInfo.INITIAL_SYNC, SchemaBuilder.bool().optional().defaultValue(false).build())
-            .build();
+                .name(SchemaNameAdjuster.defaultAdjuster().adjust("io.debezium.connector.mongo.Source"))
+                .version(SourceInfo.SCHEMA_VERSION)
+                .field(SourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(SourceInfo.REPLICA_SET_NAME, Schema.STRING_SCHEMA)
+                .field(SourceInfo.NAMESPACE, Schema.STRING_SCHEMA)
+                .field(SourceInfo.TIMESTAMP, Schema.INT32_SCHEMA)
+                .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
+                .field(SourceInfo.OPERATION_ID, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.INITIAL_SYNC, SchemaBuilder.bool().optional().defaultValue(false).build())
+                .build();
         this.serverName = connectorConfig.getLogicalName();
     }
 

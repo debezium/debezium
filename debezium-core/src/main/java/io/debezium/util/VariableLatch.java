@@ -70,11 +70,11 @@ public class VariableLatch {
                     return false;
                 }
                 int nextc = c - releases;
-                if (nextc < 0)  {
+                if (nextc < 0) {
                     nextc = 0;
                 }
                 if (compareAndSetState(c, nextc)) {
-                    return nextc==0;
+                    return nextc == 0;
                 }
             }
         }

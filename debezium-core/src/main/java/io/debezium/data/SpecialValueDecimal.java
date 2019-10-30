@@ -70,32 +70,32 @@ public class SpecialValueDecimal implements Serializable {
         return Optional.ofNullable(decimalValue);
     }
 
-   /**
+    /**
     * Factory method for creating instances from numbers in string format
     *
     * @param decimal a string containing valid decimal number
     * @return {@link SpecialValueDecimal} containing converted {@link BigDecimal}
     */
-   public static SpecialValueDecimal valueOf(String decimal) {
-       return new SpecialValueDecimal(new BigDecimal(decimal));
-   }
+    public static SpecialValueDecimal valueOf(String decimal) {
+        return new SpecialValueDecimal(new BigDecimal(decimal));
+    }
 
-   /**
+    /**
     * @return value converted into double including special values
     */
-   public double toDouble() {
-       if (specialValue != null) {
-           switch (specialValue) {
-           case NAN:
-               return Double.NaN;
-           case POSITIVE_INFINITY:
-               return Double.POSITIVE_INFINITY;
-           case NEGATIVE_INFINITY:
-               return Double.NEGATIVE_INFINITY;
-           }
-       }
-       return decimalValue.doubleValue();
-   }
+    public double toDouble() {
+        if (specialValue != null) {
+            switch (specialValue) {
+                case NAN:
+                    return Double.NaN;
+                case POSITIVE_INFINITY:
+                    return Double.POSITIVE_INFINITY;
+                case NEGATIVE_INFINITY:
+                    return Double.NEGATIVE_INFINITY;
+            }
+        }
+        return decimalValue.doubleValue();
+    }
 
     /**
      * Converts a value from its logical format (BigDecimal/special) to its string representation
@@ -159,7 +159,7 @@ public class SpecialValueDecimal implements Serializable {
                 return SchemaBuilder.float64();
             case PRECISE:
                 return Decimal.builder(scale)
-                    .parameter(PRECISION_PARAMETER_KEY, String.valueOf(precision));
+                        .parameter(PRECISION_PARAMETER_KEY, String.valueOf(precision));
             case STRING:
                 return SchemaBuilder.string();
         }
@@ -169,25 +169,25 @@ public class SpecialValueDecimal implements Serializable {
     public static Object fromLogical(SpecialValueDecimal value, DecimalMode mode, String columnName) {
         if (value.getDecimalValue().isPresent()) {
             switch (mode) {
-            case DOUBLE:
-                return value.getDecimalValue().get().doubleValue();
-            case PRECISE:
-                return value.getDecimalValue().get();
-            case STRING:
-                return value.getDecimalValue().get().toString();
+                case DOUBLE:
+                    return value.getDecimalValue().get().doubleValue();
+                case PRECISE:
+                    return value.getDecimalValue().get();
+                case STRING:
+                    return value.getDecimalValue().get().toString();
             }
             throw new IllegalArgumentException("Unknown decimalMode");
         }
 
         // special values (NaN, Infinity) can only be expressed when using "string" encoding
         switch (mode) {
-        case STRING:
-            return value.toString();
-        case DOUBLE:
-            return value.toDouble();
-        default:
-            throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + columnName + " but current mode does not handle it. "
-                    + "If you need to support it then set decimal handling mode to 'string'.");
+            case STRING:
+                return value.toString();
+            case DOUBLE:
+                return value.toDouble();
+            default:
+                throw new ConnectException("Got a special value (NaN/Infinity) for Decimal type in column " + columnName + " but current mode does not handle it. "
+                        + "If you need to support it then set decimal handling mode to 'string'.");
         }
     }
 }

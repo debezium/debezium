@@ -33,9 +33,16 @@ public interface DdlParserListener {
      * The type of concrete {@link Event}s.
      */
     public static enum EventType {
-        CREATE_TABLE, ALTER_TABLE, DROP_TABLE, TRUNCATE_TABLE,
-        CREATE_INDEX, DROP_INDEX,
-        CREATE_DATABASE, ALTER_DATABASE, DROP_DATABASE, USE_DATABASE,
+        CREATE_TABLE,
+        ALTER_TABLE,
+        DROP_TABLE,
+        TRUNCATE_TABLE,
+        CREATE_INDEX,
+        DROP_INDEX,
+        CREATE_DATABASE,
+        ALTER_DATABASE,
+        DROP_DATABASE,
+        USE_DATABASE,
         SET_VARIABLE,
     }
 
@@ -137,7 +144,7 @@ public interface DdlParserListener {
 
         @Override
         public String toString() {
-            if ( previousTableId != null ) {
+            if (previousTableId != null) {
                 return tableId() + " (was " + previousTableId() + ") => " + statement();
             }
             return tableId() + " => " + statement();
@@ -163,6 +170,7 @@ public interface DdlParserListener {
             super(EventType.TRUNCATE_TABLE, tableId, ddlStatement, isView);
         }
     }
+
     /**
      * The abstract base class for all index-related events.
      */
@@ -195,7 +203,7 @@ public interface DdlParserListener {
 
         @Override
         public String toString() {
-            if ( tableId == null ) {
+            if (tableId == null) {
                 return indexName() + " => " + statement();
             }
             return indexName() + " on " + tableId() + " => " + statement();
@@ -264,10 +272,12 @@ public interface DdlParserListener {
     @Immutable
     public static class DatabaseAlteredEvent extends DatabaseEvent {
         private final String previousDatabaseName;
+
         public DatabaseAlteredEvent(String databaseName, String previousDatabaseName, String ddlStatement) {
             super(EventType.ALTER_DATABASE, databaseName, ddlStatement);
             this.previousDatabaseName = previousDatabaseName;
         }
+
         /**
          * If the table was renamed, then get the old identifier of the table before it was renamed.
          * @return the table's previous identifier; may be null if the alter did not affect the table's identifier
@@ -278,7 +288,7 @@ public interface DdlParserListener {
 
         @Override
         public String toString() {
-            if ( previousDatabaseName != null ) {
+            if (previousDatabaseName != null) {
                 return databaseName() + " (was " + previousDatabaseName() + ") => " + statement();
             }
             return databaseName() + " => " + statement();

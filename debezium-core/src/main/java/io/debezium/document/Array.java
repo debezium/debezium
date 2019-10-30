@@ -718,7 +718,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, int increment ) {
+    default Array increment(int index, int increment) {
         return increment(index, Value.create(increment));
     }
 
@@ -729,7 +729,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, long increment ) {
+    default Array increment(int index, long increment) {
         return increment(index, Value.create(increment));
     }
 
@@ -740,7 +740,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, double increment ) {
+    default Array increment(int index, double increment) {
         return increment(index, Value.create(increment));
     }
 
@@ -751,7 +751,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    default Array increment( int index, float increment ) {
+    default Array increment(int index, float increment) {
         return increment(index, Value.create(increment));
     }
 
@@ -762,7 +762,7 @@ public interface Array extends Iterable<Array.Entry>, Comparable<Array> {
      * @return this array to allow for chaining methods
      * @throws IllegalArgumentException if the current value is not a number
      */
-    Array increment( int index, Value increment );
+    Array increment(int index, Value increment);
 
     /**
      * Set the value for the field with the given name to be a new, empty Document.

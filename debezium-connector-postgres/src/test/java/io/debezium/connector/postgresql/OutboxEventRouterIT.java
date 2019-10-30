@@ -60,13 +60,12 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
     private EventRouter<SourceRecord> outboxEventRouter;
 
     private static String createEventInsert(
-            UUID eventId,
-            String eventType,
-            String aggregateType,
-            String aggregateId,
-            String payloadJson,
-            String additional
-    ) {
+                                            UUID eventId,
+                                            String eventType,
+                                            String aggregateType,
+                                            String aggregateId,
+                                            String payloadJson,
+                                            String additional) {
         StringBuilder insert = new StringBuilder();
         insert.append("INSERT INTO outboxsmtit.outbox VALUES (");
         insert.append("'").append(eventId).append("'");
@@ -121,8 +120,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "User",
                 "10711fa5",
                 "{}",
-                ""
-        ));
+                ""));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -150,14 +148,12 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "User",
                 "10711fa5",
                 "{\"email\": \"gh@mefi.in\"}",
-                ""
-        ));
+                ""));
 
         final Map<String, String> config = new HashMap<>();
         config.put(
                 "table.fields.additional.placement",
-                "type:header:eventType"
-        );
+                "type:header:eventType");
         outboxEventRouter.configure(config);
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
@@ -187,8 +183,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "User",
                 "7bdf2e9e",
                 "{\"email\": \"gh@mefi.in\"}",
-                ""
-        ));
+                ""));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -215,8 +210,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                         "aggregatetype:envelope:aggregateType," +
                         "somebooltype:envelope:someBoolType," +
                         "somebooltype:header," +
-                        "is_deleted:envelope:deleted"
-        );
+                        "is_deleted:envelope:deleted");
         outboxEventRouter.configure(config);
 
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add version int not null;");
@@ -230,8 +224,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserEmail",
                 "7bdf2e9e",
                 "{\"email\": \"gh@mefi.in\"}",
-                ", 1, true, TIMESTAMP '2019-03-24 20:52:59'"
-        ));
+                ", 1, true, TIMESTAMP '2019-03-24 20:52:59'"));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -293,8 +286,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                         "aggregatetype:envelope:aggregateType," +
                         "somebooltype:envelope:someBoolType," +
                         "somebooltype:header," +
-                        "is_deleted:envelope:deleted"
-        );
+                        "is_deleted:envelope:deleted");
         outboxEventRouter.configure(config);
 
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add version int not null;");
@@ -308,8 +300,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserEmail",
                 "a9d76f78",
                 null,
-                ", 1, true, TIMESTAMP '2019-03-24 20:52:59', true"
-        ));
+                ", 1, true, TIMESTAMP '2019-03-24 20:52:59', true"));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -358,8 +349,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                         "aggregatetype:envelope:aggregateType," +
                         "somebooltype:envelope:someBoolType," +
                         "somebooltype:header," +
-                        "is_deleted:envelope:deleted"
-        );
+                        "is_deleted:envelope:deleted");
         outboxEventRouter.configure(config);
 
         TestHelper.execute("ALTER TABLE outboxsmtit.outbox add version int not null;");
@@ -373,8 +363,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserEmail",
                 "a9d76f78",
                 null,
-                ", 1, true, TIMESTAMP '2019-03-24 20:52:59', true"
-        ));
+                ", 1, true, TIMESTAMP '2019-03-24 20:52:59', true"));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -423,8 +412,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserEmail",
                 "a9d76f78",
                 "",
-                null
-        ));
+                null));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -458,8 +446,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "User",
                 "10711faf",
                 "{}",
-                ""
-        ));
+                ""));
 
         Configuration.Builder configBuilder = getConfigurationBuilder(SnapshotMode.INITIAL);
         start(PostgresConnector.class, configBuilder.build());

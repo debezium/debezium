@@ -170,8 +170,7 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
         return Collect.hashMapOf(
                 "filename", getBinlogFilename(),
                 "position", Long.toString(getBinlogPosition()),
-                "gtid", getGtidSet()
-        );
+                "gtid", getGtidSet());
     }
 
     @Override

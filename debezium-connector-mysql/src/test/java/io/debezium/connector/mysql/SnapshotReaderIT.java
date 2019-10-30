@@ -467,7 +467,8 @@ public class SnapshotReaderIT {
     @Test
     public void shouldSnapshotTablesInOrderSpecifiedInTablesWhitelist() throws Exception {
         config = simpleConfig()
-                .with(MySqlConnectorConfig.TABLE_WHITELIST, "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
+                .with(MySqlConnectorConfig.TABLE_WHITELIST,
+                        "connector_test_ro_(.*).orders,connector_test_ro_(.*).Products,connector_test_ro_(.*).products_on_hand,connector_test_ro_(.*).dbz_342_timetest")
                 .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
@@ -503,7 +504,7 @@ public class SnapshotReaderIT {
         // Start the snapshot ...
         reader.start();
         // Poll for records ...
-        //        Testing.Print.enable();
+        // Testing.Print.enable();
         List<SourceRecord> records;
         LinkedHashSet<String> tablesInOrder = new LinkedHashSet<>();
         LinkedHashSet<String> tablesInOrderExpected = getTableNamesInSpecifiedOrder("Products", "customers", "dbz_342_timetest", "orders", "products_on_hand");
@@ -520,7 +521,8 @@ public class SnapshotReaderIT {
     }
 
     private Function<SourceRecord, String> getTableNameFromSourceRecord = sourceRecord -> ((Struct) sourceRecord.value()).getStruct("source").getString("table");
-    private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String ... tables) {
+
+    private LinkedHashSet<String> getTableNamesInSpecifiedOrder(String... tables) {
         LinkedHashSet<String> tablesInOrderExpected = new LinkedHashSet<>();
         for (String table : tables) {
             tablesInOrderExpected.add(table);
@@ -531,10 +533,10 @@ public class SnapshotReaderIT {
     @Test
     public void shouldCreateSnapshotSchemaOnly() throws Exception {
         config = simpleConfig()
-                    .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
-                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                    .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
-                    .build();
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
+                .build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
         reader = new SnapshotReader("snapshot", context);

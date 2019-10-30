@@ -66,9 +66,11 @@ public class ChangeTable {
     public String getCaptureInstance() {
         return captureInstance;
     }
+
     public Lsn getStartLsn() {
         return startLsn;
     }
+
     public Lsn getStopLsn() {
         return stopLsn;
     }

@@ -40,7 +40,8 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
 
     private final Set<String> monitoredTables = Collections.synchronizedSet(new HashSet<>());
 
-    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+    public <T extends CdcSourceTaskContext> SnapshotChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                             EventMetadataProvider metadataProvider) {
         super(taskContext, "snapshot", changeEventQueueMetrics, metadataProvider);
     }
 

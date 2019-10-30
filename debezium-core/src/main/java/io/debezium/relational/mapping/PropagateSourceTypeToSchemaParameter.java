@@ -27,20 +27,20 @@ public class PropagateSourceTypeToSchemaParameter implements ColumnMapper {
 
     @Override
     public ValueConverter create(Column column) {
-       return null;
+        return null;
     }
 
     @Override
     public void alterFieldSchema(Column column, SchemaBuilder schemaBuilder) {
         // upper-casing type names to be consistent across connectors
-       schemaBuilder.parameter(TYPE_NAME_PARAMETER_KEY, column.typeName().toUpperCase(Locale.ENGLISH));
+        schemaBuilder.parameter(TYPE_NAME_PARAMETER_KEY, column.typeName().toUpperCase(Locale.ENGLISH));
 
-       if (column.length() != Column.UNSET_INT_VALUE) {
-           schemaBuilder.parameter(TYPE_LENGTH_PARAMETER_KEY, String.valueOf(column.length()));
-       }
+        if (column.length() != Column.UNSET_INT_VALUE) {
+            schemaBuilder.parameter(TYPE_LENGTH_PARAMETER_KEY, String.valueOf(column.length()));
+        }
 
-       if (column.scale().isPresent()) {
-         schemaBuilder.parameter(TYPE_SCALE_PARAMETER_KEY, String.valueOf(column.scale().get()));
-       }
+        if (column.scale().isPresent()) {
+            schemaBuilder.parameter(TYPE_SCALE_PARAMETER_KEY, String.valueOf(column.scale().get()));
+        }
     }
 }

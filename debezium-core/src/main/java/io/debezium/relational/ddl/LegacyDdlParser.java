@@ -47,7 +47,7 @@ public class LegacyDdlParser extends AbstractDdlParser implements DdlParser {
 
         default void add(String firstToken, String... additionalTokens) {
             add(firstToken);
-            for (String token: additionalTokens) {
+            for (String token : additionalTokens) {
                 add(token);
             }
         }

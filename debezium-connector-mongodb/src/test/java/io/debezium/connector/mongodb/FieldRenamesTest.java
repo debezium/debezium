@@ -30,8 +30,7 @@ public class FieldRenamesTest {
 
     private static final String SERVER_NAME = "serverX";
     private static final String PATCH = "patch";
-    private static final JsonWriterSettings WRITER_SETTINGS =
-            new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
+    private static final JsonWriterSettings WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
 
     private Configurator build;
     private SourceInfo source;
@@ -42,8 +41,8 @@ public class FieldRenamesTest {
         build = new Configurator();
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
-                .build()));
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                        .build()));
         topicSelector = MongoDbTopicSelector.defaultSelector(SERVER_NAME, "__debezium-heartbeat");
     }
 
@@ -89,6 +88,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -96,6 +96,7 @@ public class FieldRenamesTest {
                 +     "\"new_name\": \"Sally\","
                 +     "\"new_active\": true"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
     }
@@ -146,6 +147,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -158,6 +160,7 @@ public class FieldRenamesTest {
                 +     "\"new_name\": \"Sally\","
                 +     "\"new_active\": true"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
     }
@@ -231,6 +234,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -238,6 +242,7 @@ public class FieldRenamesTest {
                 +     "\"new_name\": \"Sally\","
                 +     "\"new_active\": true"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
     }
@@ -288,6 +293,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -300,6 +306,7 @@ public class FieldRenamesTest {
                 +     "\"new_name\": \"Sally\","
                 +     "\"new_active\": true"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(AFTER)).isEqualTo(expected);
     }
@@ -373,6 +380,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -380,6 +388,7 @@ public class FieldRenamesTest {
                 +     "\"new_name\": \"Sally\","
                 +     "\"new_active\": true"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -430,6 +439,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -442,6 +452,7 @@ public class FieldRenamesTest {
                 +     "\"new_name\": \"Sally\","
                 +     "\"new_active\": true"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -524,6 +535,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -543,6 +555,7 @@ public class FieldRenamesTest {
                 +     "\"scores\": [1.2,3.4,5.6],"
                 +     "\"new_name\": \"Sally\""
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -575,6 +588,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
                 +     "\"phone\": {\"$numberLong\": \"123\"},"
@@ -598,6 +612,7 @@ public class FieldRenamesTest {
                 +     "\"scores\": [1.2,3.4,5.6],"
                 +     "\"new_name\": \"Sally\""
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -619,12 +634,14 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"phone\": {\"$numberLong\": \"123\"},"
                 +         "\"new_name\": \"Sally\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -663,12 +680,14 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$unset\": {"
                 +         "\"phone\": \"\","
                 +         "\"new_name\": \"\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -711,6 +730,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"phone\": {\"$numberLong\": \"123\"},"
@@ -722,6 +742,7 @@ public class FieldRenamesTest {
                 +         "\"new_name\": \"Sally\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -752,6 +773,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"phone\": {\"$numberLong\": \"123\"},"
@@ -770,6 +792,7 @@ public class FieldRenamesTest {
                 +         "\"new_name\": \"Sally\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -800,6 +823,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"phone\": {\"$numberLong\": \"123\"},"
@@ -822,6 +846,7 @@ public class FieldRenamesTest {
                 +         "\"new_name\": \"Sally\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -845,6 +870,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"address.street\": \"Claude Debussylaan\","
@@ -853,12 +879,14 @@ public class FieldRenamesTest {
                 +         "\"address.new_number\": {\"$numberLong\": \"34\"}"
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
     @Test
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -870,6 +898,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -888,6 +917,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"name\": \"Sally\","
@@ -896,6 +926,7 @@ public class FieldRenamesTest {
                 +         "\"addresses.0.new_number\": {\"$numberLong\": \"34\"}"
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -921,6 +952,7 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldNotRenameNestedFieldsForSetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -934,6 +966,7 @@ public class FieldRenamesTest {
         //      ]
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -958,6 +991,7 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameNestedFieldsForSetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -973,6 +1007,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -991,6 +1026,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"name\": \"Sally\","
@@ -999,12 +1035,14 @@ public class FieldRenamesTest {
                 +         "\"addresses.0.second.0.new_number\": {\"$numberLong\": \"34\"}"
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
     @Test
     public void shouldRenameFieldsForSetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -1016,6 +1054,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -1034,6 +1073,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"name\": \"Sally\","
@@ -1042,12 +1082,14 @@ public class FieldRenamesTest {
                 +         "\"new_addresses.0.city\": \"Amsterdam\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
     @Test
     public void shouldRenameFieldsForSetToArrayFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -1059,6 +1101,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -1078,6 +1121,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$set\": {"
                 +         "\"name\": \"Sally\","
@@ -1088,6 +1132,7 @@ public class FieldRenamesTest {
                 +         "}"
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -1111,6 +1156,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$unset\": {"
                 +         "\"address.street\": \"\","
@@ -1119,12 +1165,14 @@ public class FieldRenamesTest {
                 +         "\"address.new_number\": \"\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
     @Test
     public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -1136,6 +1184,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -1154,6 +1203,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$unset\": {"
                 +         "\"name\": \"\","
@@ -1162,6 +1212,7 @@ public class FieldRenamesTest {
                 +         "\"addresses.0.new_number\": \"\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
@@ -1187,6 +1238,7 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldNotRenameNestedFieldsForUnsetNestedFieldUpdateEventWithArrayOfArrays() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -1200,6 +1252,7 @@ public class FieldRenamesTest {
         //      ]
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -1224,6 +1277,7 @@ public class FieldRenamesTest {
 
     @Test
     public void shouldRenameNestedFieldsForUnsetNestedFieldUpdateEventWithSeveralArrays() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -1239,6 +1293,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -1257,6 +1312,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$unset\": {"
                 +         "\"name\": \"\","
@@ -1265,12 +1321,14 @@ public class FieldRenamesTest {
                 +         "\"addresses.0.second.0.new_number\": \"\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }
 
     @Test
     public void shouldRenameFieldsForUnsetNestedFieldUpdateEventWithArrayOfEmbeddedDocuments() throws InterruptedException {
+        // @formatter:off
         // source document can have the following structure:
         // {
         //   "name": "Sally",
@@ -1282,6 +1340,7 @@ public class FieldRenamesTest {
         //      }
         //   ]
         // }
+        // @formatter:on
 
         // given
         CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
@@ -1300,6 +1359,7 @@ public class FieldRenamesTest {
         recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
 
         // then
+        // @formatter:off
         String expected = "{"
                 +     "\"$unset\": {"
                 +         "\"name\": \"\","
@@ -1308,6 +1368,7 @@ public class FieldRenamesTest {
                 +         "\"new_addresses.0.city\": \"\""
                 +     "}"
                 + "}";
+        // @formatter:on
         Struct value = getValue(produced);
         assertThat(value.get(PATCH)).isEqualTo(expected);
     }

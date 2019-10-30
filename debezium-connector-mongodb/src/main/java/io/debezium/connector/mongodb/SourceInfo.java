@@ -92,7 +92,6 @@ public final class SourceInfo extends AbstractSourceInfo {
     private CollectionId collectionId;
     private Position position;
 
-
     @Immutable
     protected static final class Position {
         private final Long opId;
@@ -190,13 +189,13 @@ public final class SourceInfo extends AbstractSourceInfo {
         }
         if (isInitialSyncOngoing(replicaSetName)) {
             return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
-                                     ORDER, Integer.valueOf(existing.getInc()),
-                                     OPERATION_ID, existing.getOperationId(),
-                                     INITIAL_SYNC, true);
+                    ORDER, Integer.valueOf(existing.getInc()),
+                    OPERATION_ID, existing.getOperationId(),
+                    INITIAL_SYNC, true);
         }
         return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
-                                 ORDER, Integer.valueOf(existing.getInc()),
-                                 OPERATION_ID, existing.getOperationId());
+                ORDER, Integer.valueOf(existing.getInc()),
+                OPERATION_ID, existing.getOperationId());
     }
 
     /**

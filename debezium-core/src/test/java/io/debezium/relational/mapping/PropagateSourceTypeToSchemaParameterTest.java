@@ -25,11 +25,11 @@ public class PropagateSourceTypeToSchemaParameterTest {
     public void shouldAddTypeInformation() {
         int length = 255;
         Column column = Column.editor()
-            .name("col")
-            .type("VARCHAR")
-            .jdbcType(Types.VARCHAR)
-            .length(length)
-            .create();
+                .name("col")
+                .type("VARCHAR")
+                .jdbcType(Types.VARCHAR)
+                .length(length)
+                .create();
 
         SchemaBuilder schemaBuilder = SchemaBuilder.string();
         new PropagateSourceTypeToSchemaParameter().alterFieldSchema(column, schemaBuilder);
@@ -44,12 +44,12 @@ public class PropagateSourceTypeToSchemaParameterTest {
         int length = 5;
         int scale = 2;
         Column column = Column.editor()
-            .name("col")
-            .type("NUMERIC")
-            .jdbcType(Types.NUMERIC)
-            .length(length)
-            .scale(scale)
-            .create();
+                .name("col")
+                .type("NUMERIC")
+                .jdbcType(Types.NUMERIC)
+                .length(length)
+                .scale(scale)
+                .create();
 
         SchemaBuilder schemaBuilder = SchemaBuilder.string();
         new PropagateSourceTypeToSchemaParameter().alterFieldSchema(column, schemaBuilder);

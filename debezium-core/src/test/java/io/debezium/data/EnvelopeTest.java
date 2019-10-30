@@ -20,10 +20,10 @@ public class EnvelopeTest {
     @Test
     public void shouldBuildWithSimpleOptionalTypesForBeforeAndAfter() {
         Envelope env = Envelope.defineSchema()
-                               .withName("someName")
-                               .withRecord(Schema.OPTIONAL_STRING_SCHEMA)
-                               .withSource(Schema.OPTIONAL_INT64_SCHEMA)
-                               .build();
+                .withName("someName")
+                .withRecord(Schema.OPTIONAL_STRING_SCHEMA)
+                .withSource(Schema.OPTIONAL_INT64_SCHEMA)
+                .build();
         assertThat(env.schema()).isNotNull();
         assertThat(env.schema().name()).isEqualTo("someName");
         assertThat(env.schema().doc()).isNull();

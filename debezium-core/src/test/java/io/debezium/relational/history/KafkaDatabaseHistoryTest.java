@@ -55,14 +55,13 @@ public class KafkaDatabaseHistoryTest {
 
         // Configure the extra properties to
         kafka = new KafkaCluster().usingDirectory(dataDir)
-                                  .deleteDataPriorToStartup(true)
-                                  .deleteDataUponShutdown(true)
-                                  .addBrokers(1)
-                                  .withKafkaConfiguration(Collect.propertiesOf(
-                                          "auto.create.topics.enable", "false",
-                                          "zookeeper.session.timeout.ms", "20000"
-                                  ))
-                                  .startup();
+                .deleteDataPriorToStartup(true)
+                .deleteDataUponShutdown(true)
+                .addBrokers(1)
+                .withKafkaConfiguration(Collect.propertiesOf(
+                        "auto.create.topics.enable", "false",
+                        "zookeeper.session.timeout.ms", "20000"))
+                .startup();
         history = new KafkaDatabaseHistory();
     }
 
@@ -96,21 +95,21 @@ public class KafkaDatabaseHistoryTest {
     private void testHistoryTopicContent(boolean skipUnparseableDDL) {
         // Start up the history ...
         Configuration config = Configuration.create()
-                                            .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
-                                            .with(KafkaDatabaseHistory.TOPIC, topicName)
-                                            .with(DatabaseHistory.NAME, "my-db-history")
-                                            .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
-                                            // new since 0.10.1.0 - we want a low value because we're running everything locally
-                                            // in this test. However, it can't be so low that the broker returns the same
-                                            // messages more than once.
-                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                                                  ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
-                                                  100)
-                                            .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                                                  ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
-                                                  50000)
-                                            .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
-                                            .build();
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaDatabaseHistory.TOPIC, topicName)
+                .with(DatabaseHistory.NAME, "my-db-history")
+                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+                // new since 0.10.1.0 - we want a low value because we're running everything locally
+                // in this test. However, it can't be so low that the broker returns the same
+                // messages more than once.
+                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                        100)
+                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                        ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                        50000)
+                .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+                .build();
         history.configure(config, null, DatabaseHistoryMetrics.NOOP);
         history.start();
 
@@ -200,7 +199,7 @@ public class KafkaDatabaseHistoryTest {
 
     protected void setLogPosition(int index) {
         this.position = Collect.hashMapOf("filename", "my-txn-file.log",
-                                          "position", index);
+                "position", index);
     }
 
     @Test
@@ -279,11 +278,11 @@ public class KafkaDatabaseHistoryTest {
                 // in this test. However, it can't be so low that the broker returns the same
                 // messages more than once.
                 .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                      ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
-                      100)
+                        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                        100)
                 .with(KafkaDatabaseHistory.consumerConfigPropertyName(
-                      ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
-                      50000)
+                        ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                        50000)
                 .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .build();
 

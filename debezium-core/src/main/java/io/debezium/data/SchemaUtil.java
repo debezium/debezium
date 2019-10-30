@@ -154,17 +154,17 @@ public class SchemaUtil {
                 if (schema.version() != null) {
                     appendAdditional("version", schema.version());
                 }
-                switch(schema.type()) {
-                case STRUCT:
-                    appendAdditional("fields", schema.fields());
-                    break;
-                case MAP:
-                    appendAdditional("key", schema.keySchema());
-                    appendAdditional("value", schema.valueSchema());
-                    break;
-                case ARRAY:
-                    appendAdditional("value", schema.valueSchema());
-                    break;
+                switch (schema.type()) {
+                    case STRUCT:
+                        appendAdditional("fields", schema.fields());
+                        break;
+                    case MAP:
+                        appendAdditional("key", schema.keySchema());
+                        appendAdditional("value", schema.valueSchema());
+                        break;
+                    case ARRAY:
+                        appendAdditional("value", schema.valueSchema());
+                        break;
                     default:
                 }
                 sb.append('}');
@@ -175,7 +175,7 @@ public class SchemaUtil {
                 boolean first = true;
                 for (Field field : s.schema().fields()) {
                     if (first) {
-                        first=false;
+                        first = false;
                     }
                     else {
                         sb.append(", ");
@@ -188,7 +188,7 @@ public class SchemaUtil {
                 append((ByteBuffer) obj);
             }
             else if (obj instanceof byte[]) {
-                    append((byte[]) obj);
+                append((byte[]) obj);
             }
             else if (obj instanceof Map<?, ?>) {
                 Map<?, ?> map = (Map<?, ?>) obj;
@@ -211,7 +211,7 @@ public class SchemaUtil {
                 boolean first = true;
                 for (Object value : list) {
                     if (first) {
-                        first=false;
+                        first = false;
                     }
                     else {
                         sb.append(", ");

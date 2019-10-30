@@ -59,7 +59,7 @@ public interface AvailableVariables {
      * @return the empty available variables function that always return null.
      */
     public static AvailableVariables empty() {
-        return (varName)->null;
+        return (varName) -> null;
     }
 
     /**

@@ -126,9 +126,11 @@ public class Replicator {
         this.replicaSet = replicaSet;
         this.rsName = replicaSet.replicaSetName();
         final String copyThreadName = "copy-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
-        this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName, context.getConnectionContext().maxNumberOfCopyThreads());
+        this.copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, context.serverName(), copyThreadName,
+                context.getConnectionContext().maxNumberOfCopyThreads());
         this.bufferedRecorder = new BufferableRecorder(recorder);
-        this.recordMakers = new RecordMakers(context.filters(), this.source, context.topicSelector(), this.bufferedRecorder, context.getConnectorConfig().isEmitTombstoneOnDelete());
+        this.recordMakers = new RecordMakers(context.filters(), this.source, context.topicSelector(), this.bufferedRecorder,
+                context.getConnectorConfig().isEmitTombstoneOnDelete());
         this.clock = this.context.getClock();
         this.onFailure = onFailure;
 
@@ -254,13 +256,13 @@ public class Replicator {
                         // The last recorded timestamp is *before* the first existing oplog event, which means there is
                         // almost certainly some history lost since we last processed the oplog ...
                         LOGGER.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
-                                    rsName, firstAvailableTs, lastRecordedTs);
+                                rsName, firstAvailableTs, lastRecordedTs);
                         performSnapshot = true;
                     }
                     else {
                         // Otherwise we'll not perform an initial sync
                         LOGGER.info("The oplog contains the last entry previously read for '{}', so no initial sync will be performed",
-                                    rsName);
+                                rsName);
                     }
                 }
             }
@@ -317,7 +319,7 @@ public class Replicator {
         // And start threads to pull collection IDs from the queue and perform the copies ...
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Preparing to use {} thread(s) to sync {} collection(s): {}",
-                        numThreads, collections.size(), Strings.join(", ", collections));
+                    numThreads, collections.size(), Strings.join(", ", collections));
         }
         for (int i = 0; i != numThreads; ++i) {
             copyThreads.submit(() -> {
@@ -364,7 +366,7 @@ public class Replicator {
             if (LOGGER.isInfoEnabled()) {
                 int remaining = collections.size() - numCollectionsCopied.get();
                 LOGGER.info("Initial sync aborted after {} with {} of {} collections incomplete",
-                            Strings.duration(syncDuration), remaining, collections.size());
+                        Strings.duration(syncDuration), remaining, collections.size());
             }
             return false;
         }
@@ -386,7 +388,7 @@ public class Replicator {
 
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Initial sync of {} collections with a total of {} documents completed in {}",
-                        collections.size(), numDocumentsCopied.get(), Strings.duration(syncDuration));
+                    collections.size(), numDocumentsCopied.get(), Strings.duration(syncDuration));
         }
         return true;
     }
@@ -458,7 +460,7 @@ public class Replicator {
      * is elected (as identified by an oplog event), of if the current thread doing the reading is interrupted.
      */
     protected void readOplog() {
-        primaryClient.execute("read from oplog on '" + replicaSet + "'", (Consumer<MongoClient>) this :: readOplog);
+        primaryClient.execute("read from oplog on '" + replicaSet + "'", (Consumer<MongoClient>) this::readOplog);
     }
 
     /**
@@ -474,11 +476,11 @@ public class Replicator {
         // Include none of the cluster-internal operations and only those events since the previous timestamp ...
         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
         Bson filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
-                                  Filters.exists("fromMigrate", false)); // skip internal movements across shards
+                Filters.exists("fromMigrate", false)); // skip internal movements across shards
         FindIterable<Document> results = oplog.find(filter)
-                                              .sort(new Document("$natural", 1)) // force forwards collection scan
-                                              .oplogReplay(true) // tells Mongo to not rely on indexes
-                                              .cursorType(CursorType.TailableAwait); // tail and await new data
+                .sort(new Document("$natural", 1)) // force forwards collection scan
+                .oplogReplay(true) // tells Mongo to not rely on indexes
+                .cursorType(CursorType.TailableAwait); // tail and await new data
         // Read as much of the oplog as we can ...
         try (MongoCursor<Document> cursor = results.iterator()) {
             while (running.get() && cursor.hasNext()) {
@@ -489,13 +491,13 @@ public class Replicator {
                 }
                 try {
                     heartbeat.heartbeat(source.partition(replicaSet.replicaSetName()), () -> {
-                            // note opLogEvent() will have been called before via handleOplogEvent()
-                            // (unless the event is filtered out), but that's ok, as it's idempotent
-                            // and the code here is only actually is executed if a heartbeat is due
-                            source.opLogEvent(replicaSet.replicaSetName(), event);
-                            return source.lastOffset(replicaSet.replicaSetName());
-                        },
-                        bufferedRecorder);
+                        // note opLogEvent() will have been called before via handleOplogEvent()
+                        // (unless the event is filtered out), but that's ok, as it's idempotent
+                        // and the code here is only actually is executed if a heartbeat is due
+                        source.opLogEvent(replicaSet.replicaSetName(), event);
+                        return source.lastOffset(replicaSet.replicaSetName());
+                    },
+                            bufferedRecorder);
                 }
                 catch (InterruptedException e) {
                     LOGGER.info("Replicator thread is interrupted");
@@ -540,14 +542,14 @@ public class Replicator {
                 }
                 ServerAddress serverAddress = address.get();
 
-                //primary switch will be handled automatically by MongoDB driver
+                // primary switch will be handled automatically by MongoDB driver
                 if (serverAddress != null && !serverAddress.equals(primaryAddress)) {
                     LOGGER.info("Found new primary event in oplog, so stopping use of {} to continue with new primary {}",
                             primaryAddress, serverAddress);
                 }
                 else {
                     LOGGER.info("Found new primary event in oplog, current {} is new primary. " +
-                                "Continue to process oplog event.", primaryAddress);
+                            "Continue to process oplog event.", primaryAddress);
                 }
             }
             // Otherwise, ignore this event ...

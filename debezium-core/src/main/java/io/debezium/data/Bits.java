@@ -29,9 +29,9 @@ public class Bits {
      */
     public static SchemaBuilder builder(int length) {
         return SchemaBuilder.bytes()
-                            .name(LOGICAL_NAME)
-                            .parameter(LENGTH_FIELD, Integer.toString(length))
-                            .version(1);
+                .name(LOGICAL_NAME)
+                .parameter(LENGTH_FIELD, Integer.toString(length))
+                .version(1);
     }
 
     /**

@@ -29,7 +29,7 @@ public class SchemaChangeHistory {
     private final List<SourceRecord> sourceRecords = new ArrayList<>();
     private final Map<String, List<SourceRecord>> sourceRecordsByDbName = new HashMap<>();
 
-    public SchemaChangeHistory( String topic ) {
+    public SchemaChangeHistory(String topic) {
         this.topicName = topic;
     }
 
@@ -37,7 +37,7 @@ public class SchemaChangeHistory {
         if (topicName.equals(record.topic())) {
             this.sourceRecords.add(record);
             String dbName = getAffectedDatabase(record);
-            sourceRecordsByDbName.computeIfAbsent(dbName, db->new ArrayList<>()).add(record);
+            sourceRecordsByDbName.computeIfAbsent(dbName, db -> new ArrayList<>()).add(record);
             return true;
         }
         return false;
@@ -47,7 +47,7 @@ public class SchemaChangeHistory {
         return sourceRecords.size();
     }
 
-    public void forEach( Consumer<SourceRecord> consumer ) {
+    public void forEach(Consumer<SourceRecord> consumer) {
         sourceRecords.forEach(consumer);
     }
 
@@ -59,7 +59,7 @@ public class SchemaChangeHistory {
         return Collections.unmodifiableSet(sourceRecordsByDbName.keySet());
     }
 
-    public List<SourceRecord> ddlRecordsForDatabase( String dbName ) {
+    public List<SourceRecord> ddlRecordsForDatabase(String dbName) {
         return sourceRecordsByDbName.get(dbName);
     }
 

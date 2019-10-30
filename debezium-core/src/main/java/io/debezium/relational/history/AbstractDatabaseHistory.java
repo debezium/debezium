@@ -66,9 +66,9 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     @Override
     public final void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName, String ddl, TableChanges changes)
             throws DatabaseHistoryException {
-            final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes);
-            storeRecord(record);
-            listener.onChangeApplied(record);
+        final HistoryRecord record = new HistoryRecord(source, position, databaseName, schemaName, ddl, changes);
+        storeRecord(record);
+        listener.onChangeApplied(record);
     }
 
     @Override

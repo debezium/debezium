@@ -63,7 +63,7 @@ public class MySqlEnumColumnIT extends AbstractConnectorTest {
         // INSERT
         // ALTER TABLE
         // INSERT
-        SourceRecords records = consumeRecordsByTopic( 5 );
+        SourceRecords records = consumeRecordsByTopic(5);
 
         Schema schemaBeforeAlter = records.allRecordsInOrder().get(2).valueSchema().field("after").schema();
         Schema schemaAfterAlter = records.allRecordsInOrder().get(4).valueSchema().field("after").schema();

@@ -27,7 +27,6 @@ public class SlotCreationResult {
         this.pluginName = pluginName;
     }
 
-
     /**
      * return the name of the created slot.
      */

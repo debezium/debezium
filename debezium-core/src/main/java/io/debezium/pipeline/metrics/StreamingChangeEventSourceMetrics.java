@@ -39,7 +39,8 @@ public class StreamingChangeEventSourceMetrics extends PipelineMetrics implement
     private final AtomicReference<Map<String, String>> sourceEventPosition = new AtomicReference<Map<String, String>>(Collections.emptyMap());
     private final AtomicReference<String> lastTransactionId = new AtomicReference<>();
 
-    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+    public <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                                              EventMetadataProvider metadataProvider) {
         super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
     }
 

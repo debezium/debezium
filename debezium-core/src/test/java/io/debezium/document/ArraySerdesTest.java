@@ -31,7 +31,7 @@ public class ArraySerdesTest implements Testing {
         readAsStringAndBytes("json/array2.json");
     }
 
-    protected void readAsStringAndBytes( String resourceFile ) throws IOException {
+    protected void readAsStringAndBytes(String resourceFile) throws IOException {
         String content = Testing.Files.readResourceAsString(resourceFile);
         Array doc = ArrayReader.defaultReader().readArray(content);
         byte[] bytes = SERDES.serialize("topicA", doc);

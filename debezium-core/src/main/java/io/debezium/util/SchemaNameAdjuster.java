@@ -163,14 +163,14 @@ public interface SchemaNameAdjuster {
         ReplacementOccurred handler = (original, replacement, conflictsWith) -> {
             if (conflictsWith != null) {
                 logger.error("The Kafka Connect schema name '{}' is not a valid Avro schema name and its replacement '{}' conflicts with another different schema '{}'",
-                             original, replacement, conflictsWith);
+                        original, replacement, conflictsWith);
                 if (uponConflict != null) {
                     uponConflict.accept(original, replacement, conflictsWith);
                 }
             }
             else {
                 logger.warn("The Kafka Connect schema name '{}' is not a valid Avro schema name, so replacing with '{}'", original,
-                            replacement);
+                        replacement);
             }
         };
         return create(handler.firstTimeOnly());
@@ -236,7 +236,7 @@ public interface SchemaNameAdjuster {
             return true;
         }
         char c = fullname.charAt(0);
-        if (! isValidFullnameFirstCharacter(c)) {
+        if (!isValidFullnameFirstCharacter(c)) {
             return false;
         }
         for (int i = 1; i != fullname.length(); ++i) {

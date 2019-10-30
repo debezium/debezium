@@ -22,8 +22,8 @@ import java.lang.annotation.Target;
  * @see Immutable
  */
 @Documented
-@Retention( RUNTIME )
-@Target( {FIELD, METHOD, CONSTRUCTOR, PACKAGE, TYPE} )
+@Retention(RUNTIME)
+@Target({ FIELD, METHOD, CONSTRUCTOR, PACKAGE, TYPE })
 public @interface ReadOnly {
 
 }

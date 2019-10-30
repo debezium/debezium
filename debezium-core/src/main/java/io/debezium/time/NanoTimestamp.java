@@ -38,8 +38,8 @@ public class NanoTimestamp {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.int64()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**
@@ -67,7 +67,7 @@ public class NanoTimestamp {
      */
     public static long toEpochNanos(Object value, TemporalAdjuster adjuster) {
         LocalDateTime dateTime = Conversions.toLocalDateTime(value);
-        if ( adjuster != null) {
+        if (adjuster != null) {
             dateTime = dateTime.with(adjuster);
         }
         return toEpochNanos(dateTime);

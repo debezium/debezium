@@ -65,13 +65,14 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final StreamingChangeRecordReceiver streamingReceiver;
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
-            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-            ChangeEventCreator changeEventCreator) {
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator) {
         this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null);
     }
+
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
-            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler) {
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler) {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.historizedSchema = schema instanceof HistorizedDatabaseSchema
@@ -102,7 +103,8 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             @Override
             public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
-                    OffsetContext offset) throws InterruptedException {
+                                     OffsetContext offset)
+                    throws InterruptedException {
                 eventListener.onEvent(dataCollectionSchema.id(), offset, key, value);
                 receiver.changeRecord(dataCollectionSchema, operation, key, value, offset);
             }
@@ -145,7 +147,8 @@ public class EventDispatcher<T extends DataCollectionId> {
 
                 @Override
                 public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
-                        OffsetContext offset) throws InterruptedException {
+                                         OffsetContext offset)
+                        throws InterruptedException {
                     eventListener.onEvent(dataCollectionId, offset, key, value);
                     streamingReceiver.changeRecord(schema, operation, key, value, offset);
                 }
@@ -155,8 +158,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         heartbeat.heartbeat(
                 changeRecordEmitter.getOffset().getPartition(),
                 changeRecordEmitter.getOffset().getOffset(),
-                this::enqueueHeartbeat
-        );
+                this::enqueueHeartbeat);
 
         return true;
     }
@@ -183,16 +185,14 @@ public class EventDispatcher<T extends DataCollectionId> {
         heartbeat.forcedBeat(
                 offset.getPartition(),
                 offset.getOffset(),
-                this::enqueueHeartbeat
-        );
+                this::enqueueHeartbeat);
     }
 
     public void dispatchHeartbeatEvent(OffsetContext offset) throws InterruptedException {
         heartbeat.heartbeat(
                 offset.getPartition(),
                 offset.getOffset(),
-                this::enqueueHeartbeat
-        );
+                this::enqueueHeartbeat);
     }
 
     public boolean heartbeatsEnabled() {
@@ -215,10 +215,11 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
 
         @Override
-        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
+        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext)
+                throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
+            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
 
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
@@ -236,8 +237,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                         record.key(),
                         null, // value schema
                         null, // value
-                        record.timestamp()
-                );
+                        record.timestamp());
 
                 queue.enqueue(changeEventCreator.createDataChangeEvent(tombStone));
             }
@@ -249,10 +249,11 @@ public class EventDispatcher<T extends DataCollectionId> {
         private Supplier<DataChangeEvent> bufferedEvent;
 
         @Override
-        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext) throws InterruptedException {
+        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext)
+                throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace( "Received change record for {} operation on key {}", operation, key);
+            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
 
             if (bufferedEvent != null) {
                 queue.enqueue(bufferedEvent.get());

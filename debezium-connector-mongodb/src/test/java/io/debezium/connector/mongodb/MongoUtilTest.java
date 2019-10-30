@@ -107,7 +107,6 @@ public class MongoUtilTest {
         assertThat(addresses.get(3).getPort()).isEqualTo(5111);
     }
 
-
     @Test
     public void shouldParseServerIPv6AddressesWithReplicaSetNameAndWithoutPort() {
         addresses = MongoUtil.parseAddresses("replicaSetName/[::1/128],host2,[ff02::2:ff00:0/104],host4");

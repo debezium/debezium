@@ -74,15 +74,24 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         public static MessageType forType(char type) {
             switch (type) {
-                case 'R': return RELATION;
-                case 'B': return BEGIN;
-                case 'C': return COMMIT;
-                case 'I': return INSERT;
-                case 'U': return UPDATE;
-                case 'D': return DELETE;
-                case 'Y': return TYPE;
-                case 'O': return ORIGIN;
-                default: throw new IllegalArgumentException("Unsupported message type: " + type);
+                case 'R':
+                    return RELATION;
+                case 'B':
+                    return BEGIN;
+                case 'C':
+                    return COMMIT;
+                case 'I':
+                    return INSERT;
+                case 'U':
+                    return UPDATE;
+                case 'D':
+                    return DELETE;
+                case 'Y':
+                    return TYPE;
+                case 'O':
+                    return ORIGIN;
+                default:
+                    throw new IllegalArgumentException("Unsupported message type: " + type);
             }
         }
     }
@@ -99,10 +108,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         try {
             MessageType type = MessageType.forType((char) buffer.get());
             LOGGER.trace("Message Type: {}", type);
-            switch(type) {
+            switch (type) {
                 case COMMIT:
                     // For now skip these message types so that the LSN associated with the message won't
-                    // be flushed back to PostgreSQL.  There is a potential LSN assignment concern with
+                    // be flushed back to PostgreSQL. There is a potential LSN assignment concern with
                     // ReplicationConnectionIT#testHowRelationMessagesAreReceived where the first COMMIT
                     // in the stream has the same LSN as the following BEGIN and INSERT, which leads to
                     // the stream ignoring the first INSERT in the second set of statements processed.
@@ -149,7 +158,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
 
         final MessageType messageType = MessageType.forType((char) buffer.get());
-        switch(messageType) {
+        switch (messageType) {
             case BEGIN:
                 handleBeginMessage(buffer);
                 break;
@@ -299,14 +308,14 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, Set<String> primaryKeyColumns) {
         // todo (DBZ-766) - Discuss this logic with team as there may be a better way to handle this
-        //      Personally I think its sufficient enough to resolve the PK based on the out-of-bands call
-        //      and should any test fail due to this it should be rewritten or excluded from the pgoutput
-        //      scope.
+        // Personally I think its sufficient enough to resolve the PK based on the out-of-bands call
+        // and should any test fail due to this it should be rewritten or excluded from the pgoutput
+        // scope.
         //
-        //      In RecordsStreamProducerIT#shouldReceiveChangesForInsertsIndependentOfReplicaIdentity, we have
-        //      a situation where the table is replica identity full, the primary key is dropped but the replica
-        //      identity is kept and later the replica identity is changed to default.  In order to support this
-        //      use case, the following abides by these rules:
+        // In RecordsStreamProducerIT#shouldReceiveChangesForInsertsIndependentOfReplicaIdentity, we have
+        // a situation where the table is replica identity full, the primary key is dropped but the replica
+        // identity is kept and later the replica identity is changed to default. In order to support this
+        // use case, the following abides by these rules:
         //
         if (!primaryKeyColumns.isEmpty() && primaryKeyColumns.contains(columnName)) {
             return true;
@@ -359,7 +368,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
-    private void decodeUpdate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException  {
+    private void decodeUpdate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int relationId = buffer.getInt();
 
         LOGGER.trace("Event: {}, RelationId: {}", MessageType.UPDATE, relationId);
@@ -404,7 +413,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
-    private void decodeDelete(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException  {
+    private void decodeDelete(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int relationId = buffer.getInt();
 
         char tupleType = (char) buffer.get();

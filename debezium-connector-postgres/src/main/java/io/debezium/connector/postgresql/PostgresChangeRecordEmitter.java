@@ -52,7 +52,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final boolean unchangedToastColumnMarkerMissing;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
-    public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection, ReplicationMessage message) {
+    public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection,
+                                       ReplicationMessage message) {
         super(offset, clock);
 
         this.schema = schema;
@@ -68,14 +69,14 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     @Override
     protected Operation getOperation() {
         switch (message.getOperation()) {
-        case INSERT:
-            return Operation.CREATE;
-        case UPDATE:
-            return Operation.UPDATE;
-        case DELETE:
-            return Operation.DELETE;
-        default:
-            throw new IllegalArgumentException("Received event of unexpected command type: " + message.getOperation());
+            case INSERT:
+                return Operation.CREATE;
+            case UPDATE:
+                return Operation.UPDATE;
+            case DELETE:
+                return Operation.DELETE;
+            default:
+                throw new IllegalArgumentException("Received event of unexpected command type: " + message.getOperation());
         }
     }
 
@@ -139,7 +140,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         return schema.schemaFor(tableId);
     }
 
-    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage, boolean sourceOfToasted)
+    private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage,
+                                  boolean sourceOfToasted)
             throws SQLException {
         if (columns == null || columns.isEmpty()) {
             return null;
@@ -150,13 +152,14 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         // based on the schema columns, create the values on the same position as the columns
         List<Column> schemaColumns = table.columns();
         // based on the replication message without toasted columns for now
-        List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn)).collect(Collectors.toList());
+        List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn))
+                .collect(Collectors.toList());
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
         Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
 
         final Set<String> undeliveredToastableColumns = new HashSet<>(schema.getToastableColumnsForTableId(table.id()));
-        for (ReplicationMessage.Column column: columns) {
-            //DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
+        for (ReplicationMessage.Column column : columns) {
+            // DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             final String columnName = Strings.unquoteIdentifierPart(column.getName());
             undeliveredToastableColumns.remove(columnName);
 
@@ -178,7 +181,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
             }
         }
         if (unchangedToastColumnMarkerMissing) {
-            for (String columnName: undeliveredToastableColumns) {
+            for (String columnName : undeliveredToastableColumns) {
                 int position = getPosition(columnName, table, values);
                 if (position != -1) {
                     final Object candidate = cachedOldToastedValues.get(columnName);
@@ -255,8 +258,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
             // the table metadata has less or more columns than the event, which means the table structure has changed,
             // so we need to trigger a refresh...
             logger.info("Different column count {} present in the server message as schema in memory contains {}; refreshing table schema",
-                        replicationColumnCount,
-                        tableColumnCount);
+                    replicationColumnCount,
+                    tableColumnCount);
             return true;
         }
 
@@ -273,8 +276,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 final int localType = column.nativeType();
                 final int incomingType = message.getType().getOid();
                 if (localType != incomingType) {
-                    logger.info("detected new type for column '{}', old type was {} ({}), new type is {} ({}); refreshing table schema", columnName, localType, column.typeName(),
-                                incomingType, message.getType().getName());
+                    logger.info("detected new type for column '{}', old type was {} ({}), new type is {} ({}); refreshing table schema", columnName, localType,
+                            column.typeName(),
+                            incomingType, message.getType().getName());
                     return true;
                 }
                 if (metadataInMessage) {
@@ -282,20 +286,21 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                     final int incomingLength = message.getTypeMetadata().getLength();
                     if (localLength != incomingLength) {
                         logger.info("detected new length for column '{}', old length was {}, new length is {}; refreshing table schema", columnName, localLength,
-                                    incomingLength);
+                                incomingLength);
                         return true;
                     }
                     final int localScale = column.scale().get();
                     final int incomingScale = message.getTypeMetadata().getScale();
                     if (localScale != incomingScale) {
                         logger.info("detected new scale for column '{}', old scale was {}, new scale is {}; refreshing table schema", columnName, localScale,
-                                    incomingScale);
+                                incomingScale);
                         return true;
                     }
                     final boolean localOptional = column.isOptional();
                     final boolean incomingOptional = message.isOptional();
                     if (localOptional != incomingOptional) {
-                        logger.info("detected new optional status for column '{}', old value was {}, new value is {}; refreshing table schema", columnName, localOptional, incomingOptional);
+                        logger.info("detected new optional status for column '{}', old value was {}, new value is {}; refreshing table schema", columnName, localOptional,
+                                incomingOptional);
                         return true;
                     }
                 }
@@ -331,21 +336,20 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     private Table tableFromFromMessage(List<ReplicationMessage.Column> columns, Table table) {
         final TableEditor combinedTable = table.edit()
-            .setColumns(columns.stream()
-                .map(column -> {
-                    final PostgresType type = column.getType();
-                    final ColumnEditor columnEditor = Column.editor()
-                            .name(column.getName())
-                            .jdbcType(type.getJdbcId())
-                            .type(type.getName())
-                            .optional(column.isOptional())
-                            .nativeType(type.getOid());
-                    columnEditor.length(column.getTypeMetadata().getLength());
-                    columnEditor.scale(column.getTypeMetadata().getScale());
-                    return columnEditor.create();
-                })
-                .collect(Collectors.toList())
-            );
+                .setColumns(columns.stream()
+                        .map(column -> {
+                            final PostgresType type = column.getType();
+                            final ColumnEditor columnEditor = Column.editor()
+                                    .name(column.getName())
+                                    .jdbcType(type.getJdbcId())
+                                    .type(type.getName())
+                                    .optional(column.isOptional())
+                                    .nativeType(type.getOid());
+                            columnEditor.length(column.getTypeMetadata().getLength());
+                            columnEditor.scale(column.getTypeMetadata().getScale());
+                            return columnEditor.create();
+                        })
+                        .collect(Collectors.toList()));
         final List<String> pkCandidates = new ArrayList<>(table.primaryKeyColumnNames());
         final Iterator<String> itPkCandidates = pkCandidates.iterator();
         while (itPkCandidates.hasNext()) {

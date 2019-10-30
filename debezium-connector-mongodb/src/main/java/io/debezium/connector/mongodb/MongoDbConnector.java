@@ -152,16 +152,16 @@ public class MongoDbConnector extends SourceConnector {
             ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
             if (replicaSets != null) {
                 logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                            replicaSets.replicaSetCount(), maxTasks);
+                        replicaSets.replicaSetCount(), maxTasks);
                 replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
                     // Create the configuration for each task ...
                     int taskId = taskConfigs.size();
                     logger.info("Configuring MongoDB connector task {} to capture events for replica set(s) at {}", taskId, replicaSetsForTask.hosts());
                     taskConfigs.add(config.edit()
-                                          .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
-                                          .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                                          .build()
-                                          .asMap());
+                            .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
+                            .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                            .build()
+                            .asMap());
                 });
             }
             logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
@@ -182,7 +182,7 @@ public class MongoDbConnector extends SourceConnector {
                 replicaSetMonitorExecutor.shutdownNow();
             }
             try {
-                if ( this.connectionContext != null ) {
+                if (this.connectionContext != null) {
                     this.connectionContext.shutdown();
                 }
             }
@@ -191,7 +191,7 @@ public class MongoDbConnector extends SourceConnector {
             }
         }
         finally {
-            if ( previousLogContext != null ) {
+            if (previousLogContext != null) {
                 previousLogContext.restore();
             }
         }
@@ -220,7 +220,7 @@ public class MongoDbConnector extends SourceConnector {
                 && passwordValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (ConnectionContext connContext = new ConnectionContext(config)) {
-                try ( MongoClient client = connContext.clientFor(connContext.hosts()) ) {
+                try (MongoClient client = connContext.clientFor(connContext.hosts())) {
                     client.listDatabaseNames();
                 }
             }

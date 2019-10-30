@@ -184,7 +184,7 @@ public interface ElapsedTimeStrategy {
                                                   long initialDelayInMilliseconds,
                                                   long maxDelayInMilliseconds,
                                                   double multiplier) {
-        if (multiplier <= 1.0)  {
+        if (multiplier <= 1.0) {
             throw new IllegalArgumentException("Multiplier must be greater than 1");
         }
         if (initialDelayInMilliseconds <= 0) {
@@ -210,7 +210,7 @@ public interface ElapsedTimeStrategy {
                     do {
                         // Compute how long to delay ...
                         long nextDelay = (long) (previousDelay * multiplier);
-                        if ( nextDelay >= maxDelayInMilliseconds ) {
+                        if (nextDelay >= maxDelayInMilliseconds) {
                             previousDelay = maxDelayInMilliseconds;
                             // If we're not there yet, then we know the increment is linear from here ...
                             if (nextTimestamp < current) {

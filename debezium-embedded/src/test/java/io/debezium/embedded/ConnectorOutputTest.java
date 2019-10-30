@@ -163,7 +163,7 @@ public abstract class ConnectorOutputTest {
      */
     public static final Path CONNECTOR_OUTPUT_PATH = Testing.Files.createTestingPath("connector-output");
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("integration-test-connector-offsets.data")
-                                                                 .toAbsolutePath();
+            .toAbsolutePath();
 
     public static final String CONTROL_KEY = "connector";
     public static final String CONTROL_RESTART = "restart";
@@ -645,8 +645,8 @@ public abstract class ConnectorOutputTest {
         Path expectedRecordsFile = directory.resolve(DEFAULT_EXPECTED_RECORDS_FILENAME);
         Path envFile = directory.resolve(DEFAULT_ENV_PROPERTIES_FILENAME);
         return usingSpec(name).withConfiguration(configFile.toFile())
-                              .withEnvironment(envFile.toFile())
-                              .withReadOrWriteTestData(expectedRecordsFile);
+                .withEnvironment(envFile.toFile())
+                .withReadOrWriteTestData(expectedRecordsFile);
     }
 
     /**
@@ -675,8 +675,8 @@ public abstract class ConnectorOutputTest {
      */
     protected TestSpecification usingSpec(String name, Path configFile, Path expectedRecordsFile, Path envFile) {
         return usingSpec(name).withConfiguration(configFile.toFile())
-                              .withEnvironment(envFile.toFile())
-                              .withReadOrWriteTestData(expectedRecordsFile);
+                .withEnvironment(envFile.toFile())
+                .withReadOrWriteTestData(expectedRecordsFile);
     }
 
     @Before
@@ -864,7 +864,7 @@ public abstract class ConnectorOutputTest {
                                 // And compare the records ...
                                 try {
                                     assertSourceRecordMatch(actualRecord, expectedRecord, ignorableFields::contains,
-                                                            comparatorsByFieldName, comparatorsBySchemaName);
+                                            comparatorsByFieldName, comparatorsBySchemaName);
                                 }
                                 catch (AssertionError e) {
                                     result.error();
@@ -907,28 +907,28 @@ public abstract class ConnectorOutputTest {
             // Set up the configuration for the engine to include the connector configuration and apply as defaults
             // the environment and engine parameters ...
             Configuration engineConfig = Configuration.copy(connectorConfig)
-                                                      .withDefault(environmentConfig)
-                                                      .withDefault(EmbeddedEngine.ENGINE_NAME, spec.name())
-                                                      .withDefault(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
-                                                      .withDefault(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
-                                                      .build();
+                    .withDefault(environmentConfig)
+                    .withDefault(EmbeddedEngine.ENGINE_NAME, spec.name())
+                    .withDefault(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
+                    .withDefault(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 0)
+                    .build();
 
             // Create the engine ...
             EmbeddedEngine engine = EmbeddedEngine.create()
-                                                  .using(engineConfig)
-                                                  .notifying(consumer)
-                                                  .using(this.getClass().getClassLoader())
-                                                  .using(problem)
-                                                  .build();
+                    .using(engineConfig)
+                    .notifying(consumer)
+                    .using(this.getClass().getClassLoader())
+                    .using(problem)
+                    .build();
 
             long connectorTimeoutInSeconds = environmentConfig.getLong(ENV_CONNECTOR_TIMEOUT_IN_SECONDS, 10);
             // Get ready to run the connector one or more times ...
             do {
                 // Each time create a thread that will stop our connector if we don't get enough results
                 Thread timeoutThread = Threads.timeout(spec.name() + "-connector-output",
-                                                       connectorTimeoutInSeconds, TimeUnit.SECONDS,
-                                                       timeSinceLastRecord,
-                                                       engine::stop);
+                        connectorTimeoutInSeconds, TimeUnit.SECONDS,
+                        timeSinceLastRecord,
+                        engine::stop);
                 // But plan to stop our timeout thread as soon as the connector completes ...
                 result.uponCompletion(timeoutThread::interrupt);
                 timeoutThread.start();

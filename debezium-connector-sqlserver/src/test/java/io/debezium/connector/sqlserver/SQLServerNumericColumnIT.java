@@ -154,10 +154,14 @@ public class SQLServerNumericColumnIT extends AbstractConnectorTest {
         final List<SourceRecord> results = records.recordsForTopic("server1.dbo.tablenumc");
         Assertions.assertThat(results).hasSize(1);
         final Struct valueA = (Struct) results.get(0).value();
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cola").schema()).isEqualTo(Decimal.builder(4).parameter("connect.decimal.precision", "8").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colb").schema()).isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("colc").schema()).isEqualTo(Decimal.builder(1).parameter("connect.decimal.precision", "8").optional().schema());
-        Assertions.assertThat(valueA.schema().field("after").schema().field("cold").schema()).isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
+        Assertions.assertThat(valueA.schema().field("after").schema().field("cola").schema())
+                .isEqualTo(Decimal.builder(4).parameter("connect.decimal.precision", "8").optional().schema());
+        Assertions.assertThat(valueA.schema().field("after").schema().field("colb").schema())
+                .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
+        Assertions.assertThat(valueA.schema().field("after").schema().field("colc").schema())
+                .isEqualTo(Decimal.builder(1).parameter("connect.decimal.precision", "8").optional().schema());
+        Assertions.assertThat(valueA.schema().field("after").schema().field("cold").schema())
+                .isEqualTo(Decimal.builder(0).parameter("connect.decimal.precision", "18").optional().schema());
         Assertions.assertThat(((Struct) valueA.get("after")).get("cola")).isEqualTo(BigDecimal.valueOf(333.3333));
         Assertions.assertThat(((Struct) valueA.get("after")).get("colb")).isEqualTo(BigDecimal.valueOf(3333));
         Assertions.assertThat(((Struct) valueA.get("after")).get("colc")).isEqualTo(BigDecimal.valueOf(3333.3));

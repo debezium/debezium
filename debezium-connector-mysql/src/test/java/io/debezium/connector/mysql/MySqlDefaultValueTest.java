@@ -41,8 +41,8 @@ public class MySqlDefaultValueTest {
     @Before
     public void beforeEach() {
         converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
-                                              TemporalPrecisionMode.CONNECT,
-                                              JdbcValueConverters.BigIntUnsignedMode.LONG);
+                TemporalPrecisionMode.CONNECT,
+                JdbcValueConverters.BigIntUnsignedMode.LONG);
         parser = new MySqlAntlrDdlParser(converters);
         tables = new Tables();
     }
@@ -249,9 +249,9 @@ public class MySqlDefaultValueTest {
         assertThat(table.columnWithName("E").defaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("F").defaultValue()).isEqualTo(true);
         assertThat(table.columnWithName("G").defaultValue()).isEqualTo(false);
-        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[] {66, 1});
+        assertThat(table.columnWithName("H").defaultValue()).isEqualTo(new byte[]{ 66, 1 });
         assertThat(table.columnWithName("I").defaultValue()).isEqualTo(null);
-        assertThat(table.columnWithName("J").defaultValue()).isEqualTo(new byte[] {15, 97, 1, 0});
+        assertThat(table.columnWithName("J").defaultValue()).isEqualTo(new byte[]{ 15, 97, 1, 0 });
     }
 
     @Test
@@ -363,9 +363,12 @@ public class MySqlDefaultValueTest {
         assertThat(table.columnWithName("A").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
         assertThat(table.columnWithName("B").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
         assertThat(table.columnWithName("C").defaultValue()).isEqualTo("1970-01-01T00:00:00Z");
-        assertThat(table.columnWithName("D").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
-        assertThat(table.columnWithName("E").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
-        assertThat(table.columnWithName("F").defaultValue()).isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000).atZone(ZoneId.systemDefault()), null));
+        assertThat(table.columnWithName("D").defaultValue())
+                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
+        assertThat(table.columnWithName("E").defaultValue())
+                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 0).atZone(ZoneId.systemDefault()), null));
+        assertThat(table.columnWithName("F").defaultValue())
+                .isEqualTo(ZonedTimestamp.toIsoString(LocalDateTime.of(2018, 6, 26, 12, 34, 56, 780_000_000).atZone(ZoneId.systemDefault()), null));
         assertThat(table.columnWithName("G").defaultValue()).isEqualTo(Date.from(Instant.ofEpochMilli(0)));
         assertThat(table.columnWithName("H").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
         assertThat(table.columnWithName("I").defaultValue()).isEqualTo((Date.from(Instant.ofEpochMilli(0))));
@@ -443,12 +446,12 @@ public class MySqlDefaultValueTest {
     @FixFor("DBZ-1204")
     public void shouldAcceptBooleanAsDefaultValue() {
         String ddl = "CREATE TABLE data(id INT, "
-                        + "bval BOOLEAN DEFAULT TRUE, "
-                        + "tival1 TINYINT(1) DEFAULT FALSE, "
-                        + "tival2 TINYINT(1) DEFAULT 3, "
-                        + "tival3 TINYINT(2) DEFAULT TRUE, "
-                        + "tival4 TINYINT(2) DEFAULT 18, "
-                        + "PRIMARY KEY (id))";
+                + "bval BOOLEAN DEFAULT TRUE, "
+                + "tival1 TINYINT(1) DEFAULT FALSE, "
+                + "tival2 TINYINT(1) DEFAULT 3, "
+                + "tival3 TINYINT(2) DEFAULT TRUE, "
+                + "tival4 TINYINT(2) DEFAULT 18, "
+                + "PRIMARY KEY (id))";
 
         parser.parse(ddl, tables);
 

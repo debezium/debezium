@@ -94,20 +94,20 @@ public class PostgresConnector extends SourceConnector {
 
         // If there are no errors on any of these ...
         if (hostnameValue.errorMessages().isEmpty()
-            && portValue.errorMessages().isEmpty()
-            && userValue.errorMessages().isEmpty()
-            && passwordValue.errorMessages().isEmpty()
-            && databaseValue.errorMessages().isEmpty()) {
+                && portValue.errorMessages().isEmpty()
+                && userValue.errorMessages().isEmpty()
+                && passwordValue.errorMessages().isEmpty()
+                && databaseValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
             try (PostgresConnection connection = new PostgresConnection(config.jdbcConfig())) {
                 try {
                     connection.execute("SELECT version()");
                     logger.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
-                                connection.username());
+                            connection.username());
                 }
                 catch (SQLException e) {
                     logger.info("Failed testing connection for {} with user '{}'", connection.connectionString(),
-                                connection.username());
+                            connection.username());
                     hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
             }

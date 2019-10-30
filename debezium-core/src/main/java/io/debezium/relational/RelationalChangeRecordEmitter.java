@@ -38,7 +38,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         TableSchema tableSchema = (TableSchema) schema;
         Operation operation = getOperation();
 
-        switch(operation) {
+        switch (operation) {
             case CREATE:
                 emitCreateRecord(receiver, tableSchema);
                 break;

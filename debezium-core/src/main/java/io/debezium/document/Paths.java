@@ -39,7 +39,7 @@ final class Paths {
         }
         if (resolveJsonPointerEscapes) {
             for (int i = 0; i != segments.length; ++i) {
-                segments[i]=parseSegment(segments[i], true);
+                segments[i] = parseSegment(segments[i], true);
             }
         }
         return new MultiSegmentPath(segments);
@@ -463,7 +463,7 @@ final class Paths {
         }
         int i = start;
         for (String segment : path) {
-            segments[i++]=segment;
+            segments[i++] = segment;
         }
         return i;
     }

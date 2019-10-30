@@ -446,7 +446,7 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public void maybeSetFilterDataFromConfig(Configuration config) {
         if (config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES).equals(
-            MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
+                MySqlConnectorConfig.SnapshotNewTables.PARALLEL.getValue())) {
             setFilterDataFromConfig(config);
         }
     }
@@ -459,10 +459,10 @@ final class SourceInfo extends AbstractSourceInfo {
          * There are 2 possible cases for us not having filter info.
          * 1. The connector does not use a filter. Creating a filter in such a connector could never add any tables.
          * 2. The initial snapshot occurred in a version of Debezium that did not store the filter information in the
-         *    offsets / the connector was not configured to store filter information.
+         * offsets / the connector was not configured to store filter information.
          */
         return databaseWhitelist != null || databaseBlacklist != null ||
-               tableWhitelist != null || tableBlacklist != null;
+                tableWhitelist != null || tableBlacklist != null;
     }
 
     public String getDatabaseWhitelist() {
@@ -510,10 +510,10 @@ final class SourceInfo extends AbstractSourceInfo {
 
     public static boolean offsetsHaveFilterInfo(Map<String, ?> sourceOffset) {
         return sourceOffset != null &&
-            sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
-            sourceOffset.containsKey(DATABASE_WHITELIST_KEY) ||
-            sourceOffset.containsKey(TABLE_BLACKLIST_KEY) ||
-            sourceOffset.containsKey(TABLE_WHITELIST_KEY);
+                sourceOffset.containsKey(DATABASE_BLACKLIST_KEY) ||
+                sourceOffset.containsKey(DATABASE_WHITELIST_KEY) ||
+                sourceOffset.containsKey(TABLE_BLACKLIST_KEY) ||
+                sourceOffset.containsKey(TABLE_WHITELIST_KEY);
     }
 
     private long longOffsetValue(Map<String, ?> values, String key) {
@@ -604,9 +604,10 @@ final class SourceInfo extends AbstractSourceInfo {
      * for DDL events not applying to tables (CREATE DATABASE etc.).
      */
     String table() {
-        return tableIds.isEmpty() ? null : tableIds.stream()
-                .map(TableId::table)
-                .collect(Collectors.joining(","));
+        return tableIds.isEmpty() ? null
+                : tableIds.stream()
+                        .map(TableId::table)
+                        .collect(Collectors.joining(","));
     }
 
     String getCurrentGtid() {
@@ -673,7 +674,7 @@ final class SourceInfo extends AbstractSourceInfo {
      */
     public static Document createDocumentFromOffset(Map<String, ?> offset) {
         Document offsetDocument = Document.create();
-        // all of the offset keys represent int, long, or string types, so we  don't need to worry about references
+        // all of the offset keys represent int, long, or string types, so we don't need to worry about references
         // and information changing underneath us.
 
         for (Map.Entry<String, ?> entry : offset.entrySet()) {

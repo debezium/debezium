@@ -183,9 +183,9 @@ public class LegacyV1SourceInfoTest {
         assertThat(!source.hasFilterInfo());
 
         final Configuration configuration = Configuration.create()
-                                                         .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
-                                                         .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
-                                                         .build();
+                .with(MySqlConnectorConfig.DATABASE_BLACKLIST, databaseBlacklist)
+                .with(MySqlConnectorConfig.TABLE_BLACKLIST, tableBlacklist)
+                .build();
         source.setFilterDataFromConfig(configuration);
 
         assertThat(source.hasFilterInfo()).isTrue();
@@ -689,7 +689,7 @@ public class LegacyV1SourceInfoTest {
 
     protected Document positionWith(String filename, int position, String gtids, int event, int row, boolean snapshot) {
         Document pos = Document.create(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
-                                       SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
+                SourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
         if (row >= 0) {
             pos = pos.set(SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY, row);
         }

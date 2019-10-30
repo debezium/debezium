@@ -45,7 +45,7 @@ public class Key {
         private final Table table;
         private KeyMapper keyMapper = IdentityKeyMapper.getInstance();
 
-        public Builder( Table table) {
+        public Builder(Table table) {
             this.table = table;
         }
 
@@ -105,7 +105,7 @@ public class Key {
             // ex: message.key.columns=inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4
             // will become => [inventory.customers.pk1,inventory.customers.pk2,(.*).purchaseorders.pk3,(.*).purchaseorders.pk4]
             // then joining those values
-            String regexes =  Arrays.asList(fullyQualifiedColumnNames.split(";"))
+            String regexes = Arrays.asList(fullyQualifiedColumnNames.split(";"))
                     .stream()
                     .map(s -> s.split(":"))
                     .collect(

@@ -141,8 +141,8 @@ public class Threads {
                                                long timeout, TimeUnit timeoutUnit,
                                                TimeSince elapsedTimer, Thread threadToInterrupt) {
         return timeout(threadName, timeout, timeoutUnit, 100, TimeUnit.MILLISECONDS,
-                       elapsedTimer::elapsedTime, elapsedTimer::reset,
-                       () -> threadToInterrupt.interrupt());
+                elapsedTimer::elapsedTime, elapsedTimer::reset,
+                () -> threadToInterrupt.interrupt());
     }
 
     /**
@@ -163,8 +163,8 @@ public class Threads {
                                  long timeout, TimeUnit timeoutUnit,
                                  TimeSince elapsedTimer, Runnable uponTimeout) {
         return timeout(threadName, timeout, timeoutUnit, 100, TimeUnit.MILLISECONDS,
-                       elapsedTimer::elapsedTime, elapsedTimer::reset,
-                       uponTimeout);
+                elapsedTimer::elapsedTime, elapsedTimer::reset,
+                uponTimeout);
     }
 
     /**
@@ -188,8 +188,8 @@ public class Threads {
                                  long sleepInterval, TimeUnit sleepUnit,
                                  TimeSince elapsedTimer, Runnable uponTimeout) {
         return timeout(threadName, timeout, timeoutUnit, sleepInterval, sleepUnit,
-                       elapsedTimer::elapsedTime, elapsedTimer::reset,
-                       uponTimeout);
+                elapsedTimer::elapsedTime, elapsedTimer::reset,
+                uponTimeout);
     }
 
     /**
@@ -257,11 +257,11 @@ public class Threads {
             @Override
             public Thread newThread(Runnable r) {
                 StringBuilder threadName = new StringBuilder(DEBEZIUM_THREAD_NAME_PREFIX)
-                                            .append(connector.getSimpleName().toLowerCase())
-                                            .append('-')
-                                            .append(connectorId)
-                                            .append('-')
-                                            .append(name);
+                        .append(connector.getSimpleName().toLowerCase())
+                        .append('-')
+                        .append(connectorId)
+                        .append('-')
+                        .append(name);
                 if (indexed) {
                     threadName.append('-').append(index.getAndIncrement());
                 }

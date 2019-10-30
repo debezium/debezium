@@ -273,9 +273,9 @@ public class TypeRegistry {
     *
     * @return OID for array of {@code HSTORE} type of this PostgreSQL instance
     */
-   public int hstoreArrayOid() {
-       return hstoreArrayOid;
-   }
+    public int hstoreArrayOid() {
+        return hstoreArrayOid;
+    }
 
     /**
      *

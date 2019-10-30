@@ -61,8 +61,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                 .subset("database.", true);
 
         Builder jdbcConfigBuilder = jdbcConfig
-                                     .edit()
-                                     .with("useSSL", Boolean.toString(useSSL));
+                .edit()
+                .with("useSSL", Boolean.toString(useSSL));
 
         final String legacyDateTime = jdbcConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
         if (legacyDateTime == null) {
@@ -221,7 +221,7 @@ public class MySqlJdbcContext implements AutoCloseable {
                             return new GtidSet(rs.getString(1));
                         }
                         return new GtidSet("");
-            });
+                    });
         }
         catch (SQLException e) {
             throw new ConnectException("Unexpected error while connecting to MySQL and looking at GTID mode: ", e);
@@ -321,8 +321,8 @@ public class MySqlJdbcContext implements AutoCloseable {
                     if (varName != null && value != null) {
                         variables.put(varName, value);
                         logger.debug("\t{} = {}",
-                                     Strings.pad(varName, 45, ' '),
-                                     Strings.pad(value, 45, ' '));
+                                Strings.pad(varName, 45, ' '),
+                                Strings.pad(value, 45, ' '));
                     }
                 }
             });
@@ -395,8 +395,7 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected String getSessionVariableForSslVersion() {
         final String SSL_VERSION = "Ssl_version";
         logger.debug("Reading MySQL Session variable for Ssl Version");
-        Map<String, String> sessionVariables =
-            querySystemVariables(SQL_SHOW_SESSION_VARIABLE_SSL_VERSION);
+        Map<String, String> sessionVariables = querySystemVariables(SQL_SHOW_SESSION_VARIABLE_SSL_VERSION);
         if (!sessionVariables.isEmpty() && sessionVariables.containsKey(SSL_VERSION)) {
             return sessionVariables.get(SSL_VERSION);
         }

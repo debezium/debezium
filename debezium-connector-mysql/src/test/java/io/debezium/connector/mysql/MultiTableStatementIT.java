@@ -27,7 +27,7 @@ import io.debezium.util.Testing;
 public class MultiTableStatementIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private UniqueDatabase DATABASE;
 
     private Configuration config;
@@ -76,8 +76,7 @@ public class MultiTableStatementIT extends AbstractConnectorTest {
                 "t1",
                 "t2",
                 "t3",
-                "t4"
-        );
+                "t4");
         String[] dropTableNames = tableNames.get(5).split(",");
         assertThat(dropTableNames).containsOnly("t1", "t2", "t3", "t4");
 

@@ -26,8 +26,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
  */
 public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest {
 
-    private static final String STATEMENTS =
-            "CREATE SCHEMA over;" +
+    private static final String STATEMENTS = "CREATE SCHEMA over;" +
             "CREATE TABLE over.t1 (pk INT, PRIMARY KEY(pk));" +
             "CREATE TABLE over.t2 (pk INT, PRIMARY KEY(pk));" +
             "INSERT INTO over.t1 VALUES (1);" +
@@ -54,8 +53,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
 
         buildProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1")
-                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 100")
-        );
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 100"));
 
         final int expectedRecordsCount = 3 + 6;
 
@@ -74,8 +72,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
         buildProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "over.t1,over.t2")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t1", "SELECT * FROM over.t1 WHERE pk > 101")
-                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t2", "SELECT * FROM over.t2 WHERE pk > 100")
-        );
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".over.t2", "SELECT * FROM over.t2 WHERE pk > 100"));
 
         final int expectedRecordsCount = 2 + 3;
 
@@ -90,8 +87,7 @@ public class SnapshotWithOverridesProducerIT extends AbstractRecordsProducerTest
     private void buildProducer(Configuration.Builder config) {
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
-                .build()
-        );
+                .build());
         assertConnectorIsRunning();
     }
 }

@@ -40,7 +40,7 @@ public class UniqueDatabase {
     public static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
 
     private static final String DEFAULT_DATABASE = "mysql";
-    private static final String[] CREATE_DATABASE_DDL = new String[] {
+    private static final String[] CREATE_DATABASE_DDL = new String[]{
             "CREATE DATABASE $DBNAME$;",
             "USE $DBNAME$;"
     };
@@ -73,7 +73,7 @@ public class UniqueDatabase {
      * Creates an instance with given Debezium logical name and database name and id suffix same
      * as another database. This is handy for tests that need multpli databases and can use regex
      * based whitelisting.
-
+    
      * @param serverName - logical Debezium server name
      * @param databaseName - the name of the database (prix)
      * @param sibling - a database whose unique suffix will be used
@@ -136,17 +136,16 @@ public class UniqueDatabase {
                         Stream.concat(
                                 Arrays.stream(CREATE_DATABASE_DDL),
                                 Files.readAllLines(Paths.get(ddlTestFile.toURI())).stream())
-                            .map(String::trim)
-                            .filter(x -> !x.startsWith("--") && !x.isEmpty())
-                            .map(x -> {
-                                final Matcher m = COMMENT_PATTERN.matcher(x);
-                                return m.matches() ? m.group(1) : x;
-                            })
-                            .map(this::convertSQL)
-                            .collect(Collectors.joining("\n")).split(";")
-                        )
-                       .map(x -> x.replace("$$", ";"))
-                       .collect(Collectors.toList());
+                                .map(String::trim)
+                                .filter(x -> !x.startsWith("--") && !x.isEmpty())
+                                .map(x -> {
+                                    final Matcher m = COMMENT_PATTERN.matcher(x);
+                                    return m.matches() ? m.group(1) : x;
+                                })
+                                .map(this::convertSQL)
+                                .collect(Collectors.joining("\n")).split(";"))
+                        .map(x -> x.replace("$$", ";"))
+                        .collect(Collectors.toList());
                 connection.execute(statements.toArray(new String[statements.size()]));
             }
         }

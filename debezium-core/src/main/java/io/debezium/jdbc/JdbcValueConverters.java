@@ -64,11 +64,14 @@ import io.debezium.util.NumberConversions;
 public class JdbcValueConverters implements ValueConverterProvider {
 
     public enum DecimalMode {
-        PRECISE, DOUBLE, STRING;
+        PRECISE,
+        DOUBLE,
+        STRING;
     }
 
     public enum BigIntUnsignedMode {
-        PRECISE, LONG;
+        PRECISE,
+        LONG;
     }
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -126,13 +129,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
                 OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
-                adjuster
-        );
+                adjuster);
         this.fallbackTimeWithTimeZone = ZonedTime.toIsoString(
                 OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
-                adjuster
-        );
+                adjuster);
     }
 
     @Override
@@ -187,7 +188,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.DECIMAL:
                 return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
 
-                // Fixed-length string values
+            // Fixed-length string values
             case Types.CHAR:
             case Types.NCHAR:
             case Types.NVARCHAR:
@@ -298,7 +299,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.DECIMAL:
                 return (data) -> convertDecimal(column, fieldDefn, data);
 
-                // String values
+            // String values
             case Types.CHAR: // variable-length
             case Types.VARCHAR: // variable-length
             case Types.LONGVARCHAR: // variable-length
@@ -657,7 +658,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             catch (IllegalArgumentException e) {
                 logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                            fieldDefn.schema(), data.getClass(), data);
+                        fieldDefn.schema(), data.getClass(), data);
             }
         });
     }
@@ -687,7 +688,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             catch (IllegalArgumentException e) {
                 logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                            fieldDefn.schema(), data.getClass(), data);
+                        fieldDefn.schema(), data.getClass(), data);
             }
         });
     }
@@ -744,7 +745,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected byte[] unexpectedBinary(Object value, Field fieldDefn) {
         logger.warn("Unexpected JDBC BINARY value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
-                    fieldDefn.schema(), value.getClass(), value);
+                fieldDefn.schema(), value.getClass(), value);
         return null;
     }
 
@@ -780,10 +781,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Short.valueOf(value.shortValue()));
             }
             else if (data instanceof Boolean) {
-                    r.deliver(NumberConversions.getShort((Boolean) data));
+                r.deliver(NumberConversions.getShort((Boolean) data));
             }
             else if (data instanceof String) {
-                        r.deliver(Short.valueOf((String) data));
+                r.deliver(Short.valueOf((String) data));
             }
         });
     }
@@ -810,7 +811,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NumberConversions.getInteger((Boolean) data));
             }
             else if (data instanceof String) {
-                        r.deliver(Integer.valueOf((String) data));
+                r.deliver(Integer.valueOf((String) data));
             }
         });
     }
@@ -875,7 +876,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Double.valueOf(value.doubleValue()));
             }
             else if (data instanceof SpecialValueDecimal) {
-                    r.deliver(((SpecialValueDecimal) data).toDouble());
+                r.deliver(((SpecialValueDecimal) data).toDouble());
             }
             else if (data instanceof Boolean) {
                 r.deliver(NumberConversions.getDouble((Boolean) data));
@@ -951,20 +952,20 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             else if (data instanceof Short) {
                 r.deliver(new BigDecimal(((Short) data).intValue()));
-                }
-            else if ( data instanceof Integer ) {
+            }
+            else if (data instanceof Integer) {
                 r.deliver(new BigDecimal(((Integer) data).intValue()));
-                    }
-            else if ( data instanceof Long ) {
+            }
+            else if (data instanceof Long) {
                 r.deliver(BigDecimal.valueOf(((Long) data).longValue()));
-                        }
-            else if ( data instanceof Float ) {
+            }
+            else if (data instanceof Float) {
                 r.deliver(BigDecimal.valueOf(((Float) data).doubleValue()));
-                            }
-            else if ( data instanceof Double ) {
+            }
+            else if (data instanceof Double) {
                 r.deliver(BigDecimal.valueOf(((Double) data).doubleValue()));
-                                }
-            else if ( data instanceof String ) {
+            }
+            else if (data instanceof String) {
                 r.deliver(new BigDecimal((String) data));
             }
         });
@@ -1060,7 +1061,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, new byte[0], (r) -> {
             if (data instanceof Boolean) {
                 Boolean value = (Boolean) data;
-                r.deliver(new byte[] { value.booleanValue() ? (byte) 1 : (byte) 0 });
+                r.deliver(new byte[]{ value.booleanValue() ? (byte) 1 : (byte) 0 });
             }
             else if (data instanceof Short) {
                 Short value = (Short) data;
@@ -1175,8 +1176,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             Class<?> dataClass = data.getClass();
             if (logger.isWarnEnabled()) {
                 logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                            dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
-                                                                                                    // sensitive
+                        dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName()); // don't include value in case its
+                                                                                                // sensitive
             }
             return null;
         }
@@ -1228,6 +1229,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     private boolean supportsLargeTimeValues() {
-        return adaptiveTimePrecisionMode  || adaptiveTimeMicrosecondsPrecisionMode;
+        return adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode;
     }
 }

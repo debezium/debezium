@@ -22,9 +22,8 @@ public class JacksonReaderTest {
     @FixFor("DBZ-657")
     public void canParseDocumentWithUnescapedControlCharacter() throws Exception {
         Document document = JacksonReader.DEFAULT_INSTANCE.read(
-                                     //  {   "   a  CR   b   "   :   1   2   3    }
-                new String(new byte[] {123, 34, 97, 13, 98, 34, 58, 49, 50, 51, 125})
-        );
+                // { " a CR b " : 1 2 3 }
+                new String(new byte[]{ 123, 34, 97, 13, 98, 34, 58, 49, 50, 51, 125 }));
 
         assertThat((Object) document).isEqualTo(Document.create("a\rb", 123));
     }

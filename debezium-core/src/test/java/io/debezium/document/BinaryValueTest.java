@@ -24,8 +24,8 @@ public class BinaryValueTest {
     @Test
     @FixFor("DBZ-759")
     public void equalsAndHashCode() {
-        Value binaryValue1 = Value.create(new byte[] { 1, 2, 3 });
-        Value binaryValue2 = Value.create(new byte[] { 1, 2, 3 });
+        Value binaryValue1 = Value.create(new byte[]{ 1, 2, 3 });
+        Value binaryValue2 = Value.create(new byte[]{ 1, 2, 3 });
 
         Set<Value> set = Collections.singleton(binaryValue1);
 

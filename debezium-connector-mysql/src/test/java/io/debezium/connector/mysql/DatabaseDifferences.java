@@ -13,5 +13,6 @@ package io.debezium.connector.mysql;
 public interface DatabaseDifferences {
 
     boolean isCurrentDateTimeDefaultGenerated();
+
     String currentDateTimeDefaultOptional(String isoString);
 }

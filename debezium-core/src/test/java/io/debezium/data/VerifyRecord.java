@@ -335,7 +335,7 @@ public class VerifyRecord {
         Object value = record.value();
         String[] fieldNames = fieldPath.split("/");
         String pathSoFar = null;
-        for (int i=0; i!=fieldNames.length; ++i) {
+        for (int i = 0; i != fieldNames.length; ++i) {
             String fieldName = fieldNames[i];
             if (value instanceof Struct) {
                 value = ((Struct) value).get(fieldName);
@@ -361,7 +361,7 @@ public class VerifyRecord {
             // Value should be within 1%
             double expectedNumericValue = ((Number) expected).doubleValue();
             double actualNumericValue = ((Number) actual).doubleValue();
-            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d*expectedNumericValue));
+            assertThat(actualNumericValue).isEqualTo(expectedNumericValue, Delta.delta(0.01d * expectedNumericValue));
         }
         else if (expected instanceof Integer || expected instanceof Long || expected instanceof Short) {
             long expectedNumericValue = ((Number) expected).longValue();
@@ -603,7 +603,7 @@ public class VerifyRecord {
                 Object v1 = entry.getValue();
                 Object v2 = m2.get(key);
                 assertEquals(null, v1, v2, keyOrValue, fieldName(field, key), ignoreFields,
-                             comparatorsByName, comparatorsBySchemaName);
+                        comparatorsByName, comparatorsBySchemaName);
             }
         }
         else if (o2 instanceof Collection) {
@@ -621,7 +621,7 @@ public class VerifyRecord {
             int index = 0;
             while (iter1.hasNext() && iter2.hasNext()) {
                 assertEquals(null, iter1.next(), iter2.next(), keyOrValue, field + "[" + (index++) + "]", ignoreFields,
-                             comparatorsByName, comparatorsBySchemaName);
+                        comparatorsByName, comparatorsBySchemaName);
             }
         }
         else if (o2 instanceof Struct) {
@@ -647,7 +647,7 @@ public class VerifyRecord {
                 Object value1 = struct1.get(f);
                 Object value2 = struct2.get(f);
                 assertEquals(f.schema(), value1, value2, keyOrValue, fieldName, ignoreFields,
-                             comparatorsByName, comparatorsBySchemaName);
+                        comparatorsByName, comparatorsBySchemaName);
             }
             return;
         }
@@ -676,7 +676,7 @@ public class VerifyRecord {
             ZonedDateTime actualValue = ZonedDateTime.parse(o1.toString(), ZonedTimestamp.FORMATTER);
 
             String expectedValueString = o2.toString();
-            ZonedDateTime expectedValue ;
+            ZonedDateTime expectedValue;
             try {
                 // first try a standard offset format which contains the TZ information
                 expectedValue = ZonedDateTime.parse(expectedValueString, ZonedTimestamp.FORMATTER);
@@ -1015,13 +1015,13 @@ public class VerifyRecord {
         }
 
         for (int i = 0; i < length; i++) {
-            Object e1=a1[i];
-            Object e2=a2[i];
+            Object e1 = a1[i];
+            Object e2 = a2[i];
 
-            if (e1==e2) {
+            if (e1 == e2) {
                 continue;
             }
-            if (e1==null) {
+            if (e1 == null) {
                 return false;
             }
 
@@ -1036,38 +1036,38 @@ public class VerifyRecord {
     }
 
     private static boolean deepEquals0(Object e1, Object e2) {
-        assert e1!=null;
+        assert e1 != null;
         boolean eq;
-        if (e1 instanceof Object[]&&e2 instanceof Object[]) {
+        if (e1 instanceof Object[] && e2 instanceof Object[]) {
             eq = deepEquals((Object[]) e1, (Object[]) e2);
         }
-        else if (e1 instanceof byte[]&&e2 instanceof byte[]) {
+        else if (e1 instanceof byte[] && e2 instanceof byte[]) {
             eq = Arrays.equals((byte[]) e1, (byte[]) e2);
-            }
-        else if (e1 instanceof short[]&&e2 instanceof short[]) {
-                eq = Arrays.equals((short[]) e1, (short[]) e2);
-                }
-        else if (e1 instanceof int[]&&e2 instanceof int[]) {
-                    eq = Arrays.equals((int[]) e1, (int[]) e2);
-                    }
+        }
+        else if (e1 instanceof short[] && e2 instanceof short[]) {
+            eq = Arrays.equals((short[]) e1, (short[]) e2);
+        }
+        else if (e1 instanceof int[] && e2 instanceof int[]) {
+            eq = Arrays.equals((int[]) e1, (int[]) e2);
+        }
         else if (e1 instanceof long[] && e2 instanceof long[]) {
-                        eq = Arrays.equals((long[]) e1, (long[]) e2);
-                    }
+            eq = Arrays.equals((long[]) e1, (long[]) e2);
+        }
         else if (e1 instanceof char[] && e2 instanceof char[]) {
-                            eq = Arrays.equals((char[]) e1, (char[]) e2);
-                        }
+            eq = Arrays.equals((char[]) e1, (char[]) e2);
+        }
         else if (e1 instanceof float[] && e2 instanceof float[]) {
-                                eq = Arrays.equals((float[]) e1, (float[]) e2);
-                            }
+            eq = Arrays.equals((float[]) e1, (float[]) e2);
+        }
         else if (e1 instanceof double[] && e2 instanceof double[]) {
-                                    eq = Arrays.equals((double[]) e1, (double[]) e2);
-                                }
+            eq = Arrays.equals((double[]) e1, (double[]) e2);
+        }
         else if (e1 instanceof boolean[] && e2 instanceof boolean[]) {
-                                        eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
-                                    }
+            eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
+        }
         else {
-                                        eq = equals(e1, e2);
-                                    }
+            eq = equals(e1, e2);
+        }
         return eq;
     }
 

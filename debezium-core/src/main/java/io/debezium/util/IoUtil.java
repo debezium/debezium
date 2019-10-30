@@ -193,7 +193,8 @@ public class IoUtil {
      * @throws IOException if there is an error reading the content
      */
     public static String read(InputStream stream,
-                              String charset) throws IOException {
+                              String charset)
+            throws IOException {
         return stream == null ? "" : read(new InputStreamReader(stream, charset));
     }
 
@@ -253,16 +254,16 @@ public class IoUtil {
             try {
                 // Try absolute path ...
                 Path filePath = FileSystems.getDefault().getPath(resourcePath).toAbsolutePath();
-                File f        = filePath.toFile();
+                File f = filePath.toFile();
                 if (f.exists() && f.isFile() && f.canRead()) {
                     result = new BufferedInputStream(new FileInputStream(f));
                 }
                 logMessage(result, logger, resourceDesc, "on filesystem at " + filePath);
             }
-            catch(InvalidPathException e) {
+            catch (InvalidPathException e) {
                 // just continue ...
             }
-            catch(FileNotFoundException e) {
+            catch (FileNotFoundException e) {
                 // just continue ...
             }
         }

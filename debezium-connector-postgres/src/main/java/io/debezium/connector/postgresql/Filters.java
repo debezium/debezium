@@ -57,12 +57,11 @@ public class Filters {
 
         // Define the filter using the whitelists and blacklists for table names ...
         this.tableFilter = TableFilter.fromPredicate(Selectors.tableSelector()
-                                    .includeTables(config.tableWhitelist())
-                                    .excludeTables(tableBlacklist)
-                                    .includeSchemas(config.schemaWhitelist())
-                                    .excludeSchemas(schemaBlacklist)
-                                    .build());
-
+                .includeTables(config.tableWhitelist())
+                .excludeTables(tableBlacklist)
+                .includeSchemas(config.schemaWhitelist())
+                .excludeSchemas(schemaBlacklist)
+                .build());
 
         // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
         this.columnFilter = ColumnNameFilter.getInstance(config.columnBlacklist());

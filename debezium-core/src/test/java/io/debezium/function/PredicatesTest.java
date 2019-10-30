@@ -32,7 +32,7 @@ public class PredicatesTest {
 
     @Test
     public void shouldMatchCommaSeparatedLiteralIncludes() {
-        Predicate<Integer> p = Predicates.includes("1,2,3,4,5", (i)->i.toString());
+        Predicate<Integer> p = Predicates.includes("1,2,3,4,5", (i) -> i.toString());
         assertThat(p.test(1)).isTrue();
         assertThat(p.test(2)).isTrue();
         assertThat(p.test(3)).isTrue();
@@ -45,7 +45,7 @@ public class PredicatesTest {
 
     @Test
     public void shouldMatchCommaSeparatedLiteralExcludes() {
-        Predicate<Integer> p = Predicates.excludes("1,2,3,4,5", (i)->i.toString());
+        Predicate<Integer> p = Predicates.excludes("1,2,3,4,5", (i) -> i.toString());
         assertThat(p.test(1)).isFalse();
         assertThat(p.test(2)).isFalse();
         assertThat(p.test(3)).isFalse();
