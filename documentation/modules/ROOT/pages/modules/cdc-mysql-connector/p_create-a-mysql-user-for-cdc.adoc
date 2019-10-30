@@ -2,7 +2,7 @@
 //
 
 [id="create-a-mysql-user-for-cdc_{context}"]
-= Creating a MySQL user for CDC
+= Creating a MySQL user for {prodname}
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
 This paragraph is the procedure module introduction: a short description of the procedure.
