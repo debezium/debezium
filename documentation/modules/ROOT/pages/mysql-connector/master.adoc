@@ -4,6 +4,10 @@ include::../{attributes}.adoc[]
 
 HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
 
+xref::overview-of-how-the-mysql-connector-works[Overview of how the MySQL connector works]
+
+// assemblies
+
 include::{assemblies}/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[leveloffset=+1]
 
 include::{assemblies}/cdc-mysql-connector/as_setup-the-mysql-server-for-cdc.adoc[leveloffset=+1]
