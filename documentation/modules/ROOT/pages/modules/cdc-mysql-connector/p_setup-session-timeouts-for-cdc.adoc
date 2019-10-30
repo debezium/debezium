@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="setup-session-timeouts-for-cdc"]
+[id="setup-session-timeouts-for-cdc_{context}"]
 = Setting up session timeouts for CDC
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 

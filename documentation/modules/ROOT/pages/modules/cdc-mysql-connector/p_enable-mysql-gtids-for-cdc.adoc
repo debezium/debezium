@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="enable-mysql-gtids-for-cdc"]
+[id="enable-mysql-gtids-for-cdc_{context}"]
 = Enabling MySQL Global Transaction Identifiers for CDC
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
