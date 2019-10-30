@@ -22,8 +22,7 @@ public class ReconcilingBinlogReaderTest {
     @Test
     public void haltAfterPredicateTrue() {
         List<Map<String, ?>> offsets = createOrderedOffsets(2);
-        ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate =
-            new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(1), (x) -> true);
+        ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate = new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(1), (x) -> true);
 
         SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(0));
         // tested record (0) is before limit (1), so we should return true.
@@ -33,8 +32,7 @@ public class ReconcilingBinlogReaderTest {
     @Test
     public void haltAfterPredicateFalse() {
         List<Map<String, ?>> offsets = createOrderedOffsets(2);
-        ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate =
-            new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(0), (x) -> true);
+        ReconcilingBinlogReader.OffsetLimitPredicate offsetLimitPredicate = new ReconcilingBinlogReader.OffsetLimitPredicate(offsets.get(0), (x) -> true);
 
         SourceRecord testSourceRecord = createSourceRecordWithOffset(offsets.get(1));
         // tested record (1) is beyond limit (0), so we should return false.
@@ -55,7 +53,7 @@ public class ReconcilingBinlogReaderTest {
 
         // using non-gtids because SourceInfo.isPositionAtOrBefore
         // doesn't seem to function as expected when comparing gtids
-        for (int i = 0 ; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             Map<String, Object> offset = new HashMap<>(3);
             offset.put(SourceInfo.SERVER_ID_KEY, SERVER_ID);
             offset.put(SourceInfo.BINLOG_FILENAME_OFFSET_KEY, BINLOG_FILENAME);

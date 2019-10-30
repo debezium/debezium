@@ -79,7 +79,7 @@ public interface ArrayReader {
      * @throws IOException if an array could not be read from the supplied file
      */
     default Array readArray(File jsonFile) throws IOException {
-        return readArray( new BufferedInputStream(new FileInputStream(jsonFile)) );
+        return readArray(new BufferedInputStream(new FileInputStream(jsonFile)));
     }
 
     /**

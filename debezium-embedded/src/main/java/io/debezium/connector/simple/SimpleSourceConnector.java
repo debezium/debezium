@@ -125,15 +125,15 @@ public class SimpleSourceConnector extends SourceConnector {
                 // Create the partition and schemas ...
                 Map<String, ?> partition = Collect.hashMapOf("source", "simple");
                 Schema keySchema = SchemaBuilder.struct()
-                                                .name("simple.key")
-                                                .field("id", Schema.INT32_SCHEMA)
-                                                .build();
+                        .name("simple.key")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .build();
                 Schema valueSchema = SchemaBuilder.struct()
-                                                  .name("simple.value")
-                                                  .field("batch", Schema.INT32_SCHEMA)
-                                                  .field("record", Schema.INT32_SCHEMA)
-                                                  .field("timestamp", Schema.OPTIONAL_INT64_SCHEMA)
-                                                  .build();
+                        .name("simple.value")
+                        .field("batch", Schema.INT32_SCHEMA)
+                        .field("record", Schema.INT32_SCHEMA)
+                        .field("timestamp", Schema.OPTIONAL_INT64_SCHEMA)
+                        .build();
 
                 // Read the offset ...
                 Map<String, ?> lastOffset = context.offsetStorageReader().offset(partition);

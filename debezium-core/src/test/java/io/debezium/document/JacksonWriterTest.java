@@ -61,6 +61,7 @@ public class JacksonWriterTest implements Testing {
         assertThat(nested.getString("b")).isEqualTo("B");
         assertThat(nested.size()).isEqualTo(2);
     }
+
     @Test
     public void shouldWriteDocumentWithDeeplyNestedDocument() throws Exception {
         doc.set("field1", "value");

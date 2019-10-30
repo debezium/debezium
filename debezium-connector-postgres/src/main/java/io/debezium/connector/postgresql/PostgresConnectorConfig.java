@@ -65,7 +65,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         MAP("map");
 
-
         private final String value;
 
         HStoreHandlingMode(String value) {
@@ -85,10 +84,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static HStoreHandlingMode parse(String value) {
             if (value == null) {
-                return null ;
+                return null;
             }
             value = value.trim();
-            for (HStoreHandlingMode option: HStoreHandlingMode.values()) {
+            for (HStoreHandlingMode option : HStoreHandlingMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
@@ -127,7 +126,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         STRING("string");
 
-
         private final String value;
 
         IntervalHandlingMode(String value) {
@@ -147,10 +145,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          */
         public static IntervalHandlingMode parse(String value) {
             if (value == null) {
-                return null ;
+                return null;
             }
             value = value.trim();
-            for (IntervalHandlingMode option: IntervalHandlingMode.values()) {
+            for (IntervalHandlingMode option : IntervalHandlingMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
@@ -244,7 +242,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 return null;
             }
             value = value.trim();
-            for (SnapshotMode option: SnapshotMode.values()) {
+            for (SnapshotMode option : SnapshotMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
@@ -536,49 +534,49 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private static final String TABLE_WHITELIST_NAME = "table.whitelist";
 
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
-                                              .withDisplayName("Plugin")
-                                              .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
-                                              .withWidth(Width.MEDIUM)
-                                              .withImportance(Importance.MEDIUM)
-                                              .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
-                                                      "Supported values are '"+ LogicalDecoder.DECODERBUFS.getValue() + "' and '"+ LogicalDecoder.WAL2JSON.getValue() + "'. " +
-                                                      "Defaults to '"+ LogicalDecoder.DECODERBUFS.getValue() + "'.");
+            .withDisplayName("Plugin")
+            .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The name of the Postgres logical decoding plugin installed on the server. " +
+                    "Supported values are '" + LogicalDecoder.DECODERBUFS.getValue() + "' and '" + LogicalDecoder.WAL2JSON.getValue() + "'. " +
+                    "Defaults to '" + LogicalDecoder.DECODERBUFS.getValue() + "'.");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
-                                              .withDisplayName("Slot")
-                                              .withType(Type.STRING)
-                                              .withWidth(Width.MEDIUM)
-                                              .withImportance(Importance.MEDIUM)
-                                              .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
-                                              .withValidation(PostgresConnectorConfig::validateReplicationSlotName)
-                                              .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
-                                                               "Defaults to 'debezium");
+            .withDisplayName("Slot")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+            .withValidation(PostgresConnectorConfig::validateReplicationSlotName)
+            .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
+                    "Defaults to 'debezium");
 
     public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop_on_stop")
-                                                        .withDisplayName("Drop slot on stop")
-                                                        .withType(Type.BOOLEAN)
-                                                        .withDefault(false)
-                                                        .withImportance(Importance.MEDIUM)
-                                                        .withDescription(
-                                                                "Whether or not to drop the logical replication slot when the connector finishes orderly" +
-                                                                "By default the replication is kept so that on restart progress can resume from the last recorded location");
+            .withDisplayName("Drop slot on stop")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Whether or not to drop the logical replication slot when the connector finishes orderly" +
+                            "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
-                                                      .withDisplayName("Publication")
-                                                      .withType(Type.STRING)
-                                                      .withWidth(Width.MEDIUM)
-                                                      .withImportance(Importance.MEDIUM)
-                                                      .withDefault(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME)
-                                                      .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin." +
-                                                                       "Defaults to '" + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + "'");
+            .withDisplayName("Publication")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME)
+            .withDescription("The name of the Postgres 10+ publication used for streaming changes from a plugin." +
+                    "Defaults to '" + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME + "'");
 
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
-                                                        .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
-                                                        .withType(Type.STRING)
-                                                        .withWidth(Width.LONG)
-                                                        .withImportance(Importance.LOW)
-                                                        .withDescription(
-                                                                "Any optional parameters used by logical decoding plugin. Semi-colon separated. E.g. 'add-tables=public.table,public.table2;include-lsn=true'");
+            .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDescription(
+                    "Any optional parameters used by logical decoding plugin. Semi-colon separated. E.g. 'add-tables=public.table,public.table2;include-lsn=true'");
 
     public static final Field MAX_RETRIES = Field.create("slot.max.retries")
             .withDisplayName("Retry count")
@@ -597,101 +595,102 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.");
 
     public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
-                                              .withDisplayName("Hostname")
-                                              .withType(Type.STRING)
-                                              .withWidth(Width.MEDIUM)
-                                              .withImportance(Importance.HIGH)
-                                              .withValidation(Field::isRequired)
-                                              .withDescription("Resolvable hostname or IP address of the Postgres database server.");
+            .withDisplayName("Hostname")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Resolvable hostname or IP address of the Postgres database server.");
 
     public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
-                                          .withDisplayName("Port")
-                                          .withType(Type.INT)
-                                          .withWidth(Width.SHORT)
-                                          .withDefault(DEFAULT_PORT)
-                                          .withImportance(Importance.HIGH)
-                                          .withValidation(Field::isInteger)
-                                          .withDescription("Port of the Postgres database server.");
+            .withDisplayName("Port")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withDefault(DEFAULT_PORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isInteger)
+            .withDescription("Port of the Postgres database server.");
 
     public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
-                                          .withDisplayName("User")
-                                          .withType(Type.STRING)
-                                          .withWidth(Width.SHORT)
-                                          .withImportance(Importance.HIGH)
-                                          .withValidation(Field::isRequired)
-                                          .withDescription("Name of the Postgres database user to be used when connecting to the database.");
+            .withDisplayName("User")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("Name of the Postgres database user to be used when connecting to the database.");
 
     public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
-                                              .withDisplayName("Password")
-                                              .withType(Type.PASSWORD)
-                                              .withWidth(Width.SHORT)
-                                              .withImportance(Importance.HIGH)
-                                              .withDescription("Password of the Postgres database user to be used when connecting to the database.");
+            .withDisplayName("Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("Password of the Postgres database user to be used when connecting to the database.");
 
     public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
-                                                   .withDisplayName("Database")
-                                                   .withType(Type.STRING)
-                                                   .withWidth(Width.MEDIUM)
-                                                   .withImportance(Importance.HIGH)
-                                                   .withValidation(Field::isRequired)
-                                                   .withDescription("The name of the database the connector should be monitoring");
+            .withDisplayName("Database")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isRequired)
+            .withDescription("The name of the database the connector should be monitoring");
 
     public static final Field ON_CONNECT_STATEMENTS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS)
-                                                           .withDisplayName("Initial statements")
-                                                           .withType(Type.STRING)
-                                                           .withWidth(Width.LONG)
-                                                           .withImportance(Importance.LOW)
-                                                           .withDescription("A semicolon separated list of SQL statements to be executed when a JDBC connection to the database is established. "
-                                                                   + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration"
-                                                                   + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
-                                                                   + "and not as a delimiter.");
+            .withDisplayName("Initial statements")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDescription("A semicolon separated list of SQL statements to be executed when a JDBC connection to the database is established. "
+                    + "Note that the connector may establish JDBC connections at its own discretion, so this should typically be used for configuration"
+                    + "of session parameters only, but not for executing DML statements. Use doubled semicolon (';;') to use a semicolon as a character "
+                    + "and not as a delimiter.");
 
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
-                                              .withDisplayName("SSL mode")
-                                              .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
-                                              .withWidth(Width.MEDIUM)
-                                              .withImportance(Importance.MEDIUM)
-                                              .withDescription("Whether to use an encrypted connection to Postgres. Options include"
-                                                      + "'disable' (the default) to use an unencrypted connection; "
-                                                      + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
-                                                      + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
-                                                      + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
-                                                      + "'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
+            .withDisplayName("SSL mode")
+            .withEnum(SecureConnectionMode.class, SecureConnectionMode.DISABLED)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether to use an encrypted connection to Postgres. Options include"
+                    + "'disable' (the default) to use an unencrypted connection; "
+                    + "'require' to use a secure (encrypted) connection, and fail if one cannot be established; "
+                    + "'verify-ca' like 'required' but additionally verify the server TLS certificate against the configured Certificate Authority "
+                    + "(CA) certificates, or fail if no valid matching CA certificates are found; or"
+                    + "'verify-full' like 'verify-ca' but additionally verify that the server certificate matches the host to which the connection is attempted.");
 
     public static final Field SSL_CLIENT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslcert")
-                                                     .withDisplayName("SSL Client Certificate")
-                                                     .withType(Type.STRING)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withDescription("File containing the SSL Certificate for the client. See the Postgres SSL docs for further information");
+            .withDisplayName("SSL Client Certificate")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("File containing the SSL Certificate for the client. See the Postgres SSL docs for further information");
 
     public static final Field SSL_CLIENT_KEY = Field.create(DATABASE_CONFIG_PREFIX + "sslkey")
-                                                    .withDisplayName("SSL Client Key")
-                                                    .withType(Type.STRING)
-                                                    .withWidth(Width.LONG)
-                                                    .withImportance(Importance.MEDIUM)
-                                                    .withDescription("File containing the SSL private key for the client. See the Postgres SSL docs for further information");
+            .withDisplayName("SSL Client Key")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("File containing the SSL private key for the client. See the Postgres SSL docs for further information");
 
     public static final Field SSL_CLIENT_KEY_PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + "sslpassword")
-                                                             .withDisplayName("SSL Client Key Password")
-                                                             .withType(Type.PASSWORD)
-                                                             .withWidth(Width.MEDIUM)
-                                                             .withImportance(Importance.MEDIUM)
-                                                             .withDescription("Password to access the client private key from the file specified by 'database.sslkey'. See the Postgres SSL docs for further information");
+            .withDisplayName("SSL Client Key Password")
+            .withType(Type.PASSWORD)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Password to access the client private key from the file specified by 'database.sslkey'. See the Postgres SSL docs for further information");
 
     public static final Field SSL_ROOT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslrootcert")
-                                                   .withDisplayName("SSL Root Certificate")
-                                                   .withType(Type.STRING)
-                                                   .withWidth(Width.LONG)
-                                                   .withImportance(Importance.MEDIUM)
-                                                   .withDescription("File containing the root certificate(s) against which the server is validated. See the Postgres JDBC SSL docs for further information");
+            .withDisplayName("SSL Root Certificate")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("File containing the root certificate(s) against which the server is validated. See the Postgres JDBC SSL docs for further information");
 
     public static final Field SSL_SOCKET_FACTORY = Field.create(DATABASE_CONFIG_PREFIX + "sslfactory")
-                                                        .withDisplayName("SSL Root Certificate")
-                                                        .withType(Type.STRING)
-                                                        .withWidth(Width.LONG)
-                                                        .withImportance(Importance.MEDIUM)
-                                                        .withDescription("A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
+            .withDisplayName("SSL Root Certificate")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
@@ -700,12 +699,12 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
      * inclusions/exclusions.
      */
     public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
-                                                     .withDisplayName("Tables")
-                                                     .withType(Type.LIST)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.HIGH)
-                                                     .withValidation(Field::isListOfRegex)
-                                                     .withDescription("The tables for which changes are to be captured");
+            .withDisplayName("Tables")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("The tables for which changes are to be captured");
 
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
@@ -713,98 +712,99 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
      * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
      */
     public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
-                                                     .withDisplayName("Exclude Tables")
-                                                     .withType(Type.STRING)
-                                                     .withWidth(Width.LONG)
-                                                     .withImportance(Importance.MEDIUM)
-                                                     .withValidation(Field::isListOfRegex, PostgresConnectorConfig::validateTableBlacklist)
-                                                     .withInvisibleRecommender();
+            .withDisplayName("Exclude Tables")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex, PostgresConnectorConfig::validateTableBlacklist)
+            .withInvisibleRecommender();
 
-    //TODO author=Horia Chiorean date=25/10/2016 description=PG 9.x logical decoding does not support schema changes
+    // TODO author=Horia Chiorean date=25/10/2016 description=PG 9.x logical decoding does not support schema changes
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
-                                                            .withDisplayName("Include database schema changes")
-                                                            .withType(Type.BOOLEAN)
-                                                            .withWidth(Width.SHORT)
-                                                            .withImportance(Importance.MEDIUM)
-                                                            .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
-                                                                    + "the same name as the database server name."
-                                                                    + "The default is 'false' because atm this feature is not supported by Postgres logical decoding")
-                                                            .withDefault(false);
+            .withDisplayName("Include database schema changes")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
+                    + "the same name as the database server name."
+                    + "The default is 'false' because atm this feature is not supported by Postgres logical decoding")
+            .withDefault(false);
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
-                                                   .withDisplayName("Snapshot mode")
-                                                   .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
-                                                   .withWidth(Width.SHORT)
-                                                   .withImportance(Importance.MEDIUM)
-                                                   .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                                                           + "Options include: "
-                                                           + "'always' to specify that the connector run a snapshot each time it starts up; "
-                                                           + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
-                                                           + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes;"
-                                                           + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server; and"
-                                                           + "'exported' to specify the connector should run a snapshot based on the position when the replication slot was created; "
-                                                           + "'custom' to specify a custom class with 'snapshot.custom_class' which will be loaded and used to determine the snapshot, see docs for more details.");
+            .withDisplayName("Snapshot mode")
+            .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The criteria for running a snapshot upon startup of the connector. "
+                    + "Options include: "
+                    + "'always' to specify that the connector run a snapshot each time it starts up; "
+                    + "'initial' (the default) to specify the connector can run a snapshot only when no offsets are available for the logical server name; "
+                    + "'initial_only' same as 'initial' except the connector should stop after completing the snapshot and before it would normally start emitting changes;"
+                    + "'never' to specify the connector should never run a snapshot and that upon first startup the connector should read from the last position (LSN) recorded by the server; and"
+                    + "'exported' to specify the connector should run a snapshot based on the position when the replication slot was created; "
+                    + "'custom' to specify a custom class with 'snapshot.custom_class' which will be loaded and used to determine the snapshot, see docs for more details.");
 
     public static final Field SNAPSHOT_MODE_CLASS = Field.create("snapshot.custom.class")
-                                                         .withDisplayName("Snapshot Mode Custom Class")
-                                                         .withType(Type.STRING)
-                                                         .withWidth(Width.MEDIUM)
-                                                         .withImportance(Importance.MEDIUM)
-                                                         .withValidation((config, field, output) -> {
-                                                             if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field).isEmpty()) {
-                                                                output.accept(field, "", "snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
-                                                                return 1;
-                                                             }
-                                                             return 0;
-                                                         })
-                                                         .withDescription("When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
-                                                                         + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
+            .withDisplayName("Snapshot Mode Custom Class")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if (config.getString(SNAPSHOT_MODE).toLowerCase().equals("custom") && config.getString(field).isEmpty()) {
+                    output.accept(field, "", "snapshot.custom_class cannot be empty when snapshot.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.mode' is set as custom, this setting must be set to specify a fully qualified class name to load (via the default class loader)."
+                            + "This class must implement the 'Snapshotter' interface and is called on each app boot to determine whether to do a snapshot and how to build queries.");
 
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
-                                                          .withDisplayName("HStore Handling")
-                                                          .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
-                                                          .withWidth(Width.MEDIUM)
-                                                          .withImportance(Importance.LOW)
-                                                          .withDescription("Specify how HSTORE columns should be represented in change events, including:"
-                                                                + "'json' represents values as json string"
-                                                                + "'map' (default) represents values using java.util.Map");
+            .withDisplayName("HStore Handling")
+            .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how HSTORE columns should be represented in change events, including:"
+                    + "'json' represents values as json string"
+                    + "'map' (default) represents values using java.util.Map");
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
-                                                            .withDisplayName("Interval Handling")
-                                                            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
-                                                            .withWidth(Width.MEDIUM)
-                                                            .withImportance(Importance.LOW)
-                                                            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
-                                                                  + "'string' represents values as an exact ISO formatted string"
-                                                                  + "'numeric' (default) represents values using the inexact conversion into microseconds");
+            .withDisplayName("Interval Handling")
+            .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how INTERVAL columns should be represented in change events, including:"
+                    + "'string' represents values as an exact ISO formatted string"
+                    + "'numeric' (default) represents values using the inexact conversion into microseconds");
 
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
-                                                          .withDisplayName("Status update interval (ms)")
-                                                          .withType(Type.INT) // Postgres doesn't accept long for this value
-                                                          .withDefault(10_000)
-                                                          .withWidth(Width.SHORT)
-                                                          .withImportance(Importance.MEDIUM)
-                                                          .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
-                                                          .withValidation(Field::isPositiveInteger);
+            .withDisplayName("Status update interval (ms)")
+            .withType(Type.INT) // Postgres doesn't accept long for this value
+            .withDefault(10_000)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Frequency in milliseconds for sending replication connection status updates to the server. Defaults to 10 seconds (10000 ms).")
+            .withValidation(Field::isPositiveInteger);
 
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
-                                                            .withDisplayName("TCP keep-alive probe")
-                                                            .withType(Type.BOOLEAN)
-                                                            .withDefault(true)
-                                                            .withWidth(Width.SHORT)
-                                                            .withImportance(Importance.MEDIUM)
-                                                            .withDescription("Enable or disable TCP keep-alive probe to avoid dropping TCP connection")
-                                                            .withValidation(Field::isBoolean);
+            .withDisplayName("TCP keep-alive probe")
+            .withType(Type.BOOLEAN)
+            .withDefault(true)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Enable or disable TCP keep-alive probe to avoid dropping TCP connection")
+            .withValidation(Field::isBoolean);
 
     public static final Field INCLUDE_UNKNOWN_DATATYPES = Field.create("include.unknown.datatypes")
-                                                            .withDisplayName("Include unknown datatypes")
-                                                            .withType(Type.BOOLEAN)
-                                                            .withDefault(false)
-                                                            .withWidth(Width.SHORT)
-                                                            .withImportance(Importance.MEDIUM)
-                                                            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed:"
-                                                                    + "'false' (the default) omits the fields; "
-                                                                    + "'true' converts the field into an implementation dependent binary representation.");
+            .withDisplayName("Include unknown datatypes")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify whether the fields of data type not supported by Debezium should be processed:"
+                    + "'false' (the default) omits the fields; "
+                    + "'true' converts the field into an implementation dependent binary representation.");
 
     public static final Field SCHEMA_REFRESH_MODE = Field.create("schema.refresh.mode")
             .withDisplayName("Schema refresh mode")
@@ -847,26 +847,25 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS,
-                                                     DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
-                                                     CommonConnectorConfig.MAX_BATCH_SIZE,
-                                                     CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                                                     CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                                                     Heartbeat.HEARTBEAT_INTERVAL,
-                                                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                                                     SCHEMA_WHITELIST,
-                                                     SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS,
-                                                     COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
-                                                     INTERVAL_HANDLING_MODE, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-                                                     SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
-                                                     STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-                                                     RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                                                     XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+            DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
+            CommonConnectorConfig.MAX_BATCH_SIZE,
+            CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
+            CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+            Heartbeat.HEARTBEAT_INTERVAL,
+            Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+            SCHEMA_WHITELIST,
+            SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS,
+            COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
+            INTERVAL_HANDLING_MODE, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
+            SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
+            STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
+            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
+            XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
 
-    private final HStoreHandlingMode  hStoreHandlingMode;
-    private final IntervalHandlingMode  intervalHandlingMode;
+    private final HStoreHandlingMode hStoreHandlingMode;
+    private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
     private final SchemaRefreshMode schemaRefreshMode;
-
 
     protected PostgresConnectorConfig(Configuration config) {
         super(
@@ -874,8 +873,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 config.getString(RelationalDatabaseConnectorConfig.SERVER_NAME),
                 new SystemTablesPredicate(),
                 x -> x.schema() + "." + x.table(),
-                DEFAULT_SNAPSHOT_FETCH_SIZE
-        );
+                DEFAULT_SNAPSHOT_FETCH_SIZE);
 
         String hstoreHandlingModeStr = config.getString(PostgresConnectorConfig.HSTORE_HANDLING_MODE);
         HStoreHandlingMode hStoreHandlingMode = HStoreHandlingMode.parse(hstoreHandlingModeStr);
@@ -992,27 +990,27 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         switch (version) {
-        case V1:
-            return new LegacyV1PostgresSourceInfoStructMaker(Module.name(), Module.version(), this);
-        default:
-            return new PostgresSourceInfoStructMaker(Module.name(), Module.version(), this);
+            case V1:
+                return new LegacyV1PostgresSourceInfoStructMaker(Module.name(), Module.version(), this);
+            default:
+                return new PostgresSourceInfoStructMaker(Module.name(), Module.version(), this);
         }
     }
 
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "Postgres", SLOT_NAME, PUBLICATION_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
-                    USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                    DROP_SLOT_ON_STOP, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
+                USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
+                DROP_SLOT_ON_STOP, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                    COLUMN_BLACKLIST, MSG_KEY_COLUMNS, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                    CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
-                    Heartbeat.HEARTBEAT_TOPICS_PREFIX, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                    TOASTED_VALUE_PLACEHOLDER);
+                COLUMN_BLACKLIST, MSG_KEY_COLUMNS, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                CommonConnectorConfig.TOMBSTONES_ON_DELETE, Heartbeat.HEARTBEAT_INTERVAL,
+                Heartbeat.HEARTBEAT_TOPICS_PREFIX, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+                TOASTED_VALUE_PLACEHOLDER);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                    CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                    SNAPSHOT_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
-                    INTERVAL_HANDLING_MODE, SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
+                CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+                SNAPSHOT_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
+                INTERVAL_HANDLING_MODE, SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
 
         return config;
     }
@@ -1052,4 +1050,5 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         public boolean isIncluded(TableId t) {
             return !SYSTEM_SCHEMAS.contains(t.schema().toLowerCase());
         }
-    }}
+    }
+}

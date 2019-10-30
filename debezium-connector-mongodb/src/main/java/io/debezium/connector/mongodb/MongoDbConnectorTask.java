@@ -82,7 +82,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
             // Read from the configuration the information about the replica sets we are to watch ...
             final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
             final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
-            if ( replicaSets.validReplicaSetCount() == 0) {
+            if (replicaSets.validReplicaSetCount() == 0) {
                 throw new ConnectException(
                         "Unable to start MongoDB connector task since no replica sets were found at " + hosts);
             }
@@ -223,7 +223,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                 try {
                     summaryByReplicaSet.forEach((rsName, summary) -> {
                         logger.info("{} records sent for replica set '{}', last offset: {}",
-                                    summary.recordCount(), rsName, summary.lastOffset());
+                                summary.recordCount(), rsName, summary.lastOffset());
                     });
                 }
                 finally {

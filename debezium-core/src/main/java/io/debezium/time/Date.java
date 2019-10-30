@@ -36,8 +36,8 @@ public class Date {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.int32()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**

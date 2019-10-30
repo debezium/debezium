@@ -70,46 +70,46 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private static final short DEFAULT_TOPIC_REPLICATION_FACTOR = 1;
 
     public static final Field TOPIC = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.topic")
-                                           .withDisplayName("Database history topic name")
-                                           .withType(Type.STRING)
-                                           .withWidth(Width.LONG)
-                                           .withImportance(Importance.HIGH)
-                                           .withDescription("The name of the topic for the database schema history")
-                                           .withValidation(Field::isRequired);
+            .withDisplayName("Database history topic name")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The name of the topic for the database schema history")
+            .withValidation(Field::isRequired);
 
     public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.bootstrap.servers")
-                                                       .withDisplayName("Kafka broker addresses")
-                                                       .withType(Type.STRING)
-                                                       .withWidth(Width.LONG)
-                                                       .withImportance(Importance.HIGH)
-                                                       .withDescription("A list of host/port pairs that the connector will use for establishing the initial "
-                                                               + "connection to the Kafka cluster for retrieving database schema history previously stored "
-                                                               + "by the connector. This should point to the same Kafka cluster used by the Kafka Connect "
-                                                               + "process.")
-                                                       .withValidation(Field::isRequired);
+            .withDisplayName("Kafka broker addresses")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("A list of host/port pairs that the connector will use for establishing the initial "
+                    + "connection to the Kafka cluster for retrieving database schema history previously stored "
+                    + "by the connector. This should point to the same Kafka cluster used by the Kafka Connect "
+                    + "process.")
+            .withValidation(Field::isRequired);
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
             + "kafka.recovery.poll.interval.ms")
-                                                               .withDisplayName("Poll interval during database history recovery (ms)")
-                                                               .withType(Type.INT)
-                                                               .withWidth(Width.SHORT)
-                                                               .withImportance(Importance.LOW)
-                                                               .withDescription("The number of milliseconds to wait while polling for persisted data during recovery.")
-                                                               .withDefault(100)
-                                                               .withValidation(Field::isNonNegativeInteger);
+            .withDisplayName("Poll interval during database history recovery (ms)")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The number of milliseconds to wait while polling for persisted data during recovery.")
+            .withDefault(100)
+            .withValidation(Field::isNonNegativeInteger);
 
     public static final Field RECOVERY_POLL_ATTEMPTS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.recovery.attempts")
-                                                            .withDisplayName("Max attempts to recovery database history")
-                                                            .withType(Type.INT)
-                                                            .withWidth(Width.SHORT)
-                                                            .withImportance(Importance.LOW)
-                                                            .withDescription("The number of attempts in a row that no data are returned from Kafka before recover completes. "
-                                                                    + "The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).")
-                                                            .withDefault(100)
-                                                            .withValidation(Field::isInteger);
+            .withDisplayName("Max attempts to recovery database history")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The number of attempts in a row that no data are returned from Kafka before recover completes. "
+                    + "The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).")
+            .withDefault(100)
+            .withValidation(Field::isInteger);
 
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
-                                                     RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
+            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
@@ -143,30 +143,30 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         // Copy the relevant portions of the configuration and add useful defaults ...
         String dbHistoryName = config.getString(DatabaseHistory.NAME, UUID.randomUUID().toString());
         this.consumerConfig = config.subset(CONSUMER_PREFIX, true).edit()
-                                    .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-                                    .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, dbHistoryName)
-                                    .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
-                                    .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
-                                    .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
-                                    .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) //readjusted since 0.10.1.0
-                                    .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                                                 OffsetResetStrategy.EARLIEST.toString().toLowerCase())
-                                    .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
-                                    .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
-                                    .build();
+                .withDefault(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+                .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, dbHistoryName)
+                .withDefault(ConsumerConfig.GROUP_ID_CONFIG, dbHistoryName)
+                .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even smallest message
+                .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
+                .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) // readjusted since 0.10.1.0
+                .withDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                        OffsetResetStrategy.EARLIEST.toString().toLowerCase())
+                .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .build();
         this.producerConfig = config.subset(PRODUCER_PREFIX, true).edit()
-                                    .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-                                    .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
-                                    .withDefault(ProducerConfig.ACKS_CONFIG, 1)
-                                    .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
-                                                                                   // okay
-                                    .withDefault(ProducerConfig.BATCH_SIZE_CONFIG, 1024 * 32) // 32KB
-                                    .withDefault(ProducerConfig.LINGER_MS_CONFIG, 0)
-                                    .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
-                                    .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
-                                    .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
-                                    .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
-                                    .build();
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+                .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
+                .withDefault(ProducerConfig.ACKS_CONFIG, 1)
+                .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
+                                                               // okay
+                .withDefault(ProducerConfig.BATCH_SIZE_CONFIG, 1024 * 32) // 32KB
+                .withDefault(ProducerConfig.LINGER_MS_CONFIG, 0)
+                .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
+                .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
+                .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
+                .build();
         if (logger.isInfoEnabled()) {
             logger.info("KafkaDatabaseHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
             logger.info("KafkaDatabaseHistory Producer config: {}", producerConfig.withMaskedPasswords());
@@ -195,7 +195,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             RecordMetadata metadata = future.get(); // block forever since we have to be sure this gets recorded
             if (metadata != null) {
                 logger.debug("Stored record in topic '{}' partition {} at offset {} ",
-                             metadata.topic(), metadata.partition(), metadata.offset());
+                        metadata.topic(), metadata.partition(), metadata.offset());
             }
         }
         catch (InterruptedException e) {
@@ -272,8 +272,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 else {
                     logger.debug("Processed {} records from database history", numRecordsProcessed);
                 }
-            }
-            while (lastProcessedOffset < endOffset - 1);
+            } while (lastProcessedOffset < endOffset - 1);
         }
     }
 
@@ -286,8 +285,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         if (previousEndOffset != null && !previousEndOffset.equals(endOffset)) {
             throw new IllegalStateException("Detected changed end offset of database history topic (previous: "
                     + previousEndOffset + ", current: " + endOffset
-                    + "). Make sure that the same history topic isn't shared by multiple connector instances."
-            );
+                    + "). Make sure that the same history topic isn't shared by multiple connector instances.");
         }
 
         return endOffset;
@@ -389,8 +387,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         logger.warn(
                 "Unable to obtain the default replication factor from the brokers at {}. Setting value to {} instead.",
                 producerConfig.getString(BOOTSTRAP_SERVERS),
-                DEFAULT_TOPIC_REPLICATION_FACTOR
-        );
+                DEFAULT_TOPIC_REPLICATION_FACTOR);
 
         return DEFAULT_TOPIC_REPLICATION_FACTOR;
     }
@@ -404,8 +401,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         String nodeId = nodes.iterator().next().idString();
         Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.BROKER, nodeId));
         final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
-                KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS
-        );
+                KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
         if (configs.isEmpty()) {
             throw new ConnectException("No configs have been received");

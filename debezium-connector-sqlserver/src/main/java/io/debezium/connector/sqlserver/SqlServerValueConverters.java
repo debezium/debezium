@@ -85,7 +85,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
             case microsoft.sql.Types.DATETIMEOFFSET:
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
 
-                // TODO Geometry and geography supported since 6.5.0
+            // TODO Geometry and geography supported since 6.5.0
             default:
                 return super.converter(column, fieldDefn);
         }

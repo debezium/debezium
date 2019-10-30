@@ -42,7 +42,9 @@ public interface ReplicationMessage {
      *
      */
     public enum Operation {
-        INSERT, UPDATE, DELETE
+        INSERT,
+        UPDATE,
+        DELETE
     }
 
     /**
@@ -50,6 +52,7 @@ public interface ReplicationMessage {
      */
     public interface Column {
         String getName();
+
         PostgresType getType();
 
         /**
@@ -57,7 +60,9 @@ public interface ReplicationMessage {
          * after checking {@link ReplicationMessage#hasMetadata()}.
          */
         ColumnTypeMetadata getTypeMetadata();
+
         Object getValue(final PgConnectionSupplier connection, boolean includeUnknownDatatypes);
+
         boolean isOptional();
 
         default boolean isToastedColumn() {
@@ -67,33 +72,57 @@ public interface ReplicationMessage {
 
     public interface ColumnTypeMetadata {
         int getLength();
+
         int getScale();
     }
 
     public interface ColumnValue<T> {
         T getRawValue();
+
         boolean isNull();
+
         String asString();
+
         Boolean asBoolean();
+
         Integer asInteger();
+
         Long asLong();
+
         Float asFloat();
+
         Double asDouble();
+
         SpecialValueDecimal asDecimal();
+
         LocalDate asLocalDate();
+
         OffsetDateTime asOffsetDateTimeAtUtc();
+
         Instant asInstant();
+
         LocalTime asLocalTime();
+
         OffsetTime asOffsetTimeUtc();
+
         byte[] asByteArray();
+
         PGbox asBox();
+
         PGcircle asCircle();
+
         PGInterval asInterval();
+
         PGline asLine();
+
         PGlseg asLseg();
+
         PGmoney asMoney();
+
         PGpath asPath();
+
         PGpoint asPoint();
+
         PGpolygon asPolygon();
     }
 

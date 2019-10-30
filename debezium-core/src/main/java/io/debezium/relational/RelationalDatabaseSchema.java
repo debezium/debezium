@@ -42,8 +42,8 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private final Tables tables;
 
     protected RelationalDatabaseSchema(CommonConnectorConfig config, TopicSelector<TableId> topicSelector,
-            TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
-            boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
+                                       TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
+                                       boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
 
         this.topicSelector = topicSelector;
         this.schemaBuilder = schemaBuilder;
@@ -138,7 +138,6 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     private String getEnvelopeSchemaName(Table table) {
         return topicSelector.topicNameFor(table.id()) + ".Envelope";
     }
-
 
     /**
      * A map of schemas by table id. Table names are stored lower-case if required as per the config.

@@ -31,8 +31,9 @@ public class PostgresConnectorTaskIT {
 
     class FakeContext extends PostgresTaskContext {
         public FakeContext(PostgresConnectorConfig postgresConnectorConfig, PostgresSchema postgresSchema) {
-            super(postgresConnectorConfig , postgresSchema, null);
+            super(postgresConnectorConfig, postgresSchema, null);
         }
+
         @Override
         protected ReplicationConnection createReplicationConnection(boolean exportSnapshot) throws SQLException {
             throw new SQLException("Could not connect");
@@ -49,8 +50,7 @@ public class PostgresConnectorTaskIT {
                 config,
                 null,
                 Charset.forName("UTF-8"),
-                PostgresTopicSelector.create(config)
-        )), true, 3, Duration.ofSeconds(2));
+                PostgresTopicSelector.create(config))), true, 3, Duration.ofSeconds(2));
 
         // Verify retry happened for 10 seconds
         long endTime = System.currentTimeMillis();

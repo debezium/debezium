@@ -128,26 +128,25 @@ public class ReadBinLogIT implements Testing {
 
         // Set up the table as one transaction and wait to see the events ...
         conn.execute("DROP TABLE IF EXISTS person",
-                     "CREATE TABLE person (" +
-                             "  name VARCHAR(255) primary key," +
-                             "  age INTEGER NULL DEFAULT 10," +
-                             "  createdAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP," +
-                             "  updatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
-                             ")");
+                "CREATE TABLE person (" +
+                        "  name VARCHAR(255) primary key," +
+                        "  age INTEGER NULL DEFAULT 10," +
+                        "  createdAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP," +
+                        "  updatedAt DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                        ")");
 
         counters.consume(2, EventType.QUERY);
         counters.reset();
     }
 
     @Ignore
-    @Test( expected = ServerException.class)
+    @Test(expected = ServerException.class)
     public void shouldFailToConnectToInvalidBinlogFile() throws Exception {
         Testing.Print.enable();
         startClient(client -> {
             client.setBinlogFilename("invalid-mysql-binlog.filename.000001");
         });
     }
-
 
     @Ignore
     @Test
@@ -162,7 +161,7 @@ public class ReadBinLogIT implements Testing {
     @Test
     public void shouldCaptureSingleWriteUpdateDeleteEvents() throws Exception {
         startClient();
-        //Testing.Print.enable();
+        // Testing.Print.enable();
         // write/insert
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)");
         counters.consume(1, WriteRowsEventData.class);
@@ -174,7 +173,7 @@ public class ReadBinLogIT implements Testing {
         counters.consume(1, UpdateRowsEventData.class);
         List<UpdateRowsEventData> updateRowEvents = recordedEventData(UpdateRowsEventData.class, 1);
         assertRows(updateRowEvents.get(0),
-                   rows().changeRow("Georgia", 30, any(), any()).to("Maggie", 30, any(), any()));
+                rows().changeRow("Georgia", 30, any(), any()).to("Maggie", 30, any(), any()));
 
         // delete
         conn.execute("DELETE FROM person WHERE name = 'Maggie'");
@@ -188,7 +187,7 @@ public class ReadBinLogIT implements Testing {
         startClient();
         // write/insert as a single transaction
         conn.execute("INSERT INTO person(name,age) VALUES ('Georgia',30)",
-                     "INSERT INTO person(name,age) VALUES ('Janice',19)");
+                "INSERT INTO person(name,age) VALUES ('Janice',19)");
         counters.consume(1, QueryEventData.class); // BEGIN
         counters.consume(1, TableMapEventData.class);
         counters.consume(2, WriteRowsEventData.class);
@@ -200,7 +199,7 @@ public class ReadBinLogIT implements Testing {
 
         // update as a single transaction
         conn.execute("UPDATE person SET name = 'Maggie' WHERE name = 'Georgia'",
-                     "UPDATE person SET name = 'Jamie' WHERE name = 'Janice'");
+                "UPDATE person SET name = 'Jamie' WHERE name = 'Janice'");
         counters.consume(1, QueryEventData.class); // BEGIN
         counters.consume(1, TableMapEventData.class);
         counters.consume(2, UpdateRowsEventData.class);
@@ -212,7 +211,7 @@ public class ReadBinLogIT implements Testing {
 
         // delete as a single transaction
         conn.execute("DELETE FROM person WHERE name = 'Maggie'",
-                     "DELETE FROM person WHERE name = 'Jamie'");
+                "DELETE FROM person WHERE name = 'Jamie'");
         counters.consume(1, QueryEventData.class); // BEGIN
         counters.consume(1, TableMapEventData.class);
         counters.consume(2, DeleteRowsEventData.class);
@@ -233,7 +232,7 @@ public class ReadBinLogIT implements Testing {
         counters.consume(1, XidEventData.class); // COMMIT
         List<WriteRowsEventData> writeRowEvents = recordedEventData(WriteRowsEventData.class, 1);
         assertRows(writeRowEvents.get(0), rows().insertedRow("Georgia", 30, any(), any())
-                                                .insertedRow("Janice", 19, any(), any()));
+                .insertedRow("Janice", 19, any(), any()));
         counters.reset();
 
         // update as a single statement/transaction
@@ -248,7 +247,7 @@ public class ReadBinLogIT implements Testing {
         counters.consume(1, XidEventData.class); // COMMIT
         List<UpdateRowsEventData> updateRowEvents = recordedEventData(UpdateRowsEventData.class, 1);
         assertRows(updateRowEvents.get(0), rows().changeRow("Georgia", 30, any(), any()).to("Maggie", 30, any(), any())
-                                                 .changeRow("Janice", 19, any(), any()).to("Jamie", 19, any(), any()));
+                .changeRow("Janice", 19, any(), any()).to("Jamie", 19, any(), any()));
         counters.reset();
 
         // delete as a single statement/transaction
@@ -259,7 +258,7 @@ public class ReadBinLogIT implements Testing {
         counters.consume(1, XidEventData.class); // COMMIT
         List<DeleteRowsEventData> deleteRowEvents = recordedEventData(DeleteRowsEventData.class, 1);
         assertRows(deleteRowEvents.get(0), rows().removedRow("Maggie", 30, any(), any())
-                                                 .removedRow("Jamie", 19, any(), any()));
+                .removedRow("Jamie", 19, any(), any()));
     }
 
     /**

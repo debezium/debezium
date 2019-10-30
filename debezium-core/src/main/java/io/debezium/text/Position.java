@@ -24,9 +24,9 @@ public final class Position {
     private final int column;
     private final int indexInContent;
 
-    public Position( int indexInContent,
-                     int line,
-                     int column ) {
+    public Position(int indexInContent,
+                    int line,
+                    int column) {
         this.indexInContent = indexInContent < 0 ? -1 : indexInContent;
         this.line = line;
         this.column = column;
@@ -86,7 +86,7 @@ public final class Position {
      * @param position the position to add to this object; may not be null
      * @return the combined position
      */
-    public Position add( Position position ) {
+    public Position add(Position position) {
         if (this.index() < 0) {
             return position.index() < 0 ? EMPTY_CONTENT_POSITION : position;
         }

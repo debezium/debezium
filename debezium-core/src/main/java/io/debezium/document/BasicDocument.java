@@ -101,7 +101,7 @@ final class BasicDocument implements Document {
                 return 1;
             }
             if (thatIter.hasNext()) {
-                return - 1;
+                return -1;
             }
         }
         else {

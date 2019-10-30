@@ -38,7 +38,8 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     private final ChangeEventQueueMetrics changeEventQueueMetrics;
     protected final CdcSourceTaskContext taskContext;
 
-    protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics, EventMetadataProvider metadataProvider) {
+    protected <T extends CdcSourceTaskContext> PipelineMetrics(T taskContext, String contextName, ChangeEventQueueMetrics changeEventQueueMetrics,
+                                                               EventMetadataProvider metadataProvider) {
         super(taskContext, contextName);
         this.taskContext = taskContext;
         this.clock = taskContext.getClock();

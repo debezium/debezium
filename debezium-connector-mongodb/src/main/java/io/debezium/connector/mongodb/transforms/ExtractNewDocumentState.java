@@ -32,8 +32,8 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
-import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
+import io.debezium.transforms.SmtManager;
 
 /**
  * Debezium Mongo Connector generates the CDC records in String format. Sink connectors usually are not able to parse
@@ -243,7 +243,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             }
 
             if (addSourceFields != null) {
-               addSourceFieldsSchema(addSourceFields, record, valueSchemaBuilder);
+                addSourceFieldsSchema(addSourceFields, record, valueSchemaBuilder);
             }
 
             finalValueSchema = valueSchemaBuilder.build();
@@ -377,8 +377,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
 
-        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ?
-                null :  config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
+        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ? null
+                : config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);

@@ -37,8 +37,7 @@ import io.debezium.relational.ValueConverter;
  * @see com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer
  */
 @Immutable
-public class MySqlDefaultValueConverter  {
-
+public class MySqlDefaultValueConverter {
 
     private static final Pattern EPOCH_EQUIVALENT_TIMESTAMP = Pattern.compile("(\\d{4}-\\d{2}-00|\\d{4}-00-\\d{2}|0000-\\d{2}-\\d{2}) (00:00:00(\\.\\d{1,6})?)");
 
@@ -74,27 +73,27 @@ public class MySqlDefaultValueConverter  {
             }
         }
         switch (column.jdbcType()) {
-        case Types.DATE:
-            return convertToLocalDate(column, value);
-        case Types.TIMESTAMP:
-            return convertToLocalDateTime(column, value);
-        case Types.TIMESTAMP_WITH_TIMEZONE:
-            return convertToTimestamp(column, value);
-        case Types.TIME:
-            return convertToDuration(column, value);
-        case Types.BOOLEAN:
-            return convertToBoolean(value);
-        case Types.BIT:
-            return convertToBits(column, value);
+            case Types.DATE:
+                return convertToLocalDate(column, value);
+            case Types.TIMESTAMP:
+                return convertToLocalDateTime(column, value);
+            case Types.TIMESTAMP_WITH_TIMEZONE:
+                return convertToTimestamp(column, value);
+            case Types.TIME:
+                return convertToDuration(column, value);
+            case Types.BOOLEAN:
+                return convertToBoolean(value);
+            case Types.BIT:
+                return convertToBits(column, value);
 
-        case Types.NUMERIC:
-        case Types.DECIMAL:
-            return convertToDecimal(column, value);
+            case Types.NUMERIC:
+            case Types.DECIMAL:
+                return convertToDecimal(column, value);
 
-        case Types.FLOAT:
-        case Types.DOUBLE:
-        case Types.REAL:
-            return convertToDouble(value);
+            case Types.FLOAT:
+            case Types.DOUBLE:
+            case Types.REAL:
+                return convertToDouble(value);
         }
         return value;
     }
@@ -191,9 +190,7 @@ public class MySqlDefaultValueConverter  {
      * @return the converted value;
      */
     private Object convertToDecimal(Column column, String value) {
-        return column.scale().isPresent() ?
-                new BigDecimal(value).setScale(column.scale().get(), RoundingMode.HALF_UP) :
-                new BigDecimal(value);
+        return column.scale().isPresent() ? new BigDecimal(value).setScale(column.scale().get(), RoundingMode.HALF_UP) : new BigDecimal(value);
     }
 
     /**
@@ -273,9 +270,9 @@ public class MySqlDefaultValueConverter  {
                 return columnEditor;
             }
             final Schema schema = schemaBuilder.build();
-            //In order to get the valueConverter for this column, we have to create a field;
-            //The index value -1 in the field will never used when converting default value;
-            //So we can set any number here;
+            // In order to get the valueConverter for this column, we have to create a field;
+            // The index value -1 in the field will never used when converting default value;
+            // So we can set any number here;
             final Field field = new Field(columnEditor.name(), -1, schema);
             final ValueConverter valueConverter = converters.converter(columnEditor.create(), field);
             if (defaultValue instanceof String) {

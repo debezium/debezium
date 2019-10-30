@@ -27,13 +27,11 @@ import io.debezium.util.Testing;
  */
 public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
-    private static final String DDL_STATEMENTS =
-            "CREATE TABLE t1 (pk INT UNIQUE, val INT);" +
+    private static final String DDL_STATEMENTS = "CREATE TABLE t1 (pk INT UNIQUE, val INT);" +
             "CREATE TABLE t2 (pk INT UNIQUE, val INT UNIQUE);" +
             "CREATE TABLE t3 (pk INT, val INT);";
 
-    private static final String DML_STATEMENTS =
-            "INSERT INTO t1 VALUES (1,10);" +
+    private static final String DML_STATEMENTS = "INSERT INTO t1 VALUES (1,10);" +
             "INSERT INTO t2 VALUES (2,20);" +
             "INSERT INTO t3 VALUES (3,30);";
 
@@ -66,8 +64,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.t[123]")
-                .build()
-        );
+                .build());
         assertConnectorIsRunning();
 
         final int expectedRecordsCount = 1 + 1 + 1;
@@ -85,8 +82,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE init (pk INT PRIMARY KEY);",
-                "INSERT INTO init VALUES (1);"
-        );
+                "INSERT INTO init VALUES (1);");
         TestHelper.enableTableCdc(connection, "init");
 
         waitForDisabledCdc(connection, "t1");
@@ -95,8 +91,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
         start(SqlServerConnector.class, TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .build()
-        );
+                .build());
         assertConnectorIsRunning();
         TestHelper.waitForSnapshotToBeCompleted();
 
@@ -129,17 +124,17 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
     private void waitForEnabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
         Awaitility
-            .await("CDC " + table)
-            .atMost(1, TimeUnit.MINUTES)
-            .pollInterval(100, TimeUnit.MILLISECONDS)
-            .until(() -> TestHelper.isCdcEnabled(connection, table));
+                .await("CDC " + table)
+                .atMost(1, TimeUnit.MINUTES)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> TestHelper.isCdcEnabled(connection, table));
     }
 
     private void waitForDisabledCdc(SqlServerConnection connection, String table) throws SQLException, InterruptedException {
         Awaitility
-            .await("CDC " + table)
-            .atMost(1, TimeUnit.MINUTES)
-            .pollInterval(100, TimeUnit.MILLISECONDS)
-            .until(() -> !TestHelper.isCdcEnabled(connection, table));
+                .await("CDC " + table)
+                .atMost(1, TimeUnit.MINUTES)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .until(() -> !TestHelper.isCdcEnabled(connection, table));
     }
 }

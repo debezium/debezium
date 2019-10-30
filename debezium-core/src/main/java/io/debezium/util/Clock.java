@@ -46,6 +46,7 @@ public interface Clock {
     default Instant currentTime() {
         return Instant.ofEpochMilli(currentTimeInMillis());
     }
+
     /**
      * Get the current time in nanoseconds.
      * @return the current time in nanoseconds.

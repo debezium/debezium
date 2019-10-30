@@ -98,7 +98,8 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
         return hasMetadata;
     }
 
-    private List<ReplicationMessage.Column> transform(final Document data, final String nameField, final String typeField, final String valueField, final String optionalsField) {
+    private List<ReplicationMessage.Column> transform(final Document data, final String nameField, final String typeField, final String valueField,
+                                                      final String optionalsField) {
         final Array columnNames = data.getArray(nameField);
         final Array columnTypes = data.getArray(typeField);
         final Array columnValues = data.getArray(valueField);
@@ -164,7 +165,8 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
      *
      * @return the value; may be null
      */
-    public Object getValue(String columnName, PostgresType type, String fullType, Value rawValue, final PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
+    public Object getValue(String columnName, PostgresType type, String fullType, Value rawValue, final PgConnectionSupplier connection,
+                           boolean includeUnknownDatatypes) {
         final Wal2JsonColumnValue columnValue = new Wal2JsonColumnValue(rawValue);
         return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDatatypes);
     }

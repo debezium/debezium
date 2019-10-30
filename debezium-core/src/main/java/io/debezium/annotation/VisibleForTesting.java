@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 
 @Documented
 @Target({ ElementType.TYPE, ElementType.FIELD, ElementType.METHOD })
-@Retention( RetentionPolicy.SOURCE )
+@Retention(RetentionPolicy.SOURCE)
 /**
  * Indicates that visibility of the annotated element is raised for the purposes of testing
  * (e.g. package-visible instead of private).

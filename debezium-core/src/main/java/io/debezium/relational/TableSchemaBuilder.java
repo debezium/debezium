@@ -109,12 +109,12 @@ public class TableSchemaBuilder {
         });
 
         table.columns()
-            .stream()
-            .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-            .forEach(column -> {
-                ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
-                addField(valSchemaBuilder, column, mapper);
-            });
+                .stream()
+                .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                .forEach(column -> {
+                    ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
+                    addField(valSchemaBuilder, column, mapper);
+                });
 
         Schema valSchema = valSchemaBuilder.optional().build();
         Schema keySchema = hasPrimaryKey.get() ? keySchemaBuilder.build() : null;
@@ -129,7 +129,6 @@ public class TableSchemaBuilder {
                 .withRecord(valSchema)
                 .withSource(sourceInfoSchema)
                 .build();
-
 
         // Create the generators ...
         Function<Object[], Object> keyGenerator = createKeyGenerator(keySchema, tableId, tableKey.keyColumns());
@@ -193,7 +192,7 @@ public class TableSchemaBuilder {
                         catch (DataException e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert key value for '{}.{}' of type {} for row {}:",
-                                         columnSetName, col.name(), col.typeName(), row, e);
+                                    columnSetName, col.name(), col.typeName(), row, e);
                         }
                     }
                 }
@@ -204,10 +203,11 @@ public class TableSchemaBuilder {
     }
 
     private void validateIncomingRowToInternalMetadata(int[] recordIndexes, Field[] fields, ValueConverter[] converters,
-            Object[] row, int position) {
+                                                       Object[] row, int position) {
         if (position >= converters.length) {
             LOGGER.error("Error requesting a converter, converters: {}, requested index: {}", converters.length, position);
-            throw new ConnectException("Column indexing array is larger than number of converters, internal schema representation is probably out of sync with real database schema");
+            throw new ConnectException(
+                    "Column indexing array is larger than number of converters, internal schema representation is probably out of sync with real database schema");
         }
         if (position >= fields.length) {
             LOGGER.error("Error requesting a field, fields: {}, requested index: {}", fields.length, position);
@@ -232,7 +232,7 @@ public class TableSchemaBuilder {
      * @return the value-generating function, or null if there is no value schema
      */
     protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
-            ColumnNameFilter filter, ColumnMappers mappers) {
+                                                              ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
@@ -247,10 +247,10 @@ public class TableSchemaBuilder {
                     ValueConverter converter = converters[i];
 
                     if (converter != null) {
-                      LOGGER.trace("converter for value object: *** {} ***", converter);
+                        LOGGER.trace("converter for value object: *** {} ***", converter);
                     }
                     else {
-                      LOGGER.trace("converter is null...");
+                        LOGGER.trace("converter is null...");
                     }
 
                     if (converter != null) {
@@ -258,15 +258,15 @@ public class TableSchemaBuilder {
                             value = converter.convert(value);
                             result.put(fields[i], value);
                         }
-                        catch (DataException|IllegalArgumentException e) {
+                        catch (DataException | IllegalArgumentException e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
-                                         tableId, col.name(), col.typeName(), row, e);
+                                    tableId, col.name(), col.typeName(), row, e);
                         }
                         catch (final Exception e) {
                             Column col = columns.get(i);
                             LOGGER.error("Failed to properly convert data value for '{}.{}' of type {} for row {}:",
-                                         tableId, col.name(), col.typeName(), row, e);
+                                    tableId, col.name(), col.typeName(), row, e);
                         }
                     }
                 }
@@ -308,7 +308,7 @@ public class TableSchemaBuilder {
      * @return the converters for each column in the rows; never null
      */
     protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
-            ColumnNameFilter filter, ColumnMappers mappers) {
+                                                    ColumnNameFilter filter, ColumnMappers mappers) {
 
         ValueConverter[] converters = new ValueConverter[columns.size()];
 
@@ -380,8 +380,8 @@ public class TableSchemaBuilder {
             builder.field(fieldNamer.fieldNameFor(column), fieldBuilder.build());
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("- field '{}' ({}{}) from column {}", column.name(), builder.isOptional() ? "OPTIONAL " : "",
-                             fieldBuilder.type(),
-                             column);
+                        fieldBuilder.type(),
+                        column);
             }
         }
         else {

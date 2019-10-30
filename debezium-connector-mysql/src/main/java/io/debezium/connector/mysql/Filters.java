@@ -36,7 +36,7 @@ public class Filters {
         return BUILT_IN_DB_NAMES.contains(databaseName.toLowerCase());
     }
 
-    protected static boolean isBuiltInTable(TableId id ) {
+    protected static boolean isBuiltInTable(TableId id) {
         return isBuiltInDatabase(id.catalog());
     }
 
@@ -44,7 +44,7 @@ public class Filters {
         return !isBuiltInDatabase(databaseName);
     }
 
-    protected static boolean isNotBuiltInTable(TableId id ) {
+    protected static boolean isNotBuiltInTable(TableId id) {
         return !isBuiltInTable(id);
     }
 
@@ -111,9 +111,9 @@ public class Filters {
         public Builder(Configuration config) {
             this.config = config;
             setFiltersFromStrings(config.getString(MySqlConnectorConfig.DATABASE_WHITELIST),
-                                  config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST),
-                                  config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
-                                  config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
+                    config.getString(MySqlConnectorConfig.DATABASE_BLACKLIST),
+                    config.getString(MySqlConnectorConfig.TABLE_WHITELIST),
+                    config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
 
             // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
             this.columnFilter = ColumnNameFilter.getInstance(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
@@ -126,7 +126,8 @@ public class Filters {
          * @return this
          */
         public Builder setFiltersFromOffsets(Map<String, ?> offsets) {
-            setFiltersFromStrings((String) offsets.get(SourceInfo.DATABASE_WHITELIST_KEY), (String) offsets.get(SourceInfo.DATABASE_BLACKLIST_KEY), (String) offsets.get(SourceInfo.TABLE_WHITELIST_KEY), (String) offsets.get(SourceInfo.TABLE_BLACKLIST_KEY));
+            setFiltersFromStrings((String) offsets.get(SourceInfo.DATABASE_WHITELIST_KEY), (String) offsets.get(SourceInfo.DATABASE_BLACKLIST_KEY),
+                    (String) offsets.get(SourceInfo.TABLE_WHITELIST_KEY), (String) offsets.get(SourceInfo.TABLE_BLACKLIST_KEY));
             return this;
         }
 
@@ -135,17 +136,17 @@ public class Filters {
                                            String tableWhitelist,
                                            String tableBlacklist) {
             Predicate<String> dbFilter = Selectors.databaseSelector()
-                .includeDatabases(dbWhitelist)
-                .excludeDatabases(dbBlacklist)
-                .build();
+                    .includeDatabases(dbWhitelist)
+                    .excludeDatabases(dbBlacklist)
+                    .build();
 
             // Define the filter using the whitelists and blacklists for tables and database names ...
             Predicate<TableId> tableFilter = Selectors.tableSelector()
-                .includeDatabases(dbWhitelist)
-                .excludeDatabases(dbBlacklist)
-                .includeTables(tableWhitelist)
-                .excludeTables(tableBlacklist)
-                .build();
+                    .includeDatabases(dbWhitelist)
+                    .excludeDatabases(dbBlacklist)
+                    .includeTables(tableWhitelist)
+                    .excludeTables(tableBlacklist)
+                    .build();
 
             // Ignore built-in databases and tables ...
             if (config.getBoolean(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN)) {
@@ -232,10 +233,10 @@ public class Filters {
          */
         public Filters build() {
             return new Filters(this.dbFilter,
-                               this.tableFilter,
-                               this.isBuiltInDb,
-                               this.isBuiltInTable,
-                               this.columnFilter);
+                    this.tableFilter,
+                    this.isBuiltInDb,
+                    this.isBuiltInTable,
+                    this.columnFilter);
         }
     }
 }

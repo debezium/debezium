@@ -52,13 +52,13 @@ public interface Heartbeat {
             .withValidation(Field::isNonNegativeInteger);
 
     public static final Field HEARTBEAT_TOPICS_PREFIX = Field.create("heartbeat.topics.prefix")
-           .withDisplayName("A prefix used for naming of heartbeat topics")
-           .withType(Type.STRING)
-           .withWidth(Width.MEDIUM)
-           .withImportance(Importance.LOW)
-           .withDescription("The prefix that is used to name heartbeat topics."
-                   + "Defaults to " + HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX + ".")
-           .withDefault(HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX);
+            .withDisplayName("A prefix used for naming of heartbeat topics")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The prefix that is used to name heartbeat topics."
+                    + "Defaults to " + HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX + ".")
+            .withDefault(HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX);
 
     /**
      * No-op Heartbeat implementation
@@ -76,7 +76,8 @@ public interface Heartbeat {
 
         @Override
         public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer,
-                BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+                              BlockingConsumer<SourceRecord> consumer)
+                throws InterruptedException {
         }
 
         @Override
@@ -129,7 +130,6 @@ public interface Heartbeat {
      * @return
      */
     public static Heartbeat create(Configuration configuration, String topicName, String key) {
-        return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ?
-            NULL : new HeartbeatImpl(configuration, topicName, key);
+        return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ? NULL : new HeartbeatImpl(configuration, topicName, key);
     }
 }

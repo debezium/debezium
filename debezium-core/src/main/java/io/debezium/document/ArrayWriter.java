@@ -41,12 +41,12 @@ public interface ArrayWriter {
      * @param array the array to be written; may not be null
      * @return the bytes containing the output JSON-formatted array; never null
      */
-    default byte[] writeAsBytes( Array array ) {
+    default byte[] writeAsBytes(Array array) {
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             write(array, stream);
             return stream.toByteArray();
         }
-        catch ( IOException e ) {
+        catch (IOException e) {
             // This really should never happen ...
             e.printStackTrace();
             return new byte[]{};
@@ -59,7 +59,7 @@ public interface ArrayWriter {
      * @param jsonStream the stream to which the array is to be written; may not be null
      * @throws IOException if an array could not be written to the supplied stream
      */
-    void write( Array array, OutputStream jsonStream ) throws IOException;
+    void write(Array array, OutputStream jsonStream) throws IOException;
 
     /**
      * Write the supplied array to bytes using UTF-8.
@@ -67,7 +67,7 @@ public interface ArrayWriter {
      * @param jsonWriter the IO writer to which the array is to be written; may not be null
      * @throws IOException if an array could not be written to the supplied stream
      */
-    void write( Array array, Writer jsonWriter ) throws IOException;
+    void write(Array array, Writer jsonWriter) throws IOException;
 
     /**
      * Write the supplied array to a string using UTF-8.
@@ -75,6 +75,6 @@ public interface ArrayWriter {
      * @return the string containing the output JSON-formatted array; never null
      * @throws IOException if an array could not be written to the supplied stream
      */
-    String write( Array array ) throws IOException;
+    String write(Array array) throws IOException;
 
 }

@@ -53,8 +53,8 @@ public class PostgresConnection extends JdbcConnection {
     private static final String URL_PATTERN = "jdbc:postgresql://${" + JdbcConfiguration.HOSTNAME + "}:${"
             + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
     protected static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
-                                                                                    org.postgresql.Driver.class.getName(),
-                                                                                    PostgresConnection.class.getClassLoader());
+            org.postgresql.Driver.class.getName(),
+            PostgresConnection.class.getClassLoader());
 
     private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
@@ -67,7 +67,7 @@ public class PostgresConnection extends JdbcConnection {
     /**
      * Obtaining a replication slot may fail if there's a pending transaction. We're retrying to get a slot for 30 min.
      */
-    private static final int MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT =  900;
+    private static final int MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT = 900;
 
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
@@ -191,8 +191,7 @@ public class PostgresConnection extends JdbcConnection {
                                 pluginName, database);
                         return ServerInfo.ReplicationSlot.INVALID;
                     }
-                }
-        );
+                });
         return slot;
     }
 
@@ -219,7 +218,9 @@ public class PostgresConnection extends JdbcConnection {
                 LOGGER.info("Obtained valid replication slot {}", slot);
                 return slot;
             }
-            LOGGER.warn("Cannot obtain valid replication slot '{}' for plugin '{}' and database '{}' [during attempt {} out of {}, concurrent tx probably blocks taking snapshot.", slotName, pluginName, database, attempt, MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT);
+            LOGGER.warn(
+                    "Cannot obtain valid replication slot '{}' for plugin '{}' and database '{}' [during attempt {} out of {}, concurrent tx probably blocks taking snapshot.",
+                    slotName, pluginName, database, attempt, MAX_ATTEMPTS_FOR_OBTAINING_REPLICATION_SLOT);
             metronome.pause();
         }
 
@@ -228,7 +229,8 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
-                                                      ResultSetMapper<ServerInfo.ReplicationSlot> map) throws SQLException {
+                                                      ResultSetMapper<ServerInfo.ReplicationSlot> map)
+            throws SQLException {
         return prepareQueryAndMap("select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ?", statement -> {
             statement.setString(1, slotName);
             statement.setString(2, database);
@@ -406,15 +408,15 @@ public class PostgresConnection extends JdbcConnection {
         if (username != null) {
             query("SELECT oid, rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication FROM pg_roles " +
                     "WHERE pg_has_role('" + username + "', oid, 'member')",
-                  rs -> {
-                      while (rs.next()) {
-                          String roleInfo = "superuser: " + rs.getBoolean(3) + ", replication: " + rs.getBoolean(8) +
-                                  ", inherit: " + rs.getBoolean(4) + ", create role: " + rs.getBoolean(5) +
-                                  ", create db: " + rs.getBoolean(6) + ", can log in: " + rs.getBoolean(7);
-                          String roleName = rs.getString(2);
-                          serverInfo.addRole(roleName, roleInfo);
-                      }
-                  });
+                    rs -> {
+                        while (rs.next()) {
+                            String roleInfo = "superuser: " + rs.getBoolean(3) + ", replication: " + rs.getBoolean(8) +
+                                    ", inherit: " + rs.getBoolean(4) + ", create role: " + rs.getBoolean(5) +
+                                    ", create db: " + rs.getBoolean(6) + ", can log in: " + rs.getBoolean(7);
+                            String roleName = rs.getString(2);
+                            serverInfo.addRole(roleName, roleInfo);
+                        }
+                    });
         }
         return serverInfo;
     }
@@ -470,8 +472,7 @@ public class PostgresConnection extends JdbcConnection {
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
-                                typeInfo
-                        ));
+                                typeInfo));
                     }
                 }
 
@@ -485,8 +486,7 @@ public class PostgresConnection extends JdbcConnection {
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
-                                typeInfo, typeRegistryBuilder.get((int) rs.getLong("element"))
-                        ));
+                                typeInfo, typeRegistryBuilder.get((int) rs.getLong("element"))));
                     }
                 }
             }
@@ -555,7 +555,7 @@ public class PostgresConnection extends JdbcConnection {
                 try {
                     return sqlTypesByPgTypeNames.get(typeName);
                 }
-                catch(Exception e) {
+                catch (Exception e) {
                     LOGGER.warn("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName, e);
                     return typeInfo.getSQLType(typeName);
                 }

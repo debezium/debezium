@@ -19,7 +19,7 @@ public class ParsingException extends RuntimeException {
     /**
      * @param position the position of the error; never null
      */
-    public ParsingException( Position position ) {
+    public ParsingException(Position position) {
         super();
         this.position = position;
     }
@@ -29,9 +29,9 @@ public class ParsingException extends RuntimeException {
      * @param message the message
      * @param cause the underlying cause
      */
-    public ParsingException( Position position,
-                             String message,
-                             Throwable cause ) {
+    public ParsingException(Position position,
+                            String message,
+                            Throwable cause) {
         super(message, cause);
         this.position = position;
     }
@@ -40,8 +40,8 @@ public class ParsingException extends RuntimeException {
      * @param position the position of the error; never null
      * @param message the message
      */
-    public ParsingException( Position position,
-                             String message ) {
+    public ParsingException(Position position,
+                            String message) {
         super(message);
         this.position = position;
     }

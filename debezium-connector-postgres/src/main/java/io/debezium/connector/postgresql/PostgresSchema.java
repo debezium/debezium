@@ -58,7 +58,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * @param config the connector configuration, which is presumed to be valid
      */
     protected PostgresSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry, Charset databaseCharset,
-            TopicSelector<TableId> topicSelector) {
+                             TopicSelector<TableId> topicSelector) {
         super(config, topicSelector, new Filters(config).tableFilter(),
                 new Filters(config).columnFilter(), getTableSchemaBuilder(config, typeRegistry, databaseCharset), false,
                 config.getKeyMapper());
@@ -80,8 +80,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                 typeRegistry,
                 config.hStoreHandlingMode(),
                 config.intervalHandlingMode(),
-                config.toastedValuePlaceholder()
-        );
+                config.toastedValuePlaceholder());
 
         return new TableSchemaBuilder(valueConverter, SchemaNameAdjuster.create(LOGGER), config.getSourceInfoStructMaker().schema(), config.getSanitizeFieldNames());
     }

@@ -74,7 +74,7 @@ public class TableSchema implements DataCollectionSchema {
      *            may return nulls
      */
     public TableSchema(TableId id, Schema keySchema, Function<Object[], Object> keyGenerator,
-            Envelope envelopeSchema, Schema valueSchema, Function<Object[], Struct> valueGenerator) {
+                       Envelope envelopeSchema, Schema valueSchema, Function<Object[], Struct> valueGenerator) {
         this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
@@ -150,10 +150,10 @@ public class TableSchema implements DataCollectionSchema {
 
     @Override
     public boolean equals(Object obj) {
-        if ( obj == this ) {
+        if (obj == this) {
             return true;
         }
-        if ( obj instanceof TableSchema ) {
+        if (obj instanceof TableSchema) {
             TableSchema that = (TableSchema) obj;
             return Objects.equals(this.keySchema(), that.keySchema()) && Objects.equals(this.valueSchema(), that.valueSchema());
         }

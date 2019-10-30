@@ -25,7 +25,6 @@ import io.debezium.text.Position;
  */
 public class ParsingErrorListener extends BaseErrorListener {
 
-
     private Collection<ParsingException> errors = new ArrayList<>();
     private final BiFunction<ParsingException, Collection<ParsingException>, Collection<ParsingException>> accumulateError;
 

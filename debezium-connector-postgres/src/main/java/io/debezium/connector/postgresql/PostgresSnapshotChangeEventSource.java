@@ -43,7 +43,9 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final Snapshotter snapshotter;
     private final SlotCreationResult slotCreatedInfo;
 
-    public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext previousOffset, PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo) {
+    public PostgresSnapshotChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext previousOffset,
+                                             PostgresConnection jdbcConnection, PostgresSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                             SnapshotProgressListener snapshotProgressListener, SlotCreationResult slotCreatedInfo) {
         super(connectorConfig, previousOffset, jdbcConnection, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
@@ -85,7 +87,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     @Override
     protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
-        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"});
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
@@ -96,7 +98,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         if (lockStatement.isPresent()) {
             LOGGER.info("Waiting a maximum of '{}' seconds for each table lock", lockTimeout.getSeconds());
             jdbcConnection.executeWithoutCommitting(lockStatement.get());
-            //now that we have the locks, refresh the schema
+            // now that we have the locks, refresh the schema
             schema.refresh(jdbcConnection, false);
         }
         else {
@@ -133,7 +135,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private long getTransactionStartLsn() throws SQLException {
         if (snapshotter.exportSnapshot() && slotCreatedInfo != null) {
             // When performing an exported snapshot based on a newly created replication slot, the txLogStart position
-            // should be based on the replication slot snapshot transaction point.  This is crucial so that if any
+            // should be based on the replication slot snapshot transaction point. This is crucial so that if any
             // SQL operations occur mid-snapshot that they'll be properly captured when streaming begins; otherwise
             // they'll be lost.
             return slotCreatedInfo.startLsn();
@@ -162,8 +164,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                     schema,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
-                    false
-            );
+                    false);
         }
         schema.refresh(jdbcConnection, false);
     }
@@ -207,7 +208,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
             switch (type.getOid()) {
                 case PgOid.MONEY:
-                    //TODO author=Horia Chiorean date=14/11/2016 description=workaround for https://github.com/pgjdbc/pgjdbc/issues/100
+                    // TODO author=Horia Chiorean date=14/11/2016 description=workaround for https://github.com/pgjdbc/pgjdbc/issues/100
                     return new PGmoney(rs.getString(columnIndex)).val;
                 case PgOid.BIT:
                     return rs.getString(columnIndex);

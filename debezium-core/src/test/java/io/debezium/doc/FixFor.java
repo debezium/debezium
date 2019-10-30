@@ -37,8 +37,8 @@ import java.lang.annotation.Target;
  * </p>
  */
 @Documented
-@Retention( CLASS )
-@Target( METHOD )
+@Retention(CLASS)
+@Target(METHOD)
 public @interface FixFor {
     /**
      * The JIRA issue for which this is a fix. For example, "DBZ-123".

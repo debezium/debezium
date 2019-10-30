@@ -18,8 +18,8 @@ import org.junit.runners.model.Statement;
 public class SkipTestRule extends AnnotationBasedTestRule {
 
     @Override
-    public Statement apply( Statement base,
-                            Description description ) {
+    public Statement apply(Statement base,
+                           Description description) {
         SkipLongRunning skipLongRunningAnnotation = hasAnnotation(description, SkipLongRunning.class);
         if (skipLongRunningAnnotation != null) {
             String skipLongRunning = System.getProperty(SkipLongRunning.SKIP_LONG_RUNNING_PROPERTY);

@@ -126,9 +126,9 @@ public class MySqlSchemaTest {
     public void shouldLoadSystemAndNonSystemTablesAndConsumeOnlyFilteredDatabases() throws InterruptedException {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
                 .serverName(SERVER_NAME)
-                     .includeDatabases("connector_test")
-                     .excludeBuiltInTables()
-                     .createSchemas();
+                .includeDatabases("connector_test")
+                .excludeBuiltInTables()
+                .createSchemas();
         mysql.start();
 
         source.setBinlogStartPoint("binlog-001", 400);
@@ -151,10 +151,10 @@ public class MySqlSchemaTest {
     @Test
     public void shouldLoadSystemAndNonSystemTablesAndConsumeAllDatabases() throws InterruptedException {
         mysql = build.storeDatabaseHistoryInFile(TEST_FILE_PATH)
-                     .serverName(SERVER_NAME)
-                     .includeDatabases("connector_test,mysql")
-                     .includeBuiltInTables()
-                     .createSchemas();
+                .serverName(SERVER_NAME)
+                .includeDatabases("connector_test,mysql")
+                .includeBuiltInTables()
+                .createSchemas();
         mysql.start();
 
         source.setBinlogStartPoint("binlog-001", 400);
@@ -188,10 +188,11 @@ public class MySqlSchemaTest {
     }
 
     protected void assertNoTablesExistForDatabase(String dbName) {
-        assertThat(mysql.tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isEqualTo(0);
+        assertThat(mysql.tableIds().stream().filter(id -> id.catalog().equals(dbName)).count()).isEqualTo(0);
     }
+
     protected void assertTablesExistForDatabase(String dbName) {
-        assertThat(mysql.tableIds().stream().filter(id->id.catalog().equals(dbName)).count()).isGreaterThan(0);
+        assertThat(mysql.tableIds().stream().filter(id -> id.catalog().equals(dbName)).count()).isGreaterThan(0);
     }
 
     protected void assertHistoryRecorded() {

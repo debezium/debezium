@@ -99,14 +99,14 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
     static Document create(CharSequence fieldName1, Object value1, CharSequence fieldName2, Object value2, CharSequence fieldName3,
                            Object value3, CharSequence fieldName4, Object value4, CharSequence fieldName5, Object value5) {
         return new BasicDocument().set(fieldName1, value1).set(fieldName2, value2).set(fieldName3, value3).set(fieldName4, value4)
-                                  .set(fieldName5, value5);
+                .set(fieldName5, value5);
     }
 
     static Document create(CharSequence fieldName1, Object value1, CharSequence fieldName2, Object value2, CharSequence fieldName3,
                            Object value3, CharSequence fieldName4, Object value4, CharSequence fieldName5, Object value5,
                            CharSequence fieldName6, Object value6) {
         return new BasicDocument().set(fieldName1, value1).set(fieldName2, value2).set(fieldName3, value3).set(fieldName4, value4)
-                                  .set(fieldName5, value5).set(fieldName6, value6);
+                .set(fieldName5, value5).set(fieldName6, value6);
     }
 
     /**
@@ -228,7 +228,8 @@ public interface Document extends Iterable<Document.Field>, Comparable<Document>
      *         valid
      */
     default Optional<Value> find(Path path) {
-        return find(path, (missingPath, missingIndex) -> Optional.empty(), (invalidPath) -> {});
+        return find(path, (missingPath, missingIndex) -> Optional.empty(), (invalidPath) -> {
+        });
     }
 
     /**

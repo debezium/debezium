@@ -42,8 +42,7 @@ class SqlServerEventMetadataProvider implements EventMetadataProvider {
         }
         return Collect.hashMapOf(
                 SourceInfo.COMMIT_LSN_KEY, sourceInfo.getString(SourceInfo.COMMIT_LSN_KEY),
-                SourceInfo.CHANGE_LSN_KEY, sourceInfo.getString(SourceInfo.CHANGE_LSN_KEY)
-        );
+                SourceInfo.CHANGE_LSN_KEY, sourceInfo.getString(SourceInfo.CHANGE_LSN_KEY));
     }
 
     @Override

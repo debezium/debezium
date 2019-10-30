@@ -331,8 +331,8 @@ public class TokenStreamTest {
     @Test
     public void shouldReturnTrueFromCanConsumeArrayOfTokensIfTheyAllMatch() {
         makeCaseInsensitive();
-        assertThat(tokens.matches(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
-        assertThat(tokens.canConsume(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
+        assertThat(tokens.matches(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
+        assertThat(tokens.canConsume(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" })).isTrue();
         assertThat(tokens.hasNext()).isFalse();
     }
 
@@ -421,7 +421,7 @@ public class TokenStreamTest {
     public void shouldCanConsumeStringAfterTokensCompleteFromCanConsumeStringArray() {
         makeCaseInsensitive();
         // consume ALL the tokens using canConsume()
-        tokens.canConsume(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" });
+        tokens.canConsume(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" });
         // try to canConsume() single word
         assertThat(tokens.canConsume("SELECT")).isFalse();
         assertThat(tokens.canConsume(TokenStream.ANY_VALUE)).isFalse();
@@ -432,7 +432,7 @@ public class TokenStreamTest {
     public void shouldCanConsumeStringAfterTokensCompleteFromCanConsumeStringIterator() {
         makeCaseInsensitive();
         // consume ALL the tokens using canConsume()
-        tokens.canConsume(Arrays.asList(new String[] { "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" }));
+        tokens.canConsume(Arrays.asList(new String[]{ "SELECT", "ALL", "COLUMNS", "FROM", "THIS", "TABLE" }));
         // try to canConsume() single word
         assertThat(tokens.canConsume("SELECT")).isFalse();
         assertThat(tokens.canConsume(TokenStream.ANY_VALUE)).isFalse();

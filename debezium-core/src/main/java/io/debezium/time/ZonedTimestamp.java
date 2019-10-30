@@ -49,8 +49,8 @@ public class ZonedTimestamp {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.string()
-                            .name(SCHEMA_NAME)
-                            .version(1);
+                .name(SCHEMA_NAME)
+                .version(1);
     }
 
     /**

@@ -65,9 +65,9 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
 
         // Do not remove the prefix from the subset of config properties ...
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
-                                              .edit()
-                                              .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
-                                              .build();
+                .edit()
+                .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
+                .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
         databaseHistory.configure(dbHistoryConfig, historyComparator, new DatabaseHistoryMetrics(this)); // validates

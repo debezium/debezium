@@ -13,8 +13,11 @@ package io.debezium.relational.history;
  */
 public interface DatabaseHistoryListener {
     public void started();
+
     public void stopped();
+
     public void recoveryStarted();
+
     public void recoveryStopped();
 
     /**

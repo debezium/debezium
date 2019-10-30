@@ -21,7 +21,6 @@ public class BufferedBlockingConsumerTest {
     private List<Integer> history;
     private BlockingConsumer<Integer> consumer;
 
-
     @Before
     public void beforeEach() {
         history = new LinkedList<>();

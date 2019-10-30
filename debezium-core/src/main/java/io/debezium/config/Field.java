@@ -79,12 +79,13 @@ public final class Field {
             });
             this.fieldsByName = Collections.unmodifiableMap(all);
         }
+
         /**
          * Get the field with the given {Field#name() name}.
          * @param name the name of the field
          * @return the field, or {@code null} if there is no field with the given name
          */
-        public Field fieldWithName( String name ) {
+        public Field fieldWithName(String name) {
             return fieldsByName.get(name);
         }
 
@@ -107,10 +108,10 @@ public final class Field {
          */
         public void forEachMissingDependent(Consumer<String> consumer) {
             fieldsByName.values().stream()
-                        .map(Field::dependents)
-                        .flatMap(Collection::stream)
-                        .filter(Predicates.not(fieldsByName::containsKey))
-                        .forEach(consumer);
+                    .map(Field::dependents)
+                    .flatMap(Collection::stream)
+                    .filter(Predicates.not(fieldsByName::containsKey))
+                    .forEach(consumer);
         }
 
         /**
@@ -120,9 +121,9 @@ public final class Field {
          */
         public void forEachTopLevelField(Consumer<Field> consumer) {
             Collection<String> namesOfDependents = fieldsByName.values().stream()
-                                                               .map(Field::dependents)
-                                                               .flatMap(Collection::stream)
-                                                               .collect(Collectors.toSet());
+                    .map(Field::dependents)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toSet());
             fieldsByName.values().stream().filter(f -> !namesOfDependents.contains(f.name())).forEach(consumer);
         }
 
@@ -383,14 +384,14 @@ public final class Field {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                                     groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
+                            groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
                 }
             }
             else {
                 for (int i = 0; i != fields.length; ++i) {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
-                                     null, 1, f.width(), f.displayName(), f.dependents(), null);
+                            null, 1, f.width(), f.displayName(), f.dependents(), null);
                 }
             }
         }
@@ -409,13 +410,13 @@ public final class Field {
     private final Recommender recommender;
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
-            Supplier<Object> defaultValueGenerator, Validator validator) {
+                    Supplier<Object> defaultValueGenerator, Validator validator) {
         this(name, displayName, type, width, description, importance, null, defaultValueGenerator, validator, null);
     }
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
-            List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
-            Recommender recommender) {
+                    List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
+                    Recommender recommender) {
         Objects.requireNonNull(name, "The field name is required");
         this.name = name;
         this.displayName = displayName;
@@ -572,9 +573,9 @@ public final class Field {
         }
 
         // Do the same for any dependents ...
-        dependents.forEach(name-> {
+        dependents.forEach(name -> {
             Field dependentField = fieldSupplier.apply(name);
-            if ( dependentField != null ) {
+            if (dependentField != null) {
                 dependentField.validate(config, fieldSupplier, results);
             }
         });
@@ -646,7 +647,7 @@ public final class Field {
         EnumRecommender<T> recommendator = new EnumRecommender<>(enumType);
         Field result = withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator);
         // Not all enums support EnumeratedValue yet
-        if ( defaultOption != null ) {
+        if (defaultOption != null) {
             if (defaultOption instanceof EnumeratedValue) {
                 result = result.withDefault(((EnumeratedValue) defaultOption).getValue());
             }
@@ -877,10 +878,10 @@ public final class Field {
             }
             Number n = (Number) o;
             if (min != null && n.doubleValue() < min.doubleValue()) {
-                throw new ConfigException(name, o, "Value must be at least "+min);
+                throw new ConfigException(name, o, "Value must be at least " + min);
             }
             if (max != null && n.doubleValue() > max.doubleValue()) {
-                throw new ConfigException(name, o, "Value must be no more than "+max);
+                throw new ConfigException(name, o, "Value must be no more than " + max);
             }
         }
 
@@ -945,15 +946,15 @@ public final class Field {
             // Not all enums support EnumeratedValue yet
             if (Arrays.asList(enumType.getInterfaces()).contains(EnumeratedValue.class)) {
                 this.literals = Arrays.stream(enumType.getEnumConstants())
-                                       .map(x -> ((EnumeratedValue) x).getValue())
-                                       .map(String::toLowerCase)
-                                       .collect(Collectors.toSet());
+                        .map(x -> ((EnumeratedValue) x).getValue())
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toSet());
             }
             else {
                 this.literals = Arrays.stream(enumType.getEnumConstants())
-                                       .map(Enum::name)
-                                       .map(String::toLowerCase)
-                                       .collect(Collectors.toSet());
+                        .map(Enum::name)
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toSet());
             }
             this.validValues = Collections.unmodifiableList(new ArrayList<>(this.literals));
             this.literalsStr = Strings.join(", ", validValues);
@@ -984,7 +985,6 @@ public final class Field {
             return 0;
         }
     }
-
 
     /**
      * A {@link Recommender} that will look at several fields that are deemed to be exclusive, such that when the first of

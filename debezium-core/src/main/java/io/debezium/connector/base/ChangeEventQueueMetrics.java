@@ -8,5 +8,6 @@ package io.debezium.connector.base;
 public interface ChangeEventQueueMetrics {
 
     int totalCapacity();
+
     int remainingCapacity();
 }

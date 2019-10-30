@@ -40,10 +40,10 @@ public class ReplicatorIT extends AbstractMongoIT {
         Testing.Print.disable();
         // Update the configuration to add a collection filter ...
         useConfiguration(config.edit()
-                               .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
-                               .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
-                               .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
-                               .build());
+                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
+                .build());
 
         TestHelper.cleanDatabase(primary, "dbA");
 
@@ -73,7 +73,8 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator ...
         List<SourceRecord> records = new LinkedList<>();
-        Replicator replicator = new Replicator(context, replicaSet, records::add, (x) -> {});
+        Replicator replicator = new Replicator(context, replicaSet, records::add, (x) -> {
+        });
         Thread thread = new Thread(replicator::run);
         thread.start();
 
@@ -141,7 +142,8 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add, (x) ->  {});
+        replicator = new Replicator(context, replicaSet, records::add, (x) -> {
+        });
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -162,12 +164,13 @@ public class ReplicatorIT extends AbstractMongoIT {
         // ------------------------------------------------------------------------------
         // Update the configuration and don't use a collection filter ...
         reuseConfiguration(config.edit()
-                                 .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
-                                 .build());
+                .with(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS, 1)
+                .build());
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add, (x) ->  {});
+        replicator = new Replicator(context, replicaSet, records::add, (x) -> {
+        });
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -229,7 +232,8 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator again ...
         records = new LinkedList<>();
-        replicator = new Replicator(context, replicaSet, records::add, (x) ->  {});
+        replicator = new Replicator(context, replicaSet, records::add, (x) -> {
+        });
         thread = new Thread(replicator::run);
         thread.start();
 
@@ -292,7 +296,8 @@ public class ReplicatorIT extends AbstractMongoIT {
 
         // Start the replicator ...
         List<SourceRecord> records = new LinkedList<>();
-        Replicator replicator = new Replicator(context, replicaSet, records::add, (x) -> {});
+        Replicator replicator = new Replicator(context, replicaSet, records::add, (x) -> {
+        });
         Thread thread = new Thread(replicator::run);
         thread.start();
 

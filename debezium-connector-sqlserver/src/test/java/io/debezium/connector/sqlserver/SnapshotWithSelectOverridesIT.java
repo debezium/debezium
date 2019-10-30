@@ -40,14 +40,11 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
-                "CREATE TABLE table1 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))"
-        );
+                "CREATE TABLE table1 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))");
         connection.execute(
-                "CREATE TABLE table2 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))"
-        );
+                "CREATE TABLE table2 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))");
         connection.execute(
-                "CREATE TABLE table3 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))"
-        );
+                "CREATE TABLE table3 (id int, name varchar(30), price decimal(8,2), ts datetime2(0), soft_deleted bit, primary key(id))");
 
         // Populate database
         for (int i = 0; i < INITIAL_RECORDS_PER_TABLE; i++) {
@@ -58,9 +55,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                             "name" + i,
                             new BigDecimal(i + ".23"),
                             "2018-07-18 13:28:56",
-                            i % 2
-                    )
-            );
+                            i % 2));
             connection.execute(
                     String.format(
                             "INSERT INTO table2 VALUES(%s, '%s', %s, '%s', %s)",
@@ -68,9 +63,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                             "name" + i,
                             new BigDecimal(i + ".23"),
                             "2018-07-18 13:28:56",
-                            i % 2
-                    )
-            );
+                            i % 2));
             connection.execute(
                     String.format(
                             "INSERT INTO table3 VALUES(%s, '%s', %s, '%s', %s)",
@@ -78,9 +71,7 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
                             "name" + i,
                             new BigDecimal(i + ".23"),
                             "2018-07-18 13:28:56",
-                            i % 2
-                    )
-            );
+                            i % 2));
         }
 
         TestHelper.enableTableCdc(connection, "table1");
@@ -96,26 +87,23 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         if (connection != null) {
             connection.close();
         }
-//        TestHelper.dropTestDatabase();
+        // TestHelper.dropTestDatabase();
     }
 
     @Test
     @FixFor("DBZ-1224")
     public void takeSnapshotWithOverrides() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-            .with(
-                    RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                    "dbo.table1,dbo.table3"
-            )
-            .with(
-                    RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
-                    "SELECT * FROM [dbo].[table1] where soft_deleted = 0 order by id desc"
-            )
-            .with(
-                    RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
-                    "SELECT * FROM [dbo].[table3] where soft_deleted = 0"
-            )
-            .build();
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                        "dbo.table1,dbo.table3")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table1",
+                        "SELECT * FROM [dbo].[table1] where soft_deleted = 0 order by id desc")
+                .with(
+                        RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".dbo.table3",
+                        "SELECT * FROM [dbo].[table3] where soft_deleted = 0")
+                .build();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -147,4 +135,4 @@ public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
         // the ORDER BY clause should be applied, too
         assertThat(actualIdsForTable1.toString()).isEqualTo(expectedIdsForTable1);
     }
- }
+}

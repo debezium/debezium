@@ -101,7 +101,8 @@ public abstract class CommonConnectorConfig {
             .withType(Type.INT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to " + DEFAULT_MAX_QUEUE_SIZE + ", and should always be larger than the maximum batch size.")
+            .withDescription("Maximum size of the queue for change events read from the database log but not yet recorded or forwarded. Defaults to "
+                    + DEFAULT_MAX_QUEUE_SIZE + ", and should always be larger than the maximum batch size.")
             .withDefault(DEFAULT_MAX_QUEUE_SIZE)
             .withValidation(CommonConnectorConfig::validateMaxQueueSize);
 
@@ -119,7 +120,8 @@ public abstract class CommonConnectorConfig {
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to " + DEFAULT_POLL_INTERVAL_MILLIS + "ms.")
+            .withDescription(
+                    "Frequency in milliseconds to wait for new change events to appear after receiving no events. Defaults to " + DEFAULT_POLL_INTERVAL_MILLIS + "ms.")
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
             .withValidation(Field::isPositiveInteger);
 

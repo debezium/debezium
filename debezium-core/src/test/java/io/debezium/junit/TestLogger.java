@@ -35,6 +35,6 @@ public class TestLogger extends TestWatcher {
 
     @Override
     protected void failed(Throwable e, Description description) {
-        logger.info("Test {}#{} failed",  description.getClassName(), description.getMethodName());
+        logger.info("Test {}#{} failed", description.getClassName(), description.getMethodName());
     }
 }

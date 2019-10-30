@@ -88,9 +88,9 @@ public class ServerInfo {
     public String toString() {
         String lineSeparator = System.lineSeparator();
         String roles = permissionsByRoleName.entrySet()
-                                            .stream()
-                                            .map(entry -> "\trole '" + entry.getKey() + "' [" + entry.getValue() + "]")
-                                            .collect(Collectors.joining(lineSeparator));
+                .stream()
+                .map(entry -> "\trole '" + entry.getKey() + "' [" + entry.getValue() + "]")
+                .collect(Collectors.joining(lineSeparator));
 
         return "user '" + username + "' connected to database '" + database + "' on " + server + " with roles:" + lineSeparator + roles;
     }
@@ -126,12 +126,12 @@ public class ServerInfo {
                     return NOTHING;
                 case "d":
                     return DEFAULT;
-                case "i" :
+                case "i":
                     return INDEX;
-                case "f" :
+                case "f":
                     return FULL;
                 default:
-                   return UNKNOWN;
+                    return UNKNOWN;
             }
         }
 

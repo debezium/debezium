@@ -68,7 +68,7 @@ public class ColumnMappersTest {
         assertThat(converter.convert("1234567890").toString().length()).isEqualTo(10);
         assertThat(converter.convert("123456789").toString()).isEqualTo("123456789");
         assertThat(converter.convert("123456789").toString().length()).isEqualTo(9);
-        assertThat(converter.convert(null)).isNull();   // null values are unaltered
+        assertThat(converter.convert(null)).isNull(); // null values are unaltered
     }
 
     @Test

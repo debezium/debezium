@@ -81,13 +81,13 @@ public final class TestHelper {
         final PostgresConnectorConfig.LogicalDecoder plugin = decoderPlugin();
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
         return ReplicationConnection.builder(defaultJdbcConfig())
-                                    .withPlugin(plugin)
-                                    .withSlot(slotName)
-                                    .withTypeRegistry(getTypeRegistry())
-                                    .dropSlotOnClose(dropOnClose)
-                                    .statusUpdateInterval(Duration.ofSeconds(10))
-                                    .withSchema(getSchema(config))
-                                    .build();
+                .withPlugin(plugin)
+                .withSlot(slotName)
+                .withTypeRegistry(getTypeRegistry())
+                .dropSlotOnClose(dropOnClose)
+                .statusUpdateInterval(Duration.ofSeconds(10))
+                .withSchema(getSchema(config))
+                .build();
     }
 
     /**
@@ -159,9 +159,9 @@ public final class TestHelper {
             schemaNames.add(PostgresSchema.PUBLIC_SCHEMA_NAME);
         }
         String dropStmts = schemaNames.stream()
-                                      .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
-                                      .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
-                                      .collect(Collectors.joining(lineSeparator));
+                .map(schema -> "\"" + schema.replaceAll("\"", "\"\"") + "\"")
+                .map(schema -> "DROP SCHEMA IF EXISTS " + schema + " CASCADE;")
+                .collect(Collectors.joining(lineSeparator));
         TestHelper.execute(dropStmts);
         try {
             TestHelper.executeDDL("init_database.ddl");
@@ -186,8 +186,7 @@ public final class TestHelper {
                 config,
                 typeRegistry,
                 Charset.forName("UTF-8"),
-                PostgresTopicSelector.create(config)
-        );
+                PostgresTopicSelector.create(config));
     }
 
     protected static Set<String> schemaNames() throws SQLException {
@@ -198,12 +197,12 @@ public final class TestHelper {
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
-                                .withDefault(JdbcConfiguration.DATABASE, "postgres")
-                                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
-                                .withDefault(JdbcConfiguration.PORT, 5432)
-                                .withDefault(JdbcConfiguration.USER, "postgres")
-                                .withDefault(JdbcConfiguration.PASSWORD, "postgres")
-                                .build();
+                .withDefault(JdbcConfiguration.DATABASE, "postgres")
+                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
+                .withDefault(JdbcConfiguration.PORT, 5432)
+                .withDefault(JdbcConfiguration.USER, "postgres")
+                .withDefault(JdbcConfiguration.PASSWORD, "postgres")
+                .build();
     }
 
     protected static Configuration.Builder defaultConfig() {
@@ -211,10 +210,10 @@ public final class TestHelper {
         Configuration.Builder builder = Configuration.create();
         jdbcConfiguration.forEach((field, value) -> builder.with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
         builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, TEST_SERVER)
-               .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
-               .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
-               .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPlugin())
-               .with(PostgresConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED);
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
+                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 100)
+                .with(PostgresConnectorConfig.PLUGIN_NAME, decoderPlugin())
+                .with(PostgresConnectorConfig.SSL_MODE, SecureConnectionMode.DISABLED);
         final String testNetworkTimeout = System.getProperty(TEST_PROPERTY_PREFIX + "network.timeout");
         if (testNetworkTimeout != null && testNetworkTimeout.length() != 0) {
             builder.with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, Integer.parseInt(testNetworkTimeout));
@@ -226,8 +225,8 @@ public final class TestHelper {
         URL ddlTestFile = TestHelper.class.getClassLoader().getResource(ddlFile);
         assertNotNull("Cannot locate " + ddlFile, ddlTestFile);
         String statements = Files.readAllLines(Paths.get(ddlTestFile.toURI()))
-                                 .stream()
-                                 .collect(Collectors.joining(System.lineSeparator()));
+                .stream()
+                .collect(Collectors.joining(System.lineSeparator()));
         try (PostgresConnection connection = create()) {
             connection.executeWithoutCommitting(statements);
         }
@@ -246,11 +245,11 @@ public final class TestHelper {
     }
 
     protected static SourceInfo sourceInfo() {
-        return new SourceInfo( new PostgresConnectorConfig(
+        return new SourceInfo(new PostgresConnectorConfig(
                 Configuration.create()
-                .with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
-                .with(PostgresConnectorConfig.DATABASE_NAME, TEST_DATABASE)
-                .build()));
+                        .with(PostgresConnectorConfig.SERVER_NAME, TEST_SERVER)
+                        .with(PostgresConnectorConfig.DATABASE_NAME, TEST_DATABASE)
+                        .build()));
     }
 
     protected static void dropDefaultReplicationSlot() {
@@ -283,7 +282,7 @@ public final class TestHelper {
 
     protected static boolean publicationExists(String publicationName) {
         if (decoderPlugin().equals(PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)) {
-            try(PostgresConnection connection = create()) {
+            try (PostgresConnection connection = create()) {
                 String query = String.format("SELECT pubname FROM pg_catalog.pg_publication WHERE pubname = '%s'", publicationName);
                 try {
                     return connection.queryAndMap(query, ResultSet::next);
@@ -298,15 +297,13 @@ public final class TestHelper {
 
     protected static void waitForDefaultReplicationSlotBeActive() {
         try (PostgresConnection connection = create()) {
-            Awaitility.await().atMost(org.awaitility.Duration.FIVE_SECONDS).until(() ->
-                connection.prepareQueryAndMap(
+            Awaitility.await().atMost(org.awaitility.Duration.FIVE_SECONDS).until(() -> connection.prepareQueryAndMap(
                     "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ? and active = true", statement -> {
                         statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
                         statement.setString(2, "postgres");
                         statement.setString(3, TestHelper.decoderPlugin().getPostgresPluginName());
                     },
-                    rs -> rs.next()
-               ));
+                    rs -> rs.next()));
         }
     }
 

@@ -35,24 +35,24 @@ public class MetadataIT implements Testing {
             conn.connect();
             // Set up the table as one transaction and wait to see the events ...
             conn.execute("DROP TABLE IF EXISTS person",
-                         "DROP TABLE IF EXISTS product",
-                         "DROP TABLE IF EXISTS purchased");
+                    "DROP TABLE IF EXISTS product",
+                    "DROP TABLE IF EXISTS purchased");
 
             conn.execute("CREATE TABLE person ("
-                                 + "  name VARCHAR(255) primary key,"
-                                 + "  birthdate DATE NULL,"
-                                 + "  age INTEGER NULL DEFAULT 10,"
-                                 + "  salary DECIMAL(5,2),"
-                                 + "  bitStr BIT(18)"
-                                 + ")");
+                    + "  name VARCHAR(255) primary key,"
+                    + "  birthdate DATE NULL,"
+                    + "  age INTEGER NULL DEFAULT 10,"
+                    + "  salary DECIMAL(5,2),"
+                    + "  bitStr BIT(18)"
+                    + ")");
             conn.execute("SELECT * FROM person");
             Tables tables = new Tables();
             conn.readSchema(tables, DATABASE.getDatabaseName(), null, null, null, true);
-            //System.out.println(tables);
+            // System.out.println(tables);
             assertThat(tables.size()).isEqualTo(1);
             Table person = tables.forTable(DATABASE.getDatabaseName(), null, "person");
             assertThat(person).isNotNull();
-            assertThat(person.filterColumns(col->col.isAutoIncremented())).isEmpty();
+            assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
             assertThat(person.primaryKeyColumnNames()).containsOnly("name");
             assertThat(person.retrieveColumnNames()).containsExactly("name", "birthdate", "age", "salary", "bitStr");
             assertThat(person.columnWithName("name").name()).isEqualTo("name");
@@ -104,11 +104,11 @@ public class MetadataIT implements Testing {
             assertThat(person.columnWithName("bitStr").isOptional()).isTrue();
 
             conn.execute("CREATE TABLE product ("
-                                 + "  id INT NOT NULL AUTO_INCREMENT,"
-                                 + "  createdByDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                                 + "  modifiedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
-                                 + "  PRIMARY KEY(id)"
-                                 + ")");
+                    + "  id INT NOT NULL AUTO_INCREMENT,"
+                    + "  createdByDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                    + "  modifiedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                    + "  PRIMARY KEY(id)"
+                    + ")");
             conn.execute("SELECT * FROM product");
             tables = new Tables();
             conn.readSchema(tables, DATABASE.getDatabaseName(), null, null, null, true);
@@ -151,19 +151,19 @@ public class MetadataIT implements Testing {
             assertThat(product.columnWithName("modifiedDate").isOptional()).isFalse();
 
             conn.execute("CREATE TABLE purchased ("
-                                 + "  purchaser VARCHAR(255) NOT NULL,"
-                                 + "  productId INT NOT NULL,"
-                                 + "  purchaseDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                                 + "  PRIMARY KEY(productId,purchaser)"
-                                 + ")");
+                    + "  purchaser VARCHAR(255) NOT NULL,"
+                    + "  productId INT NOT NULL,"
+                    + "  purchaseDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                    + "  PRIMARY KEY(productId,purchaser)"
+                    + ")");
             conn.execute("SELECT * FROM purchased");
             tables = new Tables();
             conn.readSchema(tables, DATABASE.getDatabaseName(), null, null, null, true);
-            //System.out.println(tables);
+            // System.out.println(tables);
             assertThat(tables.size()).isEqualTo(3);
             Table purchased = tables.forTable(DATABASE.getDatabaseName(), null, "purchased");
             assertThat(purchased).isNotNull();
-            assertThat(person.filterColumns(col->col.isAutoIncremented())).isEmpty();
+            assertThat(person.filterColumns(col -> col.isAutoIncremented())).isEmpty();
             assertThat(purchased.primaryKeyColumnNames()).containsOnly("productId", "purchaser");
             assertThat(purchased.retrieveColumnNames()).containsExactly("purchaser", "productId", "purchaseDate");
             assertThat(purchased.columnWithName("purchaser").name()).isEqualTo("purchaser");

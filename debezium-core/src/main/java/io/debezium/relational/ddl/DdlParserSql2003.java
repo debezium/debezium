@@ -41,7 +41,7 @@ public class DdlParserSql2003 extends LegacyDdlParser {
      * Create a new DDL parser for SQL-2003.
      * @param includeViews {@code true} if view definitions should be included, or {@code false} if they should be skipped
      */
-    public DdlParserSql2003( boolean includeViews ) {
+    public DdlParserSql2003(boolean includeViews) {
         super(";", includeViews);
     }
 
@@ -150,7 +150,7 @@ public class DdlParserSql2003 extends LegacyDdlParser {
     }
 
     protected void parseCreateDatabase(Marker start) {
-        tokens.consumeAnyOf("DATABASE",  "SCHEMA");
+        tokens.consumeAnyOf("DATABASE", "SCHEMA");
         tokens.canConsume("IF", "NOT", "EXISTS");
         String dbName = tokens.consume();
         consumeRemainingStatement(start);
@@ -382,10 +382,10 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         }
         column.jdbcType(dataType.jdbcType());
         column.type(dataType.name(), dataType.expression());
-        if ( dataType.length() > -1 ) {
+        if (dataType.length() > -1) {
             column.length((int) dataType.length());
         }
-        if ( dataType.scale() > -1 ) {
+        if (dataType.scale() > -1) {
             column.scale(dataType.scale());
         }
 
@@ -582,7 +582,7 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         tokens.canConsume("RECURSIVE");
         tokens.consume("VIEW");
         TableId tableId = parseQualifiedTableName(start);
-        if ( skipViews ) {
+        if (skipViews) {
             // We don't care about the rest ...
             consumeRemainingStatement(start);
             signalCreateTable(tableId, start);
@@ -611,9 +611,9 @@ public class DdlParserSql2003 extends LegacyDdlParser {
         // We don't care about the rest ...
         consumeRemainingStatement(start);
 
-        if ( columnNames != null ) {
+        if (columnNames != null) {
             // We know nothing other than the names ...
-            columnNames.forEach(name-> {
+            columnNames.forEach(name -> {
                 table.addColumn(Column.editor().name(name).create());
             });
         }

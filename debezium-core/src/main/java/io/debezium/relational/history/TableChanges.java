@@ -70,9 +70,9 @@ public class TableChanges implements Iterable<TableChange> {
 
     public Array toArray() {
         List<Value> values = changes.stream()
-            .map(TableChange::toDocument)
-            .map(Value::create)
-            .collect(Collectors.toList());
+                .map(TableChange::toDocument)
+                .map(Value::create)
+                .collect(Collectors.toList());
 
         return Array.create(values);
     }
@@ -173,7 +173,7 @@ public class TableChanges implements Iterable<TableChange> {
                 return false;
             }
             TableChange other = (TableChange) obj;
-            if (! id.equals(other.id)) {
+            if (!id.equals(other.id)) {
                 return false;
             }
             if (table == null) {
@@ -202,9 +202,9 @@ public class TableChanges implements Iterable<TableChange> {
             document.set("primaryKeyColumnNames", Array.create(table.primaryKeyColumnNames()));
 
             List<Document> columns = table.columns()
-                .stream()
-                .map(this::toDocument)
-                .collect(Collectors.toList());
+                    .stream()
+                    .map(this::toDocument)
+                    .collect(Collectors.toList());
 
             document.setArray("columns", Array.create(columns));
 
@@ -241,48 +241,48 @@ public class TableChanges implements Iterable<TableChange> {
 
         private static Table fromDocument(TableId id, Document document) {
             TableEditor editor = Table.editor()
-                .tableId(id)
-                .setDefaultCharsetName(document.getString("defaultCharsetName"));
+                    .tableId(id)
+                    .setDefaultCharsetName(document.getString("defaultCharsetName"));
 
             document.getArray("columns")
-                .streamValues()
-                .map(Value::asDocument)
-                .map(v -> {
-                    ColumnEditor columnEditor = Column.editor()
-                        .name(v.getString("name"))
-                        .jdbcType(v.getInteger("jdbcType"));
+                    .streamValues()
+                    .map(Value::asDocument)
+                    .map(v -> {
+                        ColumnEditor columnEditor = Column.editor()
+                                .name(v.getString("name"))
+                                .jdbcType(v.getInteger("jdbcType"));
 
                         Integer nativeType = v.getInteger("nativeType");
                         if (nativeType != null) {
                             columnEditor.nativeType(nativeType);
                         }
 
-                       columnEditor.type(v.getString("typeName"), v.getString("typeExpression"))
-                           .charsetName(v.getString("charsetName"));
+                        columnEditor.type(v.getString("typeName"), v.getString("typeExpression"))
+                                .charsetName(v.getString("charsetName"));
 
-                       Integer length = v.getInteger("length");
-                       if (length != null) {
-                           columnEditor.length(length);
-                       }
+                        Integer length = v.getInteger("length");
+                        if (length != null) {
+                            columnEditor.length(length);
+                        }
 
-                       Integer scale = v.getInteger("scale");
-                       if (scale != null) {
-                           columnEditor.scale(scale);
-                       }
+                        Integer scale = v.getInteger("scale");
+                        if (scale != null) {
+                            columnEditor.scale(scale);
+                        }
 
-                       columnEditor.position(v.getInteger("position"))
-                           .optional(v.getBoolean("optional"))
-                           .autoIncremented(v.getBoolean("autoIncremented"))
-                           .generated(v.getBoolean("generated"));
+                        columnEditor.position(v.getInteger("position"))
+                                .optional(v.getBoolean("optional"))
+                                .autoIncremented(v.getBoolean("autoIncremented"))
+                                .generated(v.getBoolean("generated"));
 
-                    return columnEditor.create();
-                })
-                .forEach(editor::addColumn);
+                        return columnEditor.create();
+                    })
+                    .forEach(editor::addColumn);
 
             editor.setPrimaryKeyNames(document.getArray("primaryKeyColumnNames")
-                .streamValues()
-                .map(Value::asString)
-                .collect(Collectors.toList()));
+                    .streamValues()
+                    .map(Value::asString)
+                    .collect(Collectors.toList()));
 
             return editor.create();
         }

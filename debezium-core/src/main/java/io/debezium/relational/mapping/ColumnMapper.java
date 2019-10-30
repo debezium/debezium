@@ -24,7 +24,7 @@ public interface ColumnMapper {
      * Initialize the ColumnMapper instance based upon the connector's configuration.
      * @param config the connector's configuration
      */
-    default void initialize( Configuration config ) {
+    default void initialize(Configuration config) {
         // do nothing
     }
 

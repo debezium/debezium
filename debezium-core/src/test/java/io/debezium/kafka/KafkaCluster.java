@@ -328,7 +328,7 @@ public class KafkaCluster {
     public void createTopics(int numPartitions, int replicationFactor, String... topics) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Creating topics with {} partitions and {} replicas each: {}", numPartitions, replicationFactor,
-                         Arrays.toString(topics));
+                    Arrays.toString(topics));
         }
         if (!running) {
             throw new IllegalStateException("The cluster must be running to create topics");
@@ -1013,13 +1013,13 @@ public class KafkaCluster {
                                    BiPredicate<String, String> consumer) {
             AtomicLong readCounter = new AtomicLong();
             consumeStrings(continueIfNotExpired(() -> readCounter.get() < count, timeout, unit),
-                           completion,
-                           Collections.singleton(topicName),
-                           record -> {
-                               if (consumer.test(record.key(), record.value())) {
-                                   readCounter.incrementAndGet();
-                               }
-                           });
+                    completion,
+                    Collections.singleton(topicName),
+                    record -> {
+                        if (consumer.test(record.key(), record.value())) {
+                            readCounter.incrementAndGet();
+                        }
+                    });
         }
 
         /**
@@ -1036,13 +1036,13 @@ public class KafkaCluster {
                                      BiPredicate<String, Document> consumer) {
             AtomicLong readCounter = new AtomicLong();
             consumeDocuments(continueIfNotExpired(() -> readCounter.get() < count, timeout, unit),
-                             completion,
-                             Collections.singleton(topicName),
-                             record -> {
-                                 if (consumer.test(record.key(), record.value())) {
-                                     readCounter.incrementAndGet();
-                                 }
-                             });
+                    completion,
+                    Collections.singleton(topicName),
+                    record -> {
+                        if (consumer.test(record.key(), record.value())) {
+                            readCounter.incrementAndGet();
+                        }
+                    });
         }
 
         /**
@@ -1059,13 +1059,13 @@ public class KafkaCluster {
                                     BiPredicate<String, Integer> consumer) {
             AtomicLong readCounter = new AtomicLong();
             consumeIntegers(continueIfNotExpired(() -> readCounter.get() < count, timeout, unit),
-                            completion,
-                            Collections.singleton(topicName),
-                            record -> {
-                                if (consumer.test(record.key(), record.value())) {
-                                    readCounter.incrementAndGet();
-                                }
-                            });
+                    completion,
+                    Collections.singleton(topicName),
+                    record -> {
+                        if (consumer.test(record.key(), record.value())) {
+                            readCounter.incrementAndGet();
+                        }
+                    });
         }
 
         /**

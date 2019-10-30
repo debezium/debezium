@@ -76,28 +76,29 @@ public class MysqlDefaultValueAllZeroTimeIT extends AbstractConnectorTest {
         Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
         Schema schemaF = record.valueSchema().fields().get(1).schema().fields().get(5).schema();
 
-        //column A, 0000-00-00 00:00:00 => 1970-01-01 00:00:00
+        // column A, 0000-00-00 00:00:00 => 1970-01-01 00:00:00
         ZonedDateTime a = ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC);
         String isoStringA = ZonedTimestamp.toIsoString(a, ZoneOffset.UTC, MySqlValueConverters::adjustTemporal);
         assertThat(schemaA.defaultValue()).isEqualTo(isoStringA);
 
-        //column B allows null, default value should be null
+        // column B allows null, default value should be null
         assertThat(schemaB.isOptional()).isEqualTo(true);
         assertThat(schemaB.defaultValue()).isEqualTo(null);
 
-        //column C, 0000-00-00 => 1970-01-01
+        // column C, 0000-00-00 => 1970-01-01
         assertThat(schemaC.defaultValue()).isEqualTo(0);
 
-        //column D allows null, default value should be null
+        // column D allows null, default value should be null
         assertThat(schemaD.isOptional()).isEqualTo(true);
         assertThat(schemaD.defaultValue()).isEqualTo(null);
 
-        //column E, 0000-00-00 00:00:00 => 1970-01-01 00:00:00
+        // column E, 0000-00-00 00:00:00 => 1970-01-01 00:00:00
         String valueE = "1970-01-01 00:00:00";
-        long toEpochMillisE = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(valueE)), MySqlValueConverters::adjustTemporal);
+        long toEpochMillisE = Timestamp.toEpochMillis(LocalDateTime.from(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").parse(valueE)),
+                MySqlValueConverters::adjustTemporal);
         assertThat(schemaE.defaultValue()).isEqualTo(toEpochMillisE);
 
-        //column F allows null, default value should be null
+        // column F allows null, default value should be null
         assertThat(schemaF.isOptional()).isEqualTo(true);
         assertThat(schemaF.defaultValue()).isEqualTo(null);
 

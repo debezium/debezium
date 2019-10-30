@@ -57,7 +57,7 @@ public class MongoUtil {
      * @return the replica set name, or {@code null} if no replica set name is in the string
      */
     public static String replicaSetUsedIn(String addresses) {
-        if ( addresses.startsWith("[")) {
+        if (addresses.startsWith("[")) {
             // Just an IPv6 address, so no replica set name ...
             return null;
         }

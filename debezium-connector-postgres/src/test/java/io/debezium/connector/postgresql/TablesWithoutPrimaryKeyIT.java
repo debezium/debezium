@@ -25,8 +25,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
  */
 public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
 
-    private static final String STATEMENTS =
-            "CREATE SCHEMA nopk;" +
+    private static final String STATEMENTS = "CREATE SCHEMA nopk;" +
             "CREATE TABLE nopk.t1 (pk INT UNIQUE, val INT);" +
             "CREATE TABLE nopk.t2 (pk INT UNIQUE, val INT UNIQUE);" +
             "CREATE TABLE nopk.t3 (pk INT, val INT);" +
@@ -46,8 +45,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "nopk")
-                .build()
-        );
+                .build());
         assertConnectorIsRunning();
 
         final int expectedRecordsCount = 1 + 1 + 1;
@@ -67,8 +65,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "nopk")
-                .build()
-        );
+                .build());
         assertConnectorIsRunning();
         waitForStreamingToStart();
 

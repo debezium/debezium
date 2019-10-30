@@ -155,7 +155,7 @@ public class ChainedReaderTest {
     }
 
     protected void assertPollReturnsNoMoreRecords() throws InterruptedException {
-        for (int i=0; i!=10; ++i) {
+        for (int i = 0; i != 10; ++i) {
             assertThat(reader.poll()).isNull();
         }
     }
@@ -262,6 +262,7 @@ public class ChainedReaderTest {
         public CompletingMockReader(String name, Supplier<List<SourceRecord>> pollResultsSupplier) {
             super(name, pollResultsSupplier);
         }
+
         @Override
         protected boolean continueReturningRecordsFromPolling() {
             return true;

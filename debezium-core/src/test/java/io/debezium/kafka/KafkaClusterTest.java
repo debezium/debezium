@@ -46,9 +46,9 @@ public class KafkaClusterTest {
     public void beforeEach() {
         dataDir = Testing.Files.createTestingDirectory("cluster");
         cluster = new KafkaCluster().usingDirectory(dataDir)
-                                    .deleteDataPriorToStartup(true)
-                                    .deleteDataUponShutdown(true)
-                                    .withKafkaConfiguration(Collect.propertiesOf(KafkaConfig.ZkSessionTimeoutMsProp(), "20000"));
+                .deleteDataPriorToStartup(true)
+                .deleteDataUponShutdown(true)
+                .withKafkaConfiguration(Collect.propertiesOf(KafkaConfig.ZkSessionTimeoutMsProp(), "20000"));
     }
 
     @After
@@ -149,11 +149,11 @@ public class KafkaClusterTest {
 
         // Produce some messages interactively ...
         cluster.useTo()
-               .createProducer("manual", new StringSerializer(), new IntegerSerializer())
-               .write(topicName, "key1", 1)
-               .write(topicName, "key2", 2)
-               .write(topicName, "key3", 3)
-               .close();
+                .createProducer("manual", new StringSerializer(), new IntegerSerializer())
+                .write(topicName, "key1", 1)
+                .write(topicName, "key2", 2)
+                .write(topicName, "key3", 3)
+                .close();
 
         // Wait for the consumer to to complete ...
         if (completion.await(10, TimeUnit.SECONDS)) {
@@ -230,7 +230,6 @@ public class KafkaClusterTest {
         Properties serverConfig = kafkaServers.values().iterator().next().config();
         assertThat(serverConfig.get("foo")).isEqualTo("bar");
     }
-
 
     protected void assertValidDataDirectory(File dir) {
         assertThat(dir.exists()).isTrue();

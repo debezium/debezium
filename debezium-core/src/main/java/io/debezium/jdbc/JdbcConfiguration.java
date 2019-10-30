@@ -28,17 +28,17 @@ public interface JdbcConfiguration extends Configuration {
      * A field for the name of the database. This field has no default value.
      */
     public static final Field DATABASE = Field.create("dbname",
-                                                      "Name of the database");
+            "Name of the database");
     /**
      * A field for the user of the database. This field has no default value.
      */
     public static final Field USER = Field.create("user",
-                                                  "Name of the database user to be used when connecting to the database");
+            "Name of the database user to be used when connecting to the database");
     /**
      * A field for the password of the database. This field has no default value.
      */
     public static final Field PASSWORD = Field.create("password",
-                                                      "Password to be used when connecting to the database");
+            "Password to be used when connecting to the database");
     /**
      * A field for the hostname of the database server. This field has no default value.
      */

@@ -135,28 +135,28 @@ public class TableEditorTest {
         assertValidPositions(editor);
         editor.reorderColumn("C1", null);
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C2"),
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
         editor.reorderColumn("C2", "C1");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C2"),
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
         editor.reorderColumn("C3", "C2");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C2"),
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
         editor.reorderColumn("C3", "C1");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C3"),
-                                                     editor.columnWithName("C2"));
+                editor.columnWithName("C3"),
+                editor.columnWithName("C2"));
         assertValidPositions(editor);
         editor.reorderColumn("C3", null);
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C3"),
-                                                     editor.columnWithName("C1"),
-                                                     editor.columnWithName("C2"));
+                editor.columnWithName("C1"),
+                editor.columnWithName("C2"));
         assertValidPositions(editor);
     }
 
@@ -180,7 +180,7 @@ public class TableEditorTest {
         editor.addColumns(c1, c2, c3);
         editor.removeColumn("C2");
         assertThat(editor.columns()).containsExactly(editor.columnWithName("C1"),
-                                                     editor.columnWithName("C3"));
+                editor.columnWithName("C3"));
         assertValidPositions(editor);
     }
 

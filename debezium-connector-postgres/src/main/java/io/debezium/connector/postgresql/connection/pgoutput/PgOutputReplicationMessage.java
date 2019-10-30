@@ -89,7 +89,8 @@ public class PgOutputReplicationMessage implements ReplicationMessage {
      *
      * @return the value; may be null
      */
-    public static Object getValue(String columnName, PostgresType type, String fullType, String rawValue, final PgConnectionSupplier connection, boolean includeUnknownDataTypes) {
+    public static Object getValue(String columnName, PostgresType type, String fullType, String rawValue, final PgConnectionSupplier connection,
+                                  boolean includeUnknownDataTypes) {
         final PgOutputColumnValue columnValue = new PgOutputColumnValue(rawValue);
         return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDataTypes);
     }

@@ -35,8 +35,8 @@ public class SourceInfoTest {
     public void beforeEach() {
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
-                .build()));
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
+                        .build()));
     }
 
     @Test
@@ -71,8 +71,8 @@ public class SourceInfoTest {
     @Test
     public void shouldSetAndReturnRecordedOffset() {
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", Long.valueOf(1987654321))
-                                       .append("ns", "dbA.collectA");
+                .append("h", Long.valueOf(1987654321))
+                .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);
@@ -87,8 +87,8 @@ public class SourceInfoTest {
         Map<String, String> partition = source.partition(REPLICA_SET_NAME);
         source = new SourceInfo(new MongoDbConnectorConfig(
                 Configuration.create()
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
-                .build()));
+                        .with(MongoDbConnectorConfig.LOGICAL_NAME, "serverX")
+                        .build()));
         source.setOffsetFor(partition, offset);
 
         offset = source.lastOffset(REPLICA_SET_NAME);
@@ -142,8 +142,8 @@ public class SourceInfoTest {
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", Long.valueOf(1987654321))
-                                       .append("ns", "dbA.collectA");
+                .append("h", Long.valueOf(1987654321))
+                .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);
@@ -203,8 +203,8 @@ public class SourceInfoTest {
         source.startInitialSync(REPLICA_SET_NAME);
 
         Document event = new Document().append("ts", new BsonTimestamp(100, 2))
-                                       .append("h", Long.valueOf(1987654321))
-                                       .append("ns", "dbA.collectA");
+                .append("h", Long.valueOf(1987654321))
+                .append("ns", "dbA.collectA");
 
         assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
         source.opLogEvent(REPLICA_SET_NAME, event);

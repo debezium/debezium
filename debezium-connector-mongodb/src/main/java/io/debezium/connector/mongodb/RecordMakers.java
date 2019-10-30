@@ -77,7 +77,7 @@ public class RecordMakers {
      * @param recorder the potentially blocking consumer function to be called for each generated record; may not be null
      */
     public RecordMakers(Filters filters, SourceInfo source, TopicSelector<CollectionId> topicSelector, BlockingConsumer<SourceRecord> recorder,
-            boolean emitTombstonesOnDelete) {
+                        boolean emitTombstonesOnDelete) {
         this.filters = filters;
         this.source = source;
         this.topicSelector = topicSelector;
@@ -123,8 +123,8 @@ public class RecordMakers {
         private final boolean emitTombstonesOnDelete;
 
         protected RecordsForCollection(CollectionId collectionId, FieldFilter fieldFilter, SourceInfo source, String topicName,
-                SchemaNameAdjuster adjuster, Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder,
-                boolean emitTombstonesOnDelete) {
+                                       SchemaNameAdjuster adjuster, Function<Document, String> valueTransformer, BlockingConsumer<SourceRecord> recorder,
+                                       boolean emitTombstonesOnDelete) {
             this.sourcePartition = source.partition(collectionId.replicaSetName());
             this.collectionId = collectionId;
             this.replicaSetName = this.collectionId.replicaSetName();
@@ -132,17 +132,17 @@ public class RecordMakers {
             this.source = source;
             this.topicName = topicName;
             this.keySchema = SchemaBuilder.struct()
-                                          .name(adjuster.adjust(topicName + ".Key"))
-                                          .field("id", Schema.STRING_SCHEMA)
-                                          .build();
+                    .name(adjuster.adjust(topicName + ".Key"))
+                    .field("id", Schema.STRING_SCHEMA)
+                    .build();
             this.valueSchema = SchemaBuilder.struct()
-                                            .name(adjuster.adjust(topicName + ".Envelope"))
-                                            .field(FieldName.AFTER, Json.builder().optional().build())
-                                            .field("patch", Json.builder().optional().build())
-                                            .field(FieldName.SOURCE, source.schema())
-                                            .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
-                                            .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
-                                            .build();
+                    .name(adjuster.adjust(topicName + ".Envelope"))
+                    .field(FieldName.AFTER, Json.builder().optional().build())
+                    .field("patch", Json.builder().optional().build())
+                    .field(FieldName.SOURCE, source.schema())
+                    .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
+                    .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                    .build();
             this.valueTransformer = valueTransformer;
             this.recorder = recorder;
             this.emitTombstonesOnDelete = emitTombstonesOnDelete;
@@ -175,6 +175,7 @@ public class RecordMakers {
             assert objId != null;
             return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
         }
+
         /**
          * Generate and record one or more source records to describe the given event.
          *
@@ -243,8 +244,7 @@ public class RecordMakers {
                 return jsonSerializer.serialize(idObj);
             }
             return jsonSerializer.serialize(
-                    ((Document) idObj).get(DBCollection.ID_FIELD_NAME)
-            );
+                    ((Document) idObj).get(DBCollection.ID_FIELD_NAME));
         }
 
         protected Struct keyFor(String objId) {

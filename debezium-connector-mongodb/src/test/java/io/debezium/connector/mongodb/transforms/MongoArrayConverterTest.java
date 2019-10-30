@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
+import static io.debezium.connector.mongodb.TestHelper.lines;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.util.Map.Entry;
@@ -27,51 +28,51 @@ import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEnc
  */
 public class MongoArrayConverterTest {
 
-    private static final String HETEROGENOUS_ARRAY =
-            "{\n" +
-            "    \"_id\": 1,\n" +
-            "    \"a2\": [\n" +
-            "        11,\n" +
-            "        \"abc\"\n" +
-            "    ]\n" +
-            "}";
+    private static final String HETEROGENOUS_ARRAY = lines(
+            "{",
+            "    \"_id\": 1,",
+            "    \"a2\": [",
+            "        11,",
+            "        \"abc\"",
+            "    ]",
+            "}");
 
-    private static final String EMPTY_ARRAY =
-            "{\n" +
-            "    \"_id\": 1,\n" +
-            "    \"f\": []\n" +
-            "}";
+    private static final String EMPTY_ARRAY = lines(
+            "{",
+            "    \"_id\": 1,",
+            "    \"f\": []",
+            "}");
 
-    private static final String HETEROGENOUS_DOCUMENT_IN_ARRAY =
-            "{\n" +
-            "    \"_id\": 1,\n" +
-            "    \"a1\": [\n" +
-            "        {\n" +
-            "            \"a\": 1\n" +
-            "        },\n" +
-            "        {\n" +
-            "            \"a\": \"c\"\n" +
-            "        }\n" +
-            "    ],\n" +
-            "}";
+    private static final String HETEROGENOUS_DOCUMENT_IN_ARRAY = lines(
+            "{",
+            "    \"_id\": 1,",
+            "    \"a1\": [",
+            "        {",
+            "            \"a\": 1",
+            "        },",
+            "        {",
+            "            \"a\": \"c\"",
+            "        }",
+            "    ],",
+            "}");
 
-    private static final String HOMOGENOUS_ARRAYS =
-            "{\n" +
-            "    \"_id\": 1,\n" +
-            "    \"a1\": [\n" +
-            "        {\n" +
-            "            \"a\": 1\n" +
-            "        },\n" +
-            "        {\n" +
-            "            \"b\": \"c\"\n" +
-            "        }\n" +
-            "    ],\n" +
-            "    \"a2\": [\n" +
-            "        \"11\",\n" +
-            "        \"abc\"\n" +
-            "    ],\n" +
-            "    \"empty\": []\n" +
-            "}";
+    private static final String HOMOGENOUS_ARRAYS = lines(
+            "{",
+            "    \"_id\": 1,",
+            "    \"a1\": [",
+            "        {",
+            "            \"a\": 1",
+            "        },",
+            "        {",
+            "            \"b\": \"c\"",
+            "        }",
+            "    ],",
+            "    \"a2\": [",
+            "        \"11\",",
+            "        \"abc\"",
+            "    ],",
+            "    \"empty\": []",
+            "}");
 
     private SchemaBuilder builder;
 
@@ -114,12 +115,11 @@ public class MongoArrayConverterTest {
                                 .field("a1", SchemaBuilder.array(SchemaBuilder.struct().name("array.a1").optional()
                                         .field("a", Schema.OPTIONAL_INT32_SCHEMA)
                                         .field("b", Schema.OPTIONAL_STRING_SCHEMA)
-                                        .build()
-                                 ).optional().build())
+                                        .build()).optional().build())
                                 .field("a2", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
                                 .field("empty", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
-                        .build());
-        }
+                                .build());
+    }
 
     @Test
     public void shouldCreateStructForHomogenousArray() throws Exception {
@@ -138,6 +138,7 @@ public class MongoArrayConverterTest {
             converter.convertRecord(entry, finalSchema, struct);
         }
 
+        // @formatter:off
         assertThat(struct.toString()).isEqualTo(
                 "Struct{" +
                         "_id=1," +
@@ -146,8 +147,8 @@ public class MongoArrayConverterTest {
                             "Struct{b=c}" +
                         "]," +
                         "a2=[11, abc]," +
-                        "empty=[]}"
-        );
+                        "empty=[]}");
+        // @formatter:on
     }
 
     @Test
@@ -165,7 +166,7 @@ public class MongoArrayConverterTest {
                         SchemaBuilder.struct().name("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
                                 .field("f", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
-                        .build());
+                                .build());
     }
 
     @Test
@@ -184,12 +185,13 @@ public class MongoArrayConverterTest {
             arrayConverter.convertRecord(entry, arraySchema, struct);
         }
 
+        // @formatter:off
         assertThat(struct.toString()).isEqualTo(
                 "Struct{" +
                         "_id=1," +
                         "f=[]" +
-                "}"
-        );
+                "}");
+        // @formatter:on
     }
 
     @Test
@@ -207,7 +209,7 @@ public class MongoArrayConverterTest {
                         SchemaBuilder.struct().name("array")
                                 .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
                                 .field("f", SchemaBuilder.struct().name("array.f").optional().build())
-                        .build());
+                                .build());
     }
 
     @Test
@@ -229,8 +231,7 @@ public class MongoArrayConverterTest {
         assertThat(struct.toString()).isEqualTo(
                 "Struct{" +
                         "_id=1," +
-                        "f=Struct{}}"
-        );
+                        "f=Struct{}}");
     }
 
     @Test
@@ -243,15 +244,14 @@ public class MongoArrayConverterTest {
         final Schema finalSchema = builder.build();
 
         assertThat(finalSchema)
-            .isEqualTo(
-                    SchemaBuilder.struct().name("array")
-                            .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
-                            .field("a2", SchemaBuilder.struct().name("array.a2").optional()
-                                    .field("_0", Schema.OPTIONAL_INT32_SCHEMA)
-                                    .field("_1", Schema.OPTIONAL_STRING_SCHEMA)
-                                    .build()
-                             ).build()
-                    );
+                .isEqualTo(
+                        SchemaBuilder.struct().name("array")
+                                .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
+                                .field("a2", SchemaBuilder.struct().name("array.a2").optional()
+                                        .field("_0", Schema.OPTIONAL_INT32_SCHEMA)
+                                        .field("_1", Schema.OPTIONAL_STRING_SCHEMA)
+                                        .build())
+                                .build());
     }
 
     @Test
@@ -272,8 +272,7 @@ public class MongoArrayConverterTest {
         assertThat(struct.toString()).isEqualTo(
                 "Struct{" +
                         "_id=1," +
-                        "a2=Struct{_0=11,_1=abc}}"
-        );
+                        "a2=Struct{_0=11,_1=abc}}");
     }
 
     @Test
@@ -286,20 +285,18 @@ public class MongoArrayConverterTest {
         final Schema finalSchema = builder.build();
 
         assertThat(finalSchema)
-            .isEqualTo(
-                    SchemaBuilder.struct().name("array")
-                            .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
-                            .field("a1", SchemaBuilder.struct().name("array.a1").optional()
-                                    .field("_0", SchemaBuilder.struct().name("array.a1._0").optional()
-                                            .field("a", Schema.OPTIONAL_INT32_SCHEMA)
-                                            .build())
-                                    .field("_1", SchemaBuilder.struct().name("array.a1._1").optional()
-                                            .field("a", Schema.OPTIONAL_STRING_SCHEMA)
-                                            .build())
-                                    .build()
-                             )
-                            .build()
-                    );
+                .isEqualTo(
+                        SchemaBuilder.struct().name("array")
+                                .field("_id", Schema.OPTIONAL_INT32_SCHEMA)
+                                .field("a1", SchemaBuilder.struct().name("array.a1").optional()
+                                        .field("_0", SchemaBuilder.struct().name("array.a1._0").optional()
+                                                .field("a", Schema.OPTIONAL_INT32_SCHEMA)
+                                                .build())
+                                        .field("_1", SchemaBuilder.struct().name("array.a1._1").optional()
+                                                .field("a", Schema.OPTIONAL_STRING_SCHEMA)
+                                                .build())
+                                        .build())
+                                .build());
     }
 
     @Test
@@ -317,6 +314,7 @@ public class MongoArrayConverterTest {
             converter.convertRecord(entry, finalSchema, struct);
         }
 
+        // @formatter:off
         assertThat(struct.toString()).isEqualTo(
                 "Struct{" +
                         "_id=1," +
@@ -324,7 +322,7 @@ public class MongoArrayConverterTest {
                             "_0=Struct{a=1}," +
                             "_1=Struct{a=c}" +
                         "}" +
-                "}"
-        );
+                "}");
+        // @formatter:on
     }
 }

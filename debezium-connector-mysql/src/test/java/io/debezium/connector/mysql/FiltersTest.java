@@ -253,7 +253,8 @@ public class FiltersTest {
     @FixFor("DBZ-242")
     @Test
     public void shouldAllowTableListedWithLiteralInWhitelistAndNoTableBlacklistWhenDatabaseIncludedButSystemTablesIncluded() {
-        filters = build.includeTables("connector_test.table1,connector_test.table2,mysql[.].*,performance_schema[.].*,sys[.].*,information_schema[.].*").includeBuiltInTables().createFilters();
+        filters = build.includeTables("connector_test.table1,connector_test.table2,mysql[.].*,performance_schema[.].*,sys[.].*,information_schema[.].*")
+                .includeBuiltInTables().createFilters();
         assertTableIncluded("connector_test.table1");
         assertTableIncluded("connector_test.table2");
         assertTableExcluded("connector_test.table3");
@@ -300,11 +301,11 @@ public class FiltersTest {
         assertSystemDatabasesExcluded();
     }
 
-    protected void assertDatabaseIncluded( String databaseName ) {
+    protected void assertDatabaseIncluded(String databaseName) {
         assertThat(filters.databaseFilter().test(databaseName)).isTrue();
     }
 
-    protected void assertDatabaseExcluded( String databaseName ) {
+    protected void assertDatabaseExcluded(String databaseName) {
         assertThat(filters.databaseFilter().test(databaseName)).isFalse();
     }
 
@@ -328,12 +329,12 @@ public class FiltersTest {
         });
     }
 
-    protected void assertTableIncluded( String fullyQualifiedTableName ) {
+    protected void assertTableIncluded(String fullyQualifiedTableName) {
         TableId id = TableId.parse(fullyQualifiedTableName);
         assertThat(filters.tableFilter().test(id)).isTrue();
     }
 
-    protected void assertTableExcluded( String fullyQualifiedTableName ) {
+    protected void assertTableExcluded(String fullyQualifiedTableName) {
         TableId id = TableId.parse(fullyQualifiedTableName);
         assertThat(filters.tableFilter().test(id)).isFalse();
     }

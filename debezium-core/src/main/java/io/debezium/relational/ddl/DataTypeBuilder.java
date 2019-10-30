@@ -84,7 +84,7 @@ public class DataTypeBuilder {
             }
             expression.append(')');
         }
-        else if (parameters != null ) {
+        else if (parameters != null) {
             expression.append('(');
             expression.append(parameters);
             expression.append(')');

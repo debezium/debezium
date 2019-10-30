@@ -93,12 +93,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         int numCreateTables = 12;
         int numDataRecords = 22;
         int numCreateDefiner = 1;
-        SourceRecords records =
-            consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
-            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
@@ -113,7 +112,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.topics().size()).isEqualTo(numCreateTables + 1);
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
-            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -178,8 +177,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 long c3Seconds = c3 / 1000;
                 long c3Millis = c3 % 1000;
                 LocalDateTime c3DateTime = LocalDateTime.ofEpochSecond(c3Seconds,
-                                                                       (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
-                                                                       ZoneOffset.UTC);
+                        (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
+                        ZoneOffset.UTC);
 
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
@@ -364,11 +363,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                              .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
-                              .with("database.serverTimezone", DATABASE.timezone())
-                              .build();
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(MySqlConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
+                .with("database.serverTimezone", DATABASE.timezone())
+                .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -380,12 +379,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         int numCreateTables = 12;
         int numDataRecords = 22;
         int numCreateDefiner = 1;
-        SourceRecords records =
-                consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
-            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
@@ -398,7 +396,7 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         assertThat(records.topics().size()).isEqualTo(1 + numCreateTables);
         assertThat(records.databaseNames().size()).isEqualTo(1);
         assertThat(records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).size())
-            .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
+                .isEqualTo(numCreateDatabase + numCreateTables + numCreateDefiner);
         assertThat(records.ddlRecordsForDatabase("connector_test")).isNull();
         assertThat(records.ddlRecordsForDatabase("readbinlog_test")).isNull();
         records.ddlRecordsForDatabase(DATABASE.getDatabaseName()).forEach(this::print);
@@ -457,8 +455,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 long c3Seconds = c3.getTime() / 1000;
                 long c3Millis = c3.getTime() % 1000;
                 LocalDateTime c3DateTime = LocalDateTime.ofEpochSecond(c3Seconds,
-                                                                       (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
-                                                                       ZoneOffset.UTC);
+                        (int) TimeUnit.MILLISECONDS.toNanos(c3Millis),
+                        ZoneOffset.UTC);
                 assertThat(c3DateTime.getYear()).isEqualTo(2014);
                 assertThat(c3DateTime.getMonth()).isEqualTo(Month.SEPTEMBER);
                 assertThat(c3DateTime.getDayOfMonth()).isEqualTo(8);
@@ -584,12 +582,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
         int numCreateDefiner = 1;
         int numSetVariables = 1;
-        SourceRecords records =
-            consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
+        SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
         assertThat(records).isNotNull();
         assertThat(records.recordsForTopic(DATABASE.getServerName()).size())
-            .isEqualTo(numDdlRecords + numSetVariables);
+                .isEqualTo(numDdlRecords + numSetVariables);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("t1464075356413_testtable6")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz84_integer_types_table")).size()).isEqualTo(1);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_85_fractest")).size()).isEqualTo(1);
@@ -699,9 +696,8 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
                 assertThat(c4DateTime.getNano()).isEqualTo((int) TimeUnit.MILLISECONDS.toNanos(780));
 
                 OffsetDateTime expected = ZonedDateTime.of(
-                            LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(780)),
-                            UniqueDatabase.TIMEZONE
-                        )
+                        LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(780)),
+                        UniqueDatabase.TIMEZONE)
                         .withZoneSameInstant(ZoneOffset.UTC)
                         .toOffsetDateTime();
 
@@ -838,11 +834,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     public void shouldConsumeAllEventsFromDecimalTableInDatabaseUsingBinlogAndNoSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
-                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
-                              .build();
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -879,11 +875,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     public void shouldConsumeDecimalAsStringFromBinlog() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
-                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
-                              .build();
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.toString())
+                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
 
@@ -919,11 +915,11 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     public void shouldConsumeDecimalAsStringFromSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
-                              .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
-                              .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                              .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
-                              .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
-                              .build();
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("dbz_147_decimalvalues"))
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
+                .with(MySqlConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                .build();
         // Start the connector ...
         start(MySqlConnector.class, config);
 

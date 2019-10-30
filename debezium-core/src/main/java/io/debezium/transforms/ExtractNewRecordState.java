@@ -82,8 +82,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
 
-        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ?
-            null :  config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
+        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ? null
+                : config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
 
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
@@ -179,7 +179,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         Struct source = ((Struct) originalRecord.value()).getStruct("source");
 
         // Get (or compute) the updated schema from the cache
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), s -> makeUpdatedSchema(s, source.schema(),  addSourceFields));
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), s -> makeUpdatedSchema(s, source.schema(), addSourceFields));
 
         // Create the updated struct
         final Struct updatedValue = new Struct(updatedSchema);
@@ -191,13 +191,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         return unwrappedRecord.newRecord(
-            unwrappedRecord.topic(),
-            unwrappedRecord.kafkaPartition(),
-            unwrappedRecord.keySchema(),
-            unwrappedRecord.key(),
-            updatedSchema,
-            updatedValue,
-            unwrappedRecord.timestamp());
+                unwrappedRecord.topic(),
+                unwrappedRecord.kafkaPartition(),
+                unwrappedRecord.keySchema(),
+                unwrappedRecord.key(),
+                updatedSchema,
+                updatedValue,
+                unwrappedRecord.timestamp());
     }
 
     private Schema makeUpdatedSchema(Schema schema, Schema sourceSchema, String[] addSourceFields) {
@@ -207,13 +207,13 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             builder.field(field.name(), field.schema());
         }
         // Add the requested source fields, throw exception if a specified source field is not part of the source schema
-        for (String sourceField: addSourceFields) {
+        for (String sourceField : addSourceFields) {
             if (sourceSchema.field(sourceField) == null) {
                 throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
             }
             builder.field(
-                ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
-                sourceSchema.field(sourceField).schema());
+                    ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
+                    sourceSchema.field(sourceField).schema());
         }
         return builder.build();
     }
@@ -221,7 +221,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES, ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
+        Field.group(config, null, ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES, ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
+                ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
         return config;
     }
 

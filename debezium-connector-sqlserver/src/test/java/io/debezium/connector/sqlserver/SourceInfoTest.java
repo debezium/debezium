@@ -27,12 +27,11 @@ public class SourceInfoTest {
     public void beforeEach() {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(
                 Configuration.create()
-                    .with(SqlServerConnectorConfig.SERVER_NAME, "serverX")
-                    .build()
-        );
+                        .with(SqlServerConnectorConfig.SERVER_NAME, "serverX")
+                        .build());
         source = new SourceInfo(connectorConfig);
-        source.setChangeLsn(Lsn.valueOf(new byte [] { 0x01 }));
-        source.setCommitLsn(Lsn.valueOf(new byte [] { 0x02 }));
+        source.setChangeLsn(Lsn.valueOf(new byte[]{ 0x01 }));
+        source.setCommitLsn(Lsn.valueOf(new byte[]{ 0x02 }));
         source.setSnapshot(SnapshotRecord.TRUE);
         source.setSourceTime(Instant.ofEpochMilli(3000));
         source.setTableId(new TableId("c", "s", "t"));
@@ -56,12 +55,12 @@ public class SourceInfoTest {
 
     @Test
     public void changeLsnIsPresent() {
-        assertThat(source.struct().getString(SourceInfo.CHANGE_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte [] { 0x01 }).toString());
+        assertThat(source.struct().getString(SourceInfo.CHANGE_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte[]{ 0x01 }).toString());
     }
 
     @Test
     public void commitLsnIsPresent() {
-        assertThat(source.struct().getString(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte [] { 0x02 }).toString());
+        assertThat(source.struct().getString(SourceInfo.COMMIT_LSN_KEY)).isEqualTo(Lsn.valueOf(new byte[]{ 0x02 }).toString());
     }
 
     @Test

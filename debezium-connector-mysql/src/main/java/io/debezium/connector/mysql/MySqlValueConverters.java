@@ -121,7 +121,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, x-> x);
+        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, x -> x);
     }
 
     /**
@@ -138,7 +138,8 @@ public class MySqlValueConverters extends JdbcValueConverters {
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster) {
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode,
+                                TemporalAdjuster adjuster) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode);
     }
 
@@ -635,7 +636,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedTinyint(((Number) data).shortValue()));
             }
             else {
-                //We continue with the original converting method (smallint) since we have an unsigned Tinyint
+                // We continue with the original converting method (smallint) since we have an unsigned Tinyint
                 r.deliver(convertSmallInt(column, fieldDefn, data));
             }
         });
@@ -661,7 +662,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedSmallint(((Number) data).intValue()));
             }
             else {
-                //We continue with the original converting method (integer) since we have an unsigned Smallint
+                // We continue with the original converting method (integer) since we have an unsigned Smallint
                 r.deliver(convertInteger(column, fieldDefn, data));
             }
         });
@@ -687,7 +688,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedMediumint(((Number) data).intValue()));
             }
             else {
-                //We continue with the original converting method (integer) since we have an unsigned Medium
+                // We continue with the original converting method (integer) since we have an unsigned Medium
                 r.deliver(convertInteger(column, fieldDefn, data));
             }
         });
@@ -713,7 +714,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedInteger(((Number) data).longValue()));
             }
             else {
-                //We continue with the original converting method (bigint) since we have an unsigned Integer
+                // We continue with the original converting method (bigint) since we have an unsigned Integer
                 r.deliver(convertBigInt(column, fieldDefn, data));
             }
         });
@@ -739,7 +740,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString())));
             }
             else if (data instanceof String) {
-                    r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data)));
+                r.deliver(MySqlUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data)));
             }
             else {
                 r.deliver(convertNumeric(column, fieldDefn, data));

@@ -26,7 +26,7 @@ import io.debezium.util.Testing;
 public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
-                                                             .toAbsolutePath();
+            .toAbsolutePath();
     private UniqueDatabase DATABASE = new UniqueDatabase("migration", "empty")
             .withDbHistoryPath(DB_HISTORY_PATH);
 
@@ -75,7 +75,8 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         // Testing.Debug.enable();
 
         connection.execute("insert into monitored values(default, 'a2', 2)");
-        connection.execute("CREATE TABLE `_monitored_new` ( `id` int(11) NOT NULL AUTO_INCREMENT, `value1` varchar(100) DEFAULT NULL, `value2` int(11) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1");
+        connection.execute(
+                "CREATE TABLE `_monitored_new` ( `id` int(11) NOT NULL AUTO_INCREMENT, `value1` varchar(100) DEFAULT NULL, `value2` int(11) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1");
         connection.execute("ALTER TABLE `_monitored_new` drop value1");
         connection.execute("insert into _monitored_new values(default, 1)");
         connection.execute("insert into _monitored_new values(default, 2)");
@@ -115,15 +116,18 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         // Testing.Debug.enable();
 
         connection.execute("insert into monitored values(default, 'a2', 2)");
-        connection.execute("CREATE TABLE `_monitored_new` ( `id` int(11) NOT NULL AUTO_INCREMENT, `value1` varchar(100) DEFAULT NULL, `value2` int(11) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1");
+        connection.execute(
+                "CREATE TABLE `_monitored_new` ( `id` int(11) NOT NULL AUTO_INCREMENT, `value1` varchar(100) DEFAULT NULL, `value2` int(11) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1");
         connection.execute("ALTER TABLE `_monitored_new` drop value1");
         connection.execute("insert into _monitored_new values(default, 1)");
         connection.execute("insert into _monitored_new values(default, 2)");
         connection.execute("RENAME TABLE `monitored` TO `_monitored_old`, `_monitored_new` TO `monitored`");
         connection.execute("insert into monitored values(default, 3)");
 
-        final String msg1 = "Renaming whitelisted table " + DATABASE.qualifiedTableName("monitored") + " to non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_old") + ", this can lead to schema inconsistency";
-        final String msg2 = "Renaming non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_new") + " to whitelisted table "+ DATABASE.qualifiedTableName("monitored") + ", this can lead to schema inconsistency";
+        final String msg1 = "Renaming whitelisted table " + DATABASE.qualifiedTableName("monitored") + " to non-whitelisted table "
+                + DATABASE.qualifiedTableName("_monitored_old") + ", this can lead to schema inconsistency";
+        final String msg2 = "Renaming non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_new") + " to whitelisted table "
+                + DATABASE.qualifiedTableName("monitored") + ", this can lead to schema inconsistency";
 
         records = consumeRecordsByTopic(2);
         stopConnector(value -> {
@@ -163,15 +167,18 @@ public class MySqlSchemaMigrationIT extends AbstractConnectorTest {
         // Testing.Debug.enable();
 
         connection.execute("insert into monitored values(default, 'a2', 2)");
-        connection.execute("CREATE TABLE `_monitored_new` ( `id` int(11) NOT NULL AUTO_INCREMENT, `value1` varchar(100) DEFAULT NULL, `value2` int(11) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1");
+        connection.execute(
+                "CREATE TABLE `_monitored_new` ( `id` int(11) NOT NULL AUTO_INCREMENT, `value1` varchar(100) DEFAULT NULL, `value2` int(11) DEFAULT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1");
         connection.execute("ALTER TABLE `_monitored_new` drop value1");
         connection.execute("insert into _monitored_new values(default, 1)");
         connection.execute("insert into _monitored_new values(default, 2)");
         connection.execute("RENAME TABLE `monitored` TO `_monitored_old`, `_monitored_new` TO `monitored`");
         connection.execute("insert into monitored values(default, 3)");
 
-        final String msg1 = "Renaming whitelisted table " + DATABASE.qualifiedTableName("monitored") + " to non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_old") + ", this can lead to schema inconsistency";
-        final String msg2 = "Renaming non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_new") + " to whitelisted table "+ DATABASE.qualifiedTableName("monitored") + ", this can lead to schema inconsistency";
+        final String msg1 = "Renaming whitelisted table " + DATABASE.qualifiedTableName("monitored") + " to non-whitelisted table "
+                + DATABASE.qualifiedTableName("_monitored_old") + ", this can lead to schema inconsistency";
+        final String msg2 = "Renaming non-whitelisted table " + DATABASE.qualifiedTableName("_monitored_new") + " to whitelisted table "
+                + DATABASE.qualifiedTableName("monitored") + ", this can lead to schema inconsistency";
 
         records = consumeRecordsByTopic(2);
         stopConnector(value -> {

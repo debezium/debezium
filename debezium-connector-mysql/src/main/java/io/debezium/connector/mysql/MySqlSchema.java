@@ -95,11 +95,10 @@ public class MySqlSchema extends RelationalDatabaseSchema {
                 TableFilter.fromPredicate(tableFilters.tableFilter()),
                 tableFilters.columnFilter(),
                 new TableSchemaBuilder(
-                        getValueConverters(configuration), SchemaNameAdjuster.create(logger), configuration.getSourceInfoStructMaker().schema(), configuration.getSanitizeFieldNames())
-                ,
+                        getValueConverters(configuration), SchemaNameAdjuster.create(logger), configuration.getSourceInfoStructMaker().schema(),
+                        configuration.getSanitizeFieldNames()),
                 tableIdCaseInsensitive,
-                configuration.getKeyMapper()
-        );
+                configuration.getKeyMapper());
 
         Configuration config = configuration.getConfig();
 
@@ -108,9 +107,9 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         // Do not remove the prefix from the subset of config properties ...
         String connectorName = config.getString("name", configuration.getLogicalName());
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
-                                              .edit()
-                                              .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
-                                              .build();
+                .edit()
+                .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
+                .build();
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
 
@@ -186,7 +185,7 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         final Collection<TableId> tables = tableIds();
         String[] ret = new String[tables.size()];
         int i = 0;
-        for (TableId table: tables) {
+        for (TableId table : tables) {
             ret[i++] = table.toString();
         }
         return ret;

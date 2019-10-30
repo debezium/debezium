@@ -88,7 +88,7 @@ public interface DocumentReader {
      * @throws IOException if a document could not be read from the supplied file
      */
     default Document read(File jsonFile) throws IOException {
-        return read( new BufferedInputStream(new FileInputStream(jsonFile)) );
+        return read(new BufferedInputStream(new FileInputStream(jsonFile)));
     }
 
     /**

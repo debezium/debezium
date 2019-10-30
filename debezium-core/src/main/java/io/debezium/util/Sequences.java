@@ -81,7 +81,7 @@ public class Sequences {
         int max = additional.length + 1;
         return () -> {
             int index = rng.nextInt(max);
-            return index == 0 ? first : additional[index-1];
+            return index == 0 ? first : additional[index - 1];
         };
     }
 

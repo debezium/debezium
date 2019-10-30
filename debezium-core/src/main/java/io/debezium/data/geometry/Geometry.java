@@ -35,12 +35,12 @@ public class Geometry {
      */
     public static SchemaBuilder builder() {
         return SchemaBuilder.struct()
-                            .name(LOGICAL_NAME)
-                            .version(1)
-                            .doc("Geometry")
-                            .optional()
-                            .field(WKB_FIELD, Schema.BYTES_SCHEMA)
-                            .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
+                .name(LOGICAL_NAME)
+                .version(1)
+                .doc("Geometry")
+                .optional()
+                .field(WKB_FIELD, Schema.BYTES_SCHEMA)
+                .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
     }
 
     /**

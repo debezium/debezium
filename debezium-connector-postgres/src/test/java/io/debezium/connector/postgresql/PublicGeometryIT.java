@@ -54,12 +54,11 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
         }
         TestHelper.dropAllSchemas();
         TestHelper.execute(
-            "DROP SCHEMA IF EXISTS postgis CASCADE;",
-            "CREATE EXTENSION IF NOT EXISTS postgis SCHEMA public;",
-            "CREATE TABLE public.postgis_table (pk SERIAL, p GEOMETRY(POINT,3187), ml GEOGRAPHY(MULTILINESTRING), PRIMARY KEY(pk));",
-            "CREATE TABLE public.postgis_array_table (pk SERIAL, ga GEOMETRY[], gann GEOMETRY[] NOT NULL, PRIMARY KEY(pk));",
-            "CREATE TABLE public.dummy_table (pk SERIAL, PRIMARY KEY(pk));"
-        );
+                "DROP SCHEMA IF EXISTS postgis CASCADE;",
+                "CREATE EXTENSION IF NOT EXISTS postgis SCHEMA public;",
+                "CREATE TABLE public.postgis_table (pk SERIAL, p GEOMETRY(POINT,3187), ml GEOGRAPHY(MULTILINESTRING), PRIMARY KEY(pk));",
+                "CREATE TABLE public.postgis_array_table (pk SERIAL, ga GEOMETRY[], gann GEOMETRY[] NOT NULL, PRIMARY KEY(pk));",
+                "CREATE TABLE public.dummy_table (pk SERIAL, PRIMARY KEY(pk));");
         setupRecordsProducer(TestHelper.defaultConfig());
     }
 
@@ -92,8 +91,7 @@ public class PublicGeometryIT extends AbstractRecordsProducerTest {
     private void setupRecordsProducer(Configuration.Builder config) {
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .build()
-        );
+                .build());
         assertConnectorIsRunning();
     }
 

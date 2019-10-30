@@ -61,8 +61,7 @@ public class MySqlRestartIT extends AbstractConnectorTest {
             try (JdbcConnection connection = db.connect()) {
                 connection.execute(
                         "CREATE TABLE restart_table (id INT PRIMARY KEY, val INT)",
-                        "INSERT INTO restart_table VALUES(1, 10)"
-                );
+                        "INSERT INTO restart_table VALUES(1, 10)");
             }
         }
         start(MySqlConnector.class, config, record -> {
@@ -84,13 +83,13 @@ public class MySqlRestartIT extends AbstractConnectorTest {
                         "INSERT INTO restart_table VALUES(3,13)",
                         "INSERT INTO restart_table VALUES(4,14)",
                         "INSERT INTO restart_table VALUES(5,15)",
-                        "INSERT INTO restart_table VALUES(6,16)"
-                );
+                        "INSERT INTO restart_table VALUES(6,16)");
             }
         }
         records = consumeRecordsByTopic(3);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("restart_table")).size()).isEqualTo(3);
-        assertThat(((Struct) ((SourceRecord) records.recordsForTopic(DATABASE.topicForTable("restart_table")).get(0)).value()).getStruct("after").getInt32("id")).isEqualTo(2);
+        assertThat(((Struct) ((SourceRecord) records.recordsForTopic(DATABASE.topicForTable("restart_table")).get(0)).value()).getStruct("after").getInt32("id"))
+                .isEqualTo(2);
 
         stopConnector();
 
@@ -98,7 +97,8 @@ public class MySqlRestartIT extends AbstractConnectorTest {
 
         records = consumeRecordsByTopic(2);
         assertThat(records.recordsForTopic(DATABASE.topicForTable("restart_table")).size()).isEqualTo(2);
-        assertThat(((Struct) ((SourceRecord) records.recordsForTopic(DATABASE.topicForTable("restart_table")).get(0)).value()).getStruct("after").getInt32("id")).isEqualTo(5);
+        assertThat(((Struct) ((SourceRecord) records.recordsForTopic(DATABASE.topicForTable("restart_table")).get(0)).value()).getStruct("after").getInt32("id"))
+                .isEqualTo(5);
 
         stopConnector();
     }
