@@ -1,4 +1,5 @@
 :attributes: _attributes
+:prodname: Debezium
 = {prodname} connector for MySQL
 include::../{attributes}.adoc[]
 
