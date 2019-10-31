@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="install-the-mysql-connector"]
+[id="install-the-mysql-connector-{context}"]
 = Installing the MySQL connector
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
