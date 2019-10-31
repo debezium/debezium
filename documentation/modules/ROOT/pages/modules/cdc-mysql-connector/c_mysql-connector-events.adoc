@@ -27,11 +27,11 @@ CREATE TABLE customers (
 [source,json]
 ----
 {
- <1>"schema": {
+ "schema": { <1>
     "type": "struct",
- <2>"name": "mysql-server-1.inventory.customers.Key",
- <3>"optional": false,
- <4>"fields": [
+ "name": "mysql-server-1.inventory.customers.Key", <2>
+ "optional": false, <3>
+ "fields": [ <4>
       {
         "field": "id",
         "type": "int32",
@@ -39,7 +39,7 @@ CREATE TABLE customers (
       }
     ]
   },
- <5>"payload": {
+ "payload": { <5>
     "id": 1001
   }
 }
