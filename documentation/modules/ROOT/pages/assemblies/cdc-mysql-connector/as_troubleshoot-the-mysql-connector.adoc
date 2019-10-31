@@ -1,7 +1,6 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to troubleshoot any common issues that may arise with the CDC MySQL connector, so that I can continue development.
-:context: troubleshootMysql
 [id="troubleshoot-the-mysql-connector"]
 = Troubleshooting the MySQL connector
 
@@ -20,4 +19,3 @@ include::../../modules/cdc-mysql-connector/r_kakfa-connect-stops.adoc[leveloffse
 
 include::../../modules/cdc-mysql-connector/r_mysql-purges-binlog-files.adoc[leveloffset=+1]
 
-:context: cdc

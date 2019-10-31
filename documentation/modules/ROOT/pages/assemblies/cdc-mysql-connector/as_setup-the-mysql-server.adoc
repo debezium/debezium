@@ -1,7 +1,6 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to set up the MySQL server, so that I can more efficiently deploy the CDC MySQL connector.
-:context: setupMysql
 [id="setup-the-mysql-server"]
 = Setting up MySQL server
 
@@ -23,4 +22,3 @@ include::../../modules/cdc-mysql-connector/p_setup-session-timeouts-for-cdc.adoc
 
 include::../../modules/cdc-mysql-connector/p_enable-query-log-events-for-cdc.adoc[leveloffset=+1]
 
-:context: cdc
