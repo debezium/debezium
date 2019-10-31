@@ -1,8 +1,8 @@
 // Metadata created by nebel
 //
 
-[id="understanding-mysql-connector-events_{context}"]
-= Understanding MySQL connector events
+[id="mysql-connector-events_{context}"]
+= MySQL connector events
 //In the title of concept modules, include nouns or noun phrases that are used in the body text. This helps readers and search engines find the information quickly.
 //Do not start the title of concept modules with a verb. See also _Wording of headings_ in _The IBM Style Guide_.
 
