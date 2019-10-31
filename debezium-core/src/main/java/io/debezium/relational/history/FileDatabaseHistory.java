@@ -50,7 +50,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     private Path path;
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener) {
+    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
         if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
             throw new ConnectException(
                     "Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
@@ -59,7 +59,7 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
         if (running.get()) {
             throw new IllegalStateException("Database history file already initialized to " + path);
         }
-        super.configure(config, comparator, listener);
+        super.configure(config, comparator, listener, useCatalogBeforeSchema);
         path = Paths.get(config.getString(FILE_PATH));
     }
 

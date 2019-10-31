@@ -42,7 +42,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     }
 
     @Override
-    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener) {
+    public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
         this.config = config;
         this.comparator = comparator != null ? comparator : HistoryRecordComparator.INSTANCE;
         this.skipUnparseableDDL = config.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
@@ -50,7 +50,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
         this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
         this.listener = listener;
-        this.useCatalogBeforeSchema = config.getBoolean(DatabaseHistory.USE_CATALOG_BEFORE_SCHEMA, true);
+        this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
     @Override
