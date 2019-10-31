@@ -132,9 +132,9 @@ a| io.{prodname}.data.EnumSet
 
 NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
 
-|`YEAR[(2|4)]`
+|`YEAR[(2\|4)]`
 |`INT32`
-a| io.{prodname}.time.Year
+| io.{prodname}.time.Year
 
 |`TIMESTAMP[(M)]`
 |`STRING`
@@ -255,19 +255,16 @@ decimal.handling.mode=double::
 |MySQL type |Literal type |Semantic type
 
 |`NUMERIC[(M[,D])]`
-|`BYTES`
-a| org.apache.kafka.connect.data.Decimal
-
-NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+|`FLOAT64`
+a| _n/a_
 
 |`DECIMAL[(M[,D])]`
-|`BYTES`
-a| org.apache.kafka.connect.data.Decimal
-
-NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+|`FLOAT64`
+a| _n/a_
 
 |===
 +
+
 
 decimal.handling.mode=string::
 +
@@ -276,16 +273,12 @@ decimal.handling.mode=string::
 |MySQL type |Literal type |Semantic type
 
 |`NUMERIC[(M[,D])]`
-|`BYTES`
-a| org.apache.kafka.connect.data.Decimal
-
-NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+|`STRING`
+a| _n/a_
 
 |`DECIMAL[(M[,D])]`
-|`BYTES`
-a| org.apache.kafka.connect.data.Decimal
-
-NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+|`STRING`
+a| _n/a_
 
 |===
 +
@@ -293,4 +286,19 @@ NOTE: The `scaled` schema parameter contains an integer that represents how many
 
 == Spatial data types
 
-X
+Currently, the {prodname} MySQL connector supports the following spatial data types:
+
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`GEOMETRY, LINESTRING, POLYGON, MULTIPOINT, MULTILINESTRING, MULTIPOLYGON, GEOMETRYCOLLECTION`
+|`STRUCT`
+a| io.{prodname}.data.geometry.Geometry
+
+NOTE: Contains a structure with two fields:
+
+* `srid (INT32`: a spatial reference system id that defines the type of geometry object stored in the structure
+* `wkb (BYTES)`: a binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format. See the link:https://www.opengeospatial.org/standards/sfa[Open Geospatial Consortium] for more details.
+
+|===
