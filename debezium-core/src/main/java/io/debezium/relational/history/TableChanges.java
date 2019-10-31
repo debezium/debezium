@@ -36,7 +36,7 @@ public class TableChanges implements Iterable<TableChange> {
         this.changes = new ArrayList<>();
     }
 
-    /*
+    /**
      * useCatalogBeforeSchema is true if the parsed string contains only 2 items and the first should be used as
      * the catalog and the second as the table name, or false if the first should be used as the schema and the
      * second as the table name
