@@ -9,7 +9,40 @@ WARNING: The MySQL connector ensures that all Kakfa Connect schema names adhere 
 
 == Change event key 
 
-text
+For any given table, the change event's key has a structure that contains a field for each column in the `PRIMARY KEY` (or unique constraint) at the time the event was created. Let us look at an example table and then how the schema and payload would look for the table.
+
+.example table
+[source,sql]
+----
+CREATE TABLE customers (
+  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE KEY
+) AUTO_INCREMENT=1001;
+----
+
+.example change event key
+[source,json]
+----
+{
+  "schema": {
+    "type": "struct",
+    "name": "mysql-server-1.inventory.customers.Key",
+    "optional": false,
+    "fields": [
+      {
+        "field": "id",
+        "type": "int32",
+        "optional": false
+      }
+    ]
+  },
+  "payload": {
+    "id": 1001
+  }
+}
+----
 
 == Change event value
 
