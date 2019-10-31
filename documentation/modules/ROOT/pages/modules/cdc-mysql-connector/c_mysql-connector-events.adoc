@@ -1,6 +1,6 @@
 // Metadata created by nebel
 //
-
+:context: mysqlEvents
 [id="mysql-connector-events_{context}"]
 = MySQL connector events
 

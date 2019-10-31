@@ -6,16 +6,16 @@ include::../{attributes}.adoc[]
 HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
 
 * xref:overview-of-how-the-mysql-connector-works[Overview of how the MySQL connector works]
-* xref:setup-the-mysql-server-for-cdc[Setting up MySQL server for {prodname}]
-* xref:deploy-the-mysql-connector[Deploying the MySQL connector]
-* xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector]
+// * xref:setup-the-mysql-server-for-cdc[Setting up MySQL server for {prodname}]
+// * xref:deploy-the-mysql-connector[Deploying the MySQL connector]
+// * xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector]
 
 // assemblies
 
 include::{assemblies}/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[leveloffset=+1]
 
-include::{assemblies}/cdc-mysql-connector/as_setup-the-mysql-server-for-cdc.adoc[leveloffset=+1]
+// include::{assemblies}/cdc-mysql-connector/as_setup-the-mysql-server-for-cdc.adoc[leveloffset=+1]
 
-include::{assemblies}/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc[leveloffset=+1]
+// include::{assemblies}/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc[leveloffset=+1]
 
-include::{assemblies}/cdc-mysql-connector/as_troubleshoot-the-mysql-connector.adoc[leveloffset=+1]
+// include::{assemblies}/cdc-mysql-connector/as_troubleshoot-the-mysql-connector.adoc[leveloffset=+1]
