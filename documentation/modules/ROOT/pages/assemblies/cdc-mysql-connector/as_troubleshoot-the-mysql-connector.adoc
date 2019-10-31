@@ -18,4 +18,3 @@ include::../../modules/cdc-mysql-connector/r_mysql-is-unavailable.adoc[leveloffs
 include::../../modules/cdc-mysql-connector/r_kakfa-connect-stops.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/r_mysql-purges-binlog-files.adoc[leveloffset=+1]
-

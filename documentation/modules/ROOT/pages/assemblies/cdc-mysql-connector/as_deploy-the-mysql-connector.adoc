@@ -20,5 +20,3 @@ include::../../modules/cdc-mysql-connector/p_configure-the-mysql-connector.adoc[
 include::../../modules/cdc-mysql-connector/r_mysql-connector-configuration-properties.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/r_mysql-connector-monitoring-metrics.adoc[leveloffset=+1]
-
-
