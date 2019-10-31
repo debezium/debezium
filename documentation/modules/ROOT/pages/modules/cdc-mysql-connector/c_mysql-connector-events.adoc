@@ -129,9 +129,7 @@ CREATE TABLE customers (
 
 === Create change event value
 
-
-.example change event key (create)
-[source,json,subs="attributes"]
+[source,json]
 ----
 {
   "schema": {
@@ -269,7 +267,7 @@ CREATE TABLE customers (
           }
         ],
         "optional": false,
-        "name": "io.{prodname}.connector.mysql.Source",
+        "name": "io.product.connector.mysql.Source",
         "field": "source"
       },
       {
@@ -319,8 +317,6 @@ CREATE TABLE customers (
 
 === Update change event value
 
-
-.example change event key (create)
 [source,json]
 ----
 {
@@ -364,9 +360,6 @@ CREATE TABLE customers (
 
 === Delete change event value
 
-
-.example change event key (create)
-[source,json]
 ----
 {
   "schema": { ... },
