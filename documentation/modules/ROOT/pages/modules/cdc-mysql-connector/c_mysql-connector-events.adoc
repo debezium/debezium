@@ -45,6 +45,7 @@ CREATE TABLE customers (
 }
 ----
 
+
 . stuff
 . more
 . more
