@@ -22,15 +22,16 @@ CREATE TABLE customers (
 ) AUTO_INCREMENT=1001;
 ----
 
+=====
 .example change event key
 [source,json]
 ----
 {
-  "schema": {
+ <1>"schema": {
     "type": "struct",
-    "name": "mysql-server-1.inventory.customers.Key",<1>
-    "optional": false,
-    "fields": [
+ <2>"name": "mysql-server-1.inventory.customers.Key",
+ <3>"optional": false,
+ <4>"fields": [
       {
         "field": "id",
         "type": "int32",
@@ -38,11 +39,18 @@ CREATE TABLE customers (
       }
     ]
   },
-  "payload": {
+ <5>"payload": {
     "id": 1001
   }
 }
 ----
+
+. stuff
+. more
+. more
+. more
+. more
+=====
 
 == Change event value
 
