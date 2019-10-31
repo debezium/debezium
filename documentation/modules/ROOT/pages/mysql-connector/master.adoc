@@ -1,5 +1,6 @@
 :attributes: _attributes
 :prodname: Debezium
+:context: cdc
 = {prodname} connector for MySQL
 include::../{attributes}.adoc[]
 
