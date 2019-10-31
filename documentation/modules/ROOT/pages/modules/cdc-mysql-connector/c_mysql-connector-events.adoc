@@ -28,7 +28,7 @@ CREATE TABLE customers (
 {
   "schema": {
     "type": "struct",
-    "name": "mysql-server-1.inventory.customers.Key",
+    "name": "mysql-server-1.inventory.customers.Key",<1>
     "optional": false,
     "fields": [
       {
