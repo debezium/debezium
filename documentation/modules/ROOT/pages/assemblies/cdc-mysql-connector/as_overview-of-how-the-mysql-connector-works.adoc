@@ -26,4 +26,3 @@ include::../../modules/cdc-mysql-connector/c_mysql-connector-events.adoc[levelof
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
-

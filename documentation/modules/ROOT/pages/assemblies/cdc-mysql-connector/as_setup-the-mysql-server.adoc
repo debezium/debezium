@@ -21,4 +21,3 @@ include::../../modules/cdc-mysql-connector/p_enable-mysql-gtids-for-cdc.adoc[lev
 include::../../modules/cdc-mysql-connector/p_setup-session-timeouts-for-cdc.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/p_enable-query-log-events-for-cdc.adoc[leveloffset=+1]
-
