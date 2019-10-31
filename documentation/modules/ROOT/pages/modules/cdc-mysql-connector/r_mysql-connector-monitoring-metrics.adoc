@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="mysql-connector-monitoring-metrics"]
+[id="mysql-connector-monitoring-metrics_{context}"]
 = MySQL connector monitoring metrics
 //In the title of a reference module, include nouns that are used in the body text. For example, "Keyboard shortcuts for ___" or "Command options for ___." This helps readers and search engines find the information quickly.
 

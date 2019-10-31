@@ -1,29 +1,24 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to deploy the CDC MySQL connector, so my applications can capture row-level changes from my databases as streams.
-
+:deployMysql:
 [id="deploy-the-mysql-connector"]
 = Deploying the MySQL connector
 
+* xref:install-the-mysql-connector_{context}[How the connector performs database snapshots]
+* xref:configure-the-mysql-connector_{context}[How the connector handles schema change topics]
+* xref:mysql-connector-monitoring-metrics_{context}[Understanding MySQL connector events]
 * xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties]
-* xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
-* xref:how-the-mysql-connector-handles-schema-change-topics_{context}[How the connector handles schema change topics]
-* xref:understanding-mysql-connector-events_{context}[Understanding MySQL connector events]
-* xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
-* xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
+
 
 // modules
 
+include::../../modules/cdc-mysql-connector/p_install-the-mysql-connector.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/p_configure-the-mysql-connector.adoc[leveloffset=+1]
+
 include::../../modules/cdc-mysql-connector/r_mysql-connector-configuration-properties.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
-
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
-
-include::../../modules/cdc-mysql-connector/c_understanding-mysql-connector-events.adoc[leveloffset=+1]
-
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
-
-include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
+include::../../modules/cdc-mysql-connector/r_mysql-connector-monitoring-metrics.adoc[leveloffset=+1]
 
 :context: cdc
