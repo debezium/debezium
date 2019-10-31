@@ -3,20 +3,194 @@
 
 [id="how-the-mysql-connector-maps-data-types_{context}"]
 = How the MySQL connector maps data types
-//In the title of concept modules, include nouns or noun phrases that are used in the body text. This helps readers and search engines find the information quickly.
-//Do not start the title of concept modules with a verb. See also _Wording of headings_ in _The IBM Style Guide_.
 
-A short introductory paragraph is required for the concept module.
-It will provide an overview of the module.
+The {prodname} MySQL connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value. The MySQL data type of that column dictates how the value is represented in the event.
 
-The contents of a concept module give the user descriptions and explanations needed to understand and use a product.
+Columns that store strings are defined in MySQL with a character set and collation. The MySQL connector uses the column's character set when reading the binary representation of the column values in the binlog events. The following table shows how the connector maps the MySQL data types to both _literal_ and _semantic_ types.
 
-* Look at nouns and noun phrases in related procedure modules and assemblies to find the concepts to explain to users.
-* Explain only things that are visible to users. Even if a concept is interesting, it probably does not require explanation if it is not visible to users.
-* Do not include any instructions to perform an action, such as executing a command. Action items belong in procedure modules.
+* *literal type* : how the value is represented using Kakfa Connect schema types
+* *semantic type* : how the Kakfa Connect schema captures the meaning of the field (schema name) 
 
-.Additional resources
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
 
-* A bulleted list of links to other material closely related to the contents of the concept module.
-* For more details on writing concept modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+|`BOOLEAN, BOOL`
+|`BOOLEAN`
+a| _n/a_
+
+|`BIT(1)`
+|`BOOLEAN`
+a| _n/a_
+
+|`BIT(>1)`
+|`BYTES`
+a| io.{prodname}.data.Bits
+
+NOTE: The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits.
+
+.example (where n is bits)
+----
+numBytes = n/8 + (n%8== 0 ? 0 : 1)
+----
+
+|`TINYINT`
+|`INT8`
+a| _n/a_
+
+|`SMALLINT[(M)]`
+|`INT16`
+a| _n/a_
+
+|`MEDIUMINT[(M)]`
+|`INT32`
+a| _n/a_
+
+|`INT, INTEGER[(M)]`
+|`INT32`
+a| _n/a_
+
+|`BIGINT[(M)]`
+|`INT64`
+a| _n/a_
+
+|`REAL[(M,D)]`
+|`FLOAT32`
+a| _n/a_
+
+|`FLOAT[(M,D)]`
+|`FLOAT64`
+a| _n/a_
+
+|`DOUBLE[(M,D)]`
+|`FLOAT64`
+a| _n/a_
+
+|`CHAR(M)]`
+|`STRING`
+a| _n/a_
+
+|`VARCHAR(M)]`
+|`STRING`
+a| _n/a_
+
+|`BINARY(M)]`
+|`BYTES`
+a| _n/a_
+
+|`VARBINARY(M)]`
+|`BYTES`
+a| _n/a_
+
+|`TINYBLOB`
+|`BYTES`
+a| _n/a_
+
+|`TINYTEXT`
+|`STRING`
+a| _n/a_
+
+|`BLOB`
+|`BYTES`
+a| _n/a_
+
+|`TEXT`
+|`STRING`
+a| _n/a_
+
+|`MEDIUMBLOB`
+|`BYTES`
+a| _n/a_
+
+|`MEDIUMTEXT`
+|`STRING`
+a| _n/a_
+
+|`LONGBLOB`
+|`BYTES`
+a| _n/a_
+
+|`LONGTEXT`
+|`STRING`
+a| _n/a_
+
+|`JSON`
+|`STRING`
+a| io.{prodname}.data.Json
+
+NOTE: Contains the string representation of a `JSON` document, array, or scalar.
+
+|`ENUM`
+|`STRING`
+a| io.{prodname}.data.Enum
+
+NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
+
+|`SET`
+|`STRING`
+a| io.{prodname}.data.EnumSet
+
+NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
+
+|`YEAR[(2|4)]`
+|`INT32`
+a| io.{prodname}.time.Year
+
+|`TIMESTAMP[(M)]`
+|`STRING`
+a| io.{prodname}.time.ZonedTimestamp
+
+NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision. MySQL allows `M` to be in the range of `0-6`.
+
+|===
+
+== Temporal values
+
+Excluding MySQL `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property.
+
+TIP: See xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+
+time.precision.mode=adaptive_time_microseconds(default)::
+    The MySQL connector determins the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database; all time fields are in microseconds.
++
+[cols="2,2,6"]
+|===
+|MySQL type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a| io.{prodname}.time.Date
+
+NOTE: Represents the number of days since epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a| io.{prodname}.time.MicroTime
+
+NOTE: Represents the time value in microseconds and does not include timezone information. MySQL allows `M` to be in the range of `0-6`.
+
+|`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
+|`INT64`
+a| io.{prodname}.time.Timestamp
+
+NOTE: Represents the number of milliseconds past epoch and does not include timezone information.
+
+|`DATETIME(4), DATETIME(5), DATETIME(6)`
+|`INT64`
+a| io.{prodname}.time.MicroTimestamp
+
+NOTE: Represents the number of microseconds past epoch and does not include timezone information.
+
+|===
++
+
+time.precision.mode=connect::
+    X
+    
+== Decimal values
+
+X
+
+== Spatial data types
+
+X
