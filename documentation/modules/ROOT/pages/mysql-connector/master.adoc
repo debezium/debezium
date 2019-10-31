@@ -1,8 +1,7 @@
 :attributes: _attributes
-:prodname: Debezium
 :context: cdc
-= {prodname} connector for MySQL
 include::../{attributes}.adoc[]
+= {prodname} connector for MySQL
 
 HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
 
