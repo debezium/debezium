@@ -46,11 +46,13 @@ CREATE TABLE customers (
 ----
 
 
-. stuff
-. more
-. more
-. more
-. more
+. `schema` describes what is in the `payload` 
+. `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database and `customers` is the table
+. denotes that the `payload` is not optional
+. specifies the type of fields expected in the `payload`
+. the payload itself which in this case only contains a single `id` field
+
+This key describes the row in the `inventory.customers` table which is out from the connector entitled `mysql-server-1` whose `id` primary key column has a value of `1001`.
 =====
 
 == Change event value
