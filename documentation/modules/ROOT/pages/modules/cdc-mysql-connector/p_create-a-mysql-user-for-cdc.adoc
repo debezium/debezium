@@ -29,6 +29,8 @@ TIP: See xref:permissions-explained-mysql-connector_{context}[permissions explai
 mysql> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'user' IDENTIFIED BY 'password';
 ----
 
+IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK_TABLES` permissions to the user that you create. See xref:no-global-read-lock-mysql-connect_{context}[What to do with no global read lock] for more details.
+
 [start=3]
 . Finalize the user's permissions:
 [source,SQL]
