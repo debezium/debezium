@@ -1,6 +1,9 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to set up the MySQL server, so that I can more efficiently deploy the CDC MySQL connector.
+:attributes: _attributes
+:context: cdc
+include::../../{attributes}.adoc[]
 [id="setup-the-mysql-server"]
 = Setting up MySQL server
 
