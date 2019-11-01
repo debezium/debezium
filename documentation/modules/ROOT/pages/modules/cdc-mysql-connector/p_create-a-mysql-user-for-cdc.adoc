@@ -26,7 +26,7 @@ TIP: See xref:permissions-explained-mysql-connector_{context}[permissions explai
 
 [source,SQL]
 ----
-mysql> GRANT SELECT<1>, RELOAD<2>, SHOW DATABASES<3>, REPLICATION SLAVE<4>, REPLICATION CLIENT<5> ON *.*<6> TO 'user'<7> IDENTIFIED BY 'password'<8>;
+mysql> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'user' IDENTIFIED BY 'password';
 ----
 
 [start=3]
@@ -39,12 +39,44 @@ mysql> FLUSH PRIVILEGES;
 == Permissions explained
 [[permissions-explained-mysql-connector_{context}]]
 
-[cols="1,2,7"]
+[cols="3,7"]
 |===
-|Number |Property |Description
+|Permission/item |Description
 
-|1
 |`SELECT`
-|
+a| enables the connector to select rows from tables in databases
+
+NOTE: This is only used when performing a snapshot.
+
+|`RELOAD`
+a| enables the connector the use of the `FLUSH` statement to clear or reload internal caches, flush tables, or acquire locks.
+
+NOTE: This is only used when performing a snapshot.
+
+|`SHOW DATABASES`
+a| enables the connector to see database names by issuing the `SHOW DATABASE` statement.
+
+NOTE: This is only used when performing a snapshot.
+
+|`REPLICATION SLAVE`
+| enables the connector to connect to and read the MySQL server binlog.
+
+|`REPLICATION CLIENT`
+a| enables the connector the use of following statements:
+
+* `SHOW MASTER STATUS`
+* `SHOW SLAVE STATUS`
+* `SHOW BINARY LOGS`
+
+IMPORTANT: This is always required for the connector.
+
+|`ON`
+a| Identifies the *database* to which the permission apply. 
+
+|`TO 'user'`
+| Specifies the *user* to which the permissions are granted.
+
+|`IDENTIFIED BY 'password'`
+| Specifies the *password* for the user.
 
 |===
