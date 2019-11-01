@@ -15,7 +15,7 @@ You must enable binary logging for MySQL replication. The binary logs record tra
 .Procedure
 
 . Check if the `log-bin` option is already on or not.
-[source,sql]
+[source,SQL]
 ----
 SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema_global_variables WHERE variable_name='log-bin';
@@ -37,7 +37,7 @@ expire_logs_days  = 10 <5>
 
 [start=3]
 . Confirm your changes by checking the binlog status once more.
-[source,sql]
+[source,SQL]
 ----
 SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema_global_variables WHERE variable_name='log-bin';
