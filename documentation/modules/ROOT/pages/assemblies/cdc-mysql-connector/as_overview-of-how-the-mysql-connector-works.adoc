@@ -12,6 +12,7 @@ The {prodname} MySQL connector tracks the structure of the tables, performs snap
 * xref:mysql-connector-events_{context}[MySQL connector events]
 * xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
 * xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
+* xref:mysql-supported-topologies_{context}[MySQL supported topologies]
 
 // modules
 
@@ -26,3 +27,5 @@ include::../../modules/cdc-mysql-connector/c_mysql-connector-events.adoc[levelof
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
+
+include::../../modules/cdc-mysql-connector/r_mysql-supported-topologies.adoc[leveloffset=+1]

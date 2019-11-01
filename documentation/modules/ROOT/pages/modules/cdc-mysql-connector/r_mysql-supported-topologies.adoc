@@ -1,0 +1,33 @@
+// Metadata created by nebel
+//
+
+[id="mysql-supported-topologies_{context}"]
+= MySQL supported topologies
+
+The {prodname} MySQL connector supported the following MySQL topologies:
+
+.MySQL standalone
+====
+When a single MySQL server is used, the server must have the binlog enabled (_and optionally GTIDs enabled_) so the {prodname} MySQL connector can monitor the server. This is often acceptable, since the binary log can also be used as an incremental link:https://dev.mysql.com/doc/refman/5.7/en/backup-methods.html[backup]. In this case, the MySQL connector always connects to and follows this standalone MySQL server instance.
+====
+
+.MySQL standalone
+====
+
+====
+
+.MySQL standalone
+====
+
+====
+
+.MySQL standalone
+====
+
+====
+
+.MySQL standalone
+====
+
+====
+
