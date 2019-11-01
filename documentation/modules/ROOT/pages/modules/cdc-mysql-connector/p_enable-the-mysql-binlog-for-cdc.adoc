@@ -47,22 +47,27 @@ FROM information_schema_global_variables WHERE variable_name='log-bin';
 == Binlog configuration properties
 [[binlog-configuration-properties-mysql-connector_{context}]]
 
-[cols="2,8"]
+[cols="1,2,7"]
 |===
-|Property |Description
+|Number |Property |Description
 
+|1
 |`server-id`
 | The value for the `server-id` must be unique for each server and replication client within the MySQL cluster. When the MySQL connector is setup, we assign the connector a unique server ID.
 
+|2
 |`log_bin`
 | The value of `log-bin` is the base name of the sequence of binlog files.
 
+|3
 |`binlog_format`
 | The `binlog-format` must be set to `ROW` or `row`.
 
+|4
 |`binlog_row_image`
 | The `binlog_row_image` must be set to `FULL` or `full`.
 
+|5
 |`expire_logs_days`
 a| This is the number of days for automatic binlog file removal. The default is `0` which means no automatic removal.
 
