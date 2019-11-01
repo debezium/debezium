@@ -5,24 +5,67 @@
 = Enabling the MySQL binlog for {prodname}
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
-This paragraph is the procedure module introduction: a short description of the procedure.
+You must enable binary logging for MySQL replication. The binary logs record transaction updates for replication tools to propogate changes. 
 
 .Prerequisites
 
-* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
-* You can also link to other modules or assemblies the user must follow before starting this assembly.
-* Delete the section title and bullets if the assembly has no prerequisites.
+* You must have a MySQL server.
+* You should have appropriate MySQL user privileges.
 
 .Procedure
 
-. Start each step with an active verb.
+. Check if the `log-bin` option is already on or not.
+[source,sql]
+----
+SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM information_schema_global_variables WHERE variable_name='log-bin';
+----
 
-. Include one command or action per step.
+[start=2]
+. If `OFF`, configure your MySQL server configuration file with the following:
 
-. Use an unnumbered bullet (*) if the procedure includes only one step.
+TIP: See xref:binlog-configuration-properties-mysql-connector_{context}[Binlog config properties] for notes on each property.
 
-.Additional resources
+[source,properties]
+----
+server-id         = 223344 <1>
+log_bin           = mysql-bin <2>
+binlog_format     = ROW <3>
+binlog_row_image  = FULL <4>
+expire_logs_days  = 10 <5>
+----
 
-* A bulleted list of links to other material closely related to the contents of the procedure module.
-* For more details on writing procedure modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+[start=3]
+. Confirm your changes by checking the binlog status once more.
+[source,sql]
+----
+SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM information_schema_global_variables WHERE variable_name='log-bin';
+----
+
+
+== Binlog configuration properties
+[[binlog-configuration-properties-mysql-connector_{context}]]
+
+[cols="2,8"]
+|===
+|Property |Description
+
+|`server-id`
+| The value for the `server-id` must be unique for each server and replication client within the MySQL cluster. When the MySQL connector is setup, we assign the connector a unique server ID.
+
+|`log_bin`
+| The value of `log-bin` is the base name of the sequence of binlog files.
+
+|`binlog_format`
+| The `binlog-format` must be set to `ROW` or `row`.
+
+|`binlog_row_image`
+| The `binlog_row_image` must be set to `FULL` or `full`.
+
+|`expire_logs_days`
+a| This is the number of days for automatic binlog file removal. The default is `0` which means no automatic removal.
+
+TIP: Set the value to match the needs of your environment.
+
+|===
