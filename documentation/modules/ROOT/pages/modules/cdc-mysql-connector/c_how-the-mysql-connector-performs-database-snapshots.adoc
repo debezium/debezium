@@ -58,8 +58,8 @@ If the connector fails, stops, or is rebalanced while making the _initial snapsh
 
 NOTE: If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connecotr reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector].
 
-[[no-global-read-lock-mysql-connect_{context}]]
 == What if Global Read Locks are not allowed?
+[[no-global-read-lock-mysql-connect_{context}]]
 
 Some environments do not allow a *global read lock*. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method.
 
