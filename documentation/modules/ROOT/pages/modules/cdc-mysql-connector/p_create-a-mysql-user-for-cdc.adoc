@@ -22,12 +22,12 @@ mysql> CREATE USER 'user'@'localhost' IDENTIFIED BY 'password';
 [start=2]
 . Grant the required permissions to the user:
 
-TIP: See xref:permissions-explained-mysql-connector_{context}[permissions explained] for notes on each permission.
-
 [source,SQL]
 ----
 mysql> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'user' IDENTIFIED BY 'password';
 ----
+
+TIP: See xref:permissions-explained-mysql-connector_{context}[permissions explained] for notes on each permission.
 
 IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK_TABLES` permissions to the user that you create. See xref:no-global-read-lock-mysql-connect_{context}[What to do with no global read lock] for more details.
 
