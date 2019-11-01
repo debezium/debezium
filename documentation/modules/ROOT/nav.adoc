@@ -13,7 +13,8 @@
 ** xref:configuration/serdes.adoc[Change Event SerDes]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
-** xref:mysql-connector/master.adoc[MySQL]
+** MySQL
+*** xref:assemblies/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[How it works]
 ** xref:connectors/mongodb.adoc[MongoDB]
 ** xref:connectors/postgresql.adoc[PostgreSQL]
 ** xref:connectors/oracle.adoc[Oracle]

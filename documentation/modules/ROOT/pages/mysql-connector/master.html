@@ -2341,7 +2341,7 @@ fulfillment.inventory.products</code></pre>
 <div class="title">Important</div>
 </td>
 <td class="content">
-Because these hosted options do not allow a <strong>global read lock</strong>, table-level locks are used to create the <em>consisten snapshot</em>. See <a href="#no-global-read-lock-mysql-connect_cdc">What to do with no global read lock</a> for more details.
+Because these hosted options do not allow a <strong>global read lock</strong>, table-level locks are used to create the <em>consistent snapshot</em>. See <a href="#no-global-read-lock-mysql-connect_cdc">What to do with no global read lock</a> for more details.
 </td>
 </tr>
 </table>
@@ -2357,10 +2357,10 @@ Because these hosted options do not allow a <strong>global read lock</strong>, t
 <div class="ulist">
 <ul>
 <li>
-<p><a href="#enable-the-mysql-binlog-for-cdc_cdc">Enable the MySQL binlog</a></p>
+<p><a href="#create-a-mysql-user-for-cdc_cdc">Create MySQL user</a></p>
 </li>
 <li>
-<p><a href="#create-a-mysql-user-for-cdc_cdc">Create MySQL user</a></p>
+<p><a href="#enable-the-mysql-binlog-for-cdc_cdc">Enable the MySQL binlog</a></p>
 </li>
 <li>
 <p><a href="#enable-mysql-gtids-for-cdc_cdc">Enable MySQL GTIDs</a></p>
@@ -2372,6 +2372,204 @@ Because these hosted options do not allow a <strong>global read lock</strong>, t
 <p><a href="#enable-query-log-events-for-cdc_cdc">Enable query log events</a></p>
 </li>
 </ul>
+</div>
+<div class="sect2">
+<h3 id="create-a-mysql-user-for-cdc_cdc">Creating a MySQL user for Debezium</h3>
+<div class="paragraph">
+<p>You have to define a MySQL user with appropriate permissions on all databases that the Debezium MySQL connector monitors.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>You must have a MySQL server.</p>
+</li>
+<li>
+<p>You must know basic SQL commands.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create the MySQL user:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>mysql&gt; CREATE USER 'user'@'localhost' IDENTIFIED BY 'password';</pre>
+</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic" start="2">
+<li>
+<p>Grant the required permissions to the user:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-SQL" data-lang="SQL">mysql&gt; GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'user' IDENTIFIED BY 'password';</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+See <a href="#permissions-explained-mysql-connector">permissions explained</a> for notes on each permission.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Important</div>
+</td>
+<td class="content">
+If using a hosted option such as Amazon RDS or Amazon Aurora that do not allow a <strong>global read lock</strong>, table-level locks are used to create the <em>consistent snapshot</em>. In this case, you need to also grant <code>LOCK_TABLES</code> permissions to the user that you create. See <a href="#no-global-read-lock-mysql-connect_cdc">What to do with no global read lock</a> for more details.
+</td>
+</tr>
+</table>
+</div>
+<div class="olist arabic">
+<ol class="arabic" start="3">
+<li>
+<p>Finalize the user&#8217;s permissions:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>mysql&gt; FLUSH PRIVILEGES;</pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_permissions_explained">Permissions explained</h4>
+<table id="permissions-explained-mysql-connector" class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Permission/item</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SELECT</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>enables the connector to select rows from tables in databases</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+This is only used when performing a snapshot.
+</td>
+</tr>
+</table>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RELOAD</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>enables the connector the use of the <code>FLUSH</code> statement to clear or reload internal caches, flush tables, or acquire locks.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+This is only used when performing a snapshot.
+</td>
+</tr>
+</table>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SHOW DATABASES</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>enables the connector to see database names by issuing the <code>SHOW DATABASE</code> statement.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+This is only used when performing a snapshot.
+</td>
+</tr>
+</table>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REPLICATION SLAVE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">enables the connector to connect to and read the MySQL server binlog.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REPLICATION CLIENT</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>enables the connector the use of following statements:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>SHOW MASTER STATUS</code></p>
+</li>
+<li>
+<p><code>SHOW SLAVE STATUS</code></p>
+</li>
+<li>
+<p><code>SHOW BINARY LOGS</code></p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Important</div>
+</td>
+<td class="content">
+This is always required for the connector.
+</td>
+</tr>
+</table>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ON</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Identifies the <strong>database</strong> to which the permission apply.</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TO 'user'</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the <strong>user</strong> to which the permissions are granted.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IDENTIFIED BY 'password'</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the <strong>password</strong> for the user.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <div class="sect2">
 <h3 id="enable-the-mysql-binlog-for-cdc_cdc">Enabling the MySQL binlog for Debezium</h3>
@@ -2399,7 +2597,7 @@ Because these hosted options do not allow a <strong>global read lock</strong>, t
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+<pre>mysql&gt; SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema_global_variables WHERE variable_name='log-bin';</pre>
 </div>
 </div>
@@ -2417,7 +2615,7 @@ FROM information_schema_global_variables WHERE variable_name='log-bin';</pre>
 <div class="title">Tip</div>
 </td>
 <td class="content">
-See <a href="#binlog-configuration-properties-mysql-connector_cdc">Binlog config properties</a> for notes on each property.
+See <a href="#binlog-configuration-properties-mysql-connector">Binlog config properties</a> for notes on each property.
 </td>
 </tr>
 </table>
@@ -2440,44 +2638,48 @@ expire_logs_days  = 10 <b class="conum">(5)</b></code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+<pre>mysql&gt; SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
 FROM information_schema_global_variables WHERE variable_name='log-bin';</pre>
 </div>
 </div>
 <div class="sect3">
 <h4 id="_binlog_configuration_properties">Binlog configuration properties</h4>
-<div class="paragraph">
-<p><a id="binlog-configuration-properties-mysql-connector_cdc"></a></p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="binlog-configuration-properties-mysql-connector" class="tableblock frame-all grid-all stretch">
 <colgroup>
+<col style="width: 10%;">
 <col style="width: 20%;">
-<col style="width: 80%;">
+<col style="width: 70%;">
 </colgroup>
 <thead>
 <tr>
+<th class="tableblock halign-left valign-top">Number</th>
 <th class="tableblock halign-left valign-top">Property</th>
 <th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>server-id</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The value for the <code>server-id</code> must be unique for each server and replication client within the MySQL cluster. When the MySQL connector is setup, we assign the connector a unique server ID.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>log_bin</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The value of <code>log-bin</code> is the base name of the sequence of binlog files.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>binlog_format</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The <code>binlog-format</code> must be set to <code>ROW</code> or <code>row</code>.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>binlog_row_image</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The <code>binlog_row_image</code> must be set to <code>FULL</code> or <code>full</code>.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>expire_logs_days</code></p></td>
 <td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
 <p>This is the number of days for automatic binlog file removal. The default is <code>0</code> which means no automatic removal.</p>
@@ -2497,54 +2699,6 @@ Set the value to match the needs of your environment.
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="create-a-mysql-user-for-cdc_cdc">Creating a MySQL user for Debezium</h3>
-<div class="paragraph">
-<p>This paragraph is the procedure module introduction: a short description of the procedure.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>A bulleted list of conditions that must be satisfied before the user starts following this assembly.</p>
-</li>
-<li>
-<p>You can also link to other modules or assemblies the user must follow before starting this assembly.</p>
-</li>
-<li>
-<p>Delete the section title and bullets if the assembly has no prerequisites.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Start each step with an active verb.</p>
-</li>
-<li>
-<p>Include one command or action per step.</p>
-</li>
-<li>
-<p>Use an unnumbered bullet (*) if the procedure includes only one step.</p>
-</li>
-</ol>
-</div>
-<div class="ulist">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p>A bulleted list of links to other material closely related to the contents of the procedure module.</p>
-</li>
-<li>
-<p>For more details on writing procedure modules, see the <a href="https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide">Modular Documentation Reference Guide</a>.</p>
-</li>
-<li>
-<p>Use a consistent system for file names, IDs, and titles. For tips, see <em>Anchor Names and File Names</em> in <a href="https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide">Modular Documentation Reference Guide</a>.</p>
-</li>
-</ul>
 </div>
 </div>
 <div class="sect2">
