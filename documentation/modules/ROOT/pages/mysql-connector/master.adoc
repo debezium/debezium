@@ -3,7 +3,9 @@
 include::../{attributes}.adoc[]
 = {prodname} connector for MySQL
 
-HERE IS WHERE THE BINLOG AND INITIAL OVERVIEW CONTENT SHOULD GO
+MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas and the data within tables. MySQL uses the binlog for replication and recovery.
+
+The {prodname} MySQL connector reads the binlog and produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations and records the change events in a Kafka topic. Client applications read those Kafka topics.
 
 * xref:overview-of-how-the-mysql-connector-works[Overview of how the MySQL connector works]
 * xref:setup-the-mysql-server[Setting up MySQL server]
