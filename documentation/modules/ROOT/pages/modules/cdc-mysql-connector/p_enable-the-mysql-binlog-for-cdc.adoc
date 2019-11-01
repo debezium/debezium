@@ -24,7 +24,7 @@ FROM information_schema_global_variables WHERE variable_name='log-bin';
 [start=2]
 . If `OFF`, configure your MySQL server configuration file with the following:
 
-TIP: See xref:binlog-configuration-properties-mysql-connector_{context}[Binlog config properties] for notes on each property.
+TIP: See xref:binlog-configuration-properties-mysql-connector[Binlog config properties] for notes on each property.
 
 [source,properties]
 ----
@@ -45,7 +45,7 @@ FROM information_schema_global_variables WHERE variable_name='log-bin';
 
 
 == Binlog configuration properties
-[[binlog-configuration-properties-mysql-connector_{context}]]
+[[binlog-configuration-properties-mysql-connector]]
 
 [cols="1,2,7"]
 |===
