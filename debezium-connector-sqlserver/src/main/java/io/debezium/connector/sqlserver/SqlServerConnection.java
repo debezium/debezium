@@ -6,6 +6,7 @@
 
 package io.debezium.connector.sqlserver;
 
+import java.math.BigDecimal;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,9 +16,11 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,6 +38,8 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.Clock;
+import io.debezium.util.HexConverter;
+import microsoft.sql.DateTimeOffset;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -84,6 +89,8 @@ public class SqlServerConnection extends JdbcConnection {
 
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
 
+    private final Map<String, DefaultValueMapper> defaultValueMappers;
+
     /**
      * Creates a new connection using the supplied configuration.
      *
@@ -99,6 +106,7 @@ public class SqlServerConnection extends JdbcConnection {
         lsnToTimestamp = getLsnToTimestamp(supportsAtTimeZone);
         this.clock = clock;
         this.sourceTimestampMode = sourceTimestampMode;
+        defaultValueMappers = createDefaultValueMappers();
     }
 
     /**
@@ -117,6 +125,75 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         return lsnToTimestamp;
+    }
+
+    private Map<String, DefaultValueMapper> createDefaultValueMappers() {
+        Map<String, DefaultValueMapper> result = new HashMap<>();
+
+        // Exact numbers
+        result.put("bigint", v -> Long.parseLong(v.substring(2, v.length() - 3)));       // Sample value: ((3147483648.))
+        result.put("int", v -> Integer.parseInt(v.substring(2, v.length() - 2)));        // Sample value: ((2147483647))
+        result.put("smallint", v -> Short.parseShort(v.substring(2, v.length() - 2)));   // Sample value: ((32767))
+        result.put("tinyint", v -> Short.parseShort(v.substring(2, v.length() - 2)));    // Sample value: ((255))
+        result.put("bit", v -> v.equals("((1))"));                                       // Either ((1)) or ((0))
+        result.put("decimal", v -> new BigDecimal(v.substring(2, v.length() - 2)));      // Sample value: ((100.12345))
+        result.put("numeric", v -> new BigDecimal(v.substring(2, v.length() - 2)));      // Sample value: ((100.12345))
+        result.put("money", v -> new BigDecimal(v.substring(2, v.length() - 2)));        // Sample value: ((922337203685477.58))
+        result.put("smallmoney", v -> new BigDecimal(v.substring(2, v.length() - 2)));   // Sample value: ((214748.3647))
+
+        // Approximate numerics
+        result.put("float", v -> Double.parseDouble(v.substring(2, v.length() - 2)));    // Sample value: ((1.2345000000000000e+003))
+        result.put("real", v -> Float.parseFloat(v.substring(2, v.length() - 2)));       // Sample value: ((1.2345000000000000e+003))
+
+        // Date and time
+        result.put("date", v -> {                                                        // Sample value: ('2019-02-03')
+            String rawValue = v.substring(2, v.length() - 2);
+            return prepareQueryAndMap("SELECT PARSE(? AS date)", st -> st.setString(1, rawValue),
+                    singleResultMapper(rs -> rs.getDate(1), "Parse() should return exactly one result."));
+        });
+        result.put("datetime", v -> {                                                    // Sample value: ('2019-01-01 00:00:00.000')
+            String rawValue = v.substring(2, v.length() - 2);
+            return prepareQueryAndMap("SELECT PARSE(? AS datetime)", st -> st.setString(1, rawValue),
+                    singleResultMapper(rs -> rs.getTimestamp(1), "Parse() should return exactly one result."));
+        });
+        result.put("datetime2", v -> {                                                    // Sample value: ('2019-01-01 00:00:00.1234567')
+            String rawValue = v.substring(2, v.length() - 2);
+            return prepareQueryAndMap("SELECT PARSE(? AS datetime2)", st -> st.setString(1, rawValue),
+                    singleResultMapper(rs -> rs.getTimestamp(1), "Parse() should return exactly one result."));
+        });
+        result.put("datetimeoffset", v -> {                                              // Sample value: ('2019-01-01 00:00:00.1234567+02:00')
+            String rawValue = v.substring(2, v.length() - 2);
+            return prepareQueryAndMap("SELECT PARSE(? AS datetimeoffset)", st -> st.setString(1, rawValue),
+                    singleResultMapper(rs -> (DateTimeOffset) rs.getObject(1), "Parse() should return exactly one result."));
+        });
+        result.put("smalldatetime", v -> {                                               // Sample value: ('2019-01-01 00:00:00')
+            String rawValue = v.substring(2, v.length() - 2);
+            return prepareQueryAndMap("SELECT PARSE(? AS smalldatetime)", st -> st.setString(1, rawValue),
+                    singleResultMapper(rs -> rs.getTimestamp(1), "Parse() should return exactly one result."));
+        });
+        result.put("time", v -> {                                                        // Sample value: ('2019-01-01 00:00:00')
+            String rawValue = v.substring(2, v.length() - 2);
+            return prepareQueryAndMap("SELECT PARSE(? AS time)", st -> st.setString(1, rawValue),
+                    singleResultMapper(rs -> rs.getTime(1), "Parse() should return exactly one result."));
+        });
+
+        // Character strings
+        result.put("char", v -> v.substring(2, v.length() - 2));         // Sample value: ('aaa')
+        result.put("text", v -> v.substring(2, v.length() - 2));         // Sample value: ('aaa')
+        result.put("varchar", v -> v.substring(2, v.length() - 2));      // Sample value: ('aaa')
+
+        // Unicode character strings
+        result.put("nchar", v -> v.substring(2, v.length() - 2));        // Sample value: ('aaa')
+        result.put("ntext", v -> v.substring(2, v.length() - 2));        // Sample value: ('aaa')
+        result.put("nvarchar", v -> v.substring(2, v.length() - 2));     // Sample value: ('aaa')
+
+        // Binary strings
+        result.put("binary", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1)));      // Sample value: (0x0102030405)
+        result.put("image", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1)));       // Sample value: (0x0102030405)
+        result.put("varbinary", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1)));   // Sample value: (0x0102030405)
+
+        // Other data types, such as cursor, xml or uniqueidentifier, have been omitted.
+        return result;
     }
 
     /**
@@ -375,6 +452,11 @@ public class SqlServerConnection extends JdbcConnection {
                 .addColumns(columns)
                 .setPrimaryKeyNames(pkColumnNames)
                 .create();
+    }
+
+    @Override
+    protected Map<String, DefaultValueMapper> getDefaultValueMappers() {
+        return defaultValueMappers;
     }
 
     public Table getTableSchemaFromChangeTable(SqlServerChangeTable changeTable) throws SQLException {
