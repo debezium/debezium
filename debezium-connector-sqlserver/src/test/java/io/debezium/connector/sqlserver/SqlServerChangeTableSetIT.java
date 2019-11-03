@@ -264,7 +264,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                             .name("server1.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
-                            .field("newcol", Schema.INT32_SCHEMA)
+                            .field("newcol", SchemaBuilder.int32().defaultValue(0).build())
                             .build());
         });
 
@@ -286,7 +286,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
                             .name("server1.dbo.tableb.Value")
                             .field("id", Schema.INT32_SCHEMA)
                             .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
-                            .field("newcol", Schema.INT32_SCHEMA)
+                            .field("newcol", SchemaBuilder.int32().defaultValue(0).build())
                             .build());
         });
     }
