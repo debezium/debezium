@@ -76,6 +76,21 @@ public class JdbcConnection implements AutoCloseable {
             });
 
     /**
+     * Converts JDBC string representation of a default column value to an object.
+     */
+    @FunctionalInterface
+    public interface DefaultValueMapper {
+
+        /**
+         * Parses string to an object.
+         * @param value string representation
+         * @return value
+         * @throws Exception if there is an parsing error
+         */
+        Object parse(String value) throws Exception;
+    }
+
+    /**
      * Establishes JDBC connections.
      */
     @FunctionalInterface
@@ -1094,7 +1109,8 @@ public class JdbcConnection implements AutoCloseable {
         final String columnName = columnMetadata.getString(4);
         if (columnFilter == null || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), columnName)) {
             final ColumnEditor column = Column.editor().name(columnName);
-            column.type(columnMetadata.getString(6));
+            String columnType = columnMetadata.getString(6);
+            column.type(columnType);
             column.length(columnMetadata.getInt(7));
             if (columnMetadata.getObject(9) != null) {
                 column.scale(columnMetadata.getInt(9));
@@ -1113,11 +1129,35 @@ public class JdbcConnection implements AutoCloseable {
 
             column.nativeType(resolveNativeType(column.typeName()));
             column.jdbcType(resolveJdbcType(columnMetadata.getInt(5), column.nativeType()));
-
+            parseDefaultValue(columnType, columnMetadata.getString(13)).ifPresent(column::defaultValue);
             return Optional.of(column);
         }
 
         return Optional.empty();
+    }
+
+    private Optional<Object> parseDefaultValue(String dataType, String defaultValue) {
+        if (defaultValue == null) {
+            return Optional.empty();
+        }
+
+        DefaultValueMapper mapper = getDefaultValueMappers().get(dataType);
+        if (mapper == null) {
+            LOGGER.warn("Mapper for type '{}' not found.", dataType);
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.of(mapper.parse(defaultValue));
+        }
+        catch (Exception e) {
+            LOGGER.warn("Cannot parse column default value '{}' to type '{}'.", defaultValue, dataType, e);
+            return Optional.empty();
+        }
+    }
+
+    protected Map<String, DefaultValueMapper> getDefaultValueMappers() {
+        return Collections.emptyMap();
     }
 
     protected List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
