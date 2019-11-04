@@ -12,6 +12,7 @@ import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT;
 import static io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON;
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 
@@ -1436,6 +1437,25 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             VerifyRecord.isValidInsert(record, PK_FIELD, i + 1002);
         }
         logger.info("Many tx duration = {} ms", stopwatch.durations().statistics().getTotal().toMillis());
+    }
+
+    @Test
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Tests specifically that pgoutput gracefully skips these messages")
+    public void shouldGracefullySkipTruncateMessages() throws Exception {
+        startConnector();
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (text) values ('TRUNCATE TEST');");
+
+        SourceRecord record = consumer.remove();
+        assertEquals(TestHelper.topicName("public.test_table"), record.topic());
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+
+        consumer.expects(0);
+        TestHelper.execute("TRUNCATE TABLE public.test_table;");
+        consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+        assertTrue(consumer.isEmpty());
     }
 
     private void testReceiveChangesForReplicaIdentityFullTableWithToastedValue(PostgresConnectorConfig.SchemaRefreshMode mode, boolean tablesBeforeStart)

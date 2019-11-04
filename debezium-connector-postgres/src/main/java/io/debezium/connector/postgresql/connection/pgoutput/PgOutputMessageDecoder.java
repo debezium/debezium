@@ -70,7 +70,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         UPDATE,
         DELETE,
         TYPE,
-        ORIGIN;
+        ORIGIN,
+        TRUNCATE;
 
         public static MessageType forType(char type) {
             switch (type) {
@@ -90,6 +91,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     return TYPE;
                 case 'O':
                     return ORIGIN;
+                case 'T':
+                    return TRUNCATE;
                 default:
                     throw new IllegalArgumentException("Unsupported message type: " + type);
             }
@@ -109,6 +112,21 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             MessageType type = MessageType.forType((char) buffer.get());
             LOGGER.trace("Message Type: {}", type);
             switch (type) {
+                case TRUNCATE:
+                    // For now we plan to gracefully skip TRUNCATE messages.
+                    // We may decide in the future that these may be emitted differently, see DBZ-1052.
+                    //
+                    // As of PG11, the Truncate message format is as described:
+                    // Byte         Message Type (Always 'T')
+                    // Int32        number of relations described by the truncate message
+                    // Int8         flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
+                    // Int32[]      Array of number of relation ids
+                    //
+                    // In short this message tells us how many relations are impacted by the truncate
+                    // call, whether its cascaded or not and then all table relation ids involved.
+                    // It seems the protocol guarantees to send the most up-to-date `R` relation
+                    // messages for the tables prior to the `T` truncation message, even if in the
+                    // same session a `R` message was followed by an insert/update/delete message.
                 case COMMIT:
                     // For now skip these message types so that the LSN associated with the message won't
                     // be flushed back to PostgreSQL. There is a potential LSN assignment concern with
