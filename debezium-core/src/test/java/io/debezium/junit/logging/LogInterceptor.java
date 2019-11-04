@@ -8,8 +8,8 @@ package io.debezium.junit.logging;
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.Level;
@@ -22,7 +22,7 @@ import org.slf4j.impl.Log4jLoggerAdapter;
  * @author Chris Cranford
  */
 public class LogInterceptor extends AppenderSkeleton {
-    private List<LoggingEvent> events = new ArrayList<>();
+    private List<LoggingEvent> events = new CopyOnWriteArrayList<>();
 
     public LogInterceptor() {
         try {
