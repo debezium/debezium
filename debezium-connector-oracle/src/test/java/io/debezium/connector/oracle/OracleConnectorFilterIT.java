@@ -70,8 +70,10 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 "GRANT CREATE SEQUENCE TO debezium2",
                 "ALTER USER debezium2 QUOTA 100M ON users",
                 "create table debezium2.table2 (id numeric(9,0) not null,name varchar2(1000),primary key (id))",
+                "create table debezium2.nopk (id numeric(9,0) not null)",
                 "GRANT ALL PRIVILEGES ON debezium2.table2 to debezium",
                 "GRANT SELECT ON debezium2.table2 to " + TestHelper.CONNECTOR_USER,
+                "GRANT SELECT ON debezium2.nopk to " + TestHelper.CONNECTOR_USER,
                 "ALTER TABLE debezium2.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS"
             );
         String ddl = "create table debezium.table1 (" +
