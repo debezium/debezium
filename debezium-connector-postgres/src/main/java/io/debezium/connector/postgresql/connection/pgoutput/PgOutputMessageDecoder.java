@@ -563,7 +563,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                         new AbstractReplicationMessageColumn(columnName, columnType, typeExpression, optional, true) {
                             @Override
                             public Object getValue(PgConnectionSupplier connection, boolean includeUnknownDatatypes) {
-                                return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes);
+                                return PgOutputReplicationMessage.getValue(columnName, columnType, typeExpression, valueStr, connection, includeUnknownDatatypes,
+                                        typeRegistry);
                             }
 
                             @Override

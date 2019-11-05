@@ -5,14 +5,13 @@
  */
 package io.debezium.connector.postgresql.connection;
 
-import java.sql.SQLException;
-
-import org.postgresql.jdbc.PgArray;
+import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.ColumnValue;
 
 /**
@@ -31,28 +30,22 @@ public class ReplicationMessageColumnValueResolver {
      * @param value the column value
      * @param connection a postgres connection supplier
      * @param includeUnknownDatatypes true to include unknown data types, false otherwise
+     * @param typeRegistry the postgres type registry
      * @return
      */
     public static Object resolveValue(String columnName, PostgresType type, String fullType, ColumnValue value, final PgConnectionSupplier connection,
-                                      boolean includeUnknownDatatypes) {
+                                      boolean includeUnknownDatatypes, TypeRegistry typeRegistry) {
         if (value.isNull()) {
             // nulls are null
             return null;
         }
 
         if (!type.isBaseType()) {
-            return resolveValue(columnName, type.getBaseType(), fullType, value, connection, includeUnknownDatatypes);
+            return resolveValue(columnName, type.getBaseType(), fullType, value, connection, includeUnknownDatatypes, typeRegistry);
         }
 
-        if (type.isArrayType()) {
-            try {
-                final String dataString = value.asString();
-                return new PgArray(connection.get(), type.getOid(), dataString);
-            }
-            catch (SQLException e) {
-                LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", fullType, columnName, e);
-            }
-            return null;
+        if (value.isArray(type)) {
+            return value.asArray(columnName, type, fullType, connection);
         }
 
         switch (type.getName()) {
@@ -114,7 +107,7 @@ public class ReplicationMessageColumnValueResolver {
                 return value.asInstant();
 
             case "time":
-                return value.asString();
+                return value.asTime();
 
             case "time without time zone":
                 return value.asLocalTime();
@@ -140,7 +133,8 @@ public class ReplicationMessageColumnValueResolver {
             case "lseg":
                 return value.asLseg();
             case "money":
-                return value.asMoney().val;
+                final Object v = value.asMoney();
+                return (v instanceof PGmoney) ? ((PGmoney) v).val : v;
             case "path":
                 return value.asPath();
             case "point":
@@ -185,14 +179,6 @@ public class ReplicationMessageColumnValueResolver {
                 break;
         }
 
-        if (includeUnknownDatatypes) {
-            // this includes things like PostGIS geometries or other custom types.
-            // leave up to the downstream message recipient to deal with.
-            LOGGER.debug("processing column '{}' with unknown data type '{}' as byte array", columnName,
-                    fullType);
-            return value.asString();
-        }
-        LOGGER.debug("Unknown column type {} for column {} – ignoring", fullType, columnName);
-        return null;
+        return value.asDefault(typeRegistry, type.getOid(), columnName, fullType, includeUnknownDatatypes, connection);
     }
 }

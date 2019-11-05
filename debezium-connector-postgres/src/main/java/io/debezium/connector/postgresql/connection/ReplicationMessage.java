@@ -7,25 +7,13 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.util.List;
 
-import org.postgresql.geometric.PGbox;
-import org.postgresql.geometric.PGcircle;
-import org.postgresql.geometric.PGline;
-import org.postgresql.geometric.PGlseg;
-import org.postgresql.geometric.PGpath;
-import org.postgresql.geometric.PGpoint;
-import org.postgresql.geometric.PGpolygon;
-import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGmoney;
-
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
-import io.debezium.data.SpecialValueDecimal;
+import io.debezium.connector.postgresql.TypeRegistry;
 
 /**
  * An abstract representation of a replication message that is sent by a PostgreSQL logical decoding plugin and
@@ -93,37 +81,45 @@ public interface ReplicationMessage {
 
         Double asDouble();
 
-        SpecialValueDecimal asDecimal();
+        Object asDecimal();
 
-        LocalDate asLocalDate();
+        Object asLocalDate();
 
         OffsetDateTime asOffsetDateTimeAtUtc();
 
         Instant asInstant();
 
-        LocalTime asLocalTime();
+        Object asTime();
+
+        Object asLocalTime();
 
         OffsetTime asOffsetTimeUtc();
 
         byte[] asByteArray();
 
-        PGbox asBox();
+        Object asBox();
 
-        PGcircle asCircle();
+        Object asCircle();
 
-        PGInterval asInterval();
+        Object asInterval();
 
-        PGline asLine();
+        Object asLine();
 
-        PGlseg asLseg();
+        Object asLseg();
 
-        PGmoney asMoney();
+        Object asMoney();
 
-        PGpath asPath();
+        Object asPath();
 
-        PGpoint asPoint();
+        Object asPoint();
 
-        PGpolygon asPolygon();
+        Object asPolygon();
+
+        boolean isArray(PostgresType type);
+
+        Object asArray(String columnName, PostgresType type, String fullType, PgConnectionSupplier connection);
+
+        Object asDefault(TypeRegistry typeRegistry, int columnType, String columnName, String fullType, boolean includeUnknownDatatypes, PgConnectionSupplier connection);
     }
 
     /**

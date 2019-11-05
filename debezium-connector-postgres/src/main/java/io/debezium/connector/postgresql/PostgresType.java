@@ -102,19 +102,30 @@ public class PostgresType {
      *
      * @return the default length of the type
      */
-   public int getDefaultLength() {
-       if (typeInfo == null) {
-           return TypeRegistry.UNKNOWN_LENGTH;
-       }
-       if (modifiers == TypeRegistry.NO_TYPE_MODIFIER && baseType != null) {
-           return baseType.getDefaultLength();
-       }
-       int size = typeInfo.getPrecision(oid, modifiers);
-       if (size == 0) {
-           size = typeInfo.getDisplaySize(oid, modifiers);
-       }
-       return size;
-   }
+    public int getDefaultLength() {
+        if (typeInfo == null) {
+            return TypeRegistry.UNKNOWN_LENGTH;
+        }
+        if (baseType != null) {
+            if (modifiers == TypeRegistry.NO_TYPE_MODIFIER) {
+                return baseType.getDefaultLength();
+            }
+            else {
+                int size = typeInfo.getPrecision(baseType.getOid(), modifiers);
+                if (size == 0) {
+                    size = typeInfo.getDisplaySize(baseType.getOid(), modifiers);
+                }
+                if (size != 0 && size != Integer.MAX_VALUE) {
+                    return size;
+                }
+            }
+        }
+        int size = typeInfo.getPrecision(oid, modifiers);
+        if (size == 0) {
+            size = typeInfo.getDisplaySize(oid, modifiers);
+        }
+        return size;
+    }
 
     /**
      *
@@ -124,8 +135,13 @@ public class PostgresType {
         if (typeInfo == null) {
             return TypeRegistry.UNKNOWN_LENGTH;
         }
-        if (modifiers == TypeRegistry.NO_TYPE_MODIFIER && baseType != null) {
-            return baseType.getDefaultScale();
+        if (baseType != null) {
+            if (modifiers == TypeRegistry.NO_TYPE_MODIFIER) {
+                return baseType.getDefaultScale();
+            }
+            else {
+                return typeInfo.getScale(baseType.getOid(), modifiers);
+            }
         }
         return typeInfo.getScale(oid, modifiers);
     }

@@ -493,9 +493,9 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("INSERT INTO alias_table (salary, salary2, a, area) values (7.25, 8.25, 12345.123, 12345.123);");
 
         buildNoStreamProducer(TestHelper.defaultConfig()
-                                      .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
-                                      .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                                      .with("column.propagate.source.type", "public.alias_table.area"));
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with("column.propagate.source.type", "public.alias_table.area"));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -503,7 +503,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // Specifying alias money2 results in JDBC type '2001' for 'salary2'
         // Specifying money results in JDBC type '8' for 'salary'
 
-        consumer.process(record ->assertReadRecord(record, Collect.hashMapOf("public.alias_table", schemaAndValueForMoneyAliasType())));
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", schemaAndValueForMoneyAliasType())));
     }
 
     private List<SchemaAndValueField> schemaAndValueForMoneyAliasType() {

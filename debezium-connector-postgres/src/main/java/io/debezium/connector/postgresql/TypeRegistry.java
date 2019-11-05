@@ -325,8 +325,7 @@ public class TypeRegistry {
                                 modifiers,
                                 typeInfo,
                                 baseType,
-                                null
-                        ));
+                                null));
                     }
                 }
 
@@ -352,8 +351,7 @@ public class TypeRegistry {
                                 modifiers,
                                 typeInfo,
                                 baseType,
-                                get((int) rs.getLong("element"))
-                        ));
+                                get((int) rs.getLong("element"))));
                     }
                 }
             }
@@ -376,9 +374,9 @@ public class TypeRegistry {
             final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
             final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
-            try(final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_NAME_LOOKUP)) {
+            try (final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_NAME_LOOKUP)) {
                 statement.setString(1, name);
-                try(final ResultSet rs = statement.executeQuery()) {
+                try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
                         final int oid = (int) rs.getLong("oid");
                         final int baseOid = (int) rs.getLong("baseoid");
@@ -397,8 +395,7 @@ public class TypeRegistry {
                                 modifiers,
                                 typeInfo,
                                 baseType,
-                                null
-                        );
+                                null);
 
                         addType(result);
                         return result;
@@ -420,9 +417,9 @@ public class TypeRegistry {
             final TypeInfo typeInfo = ((BaseConnection) connection).getTypeInfo();
             final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
-            try(final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_OID_LOOKUP)) {
+            try (final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_OID_LOOKUP)) {
                 statement.setLong(1, lookupOid);
-                try(final ResultSet rs = statement.executeQuery()) {
+                try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
                         final int oid = (int) rs.getLong("oid");
                         final int baseOid = (int) rs.getLong("baseoid");
@@ -441,8 +438,7 @@ public class TypeRegistry {
                                 modifiers,
                                 typeInfo,
                                 baseType,
-                                null
-                        );
+                                null);
 
                         addType(result);
                         return result;
@@ -511,7 +507,7 @@ public class TypeRegistry {
                 try {
                     return sqlTypesByPgTypeNames.get(typeName);
                 }
-                catch(Exception e) {
+                catch (Exception e) {
                     LOGGER.warn("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName, e);
                     return typeInfo.getSQLType(typeName);
                 }

@@ -40,17 +40,41 @@ class Wal2JsonColumnValue extends AbstractColumnValue<Value> {
 
     @Override
     public Boolean asBoolean() {
-        return value.asBoolean();
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        else if (value.isString()) {
+            return "t".equalsIgnoreCase(value.asString());
+        }
+        else {
+            return null;
+        }
     }
 
     @Override
     public Integer asInteger() {
-        return value.asInteger();
+        if (value.isNumber()) {
+            return value.asInteger();
+        }
+        else if (value.isString()) {
+            return Integer.valueOf(value.asString());
+        }
+        else {
+            return null;
+        }
     }
 
     @Override
     public Long asLong() {
-        return value.asLong();
+        if (value.isNumber()) {
+            return value.asLong();
+        }
+        else if (value.isString()) {
+            return Long.valueOf(value.asString());
+        }
+        else {
+            return null;
+        }
     }
 
     @Override

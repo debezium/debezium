@@ -7,8 +7,6 @@ package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -21,11 +19,15 @@ import org.postgresql.geometric.PGlseg;
 import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
+import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
 import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
+import io.debezium.connector.postgresql.PostgresType;
+import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.wal2json.DateTimeFormat;
 
 /**
@@ -36,12 +38,17 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractColumnValue.class);
 
     @Override
-    public LocalDate asLocalDate() {
+    public Object asLocalDate() {
         return DateTimeFormat.get().date(asString());
     }
 
     @Override
-    public LocalTime asLocalTime() {
+    public Object asTime() {
+        return asString();
+    }
+
+    @Override
+    public Object asLocalTime() {
         return DateTimeFormat.get().time(asString());
     }
 
@@ -61,7 +68,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGbox asBox() {
+    public Object asBox() {
         try {
             return new PGbox(asString());
         }
@@ -72,7 +79,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGcircle asCircle() {
+    public Object asCircle() {
         try {
             return new PGcircle(asString());
         }
@@ -83,7 +90,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGInterval asInterval() {
+    public Object asInterval() {
         try {
             return new PGInterval(asString());
         }
@@ -94,7 +101,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGline asLine() {
+    public Object asLine() {
         try {
             return new PGline(asString());
         }
@@ -105,7 +112,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGlseg asLseg() {
+    public Object asLseg() {
         try {
             return new PGlseg(asString());
         }
@@ -116,7 +123,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGmoney asMoney() {
+    public Object asMoney() {
         try {
             return new PGmoney(asString());
         }
@@ -127,7 +134,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGpath asPath() {
+    public Object asPath() {
         try {
             return new PGpath(asString());
         }
@@ -138,7 +145,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGpoint asPoint() {
+    public Object asPoint() {
         try {
             return new PGpoint(asString());
         }
@@ -149,7 +156,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public PGpolygon asPolygon() {
+    public Object asPolygon() {
         try {
             return new PGpolygon(asString());
         }
@@ -157,5 +164,35 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
             LOGGER.error("Failed to parse point {}, {}", asString(), e);
             throw new ConnectException(e);
         }
+    }
+
+    @Override
+    public boolean isArray(PostgresType type) {
+        return type.isArrayType();
+    }
+
+    @Override
+    public Object asArray(String columnName, PostgresType type, String fullType, PgConnectionSupplier connection) {
+        try {
+            final String dataString = asString();
+            return new PgArray(connection.get(), type.getOid(), dataString);
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unexpected exception trying to process PgArray ({}) column '{}', {}", fullType, columnName, e);
+        }
+        return null;
+    }
+
+    @Override
+    public Object asDefault(TypeRegistry typeRegistry, int columnType, String columnName, String fullType, boolean includeUnknownDatatypes,
+                            PgConnectionSupplier connection) {
+        if (includeUnknownDatatypes) {
+            // this includes things like PostGIS geoemetries or other custom types
+            // leave up to the downstream message recipient to deal with
+            LOGGER.debug("processing column '{}' with unknown data type '{}' as byte array", columnName, fullType);
+            return asString();
+        }
+        LOGGER.debug("Unknown column type {} for column {} – ignoring", fullType, columnName);
+        return null;
     }
 }
