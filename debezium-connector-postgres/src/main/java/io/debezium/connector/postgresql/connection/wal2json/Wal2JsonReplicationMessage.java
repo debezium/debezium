@@ -168,7 +168,7 @@ class Wal2JsonReplicationMessage implements ReplicationMessage {
     public Object getValue(String columnName, PostgresType type, String fullType, Value rawValue, final PgConnectionSupplier connection,
                            boolean includeUnknownDatatypes) {
         final Wal2JsonColumnValue columnValue = new Wal2JsonColumnValue(rawValue);
-        return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDatatypes);
+        return ReplicationMessageColumnValueResolver.resolveValue(columnName, type, fullType, columnValue, connection, includeUnknownDatatypes, typeRegistry);
     }
 
     @Override

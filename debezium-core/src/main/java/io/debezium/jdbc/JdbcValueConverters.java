@@ -138,6 +138,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
+        if (logger.isDebugEnabled()) {
+            System.out.println("JdbcValueConverters#schemaBuilder(" + column.jdbcType() + ")");
+        }
         switch (column.jdbcType()) {
             case Types.NULL:
                 logger.warn("Unexpected JDBC type: NULL");
@@ -245,9 +248,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 // often treated as a string, but we'll generalize and treat it as a byte array
                 return SchemaBuilder.bytes();
 
+            case Types.DISTINCT:
+                return distinctSchema(column);
+
             // Unhandled types
             case Types.ARRAY:
-            case Types.DISTINCT:
             case Types.JAVA_OBJECT:
             case Types.OTHER:
             case Types.REF:
@@ -340,9 +345,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.ROWID:
                 return (data) -> convertRowId(column, fieldDefn, data);
 
+            case Types.DISTINCT:
+                return convertDistinct(column, fieldDefn);
+
             // Unhandled types
             case Types.ARRAY:
-            case Types.DISTINCT:
             case Types.JAVA_OBJECT:
             case Types.OTHER:
             case Types.REF:
@@ -772,7 +779,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
+        System.out.println("convertSmallInt(" + column.name() + ") with data " + (data != null ? data.getClass() : "null"));
+        if (data == null) {
+            System.out.println("pause");
+        }
         return convertValue(column, fieldDefn, data, SHORT_FALSE, (r) -> {
+            System.out.println("convertSmallInt '" + data + "' (" + data.getClass() + ").");
+            if (data == null) {
+                System.out.println("pause2");
+            }
             if (data instanceof Short) {
                 r.deliver(data);
             }
@@ -1238,5 +1253,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     private boolean supportsLargeTimeValues() {
         return adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode;
+    }
+
+    protected SchemaBuilder distinctSchema(Column column) {
+        return null;
+    }
+
+    protected ValueConverter convertDistinct(Column column, Field fieldDefn) {
+        return null;
     }
 }
