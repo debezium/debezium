@@ -21,9 +21,9 @@ It consists of an enterprise grade operator and images that bring Kafka to OpenS
 
 Follow these steps to prepare your Kafka cluster:
 
-* Install the AMQ Streams operator by following steps in https://access.redhat.com/documentation/en-us/red_hat_amq/7.3/html/using_amq_streams_on_openshift_container_platform/getting-started-str#downloads-str[AMQ docs].
-* Select the desired configuration and https://access.redhat.com/documentation/en-us/red_hat_amq/7.3/html/using_amq_streams_on_openshift_container_platform/getting-started-str#kafka-cluster-str[deploy your Kafka Cluster].
-* Deploy https://access.redhat.com/documentation/en-us/red_hat_amq/7.3/html/using_amq_streams_on_openshift_container_platform/getting-started-str#using-kafka-connect-with-plug-ins-str[Kafka Connect s2i].
+* Install the AMQ Streams operator by following steps in https://access.redhat.com/documentation/en-us/red_hat_amq/7.5/html/using_amq_streams_on_openshift/getting-started-str#downloads-str[AMQ docs].
+* Select the desired configuration and https://access.redhat.com/documentation/en-us/red_hat_amq/7.5/html/using_amq_streams_on_openshift/getting-started-str#downloads-str[deploy your Kafka Cluster].
+* Deploy https://access.redhat.com/documentation/en-us/red_hat_amq/7.5/html/using_amq_streams_on_openshift/getting-started-str#using-kafka-connect-with-plug-ins-str[Kafka Connect s2i].
 
 We now have a working ```Kafka cluster``` running within ```OpenShift``` with ```Kafka Connect s2i```.
 
@@ -54,33 +54,8 @@ In this case the last item in the list above can be omitted.
 To deploy a Kafka Cluster with the Debezium Technology Preview connectors we need to
 
 * Download the connector archives
-* Download the associated database drivers
 * Prepare the plugin directory structure
 * Start the OpenShift s2i build to deploy the final Kafka Connect cluster
-
-=== Downloading Database Drivers
-
-The Debezium Technology Preview comes without database drivers included. The table below links to driver dependencies which need to be included in a directory of each repsective connector prior to triggering the ```s2i``` build.
-
-[cols="25%a,75%a", options="header", role="table table-bordered table-striped"]
-|===
-| Connector
-| Driver
-
-| MySql
-| http://central.maven.org/maven2/mysql/mysql-connector-java/8.0.16/mysql-connector-java-8.0.16.jar[mysql-connector-java-8.0.16.jar]
-
-| PostgreSQL
-| http://central.maven.org/maven2/org/postgresql/postgresql/42.2.8/postgresql-42.2.8.jar[postgresql-42.2.8.jar]
-
-| SQL Server
-| http://central.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/7.2.2.jre8/mssql-jdbc-7.2.2.jre8.jar[mssql-jdbc-7.2.2.jre8.jar]
-
-| MongoDB
-| https://repo1.maven.org/maven2/org/mongodb/mongodb-driver-core/3.9.1/mongodb-driver-core-3.9.1.jar[mongodb-driver-core-3.9.1.jar] +
-  https://repo1.maven.org/maven2/org/mongodb/mongodb-driver/3.9.1/mongodb-driver-3.9.1.jar[mongodb-driver-3.9.1.jar] +
-  https://repo1.maven.org/maven2/org/mongodb/bson/3.9.1/bson-3.9.1.jar[bson-3.9.1.jar]
-|===
 
 === Preparing Directory Structure
 
@@ -99,11 +74,12 @@ plugins
 │   ├── LICENSE-3rd-PARTIES.txt
 │   ├── LICENSE.txt
 │   ├── README.md
-│   ├── bson-3.9.1.jar
-│   ├── debezium-connector-mongodb-1.0.0.Beta1-redhat-00001.jar
-│   ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
-│   ├── mongodb-driver-3.9.1.jar
-│   └── mongodb-driver-core-3.9.1.jar
+│   ├── bson-3.10.1.redhat-00001.jar
+│   ├── debezium-connector-mongodb-1.0.0.Beta2-redhat-00001.jar
+│   ├── debezium-core-1.0.0.Beta2-redhat-00001.jar
+│   ├── mongodb-driver-3.10.1.redhat-00001.jar
+│   ├── mongodb-driver-core-3.10.1.redhat-00001.jar
+│   └── util-3.10.1.redhat-00001.jar
 ├── debezium-connector-mysql
 │   ├── CHANGELOG.md
 │   ├── CONTRIBUTE.md
@@ -111,12 +87,12 @@ plugins
 │   ├── LICENSE-3rd-PARTIES.txt
 │   ├── LICENSE.txt
 │   ├── README.md
-│   ├── antlr4-runtime-4.7.0.redhat-00007.jar
-│   ├── debezium-connector-mysql-1.0.0.Beta1-redhat-00001.jar
-│   ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
-│   ├── debezium-ddl-parser-1.0.0.Beta1-redhat-00001.jar
+│   ├── antlr4-runtime-4.7.0.redhat-00013.jar
+│   ├── debezium-connector-mysql-1.0.0.Beta2-redhat-00001.jar
+│   ├── debezium-core-1.0.0.Beta2-redhat-00001.jar
+│   ├── debezium-ddl-parser-1.0.0.Beta2-redhat-00001.jar
 │   ├── mysql-binlog-connector-java-0.19.1.redhat-00002.jar
-│   └── mysql-connector-java-8.0.16.jar
+│   └── mysql-connector-java-8.0.16.redhat-00001.jar
 ├── debezium-connector-postgres
 │   ├── CHANGELOG.md
 │   ├── CONTRIBUTE.md
@@ -124,10 +100,10 @@ plugins
 │   ├── LICENSE-3rd-PARTIES.txt
 │   ├── LICENSE.txt
 │   ├── README.md
-│   ├── debezium-connector-postgres-1.0.0.Beta1-redhat-00001.jar
-│   ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
-│   ├── postgresql-42.2.8.jar
-│   └── protobuf-java-2.6.1.redhat-1.jar
+│   ├── debezium-connector-postgres-1.0.0.Beta2-redhat-00001.jar
+│   ├── debezium-core-1.0.0.Beta2-redhat-00001.jar
+│   ├── postgresql-42.2.8.redhat-00001.jar
+│   └── protobuf-java-3.8.0.redhat-00001.jar
 └── debezium-connector-sqlserver
     ├── CHANGELOG.md
     ├── CONTRIBUTE.md
@@ -135,9 +111,9 @@ plugins
     ├── LICENSE-3rd-PARTIES.txt
     ├── LICENSE.txt
     ├── README.md
-    ├── debezium-connector-sqlserver-1.0.0.Beta1-redhat-00001.jar
-    ├── debezium-core-1.0.0.Beta1-redhat-00001.jar
-    └── mssql-jdbc-7.2.2.jre8.jar
+    ├── debezium-connector-sqlserver-1.0.0.Beta2-redhat-00001.jar
+    ├── debezium-core-1.0.0.Beta2-redhat-00001.jar
+    └── mssql-jdbc-7.2.2.jre8-redhat-00001.jar
 ----
 
 === Deploying Kafka Connect with the Debezium Technology Preview
