@@ -125,11 +125,10 @@ public class EventDispatcher<T extends DataCollectionId> {
      * @return {@code true} if an event was dispatched (i.e. sent to the message broker), {@code false} otherwise.
      */
     public boolean dispatchDataChangeEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) throws InterruptedException {
+        boolean handled = false;
         if (!filter.isIncluded(dataCollectionId)) {
             LOGGER.trace("Filtered data change event for {}", dataCollectionId);
             eventListener.onFilteredEvent("source = " + dataCollectionId);
-
-            return false;
         }
         else {
             DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
@@ -153,6 +152,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                     streamingReceiver.changeRecord(schema, operation, key, value, offset);
                 }
             });
+            handled = true;
         }
 
         heartbeat.heartbeat(
@@ -160,7 +160,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 changeRecordEmitter.getOffset().getOffset(),
                 this::enqueueHeartbeat);
 
-        return true;
+        return handled;
     }
 
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {
