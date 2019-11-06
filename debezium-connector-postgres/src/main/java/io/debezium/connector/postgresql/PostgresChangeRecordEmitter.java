@@ -50,6 +50,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     private final PostgresConnection connection;
     private final TableId tableId;
     private final boolean unchangedToastColumnMarkerMissing;
+    private final boolean nullToastedValuesMissingFromOld;
     private final Map<String, Object> cachedOldToastedValues = new HashMap<>();
 
     public PostgresChangeRecordEmitter(OffsetContext offset, Clock clock, PostgresConnectorConfig connectorConfig, PostgresSchema schema, PostgresConnection connection,
@@ -63,6 +64,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
         this.tableId = PostgresSchema.parse(message.getTable());
         this.unchangedToastColumnMarkerMissing = !connectorConfig.plugin().hasUnchangedToastColumnMarker();
+        this.nullToastedValuesMissingFromOld = !connectorConfig.plugin().sendsNullToastedValuesInOld();
         Objects.requireNonNull(tableId);
     }
 
@@ -93,9 +95,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 case CREATE:
                     return null;
                 case UPDATE:
-                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true);
+                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), true, true);
                 default:
-                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false);
+                    return columnValues(message.getOldTupleList(), tableId, true, message.hasTypeMetadata(), false, true);
             }
         }
         catch (SQLException e) {
@@ -108,9 +110,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
         try {
             switch (getOperation()) {
                 case CREATE:
-                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false);
+                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false, false);
                 case UPDATE:
-                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false);
+                    return columnValues(message.getNewTupleList(), tableId, true, message.hasTypeMetadata(), false, false);
                 default:
                     return null;
             }
@@ -141,7 +143,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     }
 
     private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged, boolean metadataInMessage,
-                                  boolean sourceOfToasted)
+                                  boolean sourceOfToasted, boolean oldValues)
             throws SQLException {
         if (columns == null || columns.isEmpty()) {
             return null;
@@ -185,7 +187,13 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 int position = getPosition(columnName, table, values);
                 if (position != -1) {
                     final Object candidate = cachedOldToastedValues.get(columnName);
-                    values[position] = candidate != null ? candidate : UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
+                    if (oldValues && nullToastedValuesMissingFromOld) {
+                        // wal2json connector does not send null toasted value among old values
+                        values[position] = null;
+                    }
+                    else {
+                        values[position] = candidate != null ? candidate : UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE;
+                    }
                 }
             }
         }
