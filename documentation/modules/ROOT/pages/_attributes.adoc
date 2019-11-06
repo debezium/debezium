@@ -5,7 +5,7 @@
 :partialsdir: {moduledir}/pages/_partials
 
 :debezium-version: 0.9.5.Final
-:debezium-dev-version: 0.9
+:debezium-dev-version: 1.0
 :debezium-kafka-version: 2.2.0
 :debezium-docker-label: 0.9
 :install-version: 0.9
