@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import io.debezium.config.Configuration;
 import org.junit.Test;
 
 import java.io.File;
@@ -33,7 +34,7 @@ public class CommitLogPostProcessorTest extends EmbeddedCassandraConnectorTestBa
                 errorFileCount.incrementAndGet();
             }
         };
-        CassandraConnectorConfig config = spy(new CassandraConnectorConfig(generateDefaultConfigMap()));
+        CassandraConnectorConfig config = spy(new CassandraConnectorConfig(Configuration.from(generateDefaultConfigMap())));
         when(config.getCommitLogTransfer()).thenReturn(myTransfer);
         CassandraConnectorContext context = new CassandraConnectorContext(config);
         CommitLogPostProcessor postProcessor = spy(new CommitLogPostProcessor(context));

@@ -110,8 +110,8 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     @Test
     public void testSnapshotModeAlways() throws Exception {
         Map<String, Object> configs = new HashMap<>();
-        configs.put(CassandraConnectorConfig.SNAPSHOT_MODE, "always");
-        configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, "0");
+        configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "always");
+        configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
         SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
         doNothing().when(snapshotProcessorSpy).snapshot();
@@ -127,8 +127,8 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     @Test
     public void testSnapshotModeInitial() throws Exception {
         Map<String, Object> configs = new HashMap<>();
-        configs.put(CassandraConnectorConfig.SNAPSHOT_MODE, "initial");
-        configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, "0");
+        configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "initial");
+        configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
         SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
         doNothing().when(snapshotProcessorSpy).snapshot();
@@ -144,8 +144,8 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     @Test
     public void testSnapshotModeNever() throws Exception {
         Map<String, Object> configs = new HashMap<>();
-        configs.put(CassandraConnectorConfig.SNAPSHOT_MODE, "never");
-        configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, "0");
+        configs.put(CassandraConnectorConfig.SNAPSHOT_MODE.name(), "never");
+        configs.put(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), "0");
         CassandraConnectorContext context = generateTaskContext(configs);
         SnapshotProcessor snapshotProcessorSpy = Mockito.spy(new SnapshotProcessor(context));
         doNothing().when(snapshotProcessorSpy).snapshot();

@@ -13,6 +13,7 @@ import com.codahale.metrics.servlets.MetricsServlet;
 import com.codahale.metrics.servlets.PingServlet;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
 import io.debezium.connector.cassandra.network.BuildInfoServlet;
+import io.debezium.config.Configuration;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -28,7 +29,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.Properties;
 
 /**
  * A task that reads Cassandra commit log in CDC directory and generate corresponding data
@@ -54,10 +54,7 @@ public class CassandraConnectorTask {
 
         String configPath = args[0];
         try (FileInputStream fis = new FileInputStream(configPath)) {
-            Properties props = new Properties();
-            props.load(fis);
-            fis.close();
-            CassandraConnectorConfig config = new CassandraConnectorConfig(props);
+            CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.load(fis));
             CassandraConnectorTask task = new CassandraConnectorTask(config);
             task.run();
         }

@@ -15,26 +15,28 @@ import java.util.function.Consumer;
 public class RecordMaker {
     private final boolean emitTombstoneOnDelete;
     private final Filters filters;
+    private final SourceInfo sourceInfo;
 
-    public RecordMaker(boolean emitTombstoneOnDelete, Filters filters) {
+    public RecordMaker(boolean emitTombstoneOnDelete, Filters filters, SourceInfo sourceInfo) {
         this.emitTombstoneOnDelete = emitTombstoneOnDelete;
         this.filters = filters;
+        this.sourceInfo = sourceInfo;
     }
 
-    public void insert(SourceInfo source, RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer) {
-        createRecord(source, data, keySchema, valueSchema, markOffset, consumer, Record.Operation.INSERT);
+    public void insert(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer) {
+        createRecord(data, keySchema, valueSchema, markOffset, consumer, Record.Operation.INSERT);
     }
 
-    public void update(SourceInfo source, RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer) {
-        createRecord(source, data, keySchema, valueSchema, markOffset, consumer, Record.Operation.UPDATE);
+    public void update(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer) {
+        createRecord(data, keySchema, valueSchema, markOffset, consumer, Record.Operation.UPDATE);
     }
 
-    public void delete(SourceInfo source, RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer) {
-        createRecord(source, data, keySchema, valueSchema, markOffset, consumer, Record.Operation.DELETE);
+    public void delete(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer) {
+        createRecord(data, keySchema, valueSchema, markOffset, consumer, Record.Operation.DELETE);
     }
 
-    private void createRecord(SourceInfo source, RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer, Record.Operation operation) {
-        FieldFilterSelector.FieldFilter fieldFilter = filters.getFieldFilter(source.keyspaceTable);
+    private void createRecord(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, Consumer<Record> consumer, Record.Operation operation) {
+        FieldFilterSelector.FieldFilter fieldFilter = filters.getFieldFilter(sourceInfo.keyspaceTable);
         RowData filteredData;
         switch (operation) {
             case INSERT:
@@ -47,13 +49,18 @@ public class RecordMaker {
                 break;
         }
 
-        ChangeRecord record = new ChangeRecord(source, filteredData, keySchema, valueSchema, operation, markOffset);
+        ChangeRecord record = new ChangeRecord(sourceInfo, filteredData, keySchema, valueSchema, operation, markOffset);
         consumer.accept(record);
 
         if (operation == Record.Operation.DELETE && emitTombstoneOnDelete) {
             // generate kafka tombstone event
-            TombstoneRecord tombstoneRecord = new TombstoneRecord(source, filteredData, keySchema);
+            TombstoneRecord tombstoneRecord = new TombstoneRecord(sourceInfo, filteredData, keySchema);
             consumer.accept(tombstoneRecord);
         }
     }
+
+    public SourceInfo getSourceInfo() {
+        return this.sourceInfo;
+    }
+
 }

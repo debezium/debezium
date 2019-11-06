@@ -24,4 +24,8 @@ public final class Module {
     public static String name() {
         return "cassandra";
     }
+
+    public static String contextName() {
+        return "Cassandra";
+    }
 }

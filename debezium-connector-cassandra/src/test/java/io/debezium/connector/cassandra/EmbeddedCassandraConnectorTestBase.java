@@ -8,6 +8,7 @@ package io.debezium.connector.cassandra;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TableMetadata;
+import io.debezium.config.Configuration;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.cassandraunit.utils.CqlOperations;
@@ -75,7 +76,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
      */
     protected static CassandraConnectorContext generateTaskContext() throws GeneralSecurityException, IOException {
         Properties defaults = generateDefaultConfigMap();
-        return new CassandraConnectorContext(new CassandraConnectorConfig(defaults));
+        return new CassandraConnectorContext(new CassandraConnectorConfig(Configuration.from(defaults)));
     }
 
     /**
@@ -84,7 +85,7 @@ public abstract class EmbeddedCassandraConnectorTestBase {
     protected static CassandraConnectorContext generateTaskContext(Map<String, Object> configs) throws GeneralSecurityException, IOException {
         Properties defaults = generateDefaultConfigMap();
         defaults.putAll(configs);
-        return new CassandraConnectorContext(new CassandraConnectorConfig(defaults));
+        return new CassandraConnectorContext(new CassandraConnectorConfig(Configuration.from(defaults)));
     }
 
     /**
@@ -166,14 +167,14 @@ public abstract class EmbeddedCassandraConnectorTestBase {
 
     protected static Properties generateDefaultConfigMap() throws IOException {
         Properties props = new Properties();
-        props.put(CassandraConnectorConfig.CONNECTOR_NAME, TEST_CONNECTOR_NAME);
-        props.put(CassandraConnectorConfig.CASSANDRA_CONFIG, TEST_CASSANDRA_YAML_CONFIG);
-        props.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, TEST_KAFKA_TOPIC_PREFIX);
-        props.put(CassandraConnectorConfig.CASSANDRA_HOSTS, TEST_CASSANDRA_HOSTS);
-        props.put(CassandraConnectorConfig.CASSANDRA_PORT, String.valueOf(TEST_CASSANDRA_PORT));
-        props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, Files.createTempDirectory("offset").toString());
+        props.put(CassandraConnectorConfig.CONNECTOR_NAME.name(), TEST_CONNECTOR_NAME);
+        props.put(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), TEST_CASSANDRA_YAML_CONFIG);
+        props.put(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX.name(), TEST_KAFKA_TOPIC_PREFIX);
+        props.put(CassandraConnectorConfig.CASSANDRA_HOSTS.name(), TEST_CASSANDRA_HOSTS);
+        props.put(CassandraConnectorConfig.CASSANDRA_PORT.name(), String.valueOf(TEST_CASSANDRA_PORT));
+        props.put(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR.name(), Files.createTempDirectory("offset").toString());
         props.put(CassandraConnectorConfig.KAFKA_PRODUCER_CONFIG_PREFIX + ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, TEST_KAFKA_SERVERS);
-        props.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, Files.createTempDirectory("cdc_raw_relocation").toString());
+        props.put(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR.name(), Files.createTempDirectory("cdc_raw_relocation").toString());
         return props;
     }
 

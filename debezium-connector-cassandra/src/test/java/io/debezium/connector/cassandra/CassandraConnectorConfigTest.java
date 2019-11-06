@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
+import io.debezium.config.Configuration;
 import org.junit.Test;
 
 import java.util.Properties;
@@ -21,46 +22,46 @@ public class CassandraConnectorConfigTest {
     @Test
     public void testConfigs() {
         String connectorName = "test_connector";
-        CassandraConnectorConfig config = buildTaskConfig(CassandraConnectorConfig.CONNECTOR_NAME, connectorName);
+        CassandraConnectorConfig config = buildTaskConfig(CassandraConnectorConfig.CONNECTOR_NAME.name(), connectorName);
         assertEquals(connectorName, config.connectorName());
 
         String kafkaTopicPrefix = "test_prefix";
-        config = buildTaskConfig(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX, kafkaTopicPrefix);
+        config = buildTaskConfig(CassandraConnectorConfig.KAFKA_TOPIC_PREFIX.name(), kafkaTopicPrefix);
         assertEquals(kafkaTopicPrefix, config.kafkaTopicPrefix());
 
         String snapshotConsistency = "ALL";
-        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_CONSISTENCY, snapshotConsistency);
+        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_CONSISTENCY.name(), snapshotConsistency);
         assertEquals(snapshotConsistency, config.snapshotConsistencyLevel().name().toUpperCase());
 
         int port = 1234;
-        config = buildTaskConfig(CassandraConnectorConfig.HTTP_PORT, String.valueOf(port));
+        config = buildTaskConfig(CassandraConnectorConfig.HTTP_PORT.name(), String.valueOf(port));
         assertEquals(port, config.httpPort());
 
         String cassandraConfig = "cassandra-unit.yaml";
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_CONFIG, cassandraConfig);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_CONFIG.name(), cassandraConfig);
         assertEquals(cassandraConfig, config.cassandraConfig());
 
         String cassandraHosts = "127.0.0.1,127.0.0.2";
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_HOSTS, cassandraHosts);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_HOSTS.name(), cassandraHosts);
         assertArrayEquals(cassandraHosts.split(","), config.cassandraHosts());
 
         int cassandraPort = 9412;
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PORT, String.valueOf(cassandraPort));
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PORT.name(), String.valueOf(cassandraPort));
         assertEquals(cassandraPort, config.cassandraPort());
 
         String cassandraUsername = "test_user";
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_USERNAME, cassandraUsername);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_USERNAME.name(), cassandraUsername);
         assertEquals(cassandraUsername, config.cassandraUsername());
 
         String cassandraPassword = "test_pw";
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PASSWORD, cassandraPassword);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_PASSWORD.name(), cassandraPassword);
         assertEquals(cassandraPassword, config.cassandraPassword());
 
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_SSL_ENABLED, "true");
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_SSL_ENABLED.name(), "true");
         assertTrue(config.cassandraSslEnabled());
 
         String cassandraSslConfigPath = "/some/path/";
-        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_SSL_CONFIG_PATH, cassandraSslConfigPath);
+        config = buildTaskConfig(CassandraConnectorConfig.CASSANDRA_SSL_CONFIG_PATH.name(), cassandraSslConfigPath);
         assertEquals(cassandraSslConfigPath, config.cassandraSslConfigPath());
 
         String kafkaServers = "host1,host2,host3";
@@ -72,94 +73,90 @@ public class CassandraConnectorConfigTest {
         assertEquals(schemaRegistry, config.getKafkaConfigs().getProperty("schema.registry"));
 
         String offsetBackingStore = "/some/offset/backing/store/";
-        config = buildTaskConfig(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR, offsetBackingStore);
+        config = buildTaskConfig(CassandraConnectorConfig.OFFSET_BACKING_STORE_DIR.name(), offsetBackingStore);
         assertEquals(offsetBackingStore, config.offsetBackingStoreDir());
 
         int offsetFlushIntervalMs = 1234;
-        config = buildTaskConfig(CassandraConnectorConfig.OFFSET_FLUSH_INTERVAL_MS, String.valueOf(offsetFlushIntervalMs));
+        config = buildTaskConfig(CassandraConnectorConfig.OFFSET_FLUSH_INTERVAL_MS.name(), String.valueOf(offsetFlushIntervalMs));
         assertEquals(offsetFlushIntervalMs, config.offsetFlushIntervalMs().toMillis());
 
         int offsetMaxFlushSize = 200;
-        config = buildTaskConfig(CassandraConnectorConfig.MAX_OFFSET_FLUSH_SIZE, String.valueOf(offsetMaxFlushSize));
+        config = buildTaskConfig(CassandraConnectorConfig.MAX_OFFSET_FLUSH_SIZE.name(), String.valueOf(offsetMaxFlushSize));
         assertEquals(offsetMaxFlushSize, config.maxOffsetFlushSize());
 
         int maxQueueSize = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.MAX_QUEUE_SIZE, String.valueOf(maxQueueSize));
+        config = buildTaskConfig(CassandraConnectorConfig.MAX_QUEUE_SIZE.name(), String.valueOf(maxQueueSize));
         assertEquals(maxQueueSize, config.maxQueueSize());
 
         int maxBatchSize = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.MAX_BATCH_SIZE, String.valueOf(maxBatchSize));
+        config = buildTaskConfig(CassandraConnectorConfig.MAX_BATCH_SIZE.name(), String.valueOf(maxBatchSize));
         assertEquals(maxBatchSize, config.maxBatchSize());
 
         int pollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.POLL_INTERVAL_MS, String.valueOf(pollIntervalMs));
+        config = buildTaskConfig(CassandraConnectorConfig.POLL_INTERVAL_MS.name(), String.valueOf(pollIntervalMs));
         assertEquals(pollIntervalMs, config.pollIntervalMs().toMillis());
 
         int schemaPollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.SCHEMA_POLL_INTERVAL_MS, String.valueOf(schemaPollIntervalMs));
+        config = buildTaskConfig(CassandraConnectorConfig.SCHEMA_POLL_INTERVAL_MS.name(), String.valueOf(schemaPollIntervalMs));
         assertEquals(schemaPollIntervalMs, config.schemaPollIntervalMs().toMillis());
 
         int cdcDirPollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.CDC_DIR_POLL_INTERVAL_MS, String.valueOf(cdcDirPollIntervalMs));
+        config = buildTaskConfig(CassandraConnectorConfig.CDC_DIR_POLL_INTERVAL_MS.name(), String.valueOf(cdcDirPollIntervalMs));
         assertEquals(cdcDirPollIntervalMs, config.cdcDirPollIntervalMs().toMillis());
 
         int snapshotPollIntervalMs = 500;
-        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS, String.valueOf(snapshotPollIntervalMs));
+        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_POLL_INTERVAL_MS.name(), String.valueOf(snapshotPollIntervalMs));
         assertEquals(snapshotPollIntervalMs, config.snapshotPollIntervalMs().toMillis());
 
         String fieldBlacklist = "keyspace1.table1.column1,keyspace1.table1.column2";
-        config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST, fieldBlacklist);
+        config = buildTaskConfig(CassandraConnectorConfig.FIELD_BLACKLIST.name(), fieldBlacklist);
         assertArrayEquals(fieldBlacklist.split(","), config.fieldBlacklist());
 
-        config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE, "true");
+        config = buildTaskConfig(CassandraConnectorConfig.TOMBSTONES_ON_DELETE.name(), "true");
         assertTrue(config.tombstonesOnDelete());
 
         String snapshotMode = "always";
-        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_MODE, snapshotMode);
+        config = buildTaskConfig(CassandraConnectorConfig.SNAPSHOT_MODE.name(), snapshotMode);
         assertEquals(CassandraConnectorConfig.SnapshotMode.ALWAYS, config.snapshotMode());
 
         String commitLogDir = "/foo/bar";
-        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR, commitLogDir);
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_RELOCATION_DIR.name(), commitLogDir);
         assertEquals(commitLogDir, config.commitLogRelocationDir());
 
-        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_POST_PROCESSING_ENABLED, "false");
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_POST_PROCESSING_ENABLED.name(), "false");
         assertEquals(false, config.postProcessEnabled());
 
         String transferClazz = "io.debezium.connector.cassandra.BlackHoleCommitLogTransfer";
-        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_TRANSFER_CLASS, transferClazz);
+        config = buildTaskConfig(CassandraConnectorConfig.COMMIT_LOG_TRANSFER_CLASS.name(), transferClazz);
         assertEquals(transferClazz, config.getCommitLogTransfer().getClass().getName());
 
         String keyConverterClass = "io.confluent.connect.avro.AvroConverter";
         HashMap<String, Object> keyConverterConfigs = new HashMap<>();
-        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG, keyConverterClass);
+        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG.name(), keyConverterClass);
         keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX+AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         config = buildTaskConfigs(keyConverterConfigs);
         assertEquals(keyConverterClass, config.getKeyConverter().getClass().getName());
 
         String valueConverterClass = "org.apache.kafka.connect.json.JsonConverter";
-        config = buildTaskConfig(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG, valueConverterClass);
+        config = buildTaskConfig(CassandraConnectorConfig.VALUE_CONVERTER_CLASS_CONFIG.name(), valueConverterClass);
         assertEquals(valueConverterClass, config.getValueConverter().getClass().getName());
 
     }
 
     private CassandraConnectorConfig buildTaskConfigs(HashMap<String, Object> map) {
-        Properties props = new Properties();
-        for (String key : map.keySet()) {
-            props.put(key, map.get(key));
-        }
-        return new CassandraConnectorConfig(props);
+        return new CassandraConnectorConfig(Configuration.from(map));
     }
 
     private CassandraConnectorConfig buildTaskConfig(String key, Object value) {
         Properties props = new Properties();
         props.put(key, value);
-        return new CassandraConnectorConfig(props);
+        return new CassandraConnectorConfig(Configuration.from(props));
     }
 
     @Test
     public void testDefaultConfigs() {
         Properties props = new Properties();
-        CassandraConnectorConfig config = new CassandraConnectorConfig(props);
+        CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(props));
         assertEquals(CassandraConnectorConfig.DEFAULT_SNAPSHOT_CONSISTENCY, config.snapshotConsistencyLevel().name().toUpperCase());
         assertEquals(CassandraConnectorConfig.DEFAULT_HTTP_PORT, config.httpPort());
         assertArrayEquals(CassandraConnectorConfig.DEFAULT_CASSANDRA_HOST.split(","), config.cassandraHosts());
