@@ -119,10 +119,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
             try {
-                try (Statement stmt = pgConnection().createStatement()) {
-                    ResultSet rs = stmt.executeQuery(String.format(
-                            "SELECT COUNT(1) FROM pg_publication WHERE pubname = '%s'",
-                            publicationName));
+                String selectPublication = String.format("SELECT COUNT(1) FROM pg_publication WHERE pubname = '%s'", publicationName);
+                try (Statement stmt = pgConnection().createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
                     if (rs.next()) {
                         Long count = rs.getLong(1);
                         if (count == 0L) {
