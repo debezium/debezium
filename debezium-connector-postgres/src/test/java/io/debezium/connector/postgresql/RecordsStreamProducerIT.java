@@ -1515,10 +1515,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // DELETE
         consumer.expects(2);
         executeAndWait("DELETE FROM test_table");
-        final SourceRecord deletedRecord = consumer.remove();
-        final SourceRecord tmobstoneRecord = consumer.remove();
-        assertThat(tmobstoneRecord.value()).isNull();
-        assertThat(tmobstoneRecord.valueSchema()).isNull();
+        SourceRecord deletedRecord = consumer.remove();
+        SourceRecord tombstoneRecord = consumer.remove();
+        assertThat(tombstoneRecord.value()).isNull();
+        assertThat(tombstoneRecord.valueSchema()).isNull();
         if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
             assertRecordSchemaAndValues(Arrays.asList(
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
@@ -1529,6 +1529,58 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertRecordSchemaAndValues(Arrays.asList(
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 1),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 20)), deletedRecord, Envelope.FieldName.BEFORE);
+        }
+
+        // INSERT null
+        consumer.expects(1);
+        statement = "INSERT INTO test_table (not_toast, text) VALUES (100, null);";
+        assertInsert(
+                statement,
+                Arrays.asList(
+                        new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2), // SERIAL is NOT NULL implicitly
+                        new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100),
+                        new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)));
+
+        // UPDATE null
+        consumer.expects(1);
+        executeAndWait("UPDATE test_table set not_toast = 200 WHERE id=2");
+        updatedRecord = consumer.remove();
+        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100),
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.BEFORE);
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), updatedRecord, Envelope.FieldName.AFTER);
+        }
+        else {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 100)), updatedRecord, Envelope.FieldName.BEFORE);
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), updatedRecord, Envelope.FieldName.AFTER);
+        }
+
+        // DELETE null
+        consumer.expects(2);
+        executeAndWait("DELETE FROM test_table WHERE id=2");
+        deletedRecord = consumer.remove();
+        tombstoneRecord = consumer.remove();
+        assertThat(tombstoneRecord.value()).isNull();
+        assertThat(tombstoneRecord.valueSchema()).isNull();
+        if (DecoderDifferences.areToastedValuesPresentInSchema() || mode == SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST) {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200),
+                    new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, null)), deletedRecord, Envelope.FieldName.BEFORE);
+        }
+        else {
+            assertRecordSchemaAndValues(Arrays.asList(
+                    new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
+                    new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), deletedRecord, Envelope.FieldName.BEFORE);
         }
     }
 

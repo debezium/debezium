@@ -386,6 +386,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean hasUnchangedToastColumnMarker() {
                 return false;
             }
+
+            @Override
+            public boolean sendsNullToastedValuesInOld() {
+                return false;
+            }
         },
         WAL2JSON_RDS_STREAMING("wal2json_rds_streaming") {
             @Override
@@ -407,6 +412,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean hasUnchangedToastColumnMarker() {
                 return false;
             }
+
+            @Override
+            public boolean sendsNullToastedValuesInOld() {
+                return false;
+            }
         },
         WAL2JSON("wal2json") {
             @Override
@@ -421,6 +431,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
             @Override
             public boolean hasUnchangedToastColumnMarker() {
+                return false;
+            }
+
+            @Override
+            public boolean sendsNullToastedValuesInOld() {
                 return false;
             }
         },
@@ -444,6 +459,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public boolean hasUnchangedToastColumnMarker() {
                 return false;
             }
+
+            @Override
+            public boolean sendsNullToastedValuesInOld() {
+                return false;
+            }
         };
 
         private final String decoderName;
@@ -459,6 +479,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
 
         public boolean hasUnchangedToastColumnMarker() {
+            return true;
+        }
+
+        public boolean sendsNullToastedValuesInOld() {
             return true;
         }
 
