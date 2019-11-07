@@ -117,10 +117,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     // We may decide in the future that these may be emitted differently, see DBZ-1052.
                     //
                     // As of PG11, the Truncate message format is as described:
-                    // Byte         Message Type (Always 'T')
-                    // Int32        number of relations described by the truncate message
-                    // Int8         flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
-                    // Int32[]      Array of number of relation ids
+                    // Byte Message Type (Always 'T')
+                    // Int32 number of relations described by the truncate message
+                    // Int8 flags for truncate; 1=CASCADE, 2=RESTART IDENTITY
+                    // Int32[] Array of number of relation ids
                     //
                     // In short this message tells us how many relations are impacted by the truncate
                     // call, whether its cascaded or not and then all table relation ids involved.
