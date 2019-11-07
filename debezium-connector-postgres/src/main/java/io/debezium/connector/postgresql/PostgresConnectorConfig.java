@@ -16,6 +16,8 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -49,6 +51,8 @@ import io.debezium.util.Strings;
  * @author Horia Chiorean
  */
 public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorConfig.class);
 
     /**
      * The set of predefined HStoreHandlingMode options or aliases
@@ -552,7 +556,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("The name of the Postgres logical decoding slot created for streaming changes from a plugin." +
                     "Defaults to 'debezium");
 
-    public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop_on_stop")
+    public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop.on.stop")
             .withDisplayName("Drop slot on stop")
             .withType(Type.BOOLEAN)
             .withDefault(false)
@@ -560,6 +564,13 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
+
+    public static final Field DROP_SLOT_ON_STOP_OBSOLETE = Field.create("slot.drop_on_stop")
+            .withDisplayName("Drop slot on stop")
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Obsolete! Replaced with slot.drop.on.stop");
 
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
@@ -904,7 +915,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected boolean dropSlotOnStop() {
-        return getConfig().getBoolean(DROP_SLOT_ON_STOP);
+        return getConfig().hasKey(DROP_SLOT_ON_STOP_OBSOLETE.name()) ? getConfig().getBoolean(DROP_SLOT_ON_STOP_OBSOLETE) : getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
 
     protected String publicationName() {
@@ -944,6 +955,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected Map<String, ConfigValue> validate() {
+        if (getConfig().hasKey(DROP_SLOT_ON_STOP_OBSOLETE.name())) {
+            LOGGER.warn("Parameter '{}' is obsolete and is scheduled to be removed. Please use '{}'.", DROP_SLOT_ON_STOP_OBSOLETE, DROP_SLOT_ON_STOP);
+        }
         return getConfig().validate(ALL_FIELDS);
     }
 

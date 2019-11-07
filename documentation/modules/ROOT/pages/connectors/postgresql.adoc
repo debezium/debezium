@@ -1496,7 +1496,7 @@ In such cases it is possible to switch to so-called *streaming* mode when every 
 |`debezium`
 |The name of the Postgres logical decoding slot created for streaming changes from a plugin and database instance. Values must conform to link:https://www.postgresql.org/docs/current/static/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION[Postgres replication slot naming rules] which state: _"Each replication slot has a name, which can contain lower-case letters, numbers, and the underscore character."_
 
-|`slot.drop_on_stop`
+|`slot.drop.on.stop`
 |`false`
 |Whether or not to drop the logical replication slot when the connector finishes orderly. Should only be set to `true` in testing or development environments. Dropping the slot allows WAL segments to be discarded by the database, so it may happen that after a restart the connector cannot resume from the WAL position where it left off before.
 
