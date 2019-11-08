@@ -13,6 +13,7 @@ import io.debezium.config.Field;
 public class ExtractNewRecordStateConfigDefinition {
 
     public static final String DEBEZIUM_OPERATION_HEADER_KEY = "__debezium-operation";
+    public static final String DEBEZIUM_OPERATION_TIMESTAMP_HEADER_KEY = "__debezium-operation-timestamp";
     public static final String DELETED_FIELD = "__deleted";
     public static final String METADATA_FIELD_PREFIX = "__";
 

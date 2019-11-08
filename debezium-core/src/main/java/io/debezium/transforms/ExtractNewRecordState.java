@@ -9,6 +9,7 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -134,6 +135,16 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             }
             else {
                 record.headers().addString(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY, operation.code());
+            }
+
+            Struct source = ((Struct) record.value()).getStruct("source");
+            Optional<Long> operationTimestamp = Optional.ofNullable(source.getInt64("ts_ms"));
+            // For snapshot events, the value of "ts_ms" field is always zero and we can ignore these events directly.
+            if (!operationTimestamp.isPresent() || operationTimestamp.get() == 0L) {
+                LOGGER.warn("Unknown operation timestamp thus unable to add the operation timestamp header into the message");
+            }
+            else {
+                record.headers().addLong(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_TIMESTAMP_HEADER_KEY, operationTimestamp.get());
             }
         }
 
