@@ -915,7 +915,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected boolean dropSlotOnStop() {
-        return getConfig().hasKey(DROP_SLOT_ON_STOP_OBSOLETE.name()) ? getConfig().getBoolean(DROP_SLOT_ON_STOP_OBSOLETE) : getConfig().getBoolean(DROP_SLOT_ON_STOP);
+        if (getConfig().hasKey(DROP_SLOT_ON_STOP.name())) {
+            return getConfig().getBoolean(DROP_SLOT_ON_STOP);
+        }
+        if (getConfig().hasKey(DROP_SLOT_ON_STOP_OBSOLETE.name())) {
+            return getConfig().getBoolean(DROP_SLOT_ON_STOP_OBSOLETE);
+        }
+        // Return default value
+        return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
 
     protected String publicationName() {
