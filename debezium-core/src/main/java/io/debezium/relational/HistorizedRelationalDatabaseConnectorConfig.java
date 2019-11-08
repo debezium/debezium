@@ -49,7 +49,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
-    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper, boolean useCatalogBeforeSchema) {
+    protected HistorizedRelationalDatabaseConnectorConfig(Configuration config, String logicalName, TableFilter systemTablesFilter, TableIdToStringMapper tableIdMapper,
+                                                          boolean useCatalogBeforeSchema) {
         super(config, logicalName, systemTablesFilter, tableIdMapper, DEFAULT_SNAPSHOT_FETCH_SIZE);
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }

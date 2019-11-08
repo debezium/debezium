@@ -73,7 +73,6 @@ public interface DatabaseHistory {
                     + "from processing and storing into schema history evolution.")
             .withValidation(Field::isListOfRegex);
 
-    
     /**
      * Configure this instance.
      *
