@@ -5,6 +5,9 @@
  */
 package io.debezium.converters;
 
+import java.nio.ByteBuffer;
+import java.util.Map;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
@@ -12,9 +15,6 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.ConverterConfig;
 import org.apache.kafka.connect.storage.HeaderConverter;
-
-import java.nio.ByteBuffer;
-import java.util.Map;
 
 /**
  * A customized value converter to allow avro message to be delivered as it is (byte[]) to kafka, this is used

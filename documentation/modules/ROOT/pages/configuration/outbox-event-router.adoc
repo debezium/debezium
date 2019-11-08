@@ -201,3 +201,25 @@ See option `table.fields.additional.placement` for more details.
 transforms=outbox,...
 transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 ----
+
+=== Using Avro as the payload format
+
+The outbox routing SMT supports arbitrary payload formats, as the payload column value is passed on transparently.
+As an alternative to working with JSON as shown above it's therefore also possible to use Avro.
+This can be beneficial for the purposes of message format governance and making sure outbox event schemas evolve in a backwards-compatible way.
+
+How a source application produces Avro messages as an outbox event payload is out of the scope of this documentation.
+One possibility could be to leverage the `KafkaAvroSerializer` class and use it to serialize `GenericRecord` instances.
+In order to ensure that the Kafka message value is the exact Avro binary data,
+apply the following configuration to the connector:
+
+[source]
+----
+transforms=outbox,...
+transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
+transforms.outbox.table.fields.additional.placement=type:header:eventType
+value.converter=io.debezium.converters.ByteBufferConverter
+----
+
+This moves the `eventType` value into a Kafka message header, leaving only the `payload` column value (the Avro data) as the sole message value.
+Using `ByteBufferConverter` as the value converter will propagate that value as-is into the Kafka message value.

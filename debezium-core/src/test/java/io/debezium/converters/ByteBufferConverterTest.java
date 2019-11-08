@@ -6,18 +6,18 @@
 
 package io.debezium.converters;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaAndValue;
-import org.apache.kafka.connect.errors.DataException;
-import org.junit.Before;
-import org.junit.Test;
+import static junit.framework.TestCase.fail;
+import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-import static junit.framework.TestCase.fail;
-import static org.fest.assertions.Assertions.assertThat;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
+import org.apache.kafka.connect.errors.DataException;
+import org.junit.Before;
+import org.junit.Test;
 
 public class ByteBufferConverterTest {
 
