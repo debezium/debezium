@@ -10,6 +10,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.util.Clock;
+
 import oracle.streams.ColumnValue;
 import oracle.streams.RowLCR;
 
@@ -32,11 +33,15 @@ public class XStreamChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
     @Override
     protected Operation getOperation() {
-        switch(lcr.getCommandType()) {
-            case RowLCR.INSERT: return Operation.CREATE;
-            case RowLCR.DELETE: return Operation.DELETE;
-            case RowLCR.UPDATE: return Operation.UPDATE;
-            default: throw new IllegalArgumentException("Received event of unexpected command type: " + lcr);
+        switch (lcr.getCommandType()) {
+            case RowLCR.INSERT:
+                return Operation.CREATE;
+            case RowLCR.DELETE:
+                return Operation.DELETE;
+            case RowLCR.UPDATE:
+                return Operation.UPDATE;
+            default:
+                throw new IllegalArgumentException("Received event of unexpected command type: " + lcr);
         }
     }
 

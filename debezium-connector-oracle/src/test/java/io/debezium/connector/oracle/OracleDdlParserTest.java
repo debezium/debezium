@@ -23,7 +23,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.util.IoUtil;
 
-
 /**
  * This is the test suite for Oracle Antlr parser unit testing
  */
@@ -66,20 +65,21 @@ public class OracleDdlParserTest {
         // float(126)
         testColumn(table, "COL6", true, Types.FLOAT, "FLOAT", 126, 0, true, null);
         // date
-        testColumn(table, "COL7", true, Types.TIMESTAMP, "DATE", -1,  null, true, null);
+        testColumn(table, "COL7", true, Types.TIMESTAMP, "DATE", -1, null, true, null);
         // timestamp
         testColumn(table, "COL8", true, Types.TIMESTAMP, "TIMESTAMP", 6, null, true, null);
         // blob
-        testColumn(table, "COL9", true, Types.BLOB, "BLOB", -1,  null, true, null);
+        testColumn(table, "COL9", true, Types.BLOB, "BLOB", -1, null, true, null);
         // clob
-        testColumn(table, "COL10", true, Types.CLOB, "CLOB", -1,  null, true, null);
+        testColumn(table, "COL10", true, Types.CLOB, "CLOB", -1, null, true, null);
         // todo sdo_geometry
-        //testColumn(table, "col12", true, Types.STRUCT, "MDSYS.SDO_GEOMETRY", -1,  null,true);
+        // testColumn(table, "col12", true, Types.STRUCT, "MDSYS.SDO_GEOMETRY", -1, null,true);
 
         String ddl = "alter table " + TABLE_NAME + " add (col21 varchar2(20), col22 number(19));";
         parser.parse(ddl, tables);
         Table alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
-        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL21", "COL22");
+        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL21",
+                "COL22");
         // varchar2(255)
         testColumn(alteredTable, "COL21", true, Types.VARCHAR, "VARCHAR2", 20, null, true, null);
         testColumn(alteredTable, "COL22", true, Types.NUMERIC, "NUMBER", 19, 0, true, null);
@@ -95,7 +95,8 @@ public class OracleDdlParserTest {
         ddl = "alter table " + TABLE_NAME + " add (col23 varchar2(20) not null);";
         parser.parse(ddl, tables);
         alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
-        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL21", "COL22", "COL23");
+        assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL21",
+                "COL22", "COL23");
         testColumn(alteredTable, "COL23", false, Types.VARCHAR, "VARCHAR2", 20, null, false, null);
 
         ddl = "alter table " + TABLE_NAME + " drop (col22, col23);";
@@ -103,14 +104,14 @@ public class OracleDdlParserTest {
         alteredTable = tables.forTable(new TableId(null, null, TABLE_NAME));
         assertThat(alteredTable.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4", "COL5", "COL6", "COL7", "COL8", "COL9", "COL10", "COL21");
 
-        ddl = "drop table " + TABLE_NAME +";";
+        ddl = "drop table " + TABLE_NAME + ";";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isZero();
 
         // todo
         ddl = "drop table " + TABLE_NAME + " cascade constrains purge;";
-        ddl = "ALTER TABLE "+TABLE_NAME+" ADD CONSTRAINT FKB97209E040C4205 FOREIGN KEY (col1) REFERENCES debezium_ref(ID);";
-        ddl = "ALTER TABLE "+TABLE_NAME+" MODIFY COL1 varchar2(50) not null;";
+        ddl = "ALTER TABLE " + TABLE_NAME + " ADD CONSTRAINT FKB97209E040C4205 FOREIGN KEY (col1) REFERENCES debezium_ref(ID);";
+        ddl = "ALTER TABLE " + TABLE_NAME + " MODIFY COL1 varchar2(50) not null;";
     }
 
     /**

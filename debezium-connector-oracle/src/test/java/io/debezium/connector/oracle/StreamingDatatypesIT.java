@@ -30,9 +30,9 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
         String whitelistedTables = getAllTables().stream()
-            .map(t -> "ORCLPDB1." + t)
-            .map(t -> t.replaceAll("\\.", "\\\\."))
-            .collect(Collectors.joining(","));
+                .map(t -> "ORCLPDB1." + t)
+                .map(t -> t.replaceAll("\\.", "\\\\."))
+                .collect(Collectors.joining(","));
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_WHITELIST, whitelistedTables)

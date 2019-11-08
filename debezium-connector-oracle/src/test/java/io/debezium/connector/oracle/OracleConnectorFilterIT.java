@@ -74,8 +74,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
                 "GRANT ALL PRIVILEGES ON debezium2.table2 to debezium",
                 "GRANT SELECT ON debezium2.table2 to " + TestHelper.CONNECTOR_USER,
                 "GRANT SELECT ON debezium2.nopk to " + TestHelper.CONNECTOR_USER,
-                "ALTER TABLE debezium2.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS"
-            );
+                "ALTER TABLE debezium2.table2 ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
         String ddl = "create table debezium.table1 (" +
                 "  id numeric(9,0) not null, " +
                 "  name varchar2(1000), " +

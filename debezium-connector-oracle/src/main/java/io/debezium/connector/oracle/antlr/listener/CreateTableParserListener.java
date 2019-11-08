@@ -28,7 +28,7 @@ public class CreateTableParserListener extends BaseParserListener {
     private ColumnDefinitionParserListener columnDefinitionParserListener;
 
     CreateTableParserListener(final String catalogName, final String schemaName, final OracleDdlParser parser,
-                                     final List<ParseTreeListener> listeners) {
+                              final List<ParseTreeListener> listeners) {
         this.catalogName = catalogName;
         this.schemaName = schemaName;
         this.parser = parser;
@@ -53,7 +53,7 @@ public class CreateTableParserListener extends BaseParserListener {
             listeners.remove(columnDefinitionParserListener);
             columnDefinitionParserListener = null;
             parser.databaseTables().overwriteTable(table);
-            //parser.signalCreateTable(tableEditor.tableId(), ctx); todo ?
+            // parser.signalCreateTable(tableEditor.tableId(), ctx); todo ?
         }, tableEditor, table);
         super.exitCreate_table(ctx);
     }

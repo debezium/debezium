@@ -25,6 +25,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+
 import oracle.streams.XStreamUtility;
 
 /**
@@ -73,17 +74,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "'initial_schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
 
     public static final Field TABLENAME_CASE_INSENSITIVE = Field.create("database.tablename.case.insensitive")
-        .withDisplayName("Case insensitive table names")
-        .withType(Type.BOOLEAN)
-        .withDefault(false)
-        .withImportance(Importance.LOW)
-        .withDescription("Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
+            .withDisplayName("Case insensitive table names")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withImportance(Importance.LOW)
+            .withDescription("Case insensitive table names; set to 'true' for Oracle 11g, 'false' (default) otherwise.");
 
     public static final Field ORACLE_VERSION = Field.create("database.oracle.version")
-        .withDisplayName("Oracle version, 11 or 12+")
-        .withEnum(OracleVersion.class, OracleVersion.V12Plus)
-        .withImportance(Importance.LOW)
-        .withDescription("For default Oracle 12+, use default pos_version value v2, for Oracle 11, use pos_version value v1.");
+            .withDisplayName("Oracle version, 11 or 12+")
+            .withEnum(OracleVersion.class, OracleVersion.V12Plus)
+            .withImportance(Importance.LOW)
+            .withDescription("For default Oracle 12+, use default pos_version value v2, for Oracle 11, use pos_version value v1.");
 
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
@@ -109,8 +110,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             Heartbeat.HEARTBEAT_INTERVAL,
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             TABLENAME_CASE_INSENSITIVE,
-            ORACLE_VERSION
-    );
+            ORACLE_VERSION);
 
     private final String databaseName;
     private final String pdbName;
@@ -143,8 +143,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                 RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX
-        );
+                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS);
 
@@ -167,7 +166,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return snapshotMode;
     }
 
-    public boolean  getTablenameCaseInsensitive() {
+    public boolean getTablenameCaseInsensitive() {
         return tablenameCaseInsensitive;
     }
 
@@ -208,7 +207,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         public int getPosVersion() {
-            switch(version) {
+            switch (version) {
                 case "11":
                     return XStreamUtility.POS_VERSION_V1;
                 case "12+":

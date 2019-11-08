@@ -5,6 +5,14 @@
  */
 package io.debezium.connector.oracle.antlr;
 
+import java.sql.Types;
+import java.util.Arrays;
+import java.util.Locale;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
+
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
@@ -14,14 +22,8 @@ import io.debezium.ddl.parser.oracle.generated.PlSqlLexer;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.SystemVariables;
 import io.debezium.relational.Tables;
-import oracle.jdbc.OracleTypes;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
 
-import java.sql.Types;
-import java.util.Arrays;
-import java.util.Locale;
+import oracle.jdbc.OracleTypes;
 
 /**
  * This is the main Oracle Antlr DDL parser
@@ -104,8 +106,7 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
                         new DataTypeEntry(Types.FLOAT, PlSqlParser.FLOAT),
                         new DataTypeEntry(Types.FLOAT, PlSqlParser.REAL),
                         new DataTypeEntry(Types.BLOB, PlSqlParser.BLOB),
-                        new DataTypeEntry(Types.CLOB, PlSqlParser.CLOB)
-        ));
+                        new DataTypeEntry(Types.CLOB, PlSqlParser.CLOB)));
         return dataTypeResolverBuilder.build();
     }
 

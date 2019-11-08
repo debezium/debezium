@@ -5,6 +5,10 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.time.Instant;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
@@ -15,10 +19,6 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.relational.TableId;
 
-import java.time.Instant;
-
-import static org.fest.assertions.Assertions.assertThat;
-
 public class SourceInfoTest {
 
     private SourceInfo source;
@@ -27,10 +27,9 @@ public class SourceInfoTest {
     public void beforeEach() {
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
                 Configuration.create()
-                    .with(OracleConnectorConfig.SERVER_NAME, "serverX")
-                    .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
-                    .build()
-        );
+                        .with(OracleConnectorConfig.SERVER_NAME, "serverX")
+                        .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
+                        .build());
         source = new SourceInfo(connectorConfig);
         source.setSourceTime(Instant.now());
         source.setTableId(new TableId("c", "s", "t"));

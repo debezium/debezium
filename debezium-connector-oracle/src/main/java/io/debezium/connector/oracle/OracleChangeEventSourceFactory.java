@@ -25,7 +25,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
     private final OracleDatabaseSchema schema;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnection jdbcConnection,
-            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema) {
+                                          ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, OracleDatabaseSchema schema) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;
@@ -49,7 +49,6 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory 
                 dispatcher,
                 errorHandler,
                 clock,
-                schema
-        );
+                schema);
     }
 }

@@ -24,6 +24,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
+
 import oracle.jdbc.OracleTypes;
 
 public class OracleConnection extends JdbcConnection {
@@ -85,7 +86,8 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
-            String[] tableTypes) throws SQLException {
+                                       String[] tableTypes)
+            throws SQLException {
 
         Set<TableId> tableIds = super.readTableNames(null, schemaNamePattern, tableNamePattern, tableTypes);
 
@@ -96,7 +98,8 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern, TableFilter tableFilter,
-            ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc) throws SQLException {
+                           ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+            throws SQLException {
 
         super.readSchema(tables, null, schemaNamePattern, null, columnFilter, removeTablesNotFoundInJdbc);
 
@@ -117,23 +120,21 @@ public class OracleConnection extends JdbcConnection {
                     if (column.jdbcType() == Types.TIMESTAMP) {
                         editor.addColumn(
                                 column.edit()
-                                    .length(column.scale().orElse(Column.UNSET_INT_VALUE))
-                                    .scale(null)
-                                    .create()
-                                );
+                                        .length(column.scale().orElse(Column.UNSET_INT_VALUE))
+                                        .scale(null)
+                                        .create());
                     }
                     // NUMBER columns without scale value have it set to -127 instead of null;
                     // let's rectify that
                     else if (column.jdbcType() == OracleTypes.NUMBER) {
                         column.scale()
-                            .filter(s -> s == ORACLE_UNSET_SCALE)
-                            .ifPresent(s -> {
-                                editor.addColumn(
-                                        column.edit()
-                                            .scale(null)
-                                            .create()
-                                        );
-                            });
+                                .filter(s -> s == ORACLE_UNSET_SCALE)
+                                .ifPresent(s -> {
+                                    editor.addColumn(
+                                            column.edit()
+                                                    .scale(null)
+                                                    .create());
+                                });
                     }
                 }
                 tables.overwriteTable(editor.create());

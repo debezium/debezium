@@ -13,6 +13,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
 import oracle.streams.LCR;
@@ -36,7 +37,8 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final OracleOffsetContext offsetContext;
     private final boolean tablenameCaseInsensitive;
 
-    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema, OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive) {
+    public LcrEventHandler(ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, RelationalDatabaseSchema schema,
+                           OracleOffsetContext offsetContext, boolean tablenameCaseInsensitive) {
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -58,8 +60,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         lcrPosition,
                         lcrPosition.getScn(),
                         recPosition != null ? recPosition : "none",
-                        recPosition != null ? recPosition.getScn() : "none"
-                );
+                        recPosition != null ? recPosition.getScn() : "none");
             }
             return;
         }
@@ -100,8 +101,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchDataChangeEvent(
                 tableId,
-                new XStreamChangeRecordEmitter(offsetContext, lcr, schema.tableFor(tableId), clock)
-        );
+                new XStreamChangeRecordEmitter(offsetContext, lcr, schema.tableFor(tableId), clock));
     }
 
     private void dispatchSchemaChangeEvent(DDLLCR ddlLcr) throws InterruptedException {
@@ -113,8 +113,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         dispatcher.dispatchSchemaChangeEvent(
                 tableId,
-                new OracleSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr)
-        );
+                new OracleSchemaChangeEventEmitter(offsetContext, tableId, ddlLcr));
     }
 
     private TableId getTableId(LCR lcr) {

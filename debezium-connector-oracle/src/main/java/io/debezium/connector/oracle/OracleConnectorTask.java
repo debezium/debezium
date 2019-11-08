@@ -36,7 +36,8 @@ public class OracleConnectorTask extends BaseSourceTask {
     private static final String CONTEXT_NAME = "oracle-connector-task";
 
     private static enum State {
-        RUNNING, STOPPED;
+        RUNNING,
+        STOPPED;
     }
 
     private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
@@ -99,8 +100,7 @@ public class OracleConnectorTask extends BaseSourceTask {
                 connectorConfig.getLogicalName(),
                 new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema),
                 dispatcher,
-                schema
-        );
+                schema);
 
         coordinator.start(taskContext, this.queue, new OracleEventMetadataProvider());
     }
@@ -110,8 +110,8 @@ public class OracleConnectorTask extends BaseSourceTask {
         List<DataChangeEvent> records = queue.poll();
 
         List<SourceRecord> sourceRecords = records.stream()
-            .map(DataChangeEvent::getRecord)
-            .collect(Collectors.toList());
+                .map(DataChangeEvent::getRecord)
+                .collect(Collectors.toList());
 
         if (!sourceRecords.isEmpty()) {
             this.lastOffset = sourceRecords.get(sourceRecords.size() - 1).sourceOffset();

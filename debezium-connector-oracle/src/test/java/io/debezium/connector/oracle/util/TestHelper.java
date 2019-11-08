@@ -47,8 +47,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
-        );
+                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
@@ -103,8 +102,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
-        );
+                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder;
     }
@@ -114,8 +112,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value)
-        );
+                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder;
     }

@@ -9,6 +9,7 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.util.Clock;
+
 import oracle.streams.RowLCR;
 
 /**

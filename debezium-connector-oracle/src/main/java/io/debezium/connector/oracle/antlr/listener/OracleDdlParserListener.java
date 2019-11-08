@@ -5,18 +5,19 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.ProxyParseTreeListenerUtil;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParserBaseListener;
 import io.debezium.text.ParsingException;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * This class is Oracle main DDL parser listener class.

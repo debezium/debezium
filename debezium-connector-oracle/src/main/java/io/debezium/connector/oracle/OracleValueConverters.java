@@ -26,6 +26,7 @@ import io.debezium.time.MicroDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
 import io.debezium.util.Strings;
+
 import oracle.jdbc.OracleTypes;
 import oracle.sql.BINARY_DOUBLE;
 import oracle.sql.BINARY_FLOAT;
@@ -55,8 +56,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 column.jdbcType(),
                 column.typeName(),
                 column.length(),
-                column.scale()
-        );
+                column.scale());
 
         switch (column.jdbcType()) {
             // Oracle's float is not float as in Java but a NUMERIC without scale
@@ -112,7 +112,7 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        switch(column.jdbcType()) {
+        switch (column.jdbcType()) {
             case Types.CHAR:
             case Types.VARCHAR:
             case Types.NCHAR:
@@ -123,7 +123,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.BINARY_DOUBLE:
                 return data -> convertDouble(column, fieldDefn, data);
             case Types.NUMERIC:
-                    return getNumericConverter(column, fieldDefn);
+                return getNumericConverter(column, fieldDefn);
             case Types.FLOAT:
                 return data -> convertVariableScale(column, fieldDefn, data);
             case OracleTypes.TIMESTAMPTZ:
@@ -358,8 +358,8 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof TIMESTAMPLTZ) {
                 // JDBC driver throws an exception
-//                final TIMESTAMPLTZ ts = (TIMESTAMPLTZ)data;
-//                data = ts.offsetDateTimeValue(connection.connection());
+                // final TIMESTAMPLTZ ts = (TIMESTAMPLTZ)data;
+                // data = ts.offsetDateTimeValue(connection.connection());
                 return null;
             }
         }

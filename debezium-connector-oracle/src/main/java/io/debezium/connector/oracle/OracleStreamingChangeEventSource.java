@@ -16,6 +16,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
+
 import oracle.jdbc.OracleConnection;
 import oracle.sql.NUMBER;
 import oracle.streams.StreamsException;
@@ -43,7 +44,8 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     private final boolean tablenameCaseInsensitive;
     private final int posVersion;
 
-    public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
+    public OracleStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext, JdbcConnection jdbcConnection,
+                                            EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
@@ -59,7 +61,8 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         try {
             // 1. connect
-            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition() : convertScnToPosition(offsetContext.getScn());
+            final byte[] startPosition = offsetContext.getLcrPosition() != null ? offsetContext.getLcrPosition().getRawPosition()
+                    : convertScnToPosition(offsetContext.getScn());
             xsOut = XStreamOut.attach((OracleConnection) jdbcConnection.connection(), xStreamServerName,
                     startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 
@@ -102,8 +105,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
                     }
                     xsOut.setProcessedLowWatermark(
                             lcrPosition.getRawPosition(),
-                            XStreamOut.DEFAULT_MODE
-                    );
+                            XStreamOut.DEFAULT_MODE);
                 }
                 else if (scn != null) {
                     if (LOGGER.isDebugEnabled()) {
@@ -111,8 +113,7 @@ public class OracleStreamingChangeEventSource implements StreamingChangeEventSou
                     }
                     xsOut.setProcessedLowWatermark(
                             convertScnToPosition(scn),
-                            XStreamOut.DEFAULT_MODE
-                    );
+                            XStreamOut.DEFAULT_MODE);
                 }
                 else {
                     LOGGER.warn("Nothing in offsets could be recorded to Oracle");

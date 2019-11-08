@@ -42,8 +42,7 @@ class OracleEventMetadataProvider implements EventMetadataProvider {
         }
         final Long scn = sourceInfo.getInt64(SourceInfo.SCN_KEY);
         return Collect.hashMapOf(
-                SourceInfo.SCN_KEY, scn == null ? "null" : Long.toString(scn)
-        );
+                SourceInfo.SCN_KEY, scn == null ? "null" : Long.toString(scn));
     }
 
     @Override

@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
+
 import oracle.streams.StreamsException;
 import oracle.streams.XStreamUtility;
 

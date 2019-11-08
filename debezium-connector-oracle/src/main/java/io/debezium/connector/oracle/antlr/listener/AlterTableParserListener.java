@@ -5,6 +5,13 @@
  */
 package io.debezium.connector.oracle.antlr.listener;
 
+import static io.debezium.antlr.AntlrDdlParser.getText;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.antlr.v4.runtime.tree.ParseTreeListener;
+
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.ddl.parser.oracle.generated.PlSqlParser;
 import io.debezium.relational.Column;
@@ -12,12 +19,6 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static io.debezium.antlr.AntlrDdlParser.getText;
 
 /**
  * Parser listener that is parsing Oracle ALTER TABLE statements
@@ -67,7 +68,7 @@ public class AlterTableParserListener extends BaseParserListener {
         parser.runIfNotNull(() -> {
             listeners.remove(columnDefinitionParserListener);
             parser.databaseTables().overwriteTable(tableEditor.create());
-            //parser.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());// todo?
+            // parser.signalAlterTable(tableEditor.tableId(), null, ctx.getParent());// todo?
         }, tableEditor);
         super.exitAlter_table(ctx);
     }
@@ -87,7 +88,6 @@ public class AlterTableParserListener extends BaseParserListener {
         }, tableEditor);
         super.enterAdd_column_clause(ctx);
     }
-
 
     @Override
     public void exitAdd_column_clause(PlSqlParser.Add_column_clauseContext ctx) {

@@ -7,16 +7,17 @@ package io.debezium.connector.oracle;
 
 import java.util.Set;
 
-import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
+
 import oracle.streams.DDLLCR;
 
 /**
@@ -59,11 +60,12 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
 
         Table table = tables.forTable(tableId);
 
-        receiver.schemaChangeEvent(new SchemaChangeEvent(offsetContext.getPartition(), offsetContext.getOffset(), ddlLcr.getSourceDatabaseName(), ddlLcr.getObjectOwner(), ddlLcr.getDDLText(), table, eventType, false));
+        receiver.schemaChangeEvent(new SchemaChangeEvent(offsetContext.getPartition(), offsetContext.getOffset(), ddlLcr.getSourceDatabaseName(), ddlLcr.getObjectOwner(),
+                ddlLcr.getDDLText(), table, eventType, false));
     }
 
     private SchemaChangeEventType getSchemaChangeEventType() {
-        switch(ddlLcr.getCommandType()) {
+        switch (ddlLcr.getCommandType()) {
             case "CREATE TABLE":
                 return SchemaChangeEventType.CREATE;
             case "ALTER TABLE":

@@ -40,7 +40,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection, OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleOffsetContext previousOffset, OracleConnection jdbcConnection,
+                                           OracleDatabaseSchema schema, EventDispatcher<TableId> dispatcher, Clock clock,
+                                           SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
 
         this.connectorConfig = connectorConfig;
@@ -71,13 +73,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         }
 
         return new OracleSnapshotContext(
-                connectorConfig.getPdbName() != null ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName()
-        );
+                connectorConfig.getPdbName() != null ? connectorConfig.getPdbName() : connectorConfig.getDatabaseName());
     }
 
     @Override
     protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
-        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
@@ -113,8 +114,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         // we'd get a ORA-01466 when running the flashback query for doing the snapshot
         do {
             currentScn = getCurrentScn(ctx);
-        }
-        while (areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
+        } while (areSameTimestamp(latestTableDdlScn.orElse(null), currentScn));
 
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig)
@@ -123,7 +123,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     private long getCurrentScn(SnapshotContext ctx) throws SQLException {
-        try(Statement statement = jdbcConnection.connection().createStatement();
+        try (Statement statement = jdbcConnection.connection().createStatement();
                 ResultSet rs = statement.executeQuery("select CURRENT_SCN from V$DATABASE")) {
 
             if (!rs.next()) {
@@ -142,8 +142,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             return false;
         }
 
-        try(Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery("SELECT 1 FROM DUAL WHERE SCN_TO_TIMESTAMP(" + scn1 + ") = SCN_TO_TIMESTAMP(" + scn2 + ")" )) {
+        try (Statement statement = jdbcConnection.connection().createStatement();
+                ResultSet rs = statement.executeQuery("SELECT 1 FROM DUAL WHERE SCN_TO_TIMESTAMP(" + scn1 + ") = SCN_TO_TIMESTAMP(" + scn2 + ")")) {
 
             return rs.next();
         }
@@ -181,8 +181,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
-            .map(TableId::schema)
-            .collect(Collectors.toSet());
+                .map(TableId::schema)
+                .collect(Collectors.toSet());
 
         // reading info only for the schemas we're interested in as per the set of captured tables;
         // while the passed table name filter alone would skip all non-included tables, reading the schema
@@ -198,15 +198,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                     schema,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     null,
-                    false
-            );
+                    false);
         }
     }
 
     @Override
     protected SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws SQLException {
         try (Statement statement = jdbcConnection.connection().createStatement();
-                ResultSet rs = statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + table.id().table() + "', '" +  table.id().schema() + "' ) from dual")) {
+                ResultSet rs = statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + table.id().table() + "', '" + table.id().schema() + "' ) from dual")) {
 
             if (!rs.next()) {
                 throw new IllegalStateException("Couldn't get metadata");

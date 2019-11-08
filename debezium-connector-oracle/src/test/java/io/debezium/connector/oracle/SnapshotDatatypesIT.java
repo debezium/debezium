@@ -24,7 +24,8 @@ import io.debezium.util.Testing;
  */
 public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
-    @Rule public TestName name = new TestName();
+    @Rule
+    public TestName name = new TestName();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
@@ -54,7 +55,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
     }
 
     private String getTableWhitelist() {
-        switch(name.getMethodName()) {
+        switch (name.getMethodName()) {
             case "stringTypes":
                 return "ORCLPDB1.debezium.type_string";
             case "fpTypes":

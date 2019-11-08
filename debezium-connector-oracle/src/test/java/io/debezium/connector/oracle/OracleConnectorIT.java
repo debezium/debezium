@@ -525,7 +525,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");
         connection.execute("COMMIT");
 
-
         SourceRecords records = consumeRecordsByTopic(1);
 
         List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER2");
