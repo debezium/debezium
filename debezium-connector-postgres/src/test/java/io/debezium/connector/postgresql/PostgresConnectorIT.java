@@ -225,6 +225,17 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(logInterceptor.containsWarnMessage(obsoleteParamLogMessage)).isFalse();
         connectorConfig = new PostgresConnectorConfig(config);
         Assertions.assertThat(connectorConfig.dropSlotOnStop()).isFalse();
+
+        logInterceptor = new LogInterceptor();
+        config = Configuration.create()
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP_OBSOLETE, false)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
+                .build();
+        connector = new PostgresConnector();
+        connector.validate(config.asMap());
+        assertThat(logInterceptor.containsWarnMessage(obsoleteParamLogMessage)).isTrue();
+        connectorConfig = new PostgresConnectorConfig(config);
+        Assertions.assertThat(connectorConfig.dropSlotOnStop()).isTrue();
     }
 
     @Test
