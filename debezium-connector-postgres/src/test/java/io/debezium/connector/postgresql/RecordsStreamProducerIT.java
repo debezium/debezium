@@ -441,6 +441,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @SkipWhenDecoderPluginNameIs(value = PGOUTPUT, reason = "An update on a table with no primary key and default replica throws PSQLException as tables must have a PK")
     public void shouldReceiveChangesForUpdates() throws Exception {
         startConnector();
+        TestHelper.execute("ALTER TABLE test_table REPLICA IDENTITY DEFAULT");
         executeAndWait("UPDATE test_table set text='update' WHERE pk=1");
 
         // the update record should be the last record
@@ -449,9 +450,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, updatedRecord.topic());
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
 
-        // default replica identity only fires previous values for PK changes
+        // default replica identity only provides PK in before
         List<SchemaAndValueField> expectedAfter = Collections.singletonList(
                 new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"));
+        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 1));
+        assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
         assertRecordSchemaAndValues(expectedAfter, updatedRecord, Envelope.FieldName.AFTER);
 
         // alter the table and set its replica identity to full the issue another update
@@ -464,7 +467,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidUpdate(updatedRecord, PK_FIELD, 1);
 
         // now we should get both old and new values
-        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"));
+        expectedBefore = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update"));
         assertRecordSchemaAndValues(expectedBefore, updatedRecord, Envelope.FieldName.BEFORE);
 
         expectedAfter = Collections.singletonList(new SchemaAndValueField("text", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "update2"));
@@ -755,6 +758,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         SourceRecord record = consumer.remove();
         assertEquals(topicName, record.topic());
         VerifyRecord.isValidDelete(record, PK_FIELD, 1);
+
+        List<SchemaAndValueField> expectedBefore = Collections.singletonList(new SchemaAndValueField("pk", SchemaBuilder.INT32_SCHEMA, 1));
+        assertRecordSchemaAndValues(expectedBefore, record, Envelope.FieldName.BEFORE);
 
         // followed by a tombstone
         record = consumer.remove();

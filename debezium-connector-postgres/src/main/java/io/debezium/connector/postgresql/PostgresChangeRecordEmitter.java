@@ -17,11 +17,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.jdbc.PgConnection;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
+import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.function.Predicates;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
@@ -366,5 +369,25 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
     @Override
     protected boolean skipEmptyMessages() {
         return true;
+    }
+
+    @Override
+    protected Struct buildUpdateEnvelope(TableSchema tableSchema, Object oldKey, Object newKey, Struct newValue,
+                                         Struct oldValue) {
+        // Replica identity default does not provide PK fields in old values when they are not changed
+        // so they will be copied from PK if they do not exist
+        if (((oldKey != null && oldKey instanceof Struct) || (newKey != null && newKey instanceof Struct))) {
+            final Struct keyStruct = (Struct) (oldKey == null ? newKey : oldKey);
+            if (oldValue == null) {
+                oldValue = new Struct(tableSchema.getEnvelopeSchema().schema().field(Envelope.FieldName.BEFORE).schema());
+            }
+            for (Field field : keyStruct.schema().fields()) {
+                final String fieldName = field.name();
+                if (oldValue.schema().field(fieldName) != null && oldValue.getWithoutDefault(fieldName) == null) {
+                    oldValue.put(field.name(), keyStruct.get(field.name()));
+                }
+            }
+        }
+        return super.buildUpdateEnvelope(tableSchema, oldKey, newKey, newValue, oldValue);
     }
 }

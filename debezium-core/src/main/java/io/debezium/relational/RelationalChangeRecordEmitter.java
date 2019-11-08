@@ -103,7 +103,7 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         // some configurations does not provide old values in case of updates
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
-            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
+            final Struct envelope = buildUpdateEnvelope(tableSchema, oldKey, newKey, newValue, oldValue);
             receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, offsetContext);
         }
         // PK update -> emit as delete and re-insert with new key
@@ -114,6 +114,11 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
             envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
             receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
         }
+    }
+
+    protected Struct buildUpdateEnvelope(TableSchema tableSchema, Object oldKey, Object newKey, Struct newValue,
+                                         Struct oldValue) {
+        return tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeInMillis());
     }
 
     private void emitDeleteRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
