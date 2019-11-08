@@ -28,7 +28,6 @@ before_install:
   - export PATH=$M2_HOME/bin:$PATH
   - mvn -version
   - git clone https://github.com/debezium/debezium.git $PWD/core-repo && cd $PWD/core-repo && mvn clean install -DskipTests -DskipITs && cd $OLDPWD
-  - ln -s $PWD/core-repo/support $TRAVIS_BUILD_DIR
 
 # By default Travis will install dependencies before it runs a build, and with Maven projects that
 # means running an install build without tests. We don't need to do this, and it actually causes problems.
