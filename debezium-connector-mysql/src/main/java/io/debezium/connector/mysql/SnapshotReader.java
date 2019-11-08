@@ -605,7 +605,7 @@ public class SnapshotReader extends AbstractReader {
                                                 Column actualColumn = table.columns().get(i);
                                                 row[i] = readField(rs, j, actualColumn, table);
                                             }
-                                            recorder.recordRow(recordMaker, row, ts); // has no row number!
+                                            recorder.recordRow(recordMaker, row, clock.currentTimeInMillis()); // has no row number!
                                             rowNum.incrementAndGet();
                                             if (rowNum.get() % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
