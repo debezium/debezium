@@ -38,7 +38,7 @@ after_install:
   - docker ps -a
 
 script:
-  - "mvn clean install -Passembly"
+  - "mvn clean install -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"
 
 notifications:
   webhooks:
