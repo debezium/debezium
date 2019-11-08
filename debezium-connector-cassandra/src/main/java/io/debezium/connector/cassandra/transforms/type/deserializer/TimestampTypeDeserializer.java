@@ -5,12 +5,13 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
+import java.nio.ByteBuffer;
+import java.util.Date;
+
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-import java.nio.ByteBuffer;
-import java.util.Date;
+import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
 
 public class TimestampTypeDeserializer extends TypeDeserializer {
 

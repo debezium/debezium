@@ -5,11 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -22,6 +17,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
 /**
  * A concrete implementation of {@link OffsetWriter} which tracks the progress of events
@@ -171,7 +172,8 @@ public class FileOffsetWriter implements OffsetWriter {
             FileChannel channel = FileChannel.open(offsetFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE);
             FileLock lock = channel.tryLock();
             if (lock == null) {
-                throw new CassandraConnectorTaskException("Failed to acquire file lock on " + offsetFile.getName() + ". There might be another Cassandra Connector Task running");
+                throw new CassandraConnectorTaskException(
+                        "Failed to acquire file lock on " + offsetFile.getName() + ". There might be another Cassandra Connector Task running");
             }
             return lock;
         }

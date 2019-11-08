@@ -5,6 +5,18 @@
  */
 package io.debezium.connector.cassandra;
 
+import static com.codahale.metrics.MetricRegistry.name;
+import static io.debezium.connector.cassandra.CassandraConnectorTask.METRIC_REGISTRY_INSTANCE;
+import static io.debezium.connector.cassandra.network.SslContextFactory.createSslContext;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Host;
@@ -20,19 +32,8 @@ import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.LoadBalancingPolicy;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.common.annotations.VisibleForTesting;
+
 import io.netty.handler.ssl.SslContext;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static com.codahale.metrics.MetricRegistry.name;
-import static io.debezium.connector.cassandra.CassandraConnectorTask.METRIC_REGISTRY_INSTANCE;
-import static io.debezium.connector.cassandra.network.SslContextFactory.createSslContext;
 
 /**
  * A wrapper around Cassandra driver that is used to query Cassandra table and table schema.

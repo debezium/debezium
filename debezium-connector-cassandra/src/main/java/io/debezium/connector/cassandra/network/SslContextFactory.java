@@ -5,25 +5,29 @@
  */
 package io.debezium.connector.cassandra.network;
 
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-import io.netty.handler.ssl.util.SelfSignedCertificate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.TrustManagerFactory;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Properties;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
+
 public class SslContextFactory {
     private static final Logger LOGGER = LoggerFactory.getLogger(SslContextFactory.class);
-    private SslContextFactory() { }
+
+    private SslContextFactory() {
+    }
 
     /**
      * Return an {@link SslContext} containing all SSL configurations parsed

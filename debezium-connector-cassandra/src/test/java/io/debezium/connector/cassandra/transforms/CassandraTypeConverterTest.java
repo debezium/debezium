@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.cassandra.transforms;
 
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.TupleType;
-import com.datastax.driver.core.UserType;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.cassandra.cql3.FieldIdentifier;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
@@ -36,10 +38,9 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.TupleType;
+import com.datastax.driver.core.UserType;
 
 public class CassandraTypeConverterTest {
 
@@ -321,22 +322,20 @@ public class CassandraTypeConverterTest {
         expectedFieldTypes.add(DoubleType.instance);
 
         // non-frozen
-        org.apache.cassandra.db.marshal.UserType expectedAbstractType =
-                new org.apache.cassandra.db.marshal.UserType("barspace",
-                                                             expectedTypeName,
-                                                             expectedFieldIdentifiers,
-                                                             expectedFieldTypes,
-                                                             true);
+        org.apache.cassandra.db.marshal.UserType expectedAbstractType = new org.apache.cassandra.db.marshal.UserType("barspace",
+                expectedTypeName,
+                expectedFieldIdentifiers,
+                expectedFieldTypes,
+                true);
         AbstractType<?> convertedType = CassandraTypeConverter.convert(userType);
         Assert.assertEquals(expectedAbstractType, convertedType);
 
         // frozen
-        expectedAbstractType =
-                new org.apache.cassandra.db.marshal.UserType("barspace",
-                        expectedTypeName,
-                        expectedFieldIdentifiers,
-                        expectedFieldTypes,
-                        false);
+        expectedAbstractType = new org.apache.cassandra.db.marshal.UserType("barspace",
+                expectedTypeName,
+                expectedFieldIdentifiers,
+                expectedFieldTypes,
+                false);
         convertedType = CassandraTypeConverter.convert(userType);
         Assert.assertEquals(expectedAbstractType, convertedType);
     }

@@ -5,11 +5,13 @@
  */
 package io.debezium.connector.cassandra.transforms.type.converter;
 
-import com.datastax.driver.core.DataType;
-import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
+import java.util.List;
+
 import org.apache.cassandra.db.marshal.MapType;
 
-import java.util.List;
+import com.datastax.driver.core.DataType;
+
+import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
 
 public class MapTypeConverter implements TypeConverter<MapType<?, ?>> {
     @Override

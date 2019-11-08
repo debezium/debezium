@@ -5,15 +5,16 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import java.nio.ByteBuffer;
+import java.util.Map;
+
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.MapType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Values;
 
-import java.nio.ByteBuffer;
-import java.util.Map;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 public class MapTypeDeserializer extends TypeDeserializer {
 

@@ -11,7 +11,8 @@ import java.util.UUID;
 public final class UuidUtil {
     private static final int BYTE_SIZE = 16;
 
-    private UuidUtil() { }
+    private UuidUtil() {
+    }
 
     public static UUID asUuid(final byte[] bytes) {
         ByteBuffer bb = ByteBuffer.wrap(bytes);

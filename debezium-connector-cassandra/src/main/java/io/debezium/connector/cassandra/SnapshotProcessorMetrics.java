@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.codahale.metrics.Gauge;
+import static io.debezium.connector.cassandra.CassandraConnectorTask.METRIC_REGISTRY_INSTANCE;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.debezium.connector.cassandra.CassandraConnectorTask.METRIC_REGISTRY_INSTANCE;
+import com.codahale.metrics.Gauge;
 
 public class SnapshotProcessorMetrics {
     private final AtomicInteger tableCount = new AtomicInteger();

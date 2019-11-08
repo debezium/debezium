@@ -7,10 +7,10 @@ package io.debezium.connector.cassandra;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.util.SchemaNameAdjuster;
-
 
 public class CassandraSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 

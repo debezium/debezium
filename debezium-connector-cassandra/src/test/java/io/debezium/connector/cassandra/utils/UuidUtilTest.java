@@ -5,12 +5,13 @@
  */
 package io.debezium.connector.cassandra.utils;
 
-import io.debezium.connector.cassandra.transforms.UuidUtil;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.util.UUID;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+
+import io.debezium.connector.cassandra.transforms.UuidUtil;
 
 public class UuidUtilTest {
 

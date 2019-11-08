@@ -5,14 +5,15 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.UuidUtil;
-import org.apache.cassandra.db.marshal.AbstractType;
-import org.apache.kafka.connect.data.Values;
-import org.apache.kafka.connect.data.SchemaBuilder;
+import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.UUID_TYPE;
 
 import java.nio.ByteBuffer;
 
-import static io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders.UUID_TYPE;
+import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Values;
+
+import io.debezium.connector.cassandra.transforms.UuidUtil;
 
 public class TimeUUIDTypeDeserializer extends TypeDeserializer {
 

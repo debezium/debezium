@@ -5,16 +5,15 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.time.Conversions;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.time.Instant;
-
 
 /**
  * Metadata about the source of the change event

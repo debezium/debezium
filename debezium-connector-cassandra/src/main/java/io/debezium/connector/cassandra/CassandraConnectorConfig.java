@@ -12,17 +12,19 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import io.debezium.config.Field;
-import io.debezium.config.Configuration;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.connect.storage.Converter;
+
+import com.datastax.driver.core.ConsistencyLevel;
+
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorConfigException;
-import com.datastax.driver.core.ConsistencyLevel;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 /**
  * All configs used by a Cassandra connector agent.
@@ -184,7 +186,6 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final Field COMMIT_LOG_TRANSFER_CLASS = Field.create("commit.log.transfer.class")
             .withType(Type.STRING).withDefault(DEFAULT_COMMIT_LOG_TRANSFER_CLASS);
 
-
     /**
      * The directory to store offset tracking files.
      */
@@ -206,10 +207,10 @@ public class CassandraConnectorConfig extends CommonConnectorConfig {
     public static final Field MAX_OFFSET_FLUSH_SIZE = Field.create("max.offset.flush.size")
             .withType(Type.INT).withDefault(DEFAULT_MAX_OFFSET_FLUSH_SIZE);
 
-     /**
-     * Positive integer value that specifies the number of milliseconds the schema processor should wait before
-     * refreshing the cached Cassandra table schemas.
-     */
+    /**
+    * Positive integer value that specifies the number of milliseconds the schema processor should wait before
+    * refreshing the cached Cassandra table schemas.
+    */
     public static final int DEFAULT_SCHEMA_POLL_INTERVAL_MS = 10000;
     public static final Field SCHEMA_POLL_INTERVAL_MS = Field.create("schema.refresh.interval.ms")
             .withType(Type.INT).withDefault(DEFAULT_SCHEMA_POLL_INTERVAL_MS);

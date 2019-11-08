@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
-import org.apache.cassandra.db.marshal.AbstractType;
-
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+
+import org.apache.cassandra.db.marshal.AbstractType;
+
+import io.debezium.connector.cassandra.transforms.CassandraTypeKafkaSchemaBuilders;
 
 public class InetAddressDeserializer extends BasicTypeDeserializer {
 

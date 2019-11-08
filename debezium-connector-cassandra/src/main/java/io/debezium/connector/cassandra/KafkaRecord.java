@@ -5,9 +5,8 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Schema;
-
+import org.apache.kafka.connect.data.Struct;
 
 /**
  * An interface that indicates the record can be converted to a {@link Struct}.

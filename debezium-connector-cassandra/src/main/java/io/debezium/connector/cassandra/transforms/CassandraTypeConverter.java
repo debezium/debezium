@@ -5,14 +5,9 @@
  */
 package io.debezium.connector.cassandra.transforms;
 
-import com.datastax.driver.core.DataType;
-import io.debezium.connector.cassandra.transforms.type.converter.BasicTypeConverter;
-import io.debezium.connector.cassandra.transforms.type.converter.ListTypeConverter;
-import io.debezium.connector.cassandra.transforms.type.converter.MapTypeConverter;
-import io.debezium.connector.cassandra.transforms.type.converter.SetTypeConverter;
-import io.debezium.connector.cassandra.transforms.type.converter.TupleTypeConverter;
-import io.debezium.connector.cassandra.transforms.type.converter.TypeConverter;
-import io.debezium.connector.cassandra.transforms.type.converter.UserTypeConverter;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.AsciiType;
 import org.apache.cassandra.db.marshal.BooleanType;
@@ -34,12 +29,20 @@ import org.apache.cassandra.db.marshal.TimestampType;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.marshal.UUIDType;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.datastax.driver.core.DataType;
+
+import io.debezium.connector.cassandra.transforms.type.converter.BasicTypeConverter;
+import io.debezium.connector.cassandra.transforms.type.converter.ListTypeConverter;
+import io.debezium.connector.cassandra.transforms.type.converter.MapTypeConverter;
+import io.debezium.connector.cassandra.transforms.type.converter.SetTypeConverter;
+import io.debezium.connector.cassandra.transforms.type.converter.TupleTypeConverter;
+import io.debezium.connector.cassandra.transforms.type.converter.TypeConverter;
+import io.debezium.connector.cassandra.transforms.type.converter.UserTypeConverter;
 
 public final class CassandraTypeConverter {
 
-    private CassandraTypeConverter() { }
+    private CassandraTypeConverter() {
+    }
 
     private static final Map<DataType.Name, TypeConverter<?>> typeMap = new HashMap<>();
 

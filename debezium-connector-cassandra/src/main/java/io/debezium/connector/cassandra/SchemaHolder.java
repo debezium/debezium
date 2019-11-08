@@ -5,23 +5,25 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.TableMetadata;
-import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
-import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.TableMetadata;
+
+import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
+import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 /**
  * Caches the key and value schema for all CDC-enabled tables. This cache gets updated
@@ -82,7 +84,7 @@ public class SchemaHolder {
 
     private void refreshSchema(KeyspaceTable keyspaceTable) {
         LOGGER.debug("Refreshing schema for {}", keyspaceTable);
-        TableMetadata existing = tableToKVSchemaMap.containsKey(keyspaceTable) ?  tableToKVSchemaMap.get(keyspaceTable).tableMetadata() : null;
+        TableMetadata existing = tableToKVSchemaMap.containsKey(keyspaceTable) ? tableToKVSchemaMap.get(keyspaceTable).tableMetadata() : null;
         TableMetadata latest = cassandraClient.getCdcEnabledTableMetadata(keyspaceTable.keyspace, keyspaceTable.table);
         if (existing != latest) {
             if (existing == null) {

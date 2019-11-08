@@ -5,7 +5,9 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import java.nio.ByteBuffer;
+import java.util.List;
+
 import org.apache.cassandra.cql3.UserTypes;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.UserType;
@@ -13,8 +15,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 public class UserTypeDeserializer extends TypeDeserializer {
 

@@ -5,18 +5,18 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.config.Configuration;
-import org.junit.Test;
-
-import java.util.Properties;
-import java.util.HashMap;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
+import java.util.Properties;
+
+import org.junit.Test;
+
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
+import io.debezium.config.Configuration;
 
 public class CassandraConnectorConfigTest {
     @Test
@@ -133,7 +133,7 @@ public class CassandraConnectorConfigTest {
         String keyConverterClass = "io.confluent.connect.avro.AvroConverter";
         HashMap<String, Object> keyConverterConfigs = new HashMap<>();
         keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_CLASS_CONFIG.name(), keyConverterClass);
-        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX+AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
+        keyConverterConfigs.put(CassandraConnectorConfig.KEY_CONVERTER_PREFIX + AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         config = buildTaskConfigs(keyConverterConfigs);
         assertEquals(keyConverterClass, config.getKeyConverter().getClass().getName());
 

@@ -5,13 +5,19 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.TableMetadata;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.time.Conversions;
-import org.apache.kafka.connect.data.Schema;
+import static io.debezium.connector.cassandra.CommitLogReadHandlerImpl.RowType.DELETE;
+import static io.debezium.connector.cassandra.CommitLogReadHandlerImpl.RowType.INSERT;
+import static io.debezium.connector.cassandra.CommitLogReadHandlerImpl.RowType.UPDATE;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.LivenessInfo;
@@ -24,21 +30,17 @@ import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.Unfiltered;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
+import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.TableMetadata;
 
-import static io.debezium.connector.cassandra.CommitLogReadHandlerImpl.RowType.DELETE;
-import static io.debezium.connector.cassandra.CommitLogReadHandlerImpl.RowType.INSERT;
-import static io.debezium.connector.cassandra.CommitLogReadHandlerImpl.RowType.UPDATE;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import io.debezium.time.Conversions;
 
 /**
  * Handler that implements {@link CommitLogReadHandler} interface provided by Cassandra source code.
@@ -57,7 +59,6 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final CommitLogProcessorMetrics metrics;
-
 
     CommitLogReadHandlerImpl(SchemaHolder schemaHolder,
                              BlockingEventQueue<Event> queue,
@@ -165,7 +166,6 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
          * For example: DELETE * FROM table WHERE partition_key = 1 AND clustering_key > 0;
          */
         RANGE_TOMBSTONE,
-
 
         /**
          * Unknown row-level operation
@@ -330,7 +330,8 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 after.addCell(cellData);
             }
 
-            recordMaker.getSourceInfo().update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false, Conversions.toInstantFromMicros(pu.maxTimestamp()));
+            recordMaker.getSourceInfo().update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                    Conversions.toInstantFromMicros(pu.maxTimestamp()));
             recordMaker.delete(after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
         }
         catch (Exception e) {
@@ -449,7 +450,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             Object value = CassandraTypeDeserializer.deserialize(type, bb);
             values.add(value);
 
-        // composite partition key
+            // composite partition key
         }
         else {
             ByteBuffer keyBytes = pu.partitionKey().getKey().duplicate();
@@ -463,9 +464,9 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             }
 
             // the encoding of columns in the partition key byte buffer is
-            //      <col><col><col>...
+            // <col><col><col>...
             // where <col> is:
-            //      <length of value><value><end-of-component byte>
+            // <length of value><value><end-of-component byte>
             // <length of value> is a 2 bytes unsigned short (excluding 0xFFFF used to encode "static columns")
             // <end-of-component byte> should always be 0 for columns (1 for query bounds)
             // this section reads the bytes for each column and deserialize into objects based on each column type

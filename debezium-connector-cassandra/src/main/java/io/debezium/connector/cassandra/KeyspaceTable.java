@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.TableMetadata;
-
 import java.util.Objects;
+
+import com.datastax.driver.core.TableMetadata;
 
 /**
  * The KeyspaceTable uniquely identifies each table in the Cassandra cluster

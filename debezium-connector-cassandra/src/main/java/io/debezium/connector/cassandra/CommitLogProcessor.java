@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,8 +14,9 @@ import java.nio.file.WatchEvent;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
-
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The {@link CommitLogProcessor} is used to process CommitLog in CDC directory.

@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Gauge;
+import static io.debezium.connector.cassandra.CassandraConnectorTask.METRIC_REGISTRY_INSTANCE;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.debezium.connector.cassandra.CassandraConnectorTask.METRIC_REGISTRY_INSTANCE;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
 
 public class CommitLogProcessorMetrics {
     private String commitLogFilename = null;

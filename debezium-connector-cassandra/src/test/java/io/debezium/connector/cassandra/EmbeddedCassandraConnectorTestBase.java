@@ -5,17 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.TableMetadata;
-import io.debezium.config.Configuration;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.cassandraunit.utils.CqlOperations;
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +14,19 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
+
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.cassandraunit.utils.CqlOperations;
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Session;
+import com.datastax.driver.core.TableMetadata;
+
+import io.debezium.config.Configuration;
 
 /**
  * Base class used to automatically spin up a single-node embedded Cassandra cluster before tests

@@ -5,15 +5,17 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.google.common.annotations.VisibleForTesting;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.annotations.VisibleForTesting;
+
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 
 /**
  * A thread that constantly polls records from the queue and emit them to Kafka via the KafkaRecordEmitter.
@@ -37,8 +39,7 @@ public class QueueProcessor extends AbstractProcessor {
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
                 context.getCassandraConnectorConfig().maxOffsetFlushSize(),
                 context.getCassandraConnectorConfig().getKeyConverter(),
-                context.getCassandraConnectorConfig().getValueConverter()
-        ));
+                context.getCassandraConnectorConfig().getValueConverter()));
     }
 
     @VisibleForTesting

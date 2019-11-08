@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorDataException;
-
 import java.io.File;
 import java.util.Arrays;
 import java.util.Objects;
+
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorDataException;
 
 /**
  * The OffsetPosition uniquely identifies a specific {@link org.apache.cassandra.db.Mutation} in a specific commit log.

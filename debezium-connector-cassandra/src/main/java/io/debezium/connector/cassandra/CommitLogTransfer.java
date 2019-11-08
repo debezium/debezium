@@ -16,13 +16,15 @@ public interface CommitLogTransfer {
     /**
      * Initialize resources required by the commit log transfer
      */
-    default void init(Properties commitLogTransferConfigs) throws Exception { }
+    default void init(Properties commitLogTransferConfigs) throws Exception {
+    }
 
     /**
      * Destroy resources used by the commit log transfer
      */
 
-    default void destroy() throws Exception { }
+    default void destroy() throws Exception {
+    }
 
     /**
      * Transfer a commit log that has been successfully processed.

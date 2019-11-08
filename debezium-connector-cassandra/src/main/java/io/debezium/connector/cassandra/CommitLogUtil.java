@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorDataException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -15,7 +13,10 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorDataException;
 
 /**
  * Utility class used by the {@link CommitLogProcessor} to compare/delete commit log files.
@@ -25,7 +26,8 @@ public final class CommitLogUtil {
 
     private static final Pattern FILENAME_REGEX_PATTERN = Pattern.compile("CommitLog-\\d+-(\\d+).log");
 
-    private CommitLogUtil() { }
+    private CommitLogUtil() {
+    }
 
     /**
      * Move a commit log to a new directory. If the commit log already exists in the new directory, it woull be replaced.

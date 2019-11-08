@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.cassandra;
 
-import io.debezium.annotation.ThreadSafe;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ConcurrentHashMap;
+import io.debezium.annotation.ThreadSafe;
 
 /**
  * Responsible for selecting the Kafka topic that the record will get send to.
@@ -91,7 +92,7 @@ public class CassandraTopicSelector {
          * {@see https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java}
          */
         private boolean isValidTopicNameCharacter(char c) {
-            return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')  || (c >= '0' && c <= '9');
+            return c == '.' || c == '_' || c == '-' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         }
     }
 

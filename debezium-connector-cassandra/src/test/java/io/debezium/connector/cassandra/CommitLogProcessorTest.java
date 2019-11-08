@@ -5,6 +5,13 @@
  */
 package io.debezium.connector.cassandra;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.util.List;
+
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
@@ -16,13 +23,6 @@ import org.apache.cassandra.db.rows.Row;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     private CassandraConnectorContext context;
@@ -67,7 +67,7 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
         // process the logs in commit log directory
         File cdcLoc = new File(DatabaseDescriptor.getCommitLogLocation());
         File[] commitLogs = CommitLogUtil.getCommitLogs(cdcLoc);
-        for (File commitLog: commitLogs) {
+        for (File commitLog : commitLogs) {
             commitLogProcessor.processCommitLog(commitLog);
         }
 

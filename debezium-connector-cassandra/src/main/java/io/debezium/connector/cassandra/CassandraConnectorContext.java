@@ -5,12 +5,11 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 
 /**
  * Contains contextual information and objects scoped to the lifecycle

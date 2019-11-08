@@ -58,7 +58,8 @@ import io.debezium.connector.cassandra.transforms.type.deserializer.UserTypeDese
 @Immutable
 public final class CassandraTypeDeserializer {
 
-    private CassandraTypeDeserializer() { }
+    private CassandraTypeDeserializer() {
+    }
 
     private static final Map<Class<? extends AbstractType>, TypeDeserializer> TYPE_MAP;
 

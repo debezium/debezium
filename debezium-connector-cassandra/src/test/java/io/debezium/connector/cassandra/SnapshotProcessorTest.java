@@ -5,15 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.junit.Assert;
-import org.junit.Test;
-import org.mockito.Mockito;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doNothing;
@@ -21,6 +12,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.junit.Assert;
+import org.junit.Test;
+import org.mockito.Mockito;
 
 public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     @Test

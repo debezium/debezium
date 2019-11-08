@@ -5,15 +5,16 @@
  */
 package io.debezium.connector.cassandra.network;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Map;
+
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class BuildInfoServlet extends HttpServlet {
     private static final String CONTENT_TYPE = "application/json";
@@ -30,7 +31,8 @@ public class BuildInfoServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req,
-                         HttpServletResponse resp) throws IOException {
+                         HttpServletResponse resp)
+            throws IOException {
         resp.setContentType(CONTENT_TYPE);
         resp.setHeader(CACHE_CONTROL, NO_CACHE);
         resp.setStatus(HttpServletResponse.SC_OK);

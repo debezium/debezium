@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
+import java.nio.ByteBuffer;
+
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.SchemaBuilder;
-
-import java.nio.ByteBuffer;
 
 public abstract class TypeDeserializer {
 

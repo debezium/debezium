@@ -5,23 +5,6 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.ColumnMetadata;
-import com.datastax.driver.core.ConsistencyLevel;
-import com.datastax.driver.core.DataType;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.TableMetadata;
-import com.datastax.driver.core.querybuilder.BuiltStatement;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.datastax.driver.core.querybuilder.Select;
-import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import io.debezium.time.Conversions;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.cassandra.config.DatabaseDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashSet;
@@ -31,6 +14,24 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.kafka.connect.data.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.datastax.driver.core.ColumnMetadata;
+import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.Row;
+import com.datastax.driver.core.TableMetadata;
+import com.datastax.driver.core.querybuilder.BuiltStatement;
+import com.datastax.driver.core.querybuilder.QueryBuilder;
+import com.datastax.driver.core.querybuilder.Select;
+
+import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import io.debezium.time.Conversions;
 
 /**
  * This reader is responsible for initial bootstrapping of a table,
@@ -85,7 +86,7 @@ public class SnapshotProcessor extends AbstractProcessor {
 
     @Override
     public void process() {
-        if (snapshotMode ==CassandraConnectorConfig.SnapshotMode.ALWAYS) {
+        if (snapshotMode == CassandraConnectorConfig.SnapshotMode.ALWAYS) {
             snapshot();
         }
         else if (snapshotMode == CassandraConnectorConfig.SnapshotMode.INITIAL && initial) {
@@ -210,7 +211,8 @@ public class SnapshotProcessor extends AbstractProcessor {
                 RowData after = extractRowData(row, tableMetadata.getColumns(), partitionKeyNames, clusteringKeyNames, writeTimeHolder);
                 // only mark offset if there are no more rows left
                 boolean markOffset = !rowIter.hasNext();
-                recordMaker.getSourceInfo().update(DatabaseDescriptor.getClusterName(), OffsetPosition.defaultOffsetPosition(), keyspaceTable, true, Conversions.toInstantFromMicros(writeTimeHolder.get()));
+                recordMaker.getSourceInfo().update(DatabaseDescriptor.getClusterName(), OffsetPosition.defaultOffsetPosition(), keyspaceTable, true,
+                        Conversions.toInstantFromMicros(writeTimeHolder.get()));
                 recordMaker.insert(after, keySchema, valueSchema, markOffset, queue::enqueue);
                 rowNum++;
                 if (rowNum % 10_000 == 0) {
@@ -230,7 +232,8 @@ public class SnapshotProcessor extends AbstractProcessor {
     /**
      * This function extracts the relevant row data from {@link Row} and updates the maximum writetime for each row.
      */
-    private static RowData extractRowData(Row row, List<ColumnMetadata> columns, Set<String> partitionKeyNames, Set<String> clusteringKeyNames, WriteTimeHolder writeTimeHolder) {
+    private static RowData extractRowData(Row row, List<ColumnMetadata> columns, Set<String> partitionKeyNames, Set<String> clusteringKeyNames,
+                                          WriteTimeHolder writeTimeHolder) {
         RowData rowData = new RowData();
 
         Object executionTime = readExecutionTime(row);

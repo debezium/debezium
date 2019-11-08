@@ -33,7 +33,6 @@ public interface OffsetWriter {
      */
     void flush();
 
-
     /**
      * Close all resources used by this class.
      */

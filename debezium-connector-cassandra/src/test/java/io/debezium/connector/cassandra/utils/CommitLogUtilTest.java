@@ -5,8 +5,9 @@
  */
 package io.debezium.connector.cassandra.utils;
 
-import io.debezium.connector.cassandra.CommitLogUtil;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,9 +15,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+
+import io.debezium.connector.cassandra.CommitLogUtil;
 
 public class CommitLogUtilTest {
 

@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.cassandra.transforms.type.converter;
 
-import com.datastax.driver.core.DataType;
-import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ListType;
+
+import com.datastax.driver.core.DataType;
+
+import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
 
 public class ListTypeConverter implements TypeConverter<ListType<?>> {
 

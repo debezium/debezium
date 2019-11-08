@@ -174,7 +174,7 @@ public class CassandraTypeDeserializerTest {
     public void testInetAddressType() throws UnknownHostException {
         InetAddress sourceInetAddress = InetAddress.getLocalHost();
         // the address is the only thing that cassandra will seralize for an inetadress.
-        String expectedInetAddress =  "/" + sourceInetAddress.getHostAddress();
+        String expectedInetAddress = "/" + sourceInetAddress.getHostAddress();
 
         ByteBuffer serializedInetAddress = InetAddressType.instance.decompose(sourceInetAddress);
 

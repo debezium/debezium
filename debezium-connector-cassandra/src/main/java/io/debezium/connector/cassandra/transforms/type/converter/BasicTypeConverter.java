@@ -5,8 +5,9 @@
  */
 package io.debezium.connector.cassandra.transforms.type.converter;
 
-import com.datastax.driver.core.DataType;
 import org.apache.cassandra.db.marshal.AbstractType;
+
+import com.datastax.driver.core.DataType;
 
 public class BasicTypeConverter<T extends AbstractType<?>> implements TypeConverter<T> {
 

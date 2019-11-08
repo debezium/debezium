@@ -5,10 +5,10 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * An abstract processor designed to be a convenient superclass for all concrete processors for Cassandra
@@ -36,12 +36,14 @@ public abstract class AbstractProcessor {
     /**
      * Override initialize to initialize resources before starting the processor
      */
-    public void initialize() throws Exception { }
+    public void initialize() throws Exception {
+    }
 
     /**
      * Override destroy to clean up resources after stopping the processor
      */
-    public void destroy() throws Exception { }
+    public void destroy() throws Exception {
+    }
 
     public boolean isRunning() {
         return running;

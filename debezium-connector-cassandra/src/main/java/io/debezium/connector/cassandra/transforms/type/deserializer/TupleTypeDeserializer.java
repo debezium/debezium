@@ -5,14 +5,15 @@
  */
 package io.debezium.connector.cassandra.transforms.type.deserializer;
 
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
+import java.nio.ByteBuffer;
+import java.util.List;
+
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.TupleType;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 public class TupleTypeDeserializer extends TypeDeserializer {
 
@@ -31,8 +32,7 @@ public class TupleTypeDeserializer extends TypeDeserializer {
         for (int i = 0; i < innerTypes.size(); i++) {
             AbstractType<?> currentInnerType = innerTypes.get(i);
             String fieldName = createFieldNameForIndex(i);
-            Object deserializedInnerObject =
-                    CassandraTypeDeserializer.deserialize(currentInnerType, innerValueByteBuffers[i]);
+            Object deserializedInnerObject = CassandraTypeDeserializer.deserialize(currentInnerType, innerValueByteBuffers[i]);
             struct.put(fieldName, deserializedInnerObject);
         }
 

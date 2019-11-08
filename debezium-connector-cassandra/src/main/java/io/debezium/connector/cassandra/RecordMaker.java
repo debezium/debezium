@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.kafka.connect.data.Schema;
-
 import java.util.function.Consumer;
+
+import org.apache.kafka.connect.data.Schema;
 
 /**
  * Responsible for generating ChangeRecord and/or TombstoneRecord for create/update/delete events, as well as EOF events.

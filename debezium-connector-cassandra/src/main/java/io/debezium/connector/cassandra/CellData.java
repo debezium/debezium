@@ -5,15 +5,17 @@
  */
 package io.debezium.connector.cassandra;
 
-import com.datastax.driver.core.ColumnMetadata;
-import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
-import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
-import org.apache.kafka.connect.data.Struct;
+import java.util.Objects;
+
+import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.kafka.connect.data.Struct;
 
-import java.util.Objects;
+import com.datastax.driver.core.ColumnMetadata;
+
+import io.debezium.connector.cassandra.transforms.CassandraTypeConverter;
+import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 
 /**
  * Cell-level data about the source event. Each cell contains the name, value and

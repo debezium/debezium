@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.junit.Test;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.Test;
 
 public class CassandraConnectorTaskTest {
 
@@ -26,6 +26,7 @@ public class CassandraConnectorTaskTest {
             public void initialize() {
                 running.incrementAndGet();
             }
+
             @Override
             public void destroy() {
                 running.decrementAndGet();
@@ -41,6 +42,7 @@ public class CassandraConnectorTaskTest {
             public void initialize() {
                 running.incrementAndGet();
             }
+
             @Override
             public void destroy() {
                 running.decrementAndGet();

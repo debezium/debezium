@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.cassandra;
 
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Schema;
+import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
 
 import java.util.List;
 import java.util.Objects;
 
-import static io.debezium.connector.cassandra.SchemaHolder.getFieldSchema;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 
 /**
  * An immutable data structure representing a change event, and can be converted
