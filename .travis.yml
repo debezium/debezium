@@ -4,12 +4,12 @@ cache:
   - $HOME/.m2/repository
 
 env:
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-sqlserver -am -Passembly"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5"'
-  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mongodb -am -Passembly"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
 
 sudo: required
 

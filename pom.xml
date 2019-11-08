@@ -114,6 +114,10 @@
         <!-- Do not skip formatting source code by default -->
         <format.skip>false</format.skip>
 
+        <!-- Set formatting default goals -->
+        <format.formatter.goal>format</format.formatter.goal>
+        <format.imports.goal>sort</format.imports.goal>
+
         <!-- No debug options by default -->
         <debug.argline />
 
@@ -529,7 +533,7 @@
                     <execution>
                         <phase>process-sources</phase>
                         <goals>
-                            <goal>format</goal>
+                            <goal>${format.formatter.goal}</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -544,7 +548,7 @@
                     <execution>
                         <id>sort-imports</id>
                         <goals>
-                            <goal>sort</goal>
+                            <goal>${format.imports.goal}</goal>
                         </goals>
                     </execution>
                 </executions>

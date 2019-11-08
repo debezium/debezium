@@ -159,6 +159,24 @@ to the database and use logical decoding to read the transaction log. Several ne
 integration test were added.
 ```
 
+### Code Formatting
+
+This project utilizes a set of code style rules that are automatically applied by the build process.  When contributing, it is a good idea to run a build locally to make sure that all code changes you plan to contribute adhere to this style.
+
+In the event that a pull request is submitted with code style violations, continuous integration will fail the pull request build.  
+
+To fix pull requests with code style violations, simply run the project's build locally and allow the automatic formatting happen.  Once the build completes, you will have some local repository files modified to fix the coding style which can be amended on your pull request.  Once the pull request is synchronized with the formatting changes, CI will rerun the build.
+
+To run the build, navigate to the project's root directory and run:
+
+    $ mvn clean install
+
+It might be useful to simply run a _validate_ check against the code instead of automatically applying code style changes.  If you want to simply run validation, navigate to the project's root directory and run:
+
+    $ mvn clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check     
+
+Please note that when running _validate_ checks, the build will stop as soon as it encounters its first violation.  This means it is necessary to run the build multiple times until no violations are detected.
+
 ### Rebasing
 
 If its been more than a day or so since you created your topic branch, we recommend *rebasing* your topic branch on the latest `master` branch. This requires switching to the `master` branch, pulling the latest changes, switching back to your topic branch, and rebasing:
