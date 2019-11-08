@@ -129,6 +129,7 @@
 
     <modules>
         <module>support/checkstyle</module>
+        <module>support/ide-configs</module>
         <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
@@ -494,8 +495,15 @@
                     <groupId>net.revelc.code.formatter</groupId>
                     <artifactId>formatter-maven-plugin</artifactId>
                     <version>${version.code.formatter}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>io.debezium</groupId>
+                            <artifactId>debezium-ide-configs</artifactId>
+                            <version>${project.version}</version>
+                        </dependency>
+                    </dependencies>
                     <configuration>
-                        <configFile>${maven.multiModuleProjectDirectory}/support/ide-configs/eclipse/debezium-formatter.xml</configFile>
+                        <configFile>/eclipse/debezium-formatter.xml</configFile>
                         <skip>${format.skip}</skip>
                     </configuration>
                 </plugin>
