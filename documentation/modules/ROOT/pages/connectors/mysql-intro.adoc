@@ -1,5 +1,5 @@
-= {prodname} Connector for MySQL
 include::../_attributes.adoc[]
+= {prodname} Connector for MySQL
 
 MySQL has a binary log (binlog) that records all operations in the order in which they are committed to the database. This includes changes to table schemas and the data within tables. MySQL uses the binlog for replication and recovery.
 
@@ -8,3 +8,8 @@ The {prodname} MySQL connector reads the binlog and produces change events for r
 As MySQL is typically set up to purge binlogs after a specified period of time, the MySQL connector performs and initial _consistent snapshot_ of each of your databases. The MySQL connector reads the binlog from the point at which the snapshot was made.
 
 The following sections provide more detailed information on how the {prodname} MySQL connector functions, instructs you on how to set it up, as well as deploy and troubleshoot the connector.
+
+* xref:overview-of-how-the-mysql-connector-works[Overview of how the MySQL connector works]
+* xref:setup-the-mysql-server[Setting up MySQL server]
+* xref:deploy-the-mysql-connector[Deploying the MySQL connector]
+* xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector]
