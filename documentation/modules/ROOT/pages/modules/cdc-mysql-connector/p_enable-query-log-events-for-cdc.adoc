@@ -3,26 +3,35 @@
 
 [id="enable-query-log-events-for-cdc_{context}"]
 = Enabling query log events for {prodname}
-// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
-This paragraph is the procedure module introduction: a short description of the procedure.
+You might want to see the original `SQL` statement for each binlog event. Enabling the `binlog_rows_query_log_events` options in the MySQL configuration file allows you to do this.
+
+NOTE: This options is only available from MySQL 5.6 and later.
 
 .Prerequisites
 
-* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
-* You can also link to other modules or assemblies the user must follow before starting this assembly.
-* Delete the section title and bullets if the assembly has no prerequisites.
+* You must have a MySQL server.
+* You must know basic SQL commands.
+* You must have access to the MySQL configuration file.
 
 .Procedure
 
-. Start each step with an active verb.
+. Enable `binlog_rows_query_log_events`:
+[source,SQL]
+----
+mysql> binlog_rows_query_log_events=ON
+----
 
-. Include one command or action per step.
+== Options explained
 
-. Use an unnumbered bullet (*) if the procedure includes only one step.
+[cols="3,7"]
+|===
+|Permission/item |Description
 
-.Additional resources
+|`binlog_rows_query_log_events``
+a| Boolean which enables/disables support for including the original `SQL` statement in the binlog entry.
 
-* A bulleted list of links to other material closely related to the contents of the procedure module.
-* For more details on writing procedure modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+* `ON` = enabled
+* `OFF` = disabled
+
+|===
