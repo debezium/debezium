@@ -12,7 +12,7 @@
 ** xref:configuration/outbox-event-router.adoc[Outbox Event Router]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
-** MySQL
+** xref:connectors/mysql-intro.adoc[MySQL]
 *** xref:assemblies/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[How it works]
 *** xref:assemblies/cdc-mysql-connector/as_setup-the-mysql-server.adoc[Set it up]
 *** xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc[Deploy it]
