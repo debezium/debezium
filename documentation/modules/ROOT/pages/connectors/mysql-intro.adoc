@@ -9,7 +9,7 @@ As MySQL is typically set up to purge binlogs after a specified period of time, 
 
 The following sections provide more detailed information on how the {prodname} MySQL connector functions, instructs you on how to set it up, as well as deploy and troubleshoot the connector.
 
-* xref:overview-of-how-the-mysql-connector-works[Overview of how the MySQL connector works]
-* xref:setup-the-mysql-server[Setting up MySQL server]
-* xref:deploy-the-mysql-connector[Deploying the MySQL connector]
-* xref:troubleshoot-the-mysql-connector[Troubleshooting the MySQL connector]
+* xref:overview-of-how-the-mysql-connector-works.adoc[Overview of how the MySQL connector works]
+* xref:setup-the-mysql-server.adoc[Setting up MySQL server]
+* xref:deploy-the-mysql-connector.adoc[Deploying the MySQL connector]
+* xref:troubleshoot-the-mysql-connector.adoc[Troubleshooting the MySQL connector]
