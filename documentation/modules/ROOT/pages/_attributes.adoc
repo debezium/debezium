@@ -14,3 +14,4 @@
 
 :prodname: Debezium
 :assemblies: ../assemblies
+:modules: ../../modules
