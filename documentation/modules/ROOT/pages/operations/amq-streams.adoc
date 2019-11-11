@@ -11,7 +11,7 @@ The following describes how to set up the https://developers.redhat.com/products
 
 [NOTE]
 ====
-This and other documentation pages mention ```Debezium 1.0.0 Technology Preview```, please note that this version corresponds to version ```1.0.0.Beta1``` of upstream https://github.com/debezium/debezium/tree/v1.0.0.Beta1[Debezium project].
+This and other documentation pages mention ```Debezium 1.0.0 Technology Preview```, please note that this version corresponds to version ```1.0.0.Beta2``` of upstream https://github.com/debezium/debezium/tree/v1.0.0.Beta2[Debezium project].
 ====
 
 == Apache Kafka Deployment
