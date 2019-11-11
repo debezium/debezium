@@ -14,3 +14,4 @@
 :jira-url: https://issues.redhat.com
 :prodname: Debezium
 :assemblies: ../assemblies
+:modules: ../../modules
