@@ -429,7 +429,7 @@ Each `record` produced by the PostgreSQL connector has, in addition to the link:
     "sourceOffset": {
         "lsn": "24023128",
         "txId": "555",
-        "ts_usec": "1482918357011699"
+        "ts_ms": "1482918357011"
     },
     "kafkaPartition": null
 ----
@@ -440,7 +440,7 @@ The `sourceOffset` portion of the message contains information about the locatio
 
 * `lsn` represents the PostgreSQL https://www.postgresql.org/docs/current/static/datatype-pg-lsn.html[_log sequence number_] or `offset` in the transaction log
 * `txId` represents the identifier of the server transaction which caused the event
-* `ts_usec` represents the number of microseconds since Unix Epoch as the server time at which the transaction was committed
+* `ts_ms` represents the number of microseconds since Unix Epoch as the server time at which the transaction was committed
 
 [[events]]
 === Events
@@ -832,7 +832,7 @@ If we look at the `payload` portion, we see a number of differences compared wit
 * The `op` field value is now `d`, signifying that this row was deleted
 * The `before` field now has the state of the row that was deleted with the database commit. Again this only contains the primary key column due to the link:#replica-identity[_REPLICA IDENTITY_] setting
 * The `after` field is null, signifying that the row no longer exists
-* The `source` field structure has many of the same values as before, except the `ts_usec`, `lsn` and `txId` fields have changed
+* The `source` field structure has many of the same values as before, except the `ts_ms`, `lsn` and `txId` fields have changed
 * The `ts_ms` shows the timestamp that Debezium processed this event.
 
 This event gives a consumer all kinds of information that it can use to process the removal of this row.
