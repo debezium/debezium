@@ -3,26 +3,44 @@
 
 [id="enable-mysql-gtids-for-cdc_{context}"]
 = Enabling MySQL Global Transaction Identifiers for {prodname}
-// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
-This paragraph is the procedure module introduction: a short description of the procedure.
+Global transaction identifiers (GTIDs) uniquely identify transactions that occur on a server within a cluster. Though not required for the {prodname} MySQL connector, using GTIDs simplifies replication and allows you to more easily confirm if master and slave servers are consistent.
+
+NOTE: GTIDs are only available from MySQL 5.6.5 and later. See the link:https://dev.mysql.com/doc/refman/5.6/en/replication-options-gtids.html#option_mysqld_gtid-mode[MySQL documentation] for more details.
 
 .Prerequisites
 
-* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
-* You can also link to other modules or assemblies the user must follow before starting this assembly.
-* Delete the section title and bullets if the assembly has no prerequisites.
+* You must have a MySQL server.
+* You must know basic SQL commands.
+* You must have access to the MySQL configuration file.
 
 .Procedure
 
-. Start each step with an active verb.
+. Enable `gtid_mode`:
+[source,SQL]
+----
+mysql> gtid_mode=ON
+----
 
-. Include one command or action per step.
+. Enable `enforce_gtid_consistency`:
+[source,SQL]
+----
+mysql> enforce_gtid_consistency=ON
+----
 
-. Use an unnumbered bullet (*) if the procedure includes only one step.
+. Confirm the changes:
+[source,SQL]
+----
+mysql> show global variables like '%GTID%';
+----
 
-.Additional resources
-
-* A bulleted list of links to other material closely related to the contents of the procedure module.
-* For more details on writing procedure modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+.response
+[source,SQL]
+----
++--------------------------+-------+
+| Variable_name | Value |
++--------------------------+-------+
+| enforce_gtid_consistency | ON |
+| gtid_mode | ON |
++--------------------------+-------+
+----
