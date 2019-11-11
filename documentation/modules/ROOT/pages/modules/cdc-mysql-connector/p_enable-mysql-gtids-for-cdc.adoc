@@ -22,12 +22,14 @@ NOTE: GTIDs are only available from MySQL 5.6.5 and later. See the link:https://
 mysql> gtid_mode=ON
 ----
 
+[start=2]
 . Enable `enforce_gtid_consistency`:
 [source,SQL]
 ----
 mysql> enforce_gtid_consistency=ON
 ----
 
+[start=3]
 . Confirm the changes:
 [source,SQL]
 ----
