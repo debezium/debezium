@@ -72,7 +72,7 @@ public class EventRouterTest {
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-        final Struct payload = envelope.delete(before, null, System.nanoTime());
+        final Struct payload = envelope.delete(before, null, Instant.now());
         final SourceRecord eventRecord = new SourceRecord(
                 new HashMap<>(),
                 new HashMap<>(),
@@ -216,7 +216,7 @@ public class EventRouterTest {
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-        final Struct payload = envelope.update(before, before, null, System.nanoTime());
+        final Struct payload = envelope.update(before, before, null, Instant.now());
         final SourceRecord eventRecord = new SourceRecord(
                 new HashMap<>(),
                 new HashMap<>(),
@@ -248,7 +248,7 @@ public class EventRouterTest {
                 .build();
         final Struct before = new Struct(recordSchema);
         before.put("id", "772590bf-ef2d-4814-b4bf-ddc6f5f8b9c5");
-        final Struct payload = envelope.update(before, before, null, System.nanoTime());
+        final Struct payload = envelope.update(before, before, null, Instant.now());
         final SourceRecord eventRecord = new SourceRecord(
                 new HashMap<>(),
                 new HashMap<>(),
@@ -431,7 +431,7 @@ public class EventRouterTest {
         before.put("event_type", "UserCreated");
         before.put("payload_body", "{}");
 
-        final Struct payload = envelope.create(before, null, System.nanoTime());
+        final Struct payload = envelope.create(before, null, Instant.now());
         final SourceRecord eventRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), payload);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
@@ -481,7 +481,7 @@ public class EventRouterTest {
         before.put("payload_body", "{}".getBytes());
         before.put("some_boolean", true);
 
-        final Struct payload = envelope.create(before, null, System.nanoTime());
+        final Struct payload = envelope.create(before, null, Instant.now());
         final SourceRecord eventRecord = new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), payload);
 
         final SourceRecord eventRouted = router.apply(eventRecord);
@@ -791,7 +791,7 @@ public class EventRouterTest {
 
         extraValues.forEach(before::put);
 
-        final Struct body = envelope.create(before, null, System.nanoTime());
+        final Struct body = envelope.create(before, null, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), body);
     }
 }

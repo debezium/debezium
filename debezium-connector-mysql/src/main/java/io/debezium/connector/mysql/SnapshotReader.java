@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -605,7 +606,7 @@ public class SnapshotReader extends AbstractReader {
                                                 Column actualColumn = table.columns().get(i);
                                                 row[i] = readField(rs, j, actualColumn, table);
                                             }
-                                            recorder.recordRow(recordMaker, row, clock.currentTimeInMillis()); // has no row number!
+                                            recorder.recordRow(recordMaker, row, clock.currentTimeAsInstant()); // has no row number!
                                             rowNum.incrementAndGet();
                                             if (rowNum.get() % 100 == 0 && !isRunning()) {
                                                 // We've stopped running ...
@@ -976,15 +977,15 @@ public class SnapshotReader extends AbstractReader {
         }
     }
 
-    protected void recordRowAsRead(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
+    protected void recordRowAsRead(RecordsForTable recordMaker, Object[] row, Instant ts) throws InterruptedException {
         recordMaker.read(row, ts);
     }
 
-    protected void recordRowAsInsert(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException {
+    protected void recordRowAsInsert(RecordsForTable recordMaker, Object[] row, Instant ts) throws InterruptedException {
         recordMaker.create(row, ts);
     }
 
     protected static interface RecordRecorder {
-        void recordRow(RecordsForTable recordMaker, Object[] row, long ts) throws InterruptedException;
+        void recordRow(RecordsForTable recordMaker, Object[] row, Instant ts) throws InterruptedException;
     }
 }

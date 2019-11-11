@@ -17,6 +17,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -851,7 +852,7 @@ public class BinlogReader extends AbstractReader {
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
         if (recordMaker != null) {
             List<Serializable[]> rows = write.getRows();
-            Long ts = context.getClock().currentTimeInMillis();
+            final Instant ts = context.getClock().currentTimeAsInstant();
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
@@ -902,7 +903,7 @@ public class BinlogReader extends AbstractReader {
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
         if (recordMaker != null) {
             List<Entry<Serializable[], Serializable[]>> rows = update.getRows();
-            Long ts = context.getClock().currentTimeInMillis();
+            final Instant ts = context.getClock().currentTimeAsInstant();
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
@@ -955,7 +956,7 @@ public class BinlogReader extends AbstractReader {
         RecordsForTable recordMaker = recordMakers.forTable(tableNumber, includedColumns, super::enqueueRecord);
         if (recordMaker != null) {
             List<Serializable[]> rows = deleted.getRows();
-            Long ts = context.getClock().currentTimeInMillis();
+            final Instant ts = context.getClock().currentTimeAsInstant();
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {

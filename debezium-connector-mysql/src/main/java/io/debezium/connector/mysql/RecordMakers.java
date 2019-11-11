@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.time.Instant;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -219,7 +220,7 @@ public class RecordMakers {
         Converter converter = new Converter() {
 
             @Override
-            public int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                             BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 Object key = tableSchema.keyFromColumnData(row);
@@ -239,7 +240,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 validateColumnCount(tableSchema, row);
@@ -261,7 +262,7 @@ public class RecordMakers {
 
             @Override
             public int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns,
-                              long ts,
+                              Instant ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
@@ -310,7 +311,7 @@ public class RecordMakers {
             }
 
             @Override
-            public int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+            public int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                               BlockingConsumer<SourceRecord> consumer)
                     throws InterruptedException {
                 int count = 0;
@@ -382,19 +383,19 @@ public class RecordMakers {
     }
 
     protected static interface Converter {
-        int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int read(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                  BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int insert(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int update(SourceInfo source, Object[] before, Object[] after, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
-        int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, long ts,
+        int delete(SourceInfo source, Object[] row, int rowNumber, int numberOfRows, BitSet includedColumns, Instant ts,
                    BlockingConsumer<SourceRecord> consumer)
                 throws InterruptedException;
 
@@ -423,7 +424,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int read(Object[] row, long ts) throws InterruptedException {
+        public int read(Object[] row, Instant ts) throws InterruptedException {
             return read(row, ts, 0, 1);
         }
 
@@ -438,7 +439,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int read(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+        public int read(Object[] row, Instant ts, int rowNumber, int numberOfRows) throws InterruptedException {
             return converter.read(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
@@ -451,7 +452,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int create(Object[] row, long ts) throws InterruptedException {
+        public int create(Object[] row, Instant ts) throws InterruptedException {
             return create(row, ts, 0, 1);
         }
 
@@ -466,7 +467,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int create(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+        public int create(Object[] row, Instant ts, int rowNumber, int numberOfRows) throws InterruptedException {
             return converter.insert(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
@@ -481,7 +482,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int update(Object[] before, Object[] after, long ts) throws InterruptedException {
+        public int update(Object[] before, Object[] after, Instant ts) throws InterruptedException {
             return update(before, after, ts, 0, 1);
         }
 
@@ -498,7 +499,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int update(Object[] before, Object[] after, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+        public int update(Object[] before, Object[] after, Instant ts, int rowNumber, int numberOfRows) throws InterruptedException {
             return converter.update(source, before, after, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
 
@@ -511,7 +512,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int delete(Object[] row, long ts) throws InterruptedException {
+        public int delete(Object[] row, Instant ts) throws InterruptedException {
             return delete(row, ts, 0, 1);
         }
 
@@ -526,7 +527,7 @@ public class RecordMakers {
          * @return the number of records produced; will be 0 or more
          * @throws InterruptedException if this thread is interrupted while waiting to give a source record to the consumer
          */
-        public int delete(Object[] row, long ts, int rowNumber, int numberOfRows) throws InterruptedException {
+        public int delete(Object[] row, Instant ts, int rowNumber, int numberOfRows) throws InterruptedException {
             return converter.delete(source, row, rowNumber, numberOfRows, includedColumns, ts, consumer);
         }
     }

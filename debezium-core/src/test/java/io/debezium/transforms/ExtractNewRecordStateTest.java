@@ -7,6 +7,7 @@ package io.debezium.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -84,7 +85,7 @@ public class ExtractNewRecordStateTest {
         before.put("id", (byte) 1);
         source.put("lsn", 1234);
         source.put("version", "version!");
-        final Struct payload = envelope.delete(before, source, System.nanoTime());
+        final Struct payload = envelope.delete(before, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
@@ -103,7 +104,7 @@ public class ExtractNewRecordStateTest {
 
         before.put("id", (byte) 1);
         source.put("lsn", 1234);
-        final Struct payload = envelope.create(before, source, System.nanoTime());
+        final Struct payload = envelope.create(before, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
@@ -124,7 +125,7 @@ public class ExtractNewRecordStateTest {
         before.put("id", (byte) 1);
         source.put("lsn", 1234);
         source.put("version", "version!");
-        final Struct payload = envelope.create(before, source, System.nanoTime());
+        final Struct payload = envelope.create(before, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
