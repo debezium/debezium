@@ -3,26 +3,44 @@
 
 [id="setup-session-timeouts-for-cdc_{context}"]
 = Setting up session timeouts for {prodname}
-// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
-This paragraph is the procedure module introduction: a short description of the procedure.
+When an initial consistent snapshot is made for large databases, your established connection could timeout while the tables are being read. You can prevent this behavior by configuring `interactive_timeout` and `wait_timeout` in your MySQL configuration file.
 
 .Prerequisites
 
-* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
-* You can also link to other modules or assemblies the user must follow before starting this assembly.
-* Delete the section title and bullets if the assembly has no prerequisites.
+* You must have a MySQL server.
+* You must know basic SQL commands.
+* You must have access to the MySQL configuration file.
 
 .Procedure
 
-. Start each step with an active verb.
+. Configure `interactive_timeout`:
+[source,SQL]
+----
+mysql> interactive_timeout=<duration-in-seconds>
+----
 
-. Include one command or action per step.
+[start=2]
+. Configure `wait_timeout`:
+[source,SQL]
+----
+mysql> wait_timeout= <duration-in-seconds>
+----
 
-. Use an unnumbered bullet (*) if the procedure includes only one step.
+== Options explained
 
-.Additional resources
+[cols="3,7"]
+|===
+|Permission/item |Description
 
-* A bulleted list of links to other material closely related to the contents of the procedure module.
-* For more details on writing procedure modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+|`interactive_timeout`
+a| The number of seconds the server waits for activity on an interactive connection before closing it.
+
+TIP: See link:https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_interactive_timeout[MySQL's documentation] for more details.
+
+|`wait_timeout`
+a| The number of seconds the server waits for activity on a noninteractive connection before closing it.
+
+TIP: See link:https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_wait_timeout[MySQL's documentation] for more details.
+
+|===
