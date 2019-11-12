@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="Kafka-connect-stops_{context}"]
+[id="kafka-connect-stops_{context}"]
 = Kafka Connect stops
 
 There are three scenarios that cause some issues when Kafka Connect stops:
