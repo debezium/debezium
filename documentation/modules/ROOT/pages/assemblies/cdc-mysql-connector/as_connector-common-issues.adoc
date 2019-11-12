@@ -4,8 +4,8 @@
 :attributes: _attributes
 :context: cdc
 include::../../{attributes}.adoc[]
-[id="troubleshoot-the-mysql-connector"]
-= Troubleshooting the MySQL connector
+[id="connector-common-issues"]
+= MySQL connector common issues
 
 * xref:configuration-and-startup-errors_{context}[Configuration and startup errors]
 * xref:mysql-is-unavailable_{context}[MySQL is unavailable]
