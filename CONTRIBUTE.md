@@ -161,7 +161,11 @@ integration test were added.
 
 ### Code Formatting
 
-This project utilizes a set of code style rules that are automatically applied by the build process.  When contributing, it is a good idea to run a build locally to make sure that all code changes you plan to contribute adhere to this style.
+This project utilizes a set of code style rules that are automatically applied by the build process.  There are two ways in which you can apply these rules while contributing:
+
+1. If your IDE supports importing an Eclipse-based formatter file, navigate to your IDE's code format section and import the file `support/ide-configs/src/main/resources/eclipse/debezium-formatter.xml`.  It's recommended that when you import these styles, you may want to make sure these are only applicable only to the current project.
+
+2. If your IDE does not support importing the Eclipse-based formatter file or you'd rather tidy up the formatting after making your changes locally, you can run a project build to make sure that all code changes adhere to the project's desired style.  Instructions on how to run a build locally are provided below.
 
 In the event that a pull request is submitted with code style violations, continuous integration will fail the pull request build.  
 
