@@ -14,4 +14,4 @@ If you have GTIDs enabled and a highly available MySQL cluster, restart the conn
 
 If you do not have GTIDs enabled, the connector only records the binlog position of the MySQL server to which it was connected. In order to restart from the correct binlog position, you must reconnect to that specific server.
 
-TIP: See xref:p_enable-mysql-gtids-for-cdc.adoc[Enable GTIDs] for more information.
+TIP: See xref:modules/p_enable-mysql-gtids-for-cdc.adoc[Enable GTIDs] for more information.
