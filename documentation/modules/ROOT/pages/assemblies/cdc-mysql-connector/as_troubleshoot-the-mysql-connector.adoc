@@ -9,7 +9,7 @@ include::../../{attributes}.adoc[]
 
 * xref:configuration-and-startup-errors_{context}[Configuration and startup errors]
 * xref:mysql-is-unavailable_{context}[MySQL is unavailable]
-* xref:kakfa-connect-stops_{context}[Kakfa Connect stops]
+* xref:kafka-connect-stops_{context}[Kafka Connect stops]
 * xref:mysql-purges-binlog-files_{context}[MySQL purges binlog files]
 
 // {modules}
@@ -18,6 +18,6 @@ include::{modules}/cdc-mysql-connector/r_configuration-and-startup-errors.adoc[l
 
 include::{modules}/cdc-mysql-connector/r_mysql-is-unavailable.adoc[leveloffset=+1]
 
-include::{modules}/cdc-mysql-connector/r_kakfa-connect-stops.adoc[leveloffset=+1]
+include::{modules}/cdc-mysql-connector/r_kafka-connect-stops.adoc[leveloffset=+1]
 
 include::{modules}/cdc-mysql-connector/r_mysql-purges-binlog-files.adoc[leveloffset=+1]
