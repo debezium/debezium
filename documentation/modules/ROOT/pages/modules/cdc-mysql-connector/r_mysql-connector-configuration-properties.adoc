@@ -8,7 +8,7 @@ The configuration properties listed here are *required* to run the {prodname} My
 
 TIP: The {prodname} MySQL connector supports _pass-through_ configuration when creating the Kafka producer and consumer. See link:http://kafka.apache.org/documentation.html[the Kafka documentation] for more details on _pass-through_ properties.
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="3,1,6"]
 |===
 |Property |Default |Description
 
@@ -93,15 +93,15 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 
 |`time.precision.mode`
 |`adaptive_time{zwsp}_microseconds`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; `adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See <<temporal-values>>.
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; `adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
 
 |`decimal.handling.mode`
 |`precise`
-| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
+| Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost.
 
 |`bigint.unsigned.handling.mode`
 |`long`
-| Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values can't be conveyed using `long`. See <<data-types>>.
+| Specifies how BIGINT UNSIGNED columns should be represented in change events, including: `precise` uses `java.math.BigDecimal` to represent values, which are encoded in the change events using a binary representation and Kafka Connect's `org.apache.kafka.connect.data.Decimal` type; `long` (the default) represents values using Java's `long`, which may not offer the precision but will be far easier to use in consumers. `long` is usually the preferable setting. Only when working with values larger than 2^63, the `precise` setting should be used as those values can't be conveyed using `long`.
 
 |`include.schema.changes`
 |`true`
@@ -174,7 +174,7 @@ Fully-qualified tables could be defined as `DB_NAME.TABLE_NAME` or `SCHEMA_NAME.
 == Advanced MySQL connector properties
 [[advanced-mysql-connector-properties]]
 
-[cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="3,1,6"]
 |===
 |Property |Default |Description
 
@@ -302,6 +302,5 @@ Note that this setting is not recommended and is planned for removal in a future
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
 |===
