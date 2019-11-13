@@ -103,9 +103,3 @@ a| Records the completed snapshot in the connector offsets.
 
 |===
 
-{sp} +
-
-.Additional resources
-
-* xref:assemblies/cdc-mysql-connector/as_connector-common-issues.adoc[the MySQL connector common issues]
-* xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties]
