@@ -26,11 +26,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
@@ -89,11 +91,31 @@ public class SnapshotReaderIT {
 
     @Test
     public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
-        config = simpleConfig()
-                .build();
+        snapshotOfSingleDatabase(true, false);
+    }
+
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLock() throws Exception {
+        snapshotOfSingleDatabase(false, false);
+    }
+
+    @Test
+    public void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyMonitoredTables() throws Exception {
+        snapshotOfSingleDatabase(false, true);
+    }
+
+    private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyMonitoredTables) throws Exception {
+        final Builder builder = simpleConfig();
+        if (!useGlobalLock) {
+            builder
+                    .with(MySqlConnectorConfig.USER, "cloud")
+                    .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                    .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, storeOnlyMonitoredTables);
+        }
+        config = builder.build();
         context = new MySqlTaskContext(config, new Filters.Builder(config).build());
         context.start();
-        reader = new SnapshotReader("snapshot", context);
+        reader = new SnapshotReader("snapshot", context, useGlobalLock);
         reader.uponCompletion(completed::countDown);
         reader.generateInsertEvents();
 
