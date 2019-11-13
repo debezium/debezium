@@ -15,9 +15,8 @@ The {prodname} MySQL connector has three metric types in addition to the built-i
 
 The *MBean* is `{prodname}.mysql:type=connector-metrics,context=snapshot,server=<database.server.name>`.
 
-
 [cols="3,1,6"]
-|=======================
+|===
 |Attribute |Type |Description
 
 |`TotalTableCount`
