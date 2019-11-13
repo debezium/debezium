@@ -3,26 +3,25 @@
 
 [id="install-the-mysql-connector-{context}"]
 = Installing the MySQL connector
-// Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
-This paragraph is the procedure module introduction: a short description of the procedure.
+Installing the {prodname} MySQL connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
 
 .Prerequisites
 
-* A bulleted list of conditions that must be satisfied before the user starts following this assembly.
-* You can also link to other modules or assemblies the user must follow before starting this assembly.
-* Delete the section title and bullets if the assembly has no prerequisites.
+* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:http://kafka.apache.org/documentation.html#connect[Kafka Connect] installed.
+* You have MySQL Server installed and setup.
 
 .Procedure
 
-. Start each step with an active verb.
+. Download the {prodname} link:{mysql-connector-plugin-download}[MySQL connector plugin].
+. Extract the files into your Kafka Connect environment.
+. Add the plugin's parent directory to your Kafka Connect plugin path:
+[source]
+----
+plugin.path=/kafka/connect
+----
 
-. Include one command or action per step.
+NOTE: The above example assumes you have extracted the {prodname} MySQL connector to the `/kafka/connect/{prodname}-connector-mysql` path.
 
-. Use an unnumbered bullet (*) if the procedure includes only one step.
-
-.Additional resources
-
-* A bulleted list of links to other material closely related to the contents of the procedure module.
-* For more details on writing procedure modules, see the link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
-* Use a consistent system for file names, IDs, and titles. For tips, see _Anchor Names and File Names_ in link:https://github.com/redhat-documentation/modular-docs#modular-documentation-reference-guide[Modular Documentation Reference Guide].
+[start=4]
+. Restart your Kafka Connect process. This ensures the new JARs are picked up.
