@@ -15,6 +15,7 @@ import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,6 +60,7 @@ public class SnapshotReader extends AbstractReader {
     private RecordRecorder recorder;
     private final SnapshotReaderMetrics metrics;
     private ExecutorService executorService;
+    private final boolean useGlobalLock;
 
     private final MySqlConnectorConfig.SnapshotLockingMode snapshotLockingMode;
 
@@ -69,11 +71,25 @@ public class SnapshotReader extends AbstractReader {
      * @param context the task context in which this reader is running; may not be null
      */
     public SnapshotReader(String name, MySqlTaskContext context) {
+        this(name, context, true);
+    }
+
+    /**
+     * Create a snapshot reader that can use global locking onyl optionally.
+     * Used mostly for testing.
+     *
+     * @param name the name of this reader; may not be null
+     * @param context the task context in which this reader is running; may not be null
+     * @param useGlobalLock {@code false} to simulate cloud (Amazon RDS) restrictions
+     */
+    SnapshotReader(String name, MySqlTaskContext context, boolean useGlobalLock) {
         super(name, context, null);
+
         this.includeData = context.snapshotMode().includeData();
         this.snapshotLockingMode = context.getConnectorConfig().getSnapshotLockingMode();
         recorder = this::recordRowAsRead;
         metrics = new SnapshotReaderMetrics(context, context.dbSchema(), changeEventQueueMetrics);
+        this.useGlobalLock = useGlobalLock;
     }
 
     /**
@@ -227,6 +243,9 @@ public class SnapshotReader extends AbstractReader {
         boolean isLocked = false;
         boolean isTxnStarted = false;
         boolean tableLocks = false;
+        final List<TableId> tablesToSnapshotSchemaAfterUnlock = new ArrayList<>();
+        Set<TableId> lockedTables = Collections.emptySet();
+
         try {
             metrics.snapshotStarted();
 
@@ -268,7 +287,7 @@ public class SnapshotReader extends AbstractReader {
                 if (!isRunning()) {
                     return;
                 }
-                if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE)) {
+                if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE) && useGlobalLock) {
                     try {
                         logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
                         sql.set("FLUSH TABLES WITH READ LOCK");
@@ -416,6 +435,7 @@ public class SnapshotReader extends AbstractReader {
                         }
                         // We have the required privileges, so try to lock all of the tables we're interested in ...
                         logger.info("Step {}: flush and obtain read lock for {} tables (preventing writes)", step++, knownTableIds.size());
+                        lockedTables = new HashSet<>(capturedTableIds);
                         String tableList = capturedTableIds.stream()
                                 .map(tid -> quote(tid))
                                 .reduce((r, element) -> r + "," + element)
@@ -476,12 +496,16 @@ public class SnapshotReader extends AbstractReader {
                             if (!isRunning()) {
                                 break;
                             }
-                            sql.set("SHOW CREATE TABLE " + quote(tableId));
-                            mysql.query(sql.get(), rs -> {
-                                if (rs.next()) {
-                                    schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
-                                }
-                            });
+                            // This is to handle situation when global read lock is unavailable and tables are locked instead of it.
+                            // MySQL forbids access to an unlocked table when there is at least one lock held on another table.
+                            // Thus when we need to obtain schema even for non-monitored tables (which are not locked as we might not have access privileges)
+                            // we need to do it after the tables are unlocked
+                            if (lockedTables.isEmpty() || lockedTables.contains(tableId)) {
+                                readTableSchema(sql, mysql, schema, source, dbName, tableId);
+                            }
+                            else {
+                                tablesToSnapshotSchemaAfterUnlock.add(tableId);
+                            }
                         }
                     }
                     context.makeRecord().regenerate();
@@ -734,6 +758,15 @@ public class SnapshotReader extends AbstractReader {
                             logger.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - lockAcquired));
                         }
                     }
+                    if (!tablesToSnapshotSchemaAfterUnlock.isEmpty()) {
+                        logger.info("Step {}: reading table schema for non-whitelisted tables", step++);
+                        for (TableId tableId : tablesToSnapshotSchemaAfterUnlock) {
+                            if (!isRunning()) {
+                                break;
+                            }
+                            readTableSchema(sql, mysql, schema, source, tableId.schema(), tableId);
+                        }
+                    }
                 }
             }
 
@@ -801,6 +834,17 @@ public class SnapshotReader extends AbstractReader {
                 logger.warn("Failed to close the connection properly", e);
             }
         }
+    }
+
+    private void readTableSchema(final AtomicReference<String> sql, final JdbcConnection mysql,
+                                 final MySqlSchema schema, final SourceInfo source, String dbName, TableId tableId)
+            throws SQLException {
+        sql.set("SHOW CREATE TABLE " + quote(tableId));
+        mysql.query(sql.get(), rs -> {
+            if (rs.next()) {
+                schema.applyDdl(source, dbName, rs.getString(2), this::enqueueSchemaChanges);
+            }
+        });
     }
 
     private boolean shouldRecordTableSchema(final MySqlSchema schema, final Filters filters, TableId id) {
