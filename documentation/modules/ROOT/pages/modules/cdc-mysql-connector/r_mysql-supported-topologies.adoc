@@ -34,6 +34,6 @@ Hosted::
 ====
 There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
 
-IMPORTANT: Because these hosted options do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_. See xref:no-global-read-lock-mysql-connect_{context}[What to do with no global read lock] for more details.
+IMPORTANT: Because these hosted options do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_.
 ====
 

@@ -117,16 +117,14 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 |`fail`
 | Specifies how the connector should react to exceptions during deserialization of binlog events.
 `fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
-(make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
+`warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged. +
 `ignore` will cause problematic event will be skipped.
 
 |`inconsistent.schema.handling.mode`
 |`fail`
 | Specifies how the connector should react to binlog events that relate to tables that are not present in internal schema representation (i.e. internal representation is not consistent with database)
 `fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
-(make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
+`warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged. +
 `ignore` will cause the problematic event to be skipped.
 
 |`max.queue.size`
