@@ -180,13 +180,15 @@ public class RecordMakers {
          * Generate and record one or more source records to describe the given event.
          *
          * @param oplogEvent the event; may not be null
+         * @param masterEvent the event that contains metadata; same as oplogEvent for non-transactional changes
          * @param timestamp the timestamp at which this operation is occurring
+         * @param txOrder order of event in transaction; 0 for non-transactional event
          * @return the number of source records that were generated; will be 0 or more
          * @throws InterruptedException if the calling thread was interrupted while waiting to submit a record to
          *             the blocking consumer
          */
-        public int recordEvent(Document oplogEvent, long timestamp) throws InterruptedException {
-            source.opLogEvent(replicaSetName, oplogEvent);
+        public int recordEvent(Document oplogEvent, Document masterEvent, long timestamp, long txOrder) throws InterruptedException {
+            source.opLogEvent(replicaSetName, oplogEvent, masterEvent, txOrder);
             final Struct sourceValue = source.struct();
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             Document patchObj = oplogEvent.get("o", Document.class);
@@ -196,6 +198,19 @@ public class RecordMakers {
             assert objId != null;
             Operation operation = OPERATION_LITERALS.get(oplogEvent.getString("op"));
             return createRecords(sourceValue, offset, operation, objId, patchObj, timestamp);
+        }
+
+        /**
+         * Generate and record one or more source records to describe the given event.
+         *
+         * @param oplogEvent the event; may not be null
+         * @param timestamp the timestamp at which this operation is occurring
+         * @return the number of source records that were generated; will be 0 or more
+         * @throws InterruptedException if the calling thread was interrupted while waiting to submit a record to
+         *             the blocking consumer
+         */
+        public int recordEvent(Document oplogEvent, long timestamp) throws InterruptedException {
+            return recordEvent(oplogEvent, oplogEvent, timestamp, 0);
         }
 
         protected int createRecords(Struct source, Map<String, ?> offset, Operation operation, String objId, Document objectValue,

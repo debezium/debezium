@@ -263,6 +263,7 @@ public class SourceInfoTest {
                 .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("h", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("tord", Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);

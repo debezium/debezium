@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -98,6 +99,11 @@ public class Replicator {
 
     private static final String AUTHORIZATION_FAILURE_MESSAGE = "Command failed with error 13";
 
+    private static final String OPERATION_FIELD = "op";
+    private static final String OBJECT_FIELD = "o";
+    private static final String OPERATION_CONTROL = "c";
+    private static final String TX_OPS = "applyOps";
+
     private final MongoDbTaskContext context;
     private final ExecutorService copyThreads;
     private final ReplicaSet replicaSet;
@@ -110,6 +116,9 @@ public class Replicator {
     private ConnectionContext.MongoPrimary primaryClient;
     private final Consumer<Throwable> onFailure;
     private final Heartbeat heartbeat;
+
+    private BsonTimestamp incompleteEventTimestamp;
+    private long incompleteTxOrder = 0;
 
     /**
      * @param context the replication context; may not be null
@@ -210,7 +219,7 @@ public class Replicator {
         primaryClient.execute("get oplog position", primary -> {
             MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
             Document last = oplog.find().sort(new Document("$natural", -1)).limit(1).first(); // may be null
-            source.opLogEvent(replicaSet.replicaSetName(), last);
+            source.opLogEvent(replicaSet.replicaSetName(), last, last, 0);
         });
     }
 
@@ -470,13 +479,26 @@ public class Replicator {
      */
     protected void readOplog(MongoClient primary) {
         BsonTimestamp oplogStart = source.lastOffsetTimestamp(replicaSet.replicaSetName());
+        final long txOrder = source.lastOffsetTxOrder(replicaSet.replicaSetName());
         ServerAddress primaryAddress = primary.getAddress();
         LOGGER.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
         // Include none of the cluster-internal operations and only those events since the previous timestamp ...
         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
-        Bson filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
-                Filters.exists("fromMigrate", false)); // skip internal movements across shards
+        Bson filter;
+        if (txOrder == 0) {
+            LOGGER.info("The last event processed was not transactional, resuming at the oplog event after '{}'", oplogStart);
+            filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
+                    Filters.exists("fromMigrate", false)); // skip internal movements across shards
+        }
+        else {
+            LOGGER.info("The last event processed was transactional, resuming at the oplog event '{}', expecting to skip '{}' events",
+                    oplogStart, txOrder);
+            filter = Filters.and(Filters.gte("ts", oplogStart), // start on last position as tx might be incomplete
+                    Filters.exists("fromMigrate", false)); // skip internal movements across shards
+            incompleteEventTimestamp = oplogStart;
+            incompleteTxOrder = txOrder;
+        }
         FindIterable<Document> results = oplog.find(filter)
                 .sort(new Document("$natural", 1)) // force forwards collection scan
                 .oplogReplay(true) // tells Mongo to not rely on indexes
@@ -485,7 +507,7 @@ public class Replicator {
         try (MongoCursor<Document> cursor = results.iterator()) {
             while (running.get() && cursor.hasNext()) {
                 final Document event = cursor.next();
-                if (!handleOplogEvent(primaryAddress, event)) {
+                if (!handleOplogEvent(primaryAddress, event, event, 0)) {
                     // Something happened, and we're supposed to stop reading
                     return;
                 }
@@ -494,7 +516,7 @@ public class Replicator {
                         // note opLogEvent() will have been called before via handleOplogEvent()
                         // (unless the event is filtered out), but that's ok, as it's idempotent
                         // and the code here is only actually is executed if a heartbeat is due
-                        source.opLogEvent(replicaSet.replicaSetName(), event);
+                        source.opLogEvent(replicaSet.replicaSetName(), event, event, 0);
                         return source.lastOffset(replicaSet.replicaSetName());
                     },
                             bufferedRecorder);
@@ -513,13 +535,15 @@ public class Replicator {
      *
      * @param primaryAddress the address of the primary server from which the event was obtained; may not be null
      * @param event the oplog event; may not be null
+     * @param masterEvent the oplog event containing metadata, same as event for non-tx events
+     * @param txOrder order of event in transaction; 0 for non-transactional event
      * @return {@code true} if additional events should be processed, or {@code false} if the caller should stop
      *         processing events
      */
-    protected boolean handleOplogEvent(ServerAddress primaryAddress, Document event) {
+    protected boolean handleOplogEvent(ServerAddress primaryAddress, Document event, Document masterEvent, long txOrder) {
         LOGGER.debug("Found event: {}", event);
         String ns = event.getString("ns");
-        Document object = event.get("o", Document.class);
+        Document object = event.get(OBJECT_FIELD, Document.class);
         if (object == null) {
             if (LOGGER.isWarnEnabled()) {
                 LOGGER.warn("Missing 'o' field in event, so skipping {}", event.toJson());
@@ -559,7 +583,34 @@ public class Replicator {
             return true;
         }
 
-        String operation = event.getString("op");
+        final List<Document> txChanges = transactionChanges(event);
+        if (!txChanges.isEmpty()) {
+            if (incompleteEventTimestamp != null) {
+                if (incompleteEventTimestamp.equals(SourceInfo.extractEventTimestamp(event))) {
+                    for (Document change : txChanges) {
+                        txOrder++;
+                        if (txOrder <= incompleteTxOrder) {
+                            LOGGER.debug("Skipping record as it is expected to be already processed: {}", change);
+                            continue;
+                        }
+                        final boolean r = handleOplogEvent(primaryAddress, change, event, txOrder);
+                        if (!r) {
+                            return false;
+                        }
+                    }
+                }
+                incompleteEventTimestamp = null;
+                return true;
+            }
+            for (Document change : txChanges) {
+                final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder);
+                if (!r) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        String operation = event.getString(OPERATION_FIELD);
         // the op is not insert/update/delete
         if (!RecordMakers.isValidOperation(operation)) {
             LOGGER.debug("Skipping event with \"op={}\"", operation);
@@ -586,7 +637,7 @@ public class Replicator {
             if (context.filters().collectionFilter().test(collectionId)) {
                 RecordsForCollection factory = recordMakers.forCollection(collectionId);
                 try {
-                    factory.recordEvent(event, clock.currentTimeInMillis());
+                    factory.recordEvent(event, masterEvent, clock.currentTimeInMillis(), txOrder);
                 }
                 catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -595,6 +646,16 @@ public class Replicator {
             }
         }
         return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Document> transactionChanges(Document event) {
+        final String op = event.getString(OPERATION_FIELD);
+        final Document o = event.get(OBJECT_FIELD, Document.class);
+        if (!(OPERATION_CONTROL.equals(op) && o != null && o.containsKey(TX_OPS))) {
+            return Collections.emptyList();
+        }
+        return (List<Document>) o.get(TX_OPS, List.class);
     }
 
     /**

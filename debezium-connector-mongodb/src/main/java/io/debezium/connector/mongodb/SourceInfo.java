@@ -73,11 +73,12 @@ public final class SourceInfo extends AbstractSourceInfo {
     public static final String TIMESTAMP = "sec";
     public static final String ORDER = "ord";
     public static final String OPERATION_ID = "h";
+    public static final String TX_ORD = "tord";
     public static final String INITIAL_SYNC = "initsync";
     public static final String COLLECTION = "collection";
 
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
-    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null);
+    private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, 0);
 
     private final ConcurrentMap<String, Map<String, String>> sourcePartitionsByReplicaSetName = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Position> positionsByReplicaSetName = new ConcurrentHashMap<>();
@@ -96,14 +97,16 @@ public final class SourceInfo extends AbstractSourceInfo {
     protected static final class Position {
         private final Long opId;
         private final BsonTimestamp ts;
+        private final long txOrder;
 
-        public Position(int ts, int order, Long opId) {
-            this(new BsonTimestamp(ts, order), opId);
+        public Position(int ts, int order, Long opId, long txOrder) {
+            this(new BsonTimestamp(ts, order), opId, txOrder);
         }
 
-        public Position(BsonTimestamp ts, Long opId) {
+        public Position(BsonTimestamp ts, Long opId, long txOrder) {
             this.ts = ts;
             this.opId = opId;
+            this.txOrder = txOrder;
             assert this.ts != null;
         }
 
@@ -121,6 +124,10 @@ public final class SourceInfo extends AbstractSourceInfo {
 
         public Long getOperationId() {
             return this.opId;
+        }
+
+        public long getTxOrder() {
+            return this.txOrder;
         }
     }
 
@@ -175,6 +182,17 @@ public final class SourceInfo extends AbstractSourceInfo {
     }
 
     /**
+     * Get the MongoDB transaction order of the last offset position for the replica set.
+     *
+     * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
+     * @return the tx order of the transaction in progress or 0 in case of non-transactional event
+     */
+    public long lastOffsetTxOrder(String replicaSetName) {
+        Position existing = positionsByReplicaSetName.get(replicaSetName);
+        return existing != null ? existing.getTxOrder() : 0;
+    }
+
+    /**
      * Get the Kafka Connect detail about the source "offset" for the named database, which describes the given position in the
      * database where we have last read. If the database has not yet been seen, this records the starting position
      * for that database. However, if there is a position for the database, the offset representation is returned.
@@ -193,9 +211,13 @@ public final class SourceInfo extends AbstractSourceInfo {
                     OPERATION_ID, existing.getOperationId(),
                     INITIAL_SYNC, true);
         }
-        return Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
+        Map<String, Object> offset = Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                 ORDER, Integer.valueOf(existing.getInc()),
                 OPERATION_ID, existing.getOperationId());
+        if (existing.getTxOrder() != 0) {
+            offset.put(TX_ORD, existing.getTxOrder());
+        }
+        return offset;
     }
 
     /**
@@ -218,20 +240,35 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
      *            the oplog
+     * @param masterEvent the replica set oplog event that contains event metadata; same as oplogEvent for non-transactional changes
+     * @param orderInTx order in transaction batch, 0 for non-transactional events
      * @see #schema()
      */
-    public void opLogEvent(String replicaSetName, Document oplogEvent) {
+    public void opLogEvent(String replicaSetName, Document oplogEvent, Document masterEvent, long orderInTx) {
         Position position = INITIAL_POSITION;
         String namespace = "";
         if (oplogEvent != null) {
-            BsonTimestamp ts = extractEventTimestamp(oplogEvent);
-            Long opId = oplogEvent.getLong("h");
-            position = new Position(ts, opId);
+            BsonTimestamp ts = extractEventTimestamp(masterEvent);
+            Long opId = masterEvent.getLong("h");
+            position = new Position(ts, opId, orderInTx);
             namespace = oplogEvent.getString("ns");
         }
         positionsByReplicaSetName.put(replicaSetName, position);
 
         onEvent(replicaSetName, CollectionId.parse(replicaSetName, namespace), position);
+    }
+
+    /**
+     * Get a {@link Struct} representation of the source {@link #partition(String) partition} and {@link #lastOffset(String)
+     * offset} information. The Struct complies with the {@link #schema} for the MongoDB connector.
+     *
+     * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
+     * @param oplogEvent the replica set oplog event that was last read; may be null if the position is the start of
+     *            the oplog
+     * @see #schema()
+     */
+    public void opLogEvent(String replicaSetName, Document oplogEvent) {
+        opLogEvent(replicaSetName, oplogEvent, oplogEvent, 0);
     }
 
     /**
@@ -285,7 +322,8 @@ public final class SourceInfo extends AbstractSourceInfo {
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
         Long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
-        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId));
+        Long txOrder = longOffsetValue(sourceOffset, TX_ORD);
+        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder == null ? 0 : txOrder.longValue()));
         return true;
     }
 
@@ -389,5 +427,9 @@ public final class SourceInfo extends AbstractSourceInfo {
 
     String replicaSetName() {
         return replicaSetName;
+    }
+
+    protected long transactionPosition() {
+        return position.getTxOrder();
     }
 }
