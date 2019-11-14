@@ -30,6 +30,7 @@ Christian Posta
 Cliff Wheadon
 Cyril Scetbon
 David Chen
+David Feinblum
 David Leibovic
 David Szabo
 Deepak Barr
@@ -84,6 +85,7 @@ Mariusz Strzelecki
 Matteo Capitanio
 Mathieu Rozieres
 Matthias Wessendorf
+Mike Graham
 Mincong Huang
 Moira Tagle
 Muhammad Sufyian
