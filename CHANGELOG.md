@@ -2,6 +2,53 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.0.Beta3
+November 14th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343094)
+
+### New features since 1.0.0.Beta2
+
+* Standardize source info for Cassandra connector [DBZ-1408](https://issues.jboss.org/browse/DBZ-1408)
+* Clarify presence of old values when not using REPLICA IDENTITY FULL [DBZ-1518](https://issues.jboss.org/browse/DBZ-1518)
+* Propagate replicator exception so failure reason is available from Connect [DBZ-1583](https://issues.jboss.org/browse/DBZ-1583)
+* Envelope methods should accept Instant instead of long for "ts" parameter [DBZ-1607](https://issues.jboss.org/browse/DBZ-1607)
+
+
+### Breaking changes since 1.0.0.Beta2
+
+* Rename drop_on_stop to drop.on.stop [DBZ-1595](https://issues.jboss.org/browse/DBZ-1595)
+
+
+### Fixes since 1.0.0.Beta2
+
+* Debezium Erroneously Reporting No Tables to Capture [DBZ-1519](https://issues.jboss.org/browse/DBZ-1519)
+* Debezium Oracle connector attempting to analyze tables [DBZ-1569](https://issues.jboss.org/browse/DBZ-1569)
+* Null values in "before" are populated with "__debezium_unavailable_value" [DBZ-1570](https://issues.jboss.org/browse/DBZ-1570)
+* Postgresql 11+ pgoutput plugin error with truncate [DBZ-1576](https://issues.jboss.org/browse/DBZ-1576)
+* Regression of postgres Connector times out in schema discovery for DBs with many tables [DBZ-1579](https://issues.jboss.org/browse/DBZ-1579)
+* The ts_ms value is not correct during the snapshot processing [DBZ-1588](https://issues.jboss.org/browse/DBZ-1588)
+* LogInterceptor is not thread-safe [DBZ-1590](https://issues.jboss.org/browse/DBZ-1590)
+* Heartbeats are not generated for non-whitelisted tables [DBZ-1592](https://issues.jboss.org/browse/DBZ-1592)
+* Config `tombstones.on.delete` is missing from SQL Server Connector configDef [DBZ-1593](https://issues.jboss.org/browse/DBZ-1593)
+* AWS RDS Performance Insights screwed a little by non-closed statement in "SELECT COUNT(1) FROM pg_publication" [DBZ-1596](https://issues.jboss.org/browse/DBZ-1596)
+* Update Postgres documentation to use ts_ms instead of ts_usec [DBZ-1610](https://issues.jboss.org/browse/DBZ-1610)
+* Exception while trying snapshot schema of non-whitelisted table [DBZ-1613](https://issues.jboss.org/browse/DBZ-1613)
+
+
+### Other changes since 1.0.0.Beta2
+
+* Auto-format source code upon build [DBZ-1392](https://issues.jboss.org/browse/DBZ-1392)
+* Update documentation based on Technology Preview [DBZ-1543](https://issues.jboss.org/browse/DBZ-1543)
+* Reduce size of Postgres container images [DBZ-1549](https://issues.jboss.org/browse/DBZ-1549)
+* Debezium should not use SHARE UPDATE EXCLUSIVE MODE locks [DBZ-1559](https://issues.jboss.org/browse/DBZ-1559)
+* Allows tags to be passed to CI jobs [DBZ-1578](https://issues.jboss.org/browse/DBZ-1578)
+* Upgrade MongoDB driver to 3.11 [DBZ-1597](https://issues.jboss.org/browse/DBZ-1597)
+* Run formatter validation in Travis CI [DBZ-1603](https://issues.jboss.org/browse/DBZ-1603)
+* Place formatting rules into Maven module [DBZ-1605](https://issues.jboss.org/browse/DBZ-1605)
+* Upgrade to Kafka 2.3.1 [DBZ-1612](https://issues.jboss.org/browse/DBZ-1612)
+* Allow per-connector setting for schema/catalog precedence in TableId use [DBZ-1555](https://issues.jboss.org/browse/DBZ-1555)
+
+
+
 ## 1.0.0.Beta2
 October 24th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343067)
 
