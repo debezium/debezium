@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
@@ -27,6 +28,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
@@ -41,6 +43,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -207,6 +210,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             validate(record);
             verifyNotFromInitialSync(record);
             verifyCreateOperation(record);
+            verifyNotFromTransaction(record);
         });
 
         // ---------------------------------------------------------------------------------------------------------------
@@ -414,12 +418,217 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo("last");
         }
+        verifyNotFromTransaction(record);
+    }
+
+    @Test
+    @FixFor("DBZ-1215")
+    public void shouldConsumeTransaction() throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        if (!TestHelper.transactionsSupported(primary(), "dbit")) {
+            logger.info("Test not executed, transactions not supported in the server");
+            return;
+        }
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "simpletons", "simple_objects.json");
+        storeDocuments("dbit", "restaurants", "restaurants1.json");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(12);
+        records.topics().forEach(System.out::println);
+        assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(6);
+        assertThat(records.topics().size()).isEqualTo(2);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // At this point, the connector has performed the initial sync and awaits changes ...
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is still running
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocumentsInTx("dbit", "restaurants", "restaurants2.json");
+
+        // Wait until we can consume the 4 documents we just added ...
+        SourceRecords records2 = consumeRecordsByTopic(4);
+        assertThat(records2.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(4);
+        assertThat(records2.topics().size()).isEqualTo(1);
+        final AtomicLong txOrder = new AtomicLong(0);
+        records2.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+            verifyFromTransaction(record, txOrder.incrementAndGet());
+        });
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is NOT running
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocumentsInTx("dbit", "restaurants", "restaurants3.json");
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Start the connector and we should only see the documents added since it was stopped
+        // ---------------------------------------------------------------------------------------------------------------
+        start(MongoDbConnector.class, config);
+
+        // Wait until we can consume the 4 documents we just added ...
+        SourceRecords records3 = consumeRecordsByTopic(5);
+        assertThat(records3.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(5);
+        assertThat(records3.topics().size()).isEqualTo(1);
+        txOrder.set(0);
+        records3.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+            verifyFromTransaction(record, txOrder.incrementAndGet());
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-1215")
+    public void shouldResumeTransactionInMiddle() throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        if (!TestHelper.transactionsSupported(primary(), "dbit")) {
+            logger.info("Test not executed, transactions not supported in the server");
+            return;
+        }
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "simpletons", "simple_objects.json");
+        storeDocuments("dbit", "restaurants", "restaurants1.json");
+
+        // Start the connector and terminate it when third event from transaction arrives
+        start(MongoDbConnector.class, config, record -> {
+            final Struct struct = (Struct) record.value();
+            final Long txOrder = struct.getStruct("source").getInt64("tord");
+            return txOrder != null && txOrder.equals(3L);
+        });
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(12);
+        records.topics().forEach(System.out::println);
+        assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(6);
+        assertThat(records.topics().size()).isEqualTo(2);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // At this point, the connector has performed the initial sync and awaits changes ...
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is still running, connector should be stopped
+        // after second record
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocumentsInTx("dbit", "restaurants", "restaurants2.json");
+
+        // Wait until we can consume the two records of those documents we just added ...
+        SourceRecords records2 = consumeRecordsByTopic(2);
+        assertThat(records2.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(2);
+        assertThat(records2.topics().size()).isEqualTo(1);
+        final AtomicLong txOrder = new AtomicLong(0);
+        records2.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+            verifyFromTransaction(record, txOrder.incrementAndGet());
+        });
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is NOT running
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocumentsInTx("dbit", "restaurants", "restaurants3.json");
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Start the connector and we should only see the rest of transaction
+        // and the documents added since it was stopped
+        // ---------------------------------------------------------------------------------------------------------------
+        start(MongoDbConnector.class, config);
+
+        // Wait until we can consume 2 (incomplete transaction) + 5 (new documents added)
+        SourceRecords records3 = consumeRecordsByTopic(7);
+        assertThat(records3.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(7);
+        assertThat(records3.topics().size()).isEqualTo(1);
+        final List<Long> expectedTxOrd = Collect.arrayListOf(3L, 4L, 1L, 2L, 3L, 4L, 5L);
+        records3.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+            verifyFromTransaction(record, expectedTxOrd.remove(0));
+        });
     }
 
     protected void verifyNotFromInitialSync(SourceRecord record) {
         assertThat(record.sourceOffset().containsKey(SourceInfo.INITIAL_SYNC)).isFalse();
         Struct value = (Struct) record.value();
         assertThat(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.SNAPSHOT_KEY)).isNull();
+    }
+
+    protected void verifyFromTransaction(SourceRecord record, long order) {
+        assertThat(record.sourceOffset().containsKey(SourceInfo.TX_ORD)).isTrue();
+        final Struct value = (Struct) record.value();
+        assertThat(value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.TX_ORD)).isEqualTo(order);
+    }
+
+    protected void verifyNotFromTransaction(SourceRecord record) {
+        assertThat(record.sourceOffset().containsKey(SourceInfo.TX_ORD)).isFalse();
     }
 
     protected void verifyCreateOperation(SourceRecord record) {
@@ -464,6 +673,34 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             assertThat(doc).isNotNull();
             assertThat(doc.size()).isGreaterThan(0);
             collection.insertOne(doc, insertOptions);
+        });
+    }
+
+    protected void storeDocumentsInTx(String dbName, String collectionName, String pathOnClasspath) {
+        primary().execute("storing documents", mongo -> {
+            Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
+            MongoDatabase db1 = mongo.getDatabase(dbName);
+            MongoCollection<Document> coll = db1.getCollection(collectionName);
+            coll.drop();
+            db1.createCollection(collectionName);
+            final ClientSession session = mongo.startSession();
+            session.startTransaction();
+            storeDocuments(session, coll, pathOnClasspath);
+            session.commitTransaction();
+        });
+    }
+
+    protected void storeDocuments(ClientSession session, MongoCollection<Document> collection, String pathOnClasspath) {
+        InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+        loadTestDocuments(pathOnClasspath).forEach(doc -> {
+            assertThat(doc).isNotNull();
+            assertThat(doc.size()).isGreaterThan(0);
+            if (session == null) {
+                collection.insertOne(doc, insertOptions);
+            }
+            else {
+                collection.insertOne(session, doc, insertOptions);
+            }
         });
     }
 

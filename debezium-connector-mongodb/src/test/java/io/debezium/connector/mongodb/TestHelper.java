@@ -6,8 +6,13 @@
 package io.debezium.connector.mongodb;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.bson.BsonDocument;
+import org.bson.BsonString;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +45,24 @@ public class TestHelper {
                 db1.getCollection(x).drop();
             }));
         });
+    }
+
+    public static Document databaseInformation(MongoPrimary primary, String dbName) {
+        final AtomicReference<Document> ret = new AtomicReference<>();
+        primary.execute("clean-db", mongo -> {
+            MongoDatabase db1 = mongo.getDatabase(dbName);
+            final BsonDocument command = new BsonDocument();
+            command.put("buildinfo", new BsonString(""));
+            ret.set(db1.runCommand(command));
+        });
+        return ret.get();
+    }
+
+    public static boolean transactionsSupported(MongoPrimary primary, String dbName) {
+        final Document serverInfo = databaseInformation(primary, dbName);
+        @SuppressWarnings("unchecked")
+        final List<Integer> version = (List<Integer>) serverInfo.get("versionArray");
+        return version.get(0) >= 4;
     }
 
     public static String lines(String... lines) {
