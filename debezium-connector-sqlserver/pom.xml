@@ -20,7 +20,7 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.filter>microsoft/mssql-server-linux:2017-CU9-GDR2</docker.filter>
+        <docker.filter>mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
     </properties>
@@ -125,7 +125,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <time>30000</time> <!-- 30 seconds max -->
+                                    <time>60000</time> <!-- 60 seconds max -->
                                     <log>SQL Server is now ready for client connections</log>
                                 </wait>
                             </run>
