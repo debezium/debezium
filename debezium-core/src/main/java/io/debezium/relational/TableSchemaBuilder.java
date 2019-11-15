@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -173,7 +174,7 @@ public class TableSchemaBuilder {
             int[] recordIndexes = indexesForColumns(columns);
             Field[] fields = fieldsForColumns(schema, columns);
             int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null, null);
+            ValueConverter[] converters = convertersForColumns(schema, columnSetName, columns, null);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
@@ -234,10 +235,13 @@ public class TableSchemaBuilder {
     protected Function<Object[], Struct> createValueGenerator(Schema schema, TableId tableId, List<Column> columns,
                                                               ColumnNameFilter filter, ColumnMappers mappers) {
         if (schema != null) {
-            int[] recordIndexes = indexesForColumns(columns);
-            Field[] fields = fieldsForColumns(schema, columns);
+            List<Column> columnsThatShouldBeAdded = columns.stream()
+                    .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                    .collect(Collectors.toList());
+            int[] recordIndexes = indexesForColumns(columnsThatShouldBeAdded);
+            Field[] fields = fieldsForColumns(schema, columnsThatShouldBeAdded);
             int numFields = recordIndexes.length;
-            ValueConverter[] converters = convertersForColumns(schema, tableId, columns, filter, mappers);
+            ValueConverter[] converters = convertersForColumns(schema, tableId, columnsThatShouldBeAdded, mappers);
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
@@ -302,22 +306,15 @@ public class TableSchemaBuilder {
      * @param schema the schema; may not be null
      * @param tableId the identifier of the table that contains the columns
      * @param columns the columns in the row; may not be null
-     * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
-     *            are to be included
      * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
      * @return the converters for each column in the rows; never null
      */
-    protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns,
-                                                    ColumnNameFilter filter, ColumnMappers mappers) {
+    protected ValueConverter[] convertersForColumns(Schema schema, TableId tableId, List<Column> columns, ColumnMappers mappers) {
 
         ValueConverter[] converters = new ValueConverter[columns.size()];
 
         for (int i = 0; i < columns.size(); i++) {
             Column column = columns.get(i);
-
-            if (filter != null && !filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name())) {
-                continue;
-            }
 
             ValueConverter converter = createValueConverterFor(column, schema.field(column.name()));
             converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
