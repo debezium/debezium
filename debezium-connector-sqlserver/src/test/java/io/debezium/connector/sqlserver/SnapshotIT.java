@@ -97,6 +97,11 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void takeSnapshotInReadCommittedMode() throws Exception {
+        takeSnapshot(SnapshotIsolationMode.READ_COMMITTED);
+    }
+
+    @Test
     public void takeSnapshotInReadUncommittedMode() throws Exception {
         takeSnapshot(SnapshotIsolationMode.READ_UNCOMMITTED);
     }

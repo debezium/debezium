@@ -142,6 +142,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         REPEATABLE_READ("repeatable_read"),
 
         /**
+         * This mode uses READ COMMITTED isolation level. This mode does not take any table locks during
+         * the snapshot process. In addition, it does not take any long-lasting row-level locks, like
+         * in repeatable read isolation level. Snapshot consistency is not guaranteed.
+         */
+        READ_COMMITTED("read_committed"),
+
+        /**
          * This mode uses READ UNCOMMITTED isolation level. This mode takes neither table locks nor row-level locks
          * during the snapshot process.  This way other transactions are not affected by initial snapshot process.
          * However, snapshot consistency is not guaranteed.
@@ -260,6 +267,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all monitored tables during the entire snapshot duration. "
                     + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue()
                     + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
+                    + "When '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
+                    + "' is specified, connector runs the initial snapshot in READ COMMITTED isolation level. No long-running locks are taken, so that initial snapshot does not prevent "
+                    + "other transactions from updating table rows. Snapshot consistency is not guaranteed."
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
