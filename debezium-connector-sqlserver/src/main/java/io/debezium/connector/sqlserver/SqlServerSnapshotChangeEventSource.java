@@ -103,6 +103,10 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
             LOGGER.info("Schema locking was disabled in connector configuration");
         }
+        else if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_COMMITTED) {
+            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            LOGGER.info("Schema locking was disabled in connector configuration");
+        }
         else if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
             // Snapshot transaction isolation level has already been set.
             LOGGER.info("Schema locking was disabled in connector configuration");
