@@ -4,7 +4,7 @@
     project-type: freestyle
     name: debezium-source-clear
     display-name: Vulnerability scan
-    description: Executes SourceClear vulnerabilty scan of Debezium sources and binaries
+    description: Executes SourceClear vulnerability scan of Debezium sources and binaries
     node: Slave
     properties:
       - build-discarder:
