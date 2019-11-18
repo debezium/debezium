@@ -1,0 +1,53 @@
+# Job definition to execute vulnerability scan
+---
+- job:
+    project-type: freestyle
+    name: debezium-source-clear
+    display-name: Vulnerability scan
+    description: Executes SourceClear vulnerabilty scan of Debezium sources and binaries
+    node: Slave
+    properties:
+      - build-discarder:
+          days-to-keep: 7
+      - github:
+          url: https://github.com/debezium/docker-images
+    parameters:
+      - string:
+          name: BUILD_VERSION
+          description: "Maven artifact id of the product binaries"
+      - string:
+          name: PRODUCT_VERSION
+          description: "Product version"
+      - string:
+          name: SOURCE_TAG
+          description: "Tagged version of source code to scan"
+      - bool:
+          name: BINARY
+          description: "Scan binary artifacts"
+          default: "false"
+      - string:
+          name: PLUGINS
+          description: "The plugins whose binaries should be scanned"
+          default: mysql postgres mongodb sqlserver
+    wrappers:
+      - timeout:
+          timeout: 90
+      - credentials-binding:
+          - text:
+              credential-id: debezium-srcclr-token
+              variable: SRCCLR_TOKEN
+          - text:
+              credential-id: debezium-prod-repo
+              variable: SOURCE_MAVEN_REPO
+    builders:
+      - shell: |
+          if [ "$BINARY" = "false" ]; then
+            docker run -e SRCCLR_TOKEN="$SRCCLR_TOKEN" quay.io/debezium/vulnerability-scan scm https://github.com/debezium/debezium.git "$PRODUCT_VERSION" "$SOURCE_TAG"
+          else
+            for CONNECTOR in $PLUGINS; do
+              docker run -e SRCCLR_TOKEN="$SRCCLR_TOKEN" quay.io/debezium/vulnerability-scan binary "$SOURCE_MAVEN_REPO/debezium-connector-$CONNECTOR/$BUILD_VERSION/debezium-connector-$CONNECTOR-${BUILD_VERSION}-plugin.zip" "$PRODUCT_VERSION" "$SOURCE_TAG"
+            done
+          fi
+    publishers:
+      - email:
+          recipients: jpechane@redhat.com
