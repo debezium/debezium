@@ -371,7 +371,9 @@ public class IoUtil {
         File dir = path.toAbsolutePath().toFile();
         if (dir.exists() && dir.canRead() && dir.canWrite()) {
             if (dir.isDirectory()) {
-                delete(path);
+                if (removeExistingContent) {
+                    delete(path);
+                }
                 return dir;
             }
             throw new IllegalStateException("Expecting '" + path + "' to be a directory but found a file");
