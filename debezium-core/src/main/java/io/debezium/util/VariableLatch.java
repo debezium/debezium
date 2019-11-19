@@ -38,7 +38,7 @@ public class VariableLatch {
      * @return the variable latch; never null
      */
     public static VariableLatch create(int initialValue) {
-        return new VariableLatch(0);
+        return new VariableLatch(initialValue);
     }
 
     /**
