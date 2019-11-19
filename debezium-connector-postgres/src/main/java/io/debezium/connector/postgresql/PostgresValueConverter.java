@@ -481,10 +481,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             value = new SpecialValueDecimal((BigDecimal) o);
         }
 
-        newDecimal = value.getDecimalValue().get();
-        if (column.scale().get() > newDecimal.scale()) {
-            newDecimal = newDecimal.setScale(column.scale().get());
-        }
+        newDecimal = withScaleAdjustedIfNeeded(column, value.getDecimalValue().get());
 
         if (isVariableScaleDecimal(column) && mode == DecimalMode.PRECISE) {
             newDecimal = newDecimal.stripTrailingZeros();
