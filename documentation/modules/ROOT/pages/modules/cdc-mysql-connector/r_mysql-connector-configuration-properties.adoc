@@ -18,7 +18,7 @@ TIP: The {prodname} MySQL connector supports _pass-through_ configuration when c
 
 |`connector.class`
 |
-|The name of the Java class for the connector. Always use a value of `io.{prodname}{zwsp}.connector.mysql.MySqlConnector` for the MySQL connector.
+|The name of the Java class for the connector. Always use a value of `io.debezium{zwsp}.connector.mysql.MySqlConnector` for the MySQL connector.
 
 |`tasks.max`
 |`1`
@@ -261,7 +261,7 @@ Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
 |`heartbeat.topics.prefix`
-|`__{prodname}-heartbeat`
+|`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 

@@ -25,7 +25,7 @@ TIP: For a complete list of configuration properties, see xref:assemblies/cdc-my
 {
   "name": "inventory-connector", <1>
   "config": {
-    "connector.class": "io.{prodname}.connector.mysql.MySqlConnector", <2>
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector", <2>
     "database.hostname": "192.168.99.100", <3>
     "database.port": "3306", <4>
     "database.user": "{prodname}-user", <5> 

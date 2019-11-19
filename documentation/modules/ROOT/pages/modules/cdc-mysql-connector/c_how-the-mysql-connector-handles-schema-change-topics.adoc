@@ -19,7 +19,7 @@ Each message that is written to the schema change topic contains a message key w
 {
   "schema": {
     "type": "struct",
-    "name": "io.{prodname}.connector.mysql.SchemaChangeKey",
+    "name": "io.debezium.connector.mysql.SchemaChangeKey",
     "optional": false,
     "fields": [
       {
@@ -42,7 +42,7 @@ The schema change event message value contains a structure that includes the DDL
 {
   "schema": {
     "type": "struct",
-    "name": "io.{prodname}.connector.mysql.SchemaChangeValue",
+    "name": "io.debezium.connector.mysql.SchemaChangeValue",
     "optional": false,
     "fields": [
       {
@@ -58,7 +58,7 @@ The schema change event message value contains a structure that includes the DDL
       {
         "field": "source",
         "type": "struct",
-        "name": "io.{prodname}.connector.mysql.Source",
+        "name": "io.debezium.connector.mysql.Source",
         "optional": false,
         "fields": [
           {
