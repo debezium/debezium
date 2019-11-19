@@ -244,14 +244,6 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.convertDecimal(column, fieldDefn, data);
     }
 
-    private BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
-        if (column.scale().isPresent() && column.scale().get() > data.scale()) {
-            data = data.setScale(column.scale().get());
-        }
-
-        return data;
-    }
-
     @Override
     protected Object convertNumeric(Column column, Field fieldDefn, Object data) {
         return convertDecimal(column, fieldDefn, data);
