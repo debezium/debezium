@@ -971,6 +971,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
         });
     }
 
+    protected BigDecimal withScaleAdjustedIfNeeded(Column column, BigDecimal data) {
+        if (column.scale().isPresent() && column.scale().get() > data.scale()) {
+            data = data.setScale(column.scale().get());
+        }
+
+        return data;
+    }
+
     /**
      * Converts a value object for an expected JDBC type of {@link Types#CHAR}, {@link Types#VARCHAR},
      * {@link Types#LONGVARCHAR}, {@link Types#CLOB}, {@link Types#NCHAR}, {@link Types#NVARCHAR}, {@link Types#LONGNVARCHAR},
