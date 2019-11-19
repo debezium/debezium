@@ -25,7 +25,7 @@ a| _n/a_
 
 |`BIT(>1)`
 |`BYTES`
-a| io.{prodname}.data.Bits
+a| io.debezium.data.Bits
 
 NOTE: The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits.
 
@@ -116,29 +116,29 @@ a| _n/a_
 
 |`JSON`
 |`STRING`
-a| io.{prodname}.data.Json
+a| io.debezium.data.Json
 
 NOTE: Contains the string representation of a `JSON` document, array, or scalar.
 
 |`ENUM`
 |`STRING`
-a| io.{prodname}.data.Enum
+a| io.debezium.data.Enum
 
 NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`SET`
 |`STRING`
-a| io.{prodname}.data.EnumSet
+a| io.debezium.data.EnumSet
 
 NOTE: The `allowed` schema parameter contains the comma-separated list of allowed values.
 
 |`YEAR[(2\|4)]`
 |`INT32`
-| io.{prodname}.time.Year
+| io.debezium.time.Year
 
 |`TIMESTAMP[(M)]`
 |`STRING`
-a| io.{prodname}.time.ZonedTimestamp
+a| io.debezium.time.ZonedTimestamp
 
 NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision. MySQL allows `M` to be in the range of `0-6`.
 
@@ -166,25 +166,25 @@ time.precision.mode=adaptive_time_microseconds(default)::
 
 |`DATE`
 |`INT32`
-a| io.{prodname}.time.Date
+a| io.debezium.time.Date
 
 NOTE: Represents the number of days since epoch.
 
 |`TIME[(M)]`
 |`INT64`
-a| io.{prodname}.time.MicroTime
+a| io.debezium.time.MicroTime
 
 NOTE: Represents the time value in microseconds and does not include timezone information. MySQL allows `M` to be in the range of `0-6`.
 
 |`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
 |`INT64`
-a| io.{prodname}.time.Timestamp
+a| io.debezium.time.Timestamp
 
 NOTE: Represents the number of milliseconds past epoch and does not include timezone information.
 
 |`DATETIME(4), DATETIME(5), DATETIME(6)`
 |`INT64`
-a| io.{prodname}.time.MicroTimestamp
+a| io.debezium.time.MicroTimestamp
 
 NOTE: Represents the number of microseconds past epoch and does not include timezone information.
 
@@ -294,7 +294,7 @@ Currently, the {prodname} MySQL connector supports the following spatial data ty
 
 |`GEOMETRY, LINESTRING, POLYGON, MULTIPOINT, MULTILINESTRING, MULTIPOLYGON, GEOMETRYCOLLECTION`
 |`STRUCT`
-a| io.{prodname}.data.geometry.Geometry
+a| io.debezium.data.geometry.Geometry
 
 NOTE: Contains a structure with two fields:
 

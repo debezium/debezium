@@ -36,11 +36,11 @@ mysql> wait_timeout= <duration-in-seconds>
 |`interactive_timeout`
 a| The number of seconds the server waits for activity on an interactive connection before closing it.
 
-TIP: See link:https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_interactive_timeout[MySQL's documentation] for more details.
+TIP: See link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL's documentation] for more details.
 
 |`wait_timeout`
 a| The number of seconds the server waits for activity on a noninteractive connection before closing it.
 
-TIP: See link:https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_wait_timeout[MySQL's documentation] for more details.
+TIP: See link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_wait_timeout[MySQL's documentation] for more details.
 
 |===
