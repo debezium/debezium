@@ -250,22 +250,20 @@ public class IoUtil {
             resourceDesc = resourcePath;
         }
         InputStream result = null;
-        if (result == null) {
-            try {
-                // Try absolute path ...
-                Path filePath = FileSystems.getDefault().getPath(resourcePath).toAbsolutePath();
-                File f = filePath.toFile();
-                if (f.exists() && f.isFile() && f.canRead()) {
-                    result = new BufferedInputStream(new FileInputStream(f));
-                }
-                logMessage(result, logger, resourceDesc, "on filesystem at " + filePath);
+        try {
+            // Try absolute path ...
+            Path filePath = FileSystems.getDefault().getPath(resourcePath).toAbsolutePath();
+            File f = filePath.toFile();
+            if (f.exists() && f.isFile() && f.canRead()) {
+                result = new BufferedInputStream(new FileInputStream(f));
             }
-            catch (InvalidPathException e) {
-                // just continue ...
-            }
-            catch (FileNotFoundException e) {
-                // just continue ...
-            }
+            logMessage(result, logger, resourceDesc, "on filesystem at " + filePath);
+        }
+        catch (InvalidPathException e) {
+            // just continue ...
+        }
+        catch (FileNotFoundException e) {
+            // just continue ...
         }
         if (result == null) {
             try {
