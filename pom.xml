@@ -116,13 +116,6 @@
         <!--Skip long running tests by default-->
         <skipLongRunningTests>true</skipLongRunningTests>
 
-        <!--Configure forking for surefire plugin, jdk11 needs
-        different settings per
-        https://stackoverflow.com/questions/53437819/maven-surefire-and-jdk-11
-        https://winterbe.com/posts/2018/08/29/migrate-maven-projects-to-java-11-jigsaw/-->
-        <forkCount>2</forkCount>
-        <reuseForks>true</reuseForks>
-
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
 
@@ -858,10 +851,7 @@
                 <jdk>11</jdk>
             </activation>
             <properties>
-                <modules.argline>--add-modules java.xml.bind --illegal-access=permit</modules.argline>
-                <forkCount>0</forkCount>
-                <reuseForks>false</reuseForks>
-                <useSystemClassLoader>false</useSystemClassLoader>
+                <modules.argline>--illegal-access=permit</modules.argline>
                 <!-- When using this profile the following warning pops up,
                 [WARNING] bootstrap class path not set in conjunction with -source 8 -->
                 <maven.compiler.source>11</maven.compiler.source>
