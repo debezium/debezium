@@ -158,7 +158,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             return Optional.empty();
         }
 
-        StringBuilder lastDdlScnQuery = new StringBuilder("SELECT MAX(TIMESTAMP_TO_SCN(last_ddl_time))")
+        StringBuilder lastDdlScnQuery = new StringBuilder("SELECT TIMESTAMP_TO_SCN(MAX(last_ddl_time))")
                 .append(" FROM all_objects")
                 .append(" WHERE");
 
