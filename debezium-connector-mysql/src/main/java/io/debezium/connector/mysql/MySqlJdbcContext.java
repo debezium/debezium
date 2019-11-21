@@ -35,7 +35,7 @@ import io.debezium.util.Strings;
  */
 public class MySqlJdbcContext implements AutoCloseable {
 
-    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL";
+    protected static final String MYSQL_CONNECTION_URL = "jdbc:mysql://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=${useSSL}&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
     protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
 
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
@@ -62,6 +62,7 @@ public class MySqlJdbcContext implements AutoCloseable {
 
         Builder jdbcConfigBuilder = jdbcConfig
                 .edit()
+                .with("connectTimeout", Integer.toString(connectionTimeoutMs()))
                 .with("useSSL", Boolean.toString(useSSL));
 
         final String legacyDateTime = jdbcConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
@@ -105,6 +106,8 @@ public class MySqlJdbcContext implements AutoCloseable {
     public int port() {
         return config.getInteger(MySqlConnectorConfig.PORT);
     }
+
+    public int connectionTimeoutMs() { return config.getInteger(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS); }
 
     public SecureConnectionMode sslMode() {
         String mode = config.getString(MySqlConnectorConfig.SSL_MODE);
