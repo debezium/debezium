@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,7 +63,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
+        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -85,7 +86,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
+        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -115,7 +116,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
+        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -142,7 +143,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
+        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -180,7 +181,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, 1002);
+        recordMakers.forCollection(collectionId).recordObject(collectionId, obj, Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -203,7 +204,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -233,7 +234,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -260,7 +261,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -298,7 +299,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "i"), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -321,7 +322,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -351,7 +352,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -378,7 +379,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -416,7 +417,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -448,7 +449,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -498,7 +499,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -543,7 +544,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -571,7 +572,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -603,7 +604,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -644,7 +645,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -691,7 +692,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -737,7 +738,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -782,7 +783,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -830,7 +831,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -871,7 +872,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -917,7 +918,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -962,7 +963,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -992,7 +993,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -1037,7 +1038,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -1085,7 +1086,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -1126,7 +1127,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -1172,7 +1173,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createUpdateEvent(obj, objId), Instant.ofEpochMilli(1002));
 
         // then
         // @formatter:off
@@ -1197,7 +1198,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "d"), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "d"), Instant.ofEpochMilli(1002));
 
         // then
         Struct value = getValue(produced);
@@ -1219,7 +1220,7 @@ public class FieldBlacklistTest {
         RecordMakers recordMakers = new RecordMakers(filters, source, topicSelector, produced::add, true);
 
         // when
-        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "d"), 1002);
+        recordMakers.forCollection(collectionId).recordEvent(createEvent(obj, "d"), Instant.ofEpochMilli(1002));
 
         // then
         SourceRecord record = produced.get(1);

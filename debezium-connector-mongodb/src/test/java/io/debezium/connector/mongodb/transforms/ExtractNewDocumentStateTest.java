@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.transforms;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -109,7 +110,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", 12345678L)
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -147,7 +148,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", 12345678L)
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -347,7 +348,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -403,7 +404,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -447,7 +448,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -500,7 +501,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -535,7 +536,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -569,7 +570,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
 
         SourceRecord record = produced.get(0);
@@ -610,7 +611,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(2);
 
         // the second message is the tombstone
@@ -657,7 +658,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
 
         SourceRecord record = produced.get(0);
@@ -686,7 +687,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
 
         SourceRecord record = produced.get(0);
@@ -726,7 +727,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -758,7 +759,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(2);
 
         SourceRecord record = produced.get(0);
@@ -804,7 +805,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
         record.headers().addString("application/debezium-test-header", "shouldPropagatePreviousRecordHeaders");
@@ -837,7 +838,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -890,7 +891,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -941,7 +942,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -989,7 +990,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 
@@ -1044,7 +1045,7 @@ public class ExtractNewDocumentStateTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
 

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -167,7 +168,7 @@ public class RecordMakers {
          * @throws InterruptedException if the calling thread was interrupted while waiting to submit a record to
          *             the blocking consumer
          */
-        public int recordObject(CollectionId id, Document object, long timestamp) throws InterruptedException {
+        public int recordObject(CollectionId id, Document object, Instant timestamp) throws InterruptedException {
             source.collectionEvent(replicaSetName, id);
             final Struct sourceValue = source.struct();
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
@@ -187,7 +188,7 @@ public class RecordMakers {
          * @throws InterruptedException if the calling thread was interrupted while waiting to submit a record to
          *             the blocking consumer
          */
-        public int recordEvent(Document oplogEvent, Document masterEvent, long timestamp, long txOrder) throws InterruptedException {
+        public int recordEvent(Document oplogEvent, Document masterEvent, Instant timestamp, long txOrder) throws InterruptedException {
             source.opLogEvent(replicaSetName, oplogEvent, masterEvent, txOrder);
             final Struct sourceValue = source.struct();
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
@@ -209,12 +210,12 @@ public class RecordMakers {
          * @throws InterruptedException if the calling thread was interrupted while waiting to submit a record to
          *             the blocking consumer
          */
-        public int recordEvent(Document oplogEvent, long timestamp) throws InterruptedException {
+        public int recordEvent(Document oplogEvent, Instant timestamp) throws InterruptedException {
             return recordEvent(oplogEvent, oplogEvent, timestamp, 0);
         }
 
         protected int createRecords(Struct source, Map<String, ?> offset, Operation operation, String objId, Document objectValue,
-                                    long timestamp)
+                Instant timestamp)
                 throws InterruptedException {
             Integer partition = null;
             Struct key = keyFor(objId);
@@ -238,7 +239,7 @@ public class RecordMakers {
             }
             value.put(FieldName.SOURCE, source);
             value.put(FieldName.OPERATION, operation.code());
-            value.put(FieldName.TIMESTAMP, timestamp);
+            value.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
             SourceRecord record = new SourceRecord(sourcePartition, offset, topicName, partition, keySchema, key, valueSchema, value);
             recorder.accept(record);
 

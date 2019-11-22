@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -84,7 +85,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
         Struct key = (Struct) record.key();
@@ -114,7 +115,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "u");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
         Struct key = (Struct) record.key();
@@ -144,7 +145,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(2);
 
         SourceRecord record = produced.get(0);
@@ -184,7 +185,7 @@ public class RecordMakersTest {
                 .append("h", new Long(12345678))
                 .append("op", "d");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
 
         SourceRecord record = produced.get(0);
@@ -216,7 +217,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
 
         // String
         obj = new Document().append("_id", "123").append("name", "Sally");
@@ -226,7 +227,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1003);
+        records.recordEvent(event, Instant.ofEpochMilli(1003));
 
         // Complex key type
         obj = new Document()
@@ -238,7 +239,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1004);
+        records.recordEvent(event, Instant.ofEpochMilli(1004));
 
         // date
         Calendar cal = Calendar.getInstance();
@@ -253,7 +254,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1005);
+        records.recordEvent(event, Instant.ofEpochMilli(1005));
 
         // Decimal128
         obj = new Document()
@@ -265,7 +266,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1004);
+        records.recordEvent(event, Instant.ofEpochMilli(1006));
 
         assertThat(produced.size()).isEqualTo(5);
 
@@ -306,7 +307,7 @@ public class RecordMakersTest {
                 .append("h", Long.valueOf(12345678))
                 .append("op", "i");
         RecordsForCollection records = recordMakers.forCollection(collectionId);
-        records.recordEvent(event, 1002);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
         assertThat(produced.size()).isEqualTo(1);
         SourceRecord record = produced.get(0);
         Struct key = (Struct) record.key();
