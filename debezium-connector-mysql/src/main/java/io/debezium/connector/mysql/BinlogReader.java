@@ -379,18 +379,18 @@ public class BinlogReader extends AbstractReader {
 
         // Start the log reader, which starts background threads ...
         if (isRunning()) {
-            long timeoutInMilliseconds = context.timeoutInMilliseconds();
+            long timeout = context.getConnectorConfig().getConnectionTimeout().toMillis();
             long started = context.getClock().currentTimeInMillis();
             try {
-                logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeoutInMilliseconds);
-                client.connect(context.timeoutInMilliseconds());
+                logger.debug("Attempting to establish binlog reader connection with timeout of {} ms", timeout);
+                client.connect(timeout);
             }
             catch (TimeoutException e) {
                 // If the client thread is interrupted *before* the client could connect, the client throws a timeout exception
                 // The only way we can distinguish this is if we get the timeout exception before the specified timeout has
                 // elapsed, so we simply check this (within 10%) ...
                 long duration = context.getClock().currentTimeInMillis() - started;
-                if (duration > (0.9 * context.timeoutInMilliseconds())) {
+                if (duration > (0.9 * timeout)) {
                     double actualSeconds = TimeUnit.MILLISECONDS.toSeconds(duration);
                     throw new ConnectException("Timed out after " + actualSeconds + " seconds while waiting to connect to MySQL at " +
                             connectionContext.hostname() + ":" + connectionContext.port() + " with user '" + connectionContext.username() + "'", e);

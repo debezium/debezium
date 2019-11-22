@@ -49,20 +49,20 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected final JdbcConnection jdbc;
     private final Map<String, String> originalSystemProperties = new HashMap<>();
 
-    public MySqlJdbcContext(Configuration config) {
-        this.config = config; // must be set before most methods are used
+    public MySqlJdbcContext(MySqlConnectorConfig config) {
+        this.config = config.getConfig(); // must be set before most methods are used
 
         // Set up the JDBC connection without actually connecting, with extra MySQL-specific properties
         // to give us better JDBC database metadata behavior, including using UTF-8 for the client-side character encoding
         // per https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-charsets.html
         boolean useSSL = sslModeEnabled();
-        Configuration jdbcConfig = config
+        Configuration jdbcConfig = this.config
                 .filter(x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(MySqlConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
 
         Builder jdbcConfigBuilder = jdbcConfig
                 .edit()
-                .with("connectTimeout", Integer.toString(connectionTimeoutMs()))
+                .with("connectTimeout", Long.toString(config.getConnectionTimeout().toMillis()))
                 .with("useSSL", Boolean.toString(useSSL));
 
         final String legacyDateTime = jdbcConfig.getString(JDBC_PROPERTY_LEGACY_DATETIME);
@@ -106,8 +106,6 @@ public class MySqlJdbcContext implements AutoCloseable {
     public int port() {
         return config.getInteger(MySqlConnectorConfig.PORT);
     }
-
-    public int connectionTimeoutMs() { return config.getInteger(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS); }
 
     public SecureConnectionMode sslMode() {
         String mode = config.getString(MySqlConnectorConfig.SSL_MODE);

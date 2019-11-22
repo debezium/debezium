@@ -36,7 +36,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private static GtidSet readAvailableGtidSet(Configuration config) {
-        try (MySqlJdbcContext context = new MySqlJdbcContext(config)) {
+        try (MySqlJdbcContext context = new MySqlJdbcContext(new MySqlConnectorConfig(config))) {
             String availableServerGtidStr = context.knownGtidSet();
             if (availableServerGtidStr != null && !availableServerGtidStr.trim().isEmpty()) {
                 return new GtidSet(availableServerGtidStr);
@@ -130,7 +130,7 @@ public class AbstractMySqlConnectorOutputTest extends ConnectorOutputTest {
      */
     protected Map<String, String> readSystemVariables(Configuration config) throws Exception {
         Map<String, String> variables = new HashMap<>();
-        try (MySqlJdbcContext context = new MySqlJdbcContext(config)) {
+        try (MySqlJdbcContext context = new MySqlJdbcContext(new MySqlConnectorConfig(config))) {
             // Read all of the system variables ...
             variables.putAll(context.readMySqlSystemVariables());
             // Now get the master GTID source ...

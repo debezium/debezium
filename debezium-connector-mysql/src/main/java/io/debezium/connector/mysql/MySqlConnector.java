@@ -94,7 +94,7 @@ public class MySqlConnector extends SourceConnector {
                 && portValue.errorMessages().isEmpty()
                 && userValue.errorMessages().isEmpty()) {
             // Try to connect to the database ...
-            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(config)) {
+            try (MySqlJdbcContext jdbcContext = new MySqlJdbcContext(new MySqlConnectorConfig(config))) {
                 jdbcContext.start();
                 JdbcConnection mysql = jdbcContext.jdbc();
                 try {

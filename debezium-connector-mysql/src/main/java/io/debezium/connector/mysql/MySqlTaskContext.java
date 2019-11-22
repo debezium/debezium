@@ -61,7 +61,7 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
         this.config = config;
         this.connectorConfig = new MySqlConnectorConfig(config);
-        this.connectionContext = new MySqlJdbcContext(config);
+        this.connectionContext = new MySqlJdbcContext(connectorConfig);
 
         // Set up the topic selector ...
         this.topicSelector = MySqlTopicSelector.defaultSelector(connectorConfig.getLogicalName(), connectorConfig.getHeartbeatTopicsPrefix());
@@ -197,10 +197,6 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
     public long serverId() {
         return config.getLong(MySqlConnectorConfig.SERVER_ID);
-    }
-
-    public long timeoutInMilliseconds() {
-        return config.getLong(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS);
     }
 
     public long rowCountForLargeTable() {

@@ -1050,6 +1050,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final GtidNewChannelPosition gitIdNewChannelPosition;
     private final SnapshotNewTables snapshotNewTables;
     private final TemporalPrecisionMode temporalPrecisionMode;
+    private final Duration connectionTimeout;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -1067,6 +1068,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
 
         String snapshotNewTables = config.getString(MySqlConnectorConfig.SNAPSHOT_NEW_TABLES);
         this.snapshotNewTables = SnapshotNewTables.parse(snapshotNewTables, MySqlConnectorConfig.SNAPSHOT_NEW_TABLES.defaultValueAsString());
+
+        this.connectionTimeout = Duration.ofMillis(config.getLong(MySqlConnectorConfig.CONNECTION_TIMEOUT_MS));
     }
 
     public SnapshotLockingMode getSnapshotLockingMode() {
@@ -1205,5 +1208,9 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public TemporalPrecisionMode getTemporalPrecisionMode() {
         return temporalPrecisionMode;
+    }
+
+    public Duration getConnectionTimeout() {
+        return connectionTimeout;
     }
 }
