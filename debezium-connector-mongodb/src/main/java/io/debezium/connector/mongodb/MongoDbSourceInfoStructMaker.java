@@ -40,9 +40,9 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .put(SourceInfo.COLLECTION, sourceInfo.collectionId().name())
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc())
                 .put(SourceInfo.OPERATION_ID, sourceInfo.position().getOperationId());
-        if (sourceInfo.transactionPosition() != 0) {
-            struct.put(SourceInfo.TX_ORD, sourceInfo.transactionPosition());
-        }
+
+        sourceInfo.transactionPosition().ifPresent(transactionPosition -> struct.put(SourceInfo.TX_ORD, transactionPosition));
+
         return struct;
     }
 }

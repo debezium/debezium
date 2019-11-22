@@ -6,9 +6,12 @@
 package io.debezium.connector.mongodb;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
@@ -313,7 +316,7 @@ public class Replicator {
         }
 
         // Get the current timestamp of this processor ...
-        final long syncStart = clock.currentTimeInMillis();
+        final Instant syncStart = clock.currentTime();
 
         // We need to copy each collection, so put the collection IDs into a queue ...
         final List<CollectionId> collections = primaryClient.collections();
@@ -337,13 +340,13 @@ public class Replicator {
                 try {
                     CollectionId id = null;
                     while (!aborted.get() && (id = collectionsToCopy.poll()) != null) {
-                        long start = clock.currentTimeInMillis();
+                        Instant start = clock.currentTime();
                         LOGGER.info("Starting initial sync of '{}'", id);
                         long numDocs = copyCollection(id, syncStart);
                         numCollectionsCopied.incrementAndGet();
                         numDocumentsCopied.addAndGet(numDocs);
                         if (LOGGER.isInfoEnabled()) {
-                            long duration = clock.currentTimeInMillis() - start;
+                            long duration = start.until(clock.currentTime(), ChronoUnit.MILLIS);
                             LOGGER.info("Completing initial sync of {} documents from '{}' in {}", numDocs, id, Strings.duration(duration));
                         }
                     }
@@ -370,7 +373,7 @@ public class Replicator {
 
         // Stopping the replicator does not interrupt *our* thread but does interrupt the copy threads.
         // Therefore, check the aborted state here ...
-        long syncDuration = clock.currentTimeInMillis() - syncStart;
+        long syncDuration = syncStart.until(clock.currentTime(), ChronoUnit.MILLIS);
         if (aborted.get()) {
             if (LOGGER.isInfoEnabled()) {
                 int remaining = collections.size() - numCollectionsCopied.get();
@@ -429,7 +432,7 @@ public class Replicator {
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(CollectionId collectionId, Instant timestamp) throws InterruptedException {
         AtomicLong docCount = new AtomicLong();
         primaryClient.executeBlocking("sync '" + collectionId + "'", primary -> {
             docCount.set(copyCollection(primary, collectionId, timestamp));
@@ -446,7 +449,7 @@ public class Replicator {
      * @return number of documents that were copied
      * @throws InterruptedException if the thread was interrupted while the copy operation was running
      */
-    protected long copyCollection(MongoClient primary, CollectionId collectionId, long timestamp) throws InterruptedException {
+    protected long copyCollection(MongoClient primary, CollectionId collectionId, Instant timestamp) throws InterruptedException {
         RecordsForCollection factory = recordMakers.forCollection(collectionId);
         MongoDatabase db = primary.getDatabase(collectionId.dbName());
         MongoCollection<Document> docCollection = db.getCollection(collectionId.name());
@@ -479,25 +482,25 @@ public class Replicator {
      */
     protected void readOplog(MongoClient primary) {
         BsonTimestamp oplogStart = source.lastOffsetTimestamp(replicaSet.replicaSetName());
-        final long txOrder = source.lastOffsetTxOrder(replicaSet.replicaSetName());
+        final OptionalLong txOrder = source.lastOffsetTxOrder(replicaSet.replicaSetName());
         ServerAddress primaryAddress = primary.getAddress();
         LOGGER.info("Reading oplog for '{}' primary {} starting at {}", replicaSet, primaryAddress, oplogStart);
 
         // Include none of the cluster-internal operations and only those events since the previous timestamp ...
         MongoCollection<Document> oplog = primary.getDatabase("local").getCollection("oplog.rs");
         Bson filter;
-        if (txOrder == 0) {
+        if (!txOrder.isPresent()) {
             LOGGER.info("The last event processed was not transactional, resuming at the oplog event after '{}'", oplogStart);
             filter = Filters.and(Filters.gt("ts", oplogStart), // start just after our last position
                     Filters.exists("fromMigrate", false)); // skip internal movements across shards
         }
         else {
             LOGGER.info("The last event processed was transactional, resuming at the oplog event '{}', expecting to skip '{}' events",
-                    oplogStart, txOrder);
+                    oplogStart, txOrder.getAsLong());
             filter = Filters.and(Filters.gte("ts", oplogStart), // start on last position as tx might be incomplete
                     Filters.exists("fromMigrate", false)); // skip internal movements across shards
             incompleteEventTimestamp = oplogStart;
-            incompleteTxOrder = txOrder;
+            incompleteTxOrder = txOrder.getAsLong();
         }
         FindIterable<Document> results = oplog.find(filter)
                 .sort(new Document("$natural", 1)) // force forwards collection scan
@@ -637,7 +640,7 @@ public class Replicator {
             if (context.filters().collectionFilter().test(collectionId)) {
                 RecordsForCollection factory = recordMakers.forCollection(collectionId);
                 try {
-                    factory.recordEvent(event, masterEvent, clock.currentTimeInMillis(), txOrder);
+                    factory.recordEvent(event, masterEvent, clock.currentTime(), txOrder);
                 }
                 catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -655,7 +658,7 @@ public class Replicator {
         if (!(OPERATION_CONTROL.equals(op) && o != null && o.containsKey(TX_OPS))) {
             return Collections.emptyList();
         }
-        return (List<Document>) o.get(TX_OPS, List.class);
+        return o.get(TX_OPS, List.class);
     }
 
     /**

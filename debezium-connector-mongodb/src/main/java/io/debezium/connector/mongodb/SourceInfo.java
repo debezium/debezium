@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -126,8 +127,8 @@ public final class SourceInfo extends AbstractSourceInfo {
             return this.opId;
         }
 
-        public long getTxOrder() {
-            return this.txOrder;
+        public OptionalLong getTxOrder() {
+            return txOrder == 0 ? OptionalLong.empty() : OptionalLong.of(txOrder);
         }
     }
 
@@ -187,9 +188,9 @@ public final class SourceInfo extends AbstractSourceInfo {
      * @param replicaSetName the name of the replica set name for which the new offset is to be obtained; may not be null
      * @return the tx order of the transaction in progress or 0 in case of non-transactional event
      */
-    public long lastOffsetTxOrder(String replicaSetName) {
+    public OptionalLong lastOffsetTxOrder(String replicaSetName) {
         Position existing = positionsByReplicaSetName.get(replicaSetName);
-        return existing != null ? existing.getTxOrder() : 0;
+        return existing != null ? existing.getTxOrder() : OptionalLong.empty();
     }
 
     /**
@@ -214,9 +215,9 @@ public final class SourceInfo extends AbstractSourceInfo {
         Map<String, Object> offset = Collect.hashMapOf(TIMESTAMP, Integer.valueOf(existing.getTime()),
                 ORDER, Integer.valueOf(existing.getInc()),
                 OPERATION_ID, existing.getOperationId());
-        if (existing.getTxOrder() != 0) {
-            offset.put(TX_ORD, existing.getTxOrder());
-        }
+
+        existing.getTxOrder().ifPresent(txOrder -> offset.put(TX_ORD, txOrder));
+
         return offset;
     }
 
@@ -321,9 +322,9 @@ public final class SourceInfo extends AbstractSourceInfo {
         }
         int time = intOffsetValue(sourceOffset, TIMESTAMP);
         int order = intOffsetValue(sourceOffset, ORDER);
-        Long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
-        Long txOrder = longOffsetValue(sourceOffset, TX_ORD);
-        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder == null ? 0 : txOrder.longValue()));
+        long operationId = longOffsetValue(sourceOffset, OPERATION_ID);
+        long txOrder = longOffsetValue(sourceOffset, TX_ORD);
+        positionsByReplicaSetName.put(replicaSetName, new Position(time, order, operationId, txOrder));
         return true;
     }
 
@@ -429,7 +430,7 @@ public final class SourceInfo extends AbstractSourceInfo {
         return replicaSetName;
     }
 
-    protected long transactionPosition() {
+    protected OptionalLong transactionPosition() {
         return position.getTxOrder();
     }
 }
