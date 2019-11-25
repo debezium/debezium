@@ -215,7 +215,7 @@ public class RecordMakers {
         }
 
         protected int createRecords(Struct source, Map<String, ?> offset, Operation operation, String objId, Document objectValue,
-                Instant timestamp)
+                                    Instant timestamp)
                 throws InterruptedException {
             Integer partition = null;
             Struct key = keyFor(objId);
