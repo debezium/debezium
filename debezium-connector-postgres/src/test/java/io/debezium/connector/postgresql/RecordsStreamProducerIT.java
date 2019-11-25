@@ -34,6 +34,7 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -54,6 +55,7 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNa
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Bits;
+import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
@@ -1854,6 +1856,42 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("cidr_alias", SchemaBuilder.STRING_SCHEMA, "192.168.0.0/24"),
                 new SchemaAndValueField("macaddr_base", SchemaBuilder.STRING_SCHEMA, "08:00:2b:01:02:03"),
                 new SchemaAndValueField("macaddr_alias", SchemaBuilder.STRING_SCHEMA, "08:00:2b:01:02:03"));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-920")
+    public void shouldStreamEnumAsKnownType() throws Exception {
+        // Specifically enable `column.propagate.source.type` here to validate later that the actual
+        // type, length, and scale values are resolved correctly when paired with Enum types.
+        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, PRIMARY KEY (pk));");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with("column.propagate.source.type", "public.enum_table.value")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.enum_table"), false);
+
+        waitForStreamingToStart();
+
+        // We create the enum type after streaming started to simulate some future schema change
+        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1','V2');");
+        TestHelper.execute("ALTER TABLE enum_table ADD COLUMN value test_type NOT NULL");
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO enum_table (value) VALUES ('V1');");
+
+        SourceRecord rec = assertRecordInserted("public.enum_table", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "enum_table");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField("value", Enum.builder("V1,V2")
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), "V1"));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
