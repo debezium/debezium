@@ -1581,6 +1581,34 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1413")
+    public void shouldStreamValuesForDomainTypeOfDomainType() throws Exception {
+        TestHelper.execute("CREATE DOMAIN numeric82 as numeric(8,2);");
+        TestHelper.execute("CREATE DOMAIN numericex as numeric82;");
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value numericex, PRIMARY KEY (pk));");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table"), false);
+
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO alias_table (value) values (123.45);");
+
+        SourceRecord rec = assertRecordInserted("public.alias_table", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "alias_table");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
+                new SchemaAndValueField("value", SpecialValueDecimal.builder(DecimalMode.DOUBLE, 8, 2).optional().build(), 123.45));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-1413")
     public void shouldStreamValuesForAliasLikeBaseTypes() throws Exception {
         // todo: should test all these combinations in RecordsSnapshotProducerIT
 
