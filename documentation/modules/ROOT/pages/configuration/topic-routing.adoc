@@ -1,8 +1,12 @@
 = Topic Routing
 include::../_attributes.adoc[]
+:toc:
+:toc-placement: macro
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+
+toc::[]
 
 Debezium enables you to re-route the emitted change before the message reaches the converter using a single message transformation,
 or https://kafka.apache.org/documentation/#connect_transforms[SMT].

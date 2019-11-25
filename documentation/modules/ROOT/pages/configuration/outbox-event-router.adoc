@@ -1,8 +1,12 @@
 = Outbox Event Router
 include::../_attributes.adoc[]
+:toc:
+:toc-placement: macro
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+
+toc::[]
 
 [NOTE]
 ====
