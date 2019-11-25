@@ -15,6 +15,7 @@ import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
+import org.junit.ComparisonFailure;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -38,6 +40,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
+import io.debezium.data.Bits;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -485,7 +488,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1413")
-    public void shouldGenerateSnapshotForDataTypeAlias() throws Exception {
+    public void shouldSnapshotDomainTypeWithPropagatedSourceTypeAttributes() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.execute("CREATE DOMAIN float83 AS numeric(8,3) DEFAULT 0.0;");
         TestHelper.execute("CREATE DOMAIN money2 AS MONEY DEFAULT 0.0;");
@@ -495,7 +498,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with("column.propagate.source.type", "public.alias_table.area"));
+                .with("column.propagate.source.type", "public.alias_table.area,public.alias_table.a"));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -503,19 +506,69 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         // Specifying alias money2 results in JDBC type '2001' for 'salary2'
         // Specifying money results in JDBC type '8' for 'salary'
 
-        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", schemaAndValueForMoneyAliasType())));
-    }
-
-    private List<SchemaAndValueField> schemaAndValueForMoneyAliasType() {
-        return Arrays.asList(
+        List<SchemaAndValueField> expected = Arrays.asList(
                 new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), BigDecimal.valueOf(7.25)),
                 new SchemaAndValueField("salary2", Decimal.builder(2).optional().build(), BigDecimal.valueOf(8.25)),
-                new SchemaAndValueField("a", SchemaBuilder.float64().optional().build(), 12345.123),
+                new SchemaAndValueField("a", SchemaBuilder.float64().optional()
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
+                        .build(), 12345.123),
                 new SchemaAndValueField("area", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "FLOAT83")
-                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "2147483647")
-                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "3")
                         .build(), 12345.123));
+
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
+    }
+
+    @Test
+    @FixFor("DBZ-1413")
+    public void shouldSnapshotDomainAliasWithProperModifiers() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE DOMAIN varbit2 AS varbit(3);");
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value varbit2 NOT NULL, PRIMARY KEY(pk));");
+        TestHelper.execute("INSERT INTO alias_table (value) values (B'101');");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+              .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+              .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        List<SchemaAndValueField> expected = Collections.singletonList(
+                new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5, 0 }));
+
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
+    }
+
+    @Test(expected = ComparisonFailure.class)
+    @FixFor("DBZ-1413")
+    public void shouldNotSnapshotNestedDomainAliasTypeModifiersNotPropagated() throws Exception {
+        // The pgjdbc driver does not currently provide support for type modifier resolution
+        // when a domain type extends an existing domain type that extends a base type using
+        // explicit type modifiers.
+        TestHelper.execute("CREATE DOMAIN varbit2 AS varbit(3);");
+        TestHelper.execute("CREATE DOMAIN varbit2b AS varbit2;");
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value varbit2b NOT NULL, PRIMARY KEY (pk));");
+        TestHelper.execute("INSERT INTO alias_table (value) values (B'101');");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                                      .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                                      .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // We would normally expect that the value column was created with a length of 3.
+        // However due to how the resolution works in the driver, it returns 2147483647.
+        // We probably want to avoid supporting this behavior for now?
+        List<SchemaAndValueField> expected = Collections.singletonList(
+                new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5, 0 }));
+
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {
