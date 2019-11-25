@@ -826,6 +826,29 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1201")
+    public void shouldSaveSetCharacterSetWhenStoringOnlyMonitoredTables() throws SQLException, InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.DATABASE_WHITELIST, "no_" + DATABASE.getDatabaseName())
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, true)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.ddlRecordsForDatabase("").size()).isEqualTo(1);
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-1246")
     public void shouldProcessCreateUniqueIndex() throws SQLException, InterruptedException {
         Testing.Files.delete(DB_HISTORY_PATH);
