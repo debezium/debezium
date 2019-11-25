@@ -29,11 +29,11 @@ public class PostgresType {
     private final TypeInfo typeInfo;
     private final int modifiers;
 
-    public PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
+    private PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
         this(name, oid, jdbcId, TypeRegistry.NO_TYPE_MODIFIER, typeInfo, baseType, elementType);
     }
 
-    public PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
+    private PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
@@ -222,5 +222,49 @@ public class PostgresType {
     public String toString() {
         return "PostgresType [name=" + name + ", oid=" + oid + ", jdbcId=" + jdbcId + ", modifiers=" + modifiers + ", defaultLength=" + getDefaultLength()
                 + ", defaultScale=" + getDefaultScale() + ", baseType=" + baseType + ", elementType=" + elementType + "]";
+    }
+
+    public static class Builder {
+        private final TypeRegistry typeRegistry;
+        private final String name;
+        private final int oid;
+        private final int jdbcId;
+        private final int modifiers;
+        private final TypeInfo typeInfo;
+        private int baseTypeOid;
+        private int elementTypeOid;
+
+        public Builder(TypeRegistry typeRegistry, String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo) {
+            this.typeRegistry = typeRegistry;
+            this.name = name;
+            this.oid = oid;
+            this.jdbcId = jdbcId;
+            this.modifiers = modifiers;
+            this.typeInfo = typeInfo;
+        }
+
+        public Builder baseType(int baseTypeOid) {
+            this.baseTypeOid = baseTypeOid;
+            return this;
+        }
+
+        public Builder elementType(int elementTypeOid) {
+            this.elementTypeOid = elementTypeOid;
+            return this;
+        }
+
+        public PostgresType build() {
+            PostgresType baseType = null;
+            if (baseTypeOid != 0) {
+                baseType = typeRegistry.get(baseTypeOid);
+            }
+
+            PostgresType elementType = null;
+            if (elementTypeOid != 0) {
+                elementType = typeRegistry.get(elementTypeOid);
+            }
+
+            return new PostgresType(name, oid, jdbcId, modifiers, typeInfo, baseType, elementType);
+        }
     }
 }

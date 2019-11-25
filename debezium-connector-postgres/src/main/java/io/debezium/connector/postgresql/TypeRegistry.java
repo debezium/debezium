@@ -11,8 +11,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -53,11 +55,11 @@ public class TypeRegistry {
 
     private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod as modifiers "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' ORDER BY t.typbasetype";
+            + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
 
     private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS baseoid, t.typtypmod as modifiers "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
-            + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A' ORDER BY t.typbasetype";
+            + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
 
     private static final String SQL_NON_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
@@ -304,6 +306,7 @@ public class TypeRegistry {
             try (final Statement statement = pgConnection.createStatement()) {
                 // Read non-array types
                 try (final ResultSet rs = statement.executeQuery(SQL_NON_ARRAY_TYPES)) {
+                    final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
                     while (rs.next()) {
                         // Coerce long to int so large unsigned values are represented as signed
                         // Same technique is used in TypeInfoCache
@@ -312,25 +315,34 @@ public class TypeRegistry {
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
 
-                        // If a base type reference exists for this type, lookup base type.
-                        PostgresType baseType = null;
-                        if (baseOid != 0) {
-                            baseType = get(baseOid);
-                        }
-
-                        addType(new PostgresType(
+                        PostgresType.Builder builder = new PostgresType.Builder(
+                                this,
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
-                                typeInfo,
-                                baseType,
-                                null));
+                                typeInfo);
+
+                        // If the type does have have a base type, we can build/add immediately.
+                        if (baseOid == 0) {
+                            addType(builder.build());
+                            continue;
+                        }
+
+                        // For types with base type mappings, they need to be delayed.
+                        builder = builder.baseType(baseOid);
+                        delayResolvedBuilders.add(builder);
+                    }
+
+                    // Resolve delayed builders
+                    for (PostgresType.Builder builder : delayResolvedBuilders) {
+                        addType(builder.build());
                     }
                 }
 
                 // Read array types
                 try (final ResultSet rs = statement.executeQuery(SQL_ARRAY_TYPES)) {
+                    final List<PostgresType.Builder> delayResolvedBuilders = new ArrayList<>();
                     while (rs.next()) {
                         // int2vector and oidvector will not be treated as arrays
                         final int oid = (int) rs.getLong("oid");
@@ -338,20 +350,30 @@ public class TypeRegistry {
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
 
-                        // If a base type reference exists for this type, lookup base type
-                        PostgresType baseType = null;
-                        if (baseOid != 0) {
-                            baseType = get(baseOid);
-                        }
-
-                        addType(new PostgresType(
+                        PostgresType.Builder builder = new PostgresType.Builder(
+                                this,
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
-                                typeInfo,
-                                baseType,
-                                get((int) rs.getLong("element"))));
+                                typeInfo);
+
+                        builder = builder.elementType((int) rs.getLong("element"));
+
+                        // If the type doesnot have a base type, we can build/add immediately
+                        if (baseOid == 0) {
+                            addType(builder.build());
+                            continue;
+                        }
+
+                        // For types with base type mappings, they need to be delayed.
+                        builder = builder.baseType(baseOid);
+                        delayResolvedBuilders.add(builder);
+                    }
+
+                    // Resolve delayed builders
+                    for (PostgresType.Builder builder : delayResolvedBuilders) {
+                        addType(builder.build());
                     }
                 }
             }
@@ -383,21 +405,18 @@ public class TypeRegistry {
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
 
-                        PostgresType baseType = null;
-                        if (baseOid != 0) {
-                            baseType = get(baseOid);
-                        }
-
-                        PostgresType result = new PostgresType(
+                        PostgresType.Builder builder = new PostgresType.Builder(
+                                this,
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
-                                typeInfo,
-                                baseType,
-                                null);
+                                typeInfo
+                        );
 
+                        PostgresType result = builder.baseType(baseOid).build();
                         addType(result);
+
                         return result;
                     }
                 }
@@ -426,21 +445,18 @@ public class TypeRegistry {
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
 
-                        PostgresType baseType = null;
-                        if (baseOid != 0) {
-                            baseType = get(baseOid);
-                        }
-
-                        PostgresType result = new PostgresType(
+                        PostgresType.Builder builder = new PostgresType.Builder(
+                                this,
                                 typeName,
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
-                                typeInfo,
-                                baseType,
-                                null);
+                                typeInfo
+                        );
 
+                        PostgresType result = builder.baseType(baseOid).build();
                         addType(result);
+
                         return result;
                     }
                 }
