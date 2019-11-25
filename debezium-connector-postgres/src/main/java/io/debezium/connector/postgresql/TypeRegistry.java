@@ -53,21 +53,27 @@ public class TypeRegistry {
     public static final int NO_TYPE_MODIFIER = -1;
     public static final int UNKNOWN_LENGTH = -1;
 
-    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod as modifiers "
+    private static final String CATEGORY_ENUM = "E";
+
+    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod as modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
 
-    private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS baseoid, t.typtypmod as modifiers "
+    private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS baseoid, t.typtypmod as modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
 
-    private static final String SQL_NON_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers "
+    private static final String SQL_NON_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' AND t.typname = ?";
 
-    private static final String SQL_NON_ARRAY_TYPE_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers "
+    private static final String SQL_NON_ARRAY_TYPE_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' AND t.oid = ?";
+
+    private static final String SQL_ENUM_VALUES_LOOKUP = "select t.enumlabel as enum_value "
+            + "FROM pg_catalog.pg_enum t "
+            + "WHERE t.enumtypid=? ORDER BY t.enumsortorder";
 
     private static final Map<String, String> LONG_TYPE_NAMES = Collections.unmodifiableMap(getLongTypeNames());
 
@@ -314,6 +320,7 @@ public class TypeRegistry {
                         final int baseOid = (int) rs.getLong("baseoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
+                        String category = rs.getString("category");
 
                         PostgresType.Builder builder = new PostgresType.Builder(
                                 this,
@@ -322,6 +329,10 @@ public class TypeRegistry {
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
                                 typeInfo);
+
+                        if (CATEGORY_ENUM.equals(category)) {
+                            builder = builder.enumValues(resolveEnumValues(pgConnection, oid));
+                        }
 
                         // If the type does have have a base type, we can build/add immediately.
                         if (baseOid == 0) {
@@ -404,6 +415,7 @@ public class TypeRegistry {
                         final int baseOid = (int) rs.getLong("baseoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
+                        String category = rs.getString("category");
 
                         PostgresType.Builder builder = new PostgresType.Builder(
                                 this,
@@ -411,8 +423,11 @@ public class TypeRegistry {
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
-                                typeInfo
-                        );
+                                typeInfo);
+
+                        if (CATEGORY_ENUM.equals(category)) {
+                            builder = builder.enumValues(resolveEnumValues(connection, oid));
+                        }
 
                         PostgresType result = builder.baseType(baseOid).build();
                         addType(result);
@@ -444,6 +459,7 @@ public class TypeRegistry {
                         final int baseOid = (int) rs.getLong("baseoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
+                        String category = rs.getString("category");
 
                         PostgresType.Builder builder = new PostgresType.Builder(
                                 this,
@@ -451,8 +467,11 @@ public class TypeRegistry {
                                 oid,
                                 sqlTypeMapper.getSqlType(typeName),
                                 modifiers,
-                                typeInfo
-                        );
+                                typeInfo);
+
+                        if (CATEGORY_ENUM.equals(category)) {
+                            builder = builder.enumValues(resolveEnumValues(connection, oid));
+                        }
 
                         PostgresType result = builder.baseType(baseOid).build();
                         addType(result);
@@ -467,6 +486,19 @@ public class TypeRegistry {
         }
 
         return null;
+    }
+
+    private List<String> resolveEnumValues(Connection pgConnection, int enumOid) throws SQLException {
+        List<String> enumValues = new ArrayList<>();
+        try (final PreparedStatement enumStatement = pgConnection.prepareStatement(SQL_ENUM_VALUES_LOOKUP)) {
+            enumStatement.setInt(1, enumOid);
+            try (final ResultSet enumRs = enumStatement.executeQuery()) {
+                while (enumRs.next()) {
+                    enumValues.add(enumRs.getString("enum_value"));
+                }
+            }
+        }
+        return enumValues.isEmpty() ? null : enumValues;
     }
 
     /**

@@ -41,6 +41,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Bits;
+import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -532,8 +533,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("INSERT INTO alias_table (value) values (B'101');");
 
         buildNoStreamProducer(TestHelper.defaultConfig()
-              .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
-              .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -556,8 +557,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute("INSERT INTO alias_table (value) values (B'101');");
 
         buildNoStreamProducer(TestHelper.defaultConfig()
-                                      .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
-                                      .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
@@ -569,6 +570,33 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5, 0 }));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
+    }
+
+    @Test
+    @FixFor("DBZ-920")
+    public void shouldSnapshotEnumAsKnownType() throws Exception {
+        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1', 'V2');");
+        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, value test_type NOT NULL, primary key(pk));");
+        TestHelper.execute("INSERT INTO enum_table (value) values ('V1');");
+
+        // Specifically enable `column.propagate.source.type` here to validate later that the actual
+        // type, length, and scale values are resolved correctly when paired with Enum types.
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.enum_table")
+                .with("column.propagate.source.type", "public.enum_table.value"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        List<SchemaAndValueField> expected = Collections.singletonList(
+                new SchemaAndValueField("value", Enum.builder("V1,V2")
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), "V1"));
+
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_table", expected)));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {

@@ -282,6 +282,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     return SchemaBuilder.array(Ltree.builder().optional().build());
                 }
 
+                final PostgresType resolvedType = typeRegistry.get(oidValue);
+                if (resolvedType.isEnumType()) {
+                    return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
+                }
+
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
                     return includeUnknownDatatypes ? SchemaBuilder.bytes() : null;

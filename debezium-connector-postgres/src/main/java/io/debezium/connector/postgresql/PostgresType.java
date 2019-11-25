@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.List;
 import java.util.Objects;
 
 import org.postgresql.core.Oid;
@@ -19,7 +20,7 @@ import org.postgresql.core.TypeInfo;
  */
 public class PostgresType {
 
-    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, null, null, null);
+    public static final PostgresType UNKNOWN = new PostgresType("unknown", -1, Integer.MIN_VALUE, null, null, null, null);
 
     private final String name;
     private final int oid;
@@ -28,12 +29,13 @@ public class PostgresType {
     private final PostgresType elementType;
     private final TypeInfo typeInfo;
     private final int modifiers;
+    private final List<String> enumValues;
 
-    private PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
-        this(name, oid, jdbcId, TypeRegistry.NO_TYPE_MODIFIER, typeInfo, baseType, elementType);
+    private PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, List<String> enumValues, PostgresType baseType, PostgresType elementType) {
+        this(name, oid, jdbcId, TypeRegistry.NO_TYPE_MODIFIER, typeInfo, enumValues, baseType, elementType);
     }
 
-    private PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, PostgresType baseType, PostgresType elementType) {
+    private PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, List<String> enumValues, PostgresType baseType, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
@@ -42,6 +44,7 @@ public class PostgresType {
         this.baseType = baseType;
         this.elementType = elementType;
         this.modifiers = modifiers;
+        this.enumValues = enumValues;
     }
 
     /**
@@ -56,6 +59,10 @@ public class PostgresType {
      */
     public boolean isBaseType() {
         return baseType == null;
+    }
+
+    public boolean isEnumType() {
+        return enumValues != null;
     }
 
     /**
@@ -96,6 +103,10 @@ public class PostgresType {
      */
     public PostgresType getBaseType() {
         return baseType;
+    }
+
+    public List<String> getEnumValues() {
+        return enumValues;
     }
 
     /**
@@ -233,6 +244,7 @@ public class PostgresType {
         private final TypeInfo typeInfo;
         private int baseTypeOid;
         private int elementTypeOid;
+        private List<String> enumValues;
 
         public Builder(TypeRegistry typeRegistry, String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo) {
             this.typeRegistry = typeRegistry;
@@ -253,6 +265,11 @@ public class PostgresType {
             return this;
         }
 
+        public Builder enumValues(List<String> enumValues) {
+            this.enumValues = enumValues;
+            return this;
+        }
+
         public PostgresType build() {
             PostgresType baseType = null;
             if (baseTypeOid != 0) {
@@ -264,7 +281,7 @@ public class PostgresType {
                 elementType = typeRegistry.get(elementTypeOid);
             }
 
-            return new PostgresType(name, oid, jdbcId, modifiers, typeInfo, baseType, elementType);
+            return new PostgresType(name, oid, jdbcId, modifiers, typeInfo, enumValues, baseType, elementType);
         }
     }
 }
