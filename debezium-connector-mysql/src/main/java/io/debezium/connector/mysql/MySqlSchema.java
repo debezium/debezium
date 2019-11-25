@@ -350,7 +350,11 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             // Record the DDL statement so that we can later recover them if needed. We do this _after_ writing the
             // schema change records so that failure recovery (which is based on of the history) won't lose
             // schema change records.
-            if (!storeOnlyMonitoredTablesDdl || changes.stream().anyMatch(filters().tableFilter()::test)) {
+            // We are storing either
+            // - all DDLs if configured
+            // - or global SET variables
+            // - or DDLs for monitored objects
+            if (!storeOnlyMonitoredTablesDdl || isGlobalSetVariableStatement(ddlStatements, databaseName) || changes.stream().anyMatch(filters().tableFilter()::test)) {
                 dbHistory.record(source.partition(), source.offset(), databaseName, ddlStatements);
             }
         }
@@ -369,6 +373,10 @@ public class MySqlSchema extends RelationalDatabaseSchema {
             }
         });
         return true;
+    }
+
+    public boolean isGlobalSetVariableStatement(String ddl, String databaseName) {
+        return databaseName == null && ddl != null && ddl.toUpperCase().startsWith("SET ");
     }
 
     /**
