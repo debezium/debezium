@@ -1,7 +1,7 @@
 // Metadata created by nebel
 //
 
-[id="install-the-mysql-connector-{context}"]
+[id="install-the-mysql-connector_{context}"]
 = Installing the MySQL connector
 
 Installing the {prodname} MySQL connector is a simple process whereby you only need to download the JAR, extract it to your Kafka Connect environment, and ensure the plugin's parent directory is specified in your Kafka Connect environment.
