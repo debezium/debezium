@@ -1,9 +1,7 @@
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to deploy the CDC MySQL connector, so my applications can capture row-level changes from my databases as streams.
-:attributes: _attributes
 :context: cdc
-include::../../{attributes}.adoc[]
 [id="deploy-the-mysql-connector"]
 = Deploying the MySQL connector
 
@@ -12,8 +10,6 @@ include::../../{attributes}.adoc[]
 * xref:mysql-connector-monitoring-metrics_{context}[MySQL connector configuration properties]
 * xref:mysql-connector-configuration-properties_{context}[MySQL connector monitoring metrics]
 
-
-// ../../modules
 
 include::../../modules/cdc-mysql-connector/p_install-the-mysql-connector.adoc[leveloffset=+1]
 
