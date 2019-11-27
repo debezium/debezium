@@ -1,9 +1,7 @@
 // Metadata created by nebel
 //
 // UserStory: As an Evaluator or Developer, I want to gain a general understanding of how the CDC's MySQL connector functions so that I can better use the application.
-:attributes: _attributes
 :context: cdc
-include::../../{attributes}.adoc[]
 [id="overview-of-how-the-mysql-connector-works"]
 = Overview of how the MySQL connector works
 
@@ -16,8 +14,6 @@ The {prodname} MySQL connector tracks the structure of the tables, performs snap
 * xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
 * xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
 * xref:mysql-supported-topologies_{context}[MySQL supported topologies]
-
-// ../../modules
 
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
 
