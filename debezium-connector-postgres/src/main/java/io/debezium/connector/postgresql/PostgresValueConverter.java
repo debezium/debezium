@@ -226,6 +226,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
+            case PgOid.UUID_ARRAY:
+                return SchemaBuilder.array(Uuid.builder().optional().build());
             case PgOid.TIME_ARRAY:
             case PgOid.TIMETZ_ARRAY:
             case PgOid.TIMESTAMP_ARRAY:
@@ -236,7 +238,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.NAME_ARRAY:
             case PgOid.INTERVAL_ARRAY:
             case PgOid.VARBIT_ARRAY:
-            case PgOid.UUID_ARRAY:
             case PgOid.XML_ARRAY:
             case PgOid.POINT_ARRAY:
             case PgOid.JSONB_ARRAY:
@@ -370,6 +371,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_ARRAY:
             case PgOid.NUM_RANGE_ARRAY:
             case PgOid.INT8RANGE_ARRAY:
+            case PgOid.UUID_ARRAY:
                 return createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
@@ -384,7 +386,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.NAME_ARRAY:
             case PgOid.INTERVAL_ARRAY:
             case PgOid.VARBIT_ARRAY:
-            case PgOid.UUID_ARRAY:
             case PgOid.XML_ARRAY:
             case PgOid.POINT_ARRAY:
             case PgOid.JSONB_ARRAY:
