@@ -7,12 +7,12 @@ matrixJob('debezium-postgresql-matrix-test') {
     label('Slave')
     combinationFilter('''
          DECODER_PLUGIN == "decoderbufs" ||
-        (DECODER_PLUGIN == "pgoutput" && POSTGRES_VERSION == "10"  || POSTGRES_VERSION == "11") ||
-         POSTGRES_VERSION == "11"
+        (DECODER_PLUGIN == "pgoutput" && (POSTGRES_VERSION == "10" || POSTGRES_VERSION == "11")) ||
+         POSTGRES_VERSION == "12"
          ''')
 
     axes {
-        text('POSTGRES_VERSION', '10', '11', '9.6-alpine', '10-alpine', '11-alpine')
+        text('POSTGRES_VERSION', '10', '11', '12')
         text('DECODER_PLUGIN', 'decoderbufs', 'wal2json', 'pgoutput')
     }
 
