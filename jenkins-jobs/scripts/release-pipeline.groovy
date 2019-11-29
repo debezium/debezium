@@ -42,7 +42,7 @@ VERSION_PARTS = RELEASE_VERSION.split('\\.')
 VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
 
-POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine']
+POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine']
 CORE_CONNECTORS_PER_VERSION = [
     '0.8': ['mongodb','mysql','postgres'],
     '0.9': ['mongodb','mysql','postgres','sqlserver'],
