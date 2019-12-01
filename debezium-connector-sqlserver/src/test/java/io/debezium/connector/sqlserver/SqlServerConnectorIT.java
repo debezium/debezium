@@ -1411,6 +1411,53 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1491")
+    public void shouldCaptureTableSchema() throws SQLException, InterruptedException {
+        connection.execute(
+                "CREATE TABLE table_schema_test (key_cola int not null,"
+                        + "key_colb varchar(10) not null,"
+                        + "cola int not null,"
+                        + "colb datetimeoffset not null default ('2019-01-01 12:34:56.1234567+04:00'),"
+                        + "colc varchar(20) default ('default_value'),"
+                        + "cold float,"
+                        + "primary key(key_cola, key_colb))");
+        TestHelper.enableTableCdc(connection, "table_schema_test");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        connection.execute("INSERT INTO table_schema_test (key_cola, key_colb, cola, colb, colc, cold) VALUES(1, 'a', 100, '2019-01-01 10:20:39.1234567 +02:00', 'some_value', 100.20)");
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.dbo.table_schema_test");
+        assertThat(records).hasSize(1);
+        SourceRecordAssert.assertThat(records.get(0))
+                .keySchemaIsEqualTo(SchemaBuilder.struct()
+                        .name("server1.dbo.table_schema_test.Key")
+                        .field("key_cola", Schema.INT32_SCHEMA)
+                        .field("key_colb", Schema.STRING_SCHEMA)
+                        .build()
+                )
+                .valueAfterFieldSchemaIsEqualTo(SchemaBuilder.struct()
+                        .optional()
+                        .name("server1.dbo.table_schema_test.Value")
+                        .field("key_cola", Schema.INT32_SCHEMA)
+                        .field("key_colb", Schema.STRING_SCHEMA)
+                        .field("cola", Schema.INT32_SCHEMA)
+                        .field("colb", SchemaBuilder.string().name("io.debezium.time.ZonedTimestamp").required().defaultValue("2019-01-01T12:34:56.1234567+04:00").version(1).build())
+                        .field("colc", SchemaBuilder.string().optional().defaultValue("default_value").build())
+                        .field("cold", Schema.OPTIONAL_FLOAT64_SCHEMA)
+                        .build()
+                );
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-1923")
     public void shouldDetectPurgedHistory() throws Exception {
         final int RECORDS_PER_TABLE = 5;

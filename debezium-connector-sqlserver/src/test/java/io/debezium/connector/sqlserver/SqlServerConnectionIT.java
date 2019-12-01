@@ -8,12 +8,12 @@ package io.debezium.connector.sqlserver;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Date;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
-import microsoft.sql.DateTimeOffset;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,9 +31,23 @@ import io.debezium.util.Testing;
  */
 public class SqlServerConnectionIT {
 
+    private ZoneOffset databaseZoneOffset;
+
     @Before
     public void before() throws SQLException {
+        databaseZoneOffset = getDatabaseZoneOffset();
         TestHelper.dropTestDatabase();
+    }
+
+    private ZoneOffset getDatabaseZoneOffset() throws SQLException {
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
+            connection.connect();
+            int datetimeoffset = connection.queryAndMap("SELECT DATEPART(TZoffset, SYSDATETIME())", rs -> {
+                rs.next();
+                return rs.getInt(1);
+            });
+            return ZoneOffset.ofTotalSeconds(datetimeoffset * 60);
+        }
     }
 
     @Test
@@ -121,11 +135,27 @@ public class SqlServerConnectionIT {
                     + "    float_column float default (1.2345e2),"
                     + "    real_column real default (1.2345e3),"
                     + "    date_column date default ('2019-02-03'),"
-                    + "    datetime_column datetime default ('2019-01-01 00:00:00.000'),"
-                    + "    datetime2_column datetime2 default ('2019-01-01 00:00:00.1234567'),"
+                    + "    datetime_column datetime default ('2019-01-01 12:34:56.789'),"
+                    + "    datetime2_column datetime2 default ('2019-01-01 12:34:56.1234567'),"
+                    + "    datetime2_0_column datetime2(0) default ('2019-01-01 12:34:56'),"
+                    + "    datetime2_1_column datetime2(1) default ('2019-01-01 12:34:56.1'),"
+                    + "    datetime2_2_column datetime2(2) default ('2019-01-01 12:34:56.12'),"
+                    + "    datetime2_3_column datetime2(3) default ('2019-01-01 12:34:56.123'),"
+                    + "    datetime2_4_column datetime2(4) default ('2019-01-01 12:34:56.1234'),"
+                    + "    datetime2_5_column datetime2(5) default ('2019-01-01 12:34:56.12345'),"
+                    + "    datetime2_6_column datetime2(6) default ('2019-01-01 12:34:56.123456'),"
+                    + "    datetime2_7_column datetime2(7) default ('2019-01-01 12:34:56.1234567'),"
                     + "    datetimeoffset_column datetimeoffset default ('2019-01-01 00:00:00.1234567+02:00'),"
-                    + "    smalldatetime_column smalldatetime default ('2019-01-01 00:00:00'),"
-                    + "    time_column time default ('00:00:56.123'),"
+                    + "    smalldatetime_column smalldatetime default ('2019-01-01 12:34:00'),"
+                    + "    time_column time default ('12:34:56.1234567'),"
+                    + "    time_0_column time(0) default ('12:34:56'),"
+                    + "    time_1_column time(1) default ('12:34:56.1'),"
+                    + "    time_2_column time(2) default ('12:34:56.12'),"
+                    + "    time_3_column time(3) default ('12:34:56.123'),"
+                    + "    time_4_column time(4) default ('12:34:56.1234'),"
+                    + "    time_5_column time(5) default ('12:34:56.12345'),"
+                    + "    time_6_column time(6) default ('12:34:56.123456'),"
+                    + "    time_7_column time(7) default ('12:34:56.1234567'),"
                     + "    char_column char(3) default ('aaa'),"
                     + "    varchar_column varchar(20) default ('bbb'),"
                     + "    text_column text default ('ccc'),"
@@ -164,29 +194,58 @@ public class SqlServerConnectionIT {
             assertColumnHasDefaultValue(table, "smallmoney_column", new BigDecimal("214748.3647"));
             assertColumnHasDefaultValue(table, "float_column", 123.45);
             assertColumnHasDefaultValue(table, "real_column", 1234.5f);
-            assertColumnHasDefaultValue(table, "date_column", Date.valueOf("2019-02-03"));
-            assertColumnHasDefaultValue(table, "datetime_column", Timestamp.valueOf("2019-01-01 00:00:00.000"));
-            assertColumnHasDefaultValue(table, "datetime2_column", Timestamp.valueOf("2019-01-01 00:00:00.1234567"));
-            assertColumnHasDefaultValue(table, "datetimeoffset_column", nanosToDatetimeoffset(1546293600123456700L, 120));
-            assertColumnHasDefaultValue(table, "smalldatetime_column", Timestamp.valueOf("2019-01-01 00:00:00"));
-            // JDBC connector provides accuracy limited to milliseconds only.
-            assertColumnHasDefaultValue(table, "time_column", new Time(56123));
+            assertColumnHasDefaultValue(table, "date_column", 17930);
+            assertColumnHasDefaultValue(table, "datetime_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 790_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_column", toNanos(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_0_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 0, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_1_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 100_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_2_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 120_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_3_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_4_column", toMicros(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 123_400_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_5_column", toMicros(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 123_450_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_6_column", toMicros(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 123_456_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetime2_7_column", toNanos(OffsetDateTime.of(2019, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "datetimeoffset_column", "2019-01-01T00:00:00.1234567+02:00");
+            assertColumnHasDefaultValue(table, "smalldatetime_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 0, 0, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_0_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 0, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_1_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 100_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_2_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 120_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_3_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
+            // JDBC connector does not support full precision for type time(n), n = 4, 5, 6, 7
+            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
+            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)));
             assertColumnHasDefaultValue(table, "char_column", "aaa");
             assertColumnHasDefaultValue(table, "varchar_column", "bbb");
             assertColumnHasDefaultValue(table, "text_column", "ccc");
             assertColumnHasDefaultValue(table, "nchar_column", "ddd");
             assertColumnHasDefaultValue(table, "nvarchar_column", "eee");
             assertColumnHasDefaultValue(table, "ntext_column", "fff");
-            assertColumnHasDefaultValue(table, "binary_column", new byte[]{ 1, 2, 3, 4, 5 });
-            assertColumnHasDefaultValue(table, "varbinary_column", new byte[]{ 1, 2, 3, 4, 5, 6 });
-            assertColumnHasDefaultValue(table, "image_column", new byte[]{ 1, 2, 3, 4, 5, 6, 7 });
+            assertColumnHasDefaultValue(table, "binary_column", ByteBuffer.wrap(new byte[]{ 1, 2, 3, 4, 5 }));
+            assertColumnHasDefaultValue(table, "varbinary_column", ByteBuffer.wrap(new byte[]{ 1, 2, 3, 4, 5, 6 }));
+            assertColumnHasDefaultValue(table, "image_column", ByteBuffer.wrap(new byte[]{ 1, 2, 3, 4, 5, 6, 7 }));
         }
     }
 
-    private DateTimeOffset nanosToDatetimeoffset(long nanos, int offset) {
-        Timestamp dateTimeOffsetPart = new Timestamp(nanos / 1_000_000);
-        dateTimeOffsetPart.setNanos((int) (nanos % 1_000_000_000L));
-        return DateTimeOffset.valueOf(dateTimeOffsetPart, offset);
+    private long toMillis(OffsetDateTime datetime) {
+        return datetime.toInstant().toEpochMilli();
+    }
+
+    private long toMicros(OffsetDateTime datetime) {
+        Instant instant = datetime.toInstant();
+        long seconds = instant.toEpochMilli() / 1000L;
+        long micros = instant.getNano() / 1_000L;
+        return seconds * 1_000_000L + micros;
+    }
+
+    private long toNanos(OffsetDateTime datetime) {
+        Instant instant = datetime.toInstant();
+        long seconds = instant.toEpochMilli() / 1000L;
+        long nanos = instant.getNano();
+        return seconds * 1_000_000_000L + nanos;
+
     }
 
     private void assertColumnHasNotDefaultValue(Table table, String columnName) {
