@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -748,5 +749,58 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
             final int colb = value.getInt32("colb");
             Assertions.assertThat(id).isEqualTo(colb);
         });
+    }
+
+    @Test
+    public void addDefaultValue() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        connection.execute("ALTER TABLE dbo.tableb ADD DEFAULT ('default_value') FOR colb");
+        TestHelper.enableTableCdc(connection, "tableb", "after_change");
+
+        connection.execute("INSERT INTO tableb VALUES('1', 'some_value')");
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.dbo.tableb");
+        Assertions.assertThat(records).hasSize(1);
+
+        Schema colbSchema = records.get(0).valueSchema().field("after").schema().field("colb").schema();
+        Assertions.assertThat(colbSchema.defaultValue()).isNotNull();
+        Assertions.assertThat(colbSchema.defaultValue()).isEqualTo("default_value");
+    }
+
+    @Test
+    public void alterDefaultValue() throws Exception {
+        connection.execute("CREATE TABLE table_dv (id int primary key, colb varchar(30))");
+        connection.execute("ALTER TABLE dbo.table_dv ADD CONSTRAINT DV_colb DEFAULT ('default_value') FOR colb");
+        TestHelper.enableTableCdc(connection, "table_dv");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        connection.execute("INSERT INTO table_dv VALUES('1', 'some_value')");
+        consumeRecordsByTopic(1);
+
+        // Default value constraint cannot be modified. Drop existing and create a new one instead.
+        connection.execute("ALTER TABLE dbo.table_dv DROP CONSTRAINT DV_colb");
+        connection.execute("ALTER TABLE dbo.table_dv ADD DEFAULT ('new_default_value') FOR colb");
+        TestHelper.enableTableCdc(connection, "table_dv", "after_change");
+
+        connection.execute("INSERT INTO table_dv VALUES('2', 'some_value2')");
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.dbo.table_dv");
+        Assertions.assertThat(records).hasSize(1);
+
+        Schema colbSchema = records.get(0).valueSchema().field("after").schema().field("colb").schema();
+        Assertions.assertThat(colbSchema.defaultValue()).isNotNull();
+        Assertions.assertThat(colbSchema.defaultValue()).isEqualTo("new_default_value");
     }
 }
