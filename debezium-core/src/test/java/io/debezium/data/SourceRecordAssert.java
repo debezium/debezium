@@ -40,4 +40,9 @@ public class SourceRecordAssert {
         VerifyRecord.assertConnectSchemasAreEqual(null, afterFieldSchema, expectedSchema);
         return this;
     }
+
+    public SourceRecordAssert keySchemaIsEqualTo(Schema expectedSchema) {
+        VerifyRecord.assertConnectSchemasAreEqual(null, record.keySchema(), expectedSchema);
+        return this;
+    }
 }

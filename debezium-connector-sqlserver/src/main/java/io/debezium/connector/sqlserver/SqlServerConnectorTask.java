@@ -60,6 +60,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode());
 
         // By default do not load whole result sets into memory
         config = config.edit()
@@ -70,15 +71,15 @@ public class SqlServerConnectorTask extends BaseSourceTask {
         final Configuration jdbcConfig = config.filter(
                 x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name())))
                 .subset("database.", true);
-        dataConnection = new SqlServerConnection(jdbcConfig);
-        metadataConnection = new SqlServerConnection(jdbcConfig);
+        dataConnection = new SqlServerConnection(jdbcConfig, valueConverters);
+        metadataConnection = new SqlServerConnection(jdbcConfig, valueConverters);
         try {
             dataConnection.setAutoCommit(false);
         }
         catch (SQLException e) {
             throw new ConnectException(e);
         }
-        this.schema = new SqlServerDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, dataConnection);
+        this.schema = new SqlServerDatabaseSchema(connectorConfig, valueConverters, topicSelector, schemaNameAdjuster);
         this.schema.initializeStorage();
 
         final OffsetContext previousOffset = getPreviousOffset(new SqlServerOffsetContext.Loader(connectorConfig));
