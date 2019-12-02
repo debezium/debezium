@@ -1021,7 +1021,7 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |`ENUM`
 |`STRING`
 |`io.debezium.data.Enum`
-|Contains the string representation of the PostgreSQL ENUM value
+|Contains the string representation of the PostgreSQL ENUM value.   The set of allowed values are maintained in the schema parameter named `allowed`.
 
 |=======================
 
@@ -1263,18 +1263,15 @@ However, when `hstore.handling.mode` configuration property is set to `json`, th
 ==== PostgreSQL Domain Types
 
 PostgreSQL also supports the notion of user-defined types that are based upon other underlying types.
-When such column types are used, Debezium the column's representation based on the full type hierarchy.
+When such column types are used, Debezium exposes the column's representation based on the full type hierarchy.
 
 [IMPORTANT]
 ====
 Special consideration should be taken when monitoring columns that use domain types.
 
-When a column is defined using a domain type that extends one of the default database types and the domain type defines a custom length/scale, the generated Schema will inherit that defined length/scale.
+When a column is defined using a domain type that extends one of the default database types and the domain type defines a custom length/scale, the generated schema will inherit that defined length/scale.
 
-When a column is defined using a domain type that extends another domain type that defines a custom length/scale, the generated Schema will **not** inherit the defined length/scale because the PostgreSQL driver's column metadata implementation.
-
-
-
+When a column is defined using a domain type that extends another domain type that defines a custom length/scale, the generated schema will **not** inherit the defined length/scale because the PostgreSQL driver's column metadata implementation.
 ====
 
 [[postgis-types]]
