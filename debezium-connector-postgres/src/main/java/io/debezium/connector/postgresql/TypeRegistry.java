@@ -53,21 +53,24 @@ public class TypeRegistry {
     public static final int NO_TYPE_MODIFIER = -1;
     public static final int UNKNOWN_LENGTH = -1;
 
+    // PostgreSQL driver reports user-defined Domain types as Types.DISTINCT
+    public static final int DOMAIN_TYPE = Types.DISTINCT;
+
     private static final String CATEGORY_ENUM = "E";
 
-    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod as modifiers, t.typcategory as category "
+    private static final String SQL_NON_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A'";
 
-    private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS baseoid, t.typtypmod as modifiers, t.typcategory as category "
+    private static final String SQL_ARRAY_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory = 'A'";
 
-    private static final String SQL_NON_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers, t.typcategory as category "
+    private static final String SQL_NON_ARRAY_TYPE_NAME_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' AND t.typname = ?";
 
-    private static final String SQL_NON_ARRAY_TYPE_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS baseoid, t.typtypmod AS modifiers, t.typcategory as category "
+    private static final String SQL_NON_ARRAY_TYPE_OID_LOOKUP = "SELECT t.oid as oid, t.typname AS name, t.typbasetype AS parentoid, t.typtypmod AS modifiers, t.typcategory as category "
             + "FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "WHERE n.nspname != 'pg_toast' AND t.typcategory <> 'A' AND t.oid = ?";
 
@@ -317,7 +320,7 @@ public class TypeRegistry {
                         // Coerce long to int so large unsigned values are represented as signed
                         // Same technique is used in TypeInfoCache
                         final int oid = (int) rs.getLong("oid");
-                        final int baseOid = (int) rs.getLong("baseoid");
+                        final int parentTypeOid = (int) rs.getLong("parentoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
                         String category = rs.getString("category");
@@ -335,13 +338,13 @@ public class TypeRegistry {
                         }
 
                         // If the type does have have a base type, we can build/add immediately.
-                        if (baseOid == 0) {
+                        if (parentTypeOid == 0) {
                             addType(builder.build());
                             continue;
                         }
 
                         // For types with base type mappings, they need to be delayed.
-                        builder = builder.baseType(baseOid);
+                        builder = builder.parentType(parentTypeOid);
                         delayResolvedBuilders.add(builder);
                     }
 
@@ -357,7 +360,7 @@ public class TypeRegistry {
                     while (rs.next()) {
                         // int2vector and oidvector will not be treated as arrays
                         final int oid = (int) rs.getLong("oid");
-                        final int baseOid = (int) rs.getLong("baseoid");
+                        final int parentTypeOid = (int) rs.getLong("parentoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
 
@@ -372,13 +375,13 @@ public class TypeRegistry {
                         builder = builder.elementType((int) rs.getLong("element"));
 
                         // If the type doesnot have a base type, we can build/add immediately
-                        if (baseOid == 0) {
+                        if (parentTypeOid == 0) {
                             addType(builder.build());
                             continue;
                         }
 
                         // For types with base type mappings, they need to be delayed.
-                        builder = builder.baseType(baseOid);
+                        builder = builder.parentType(parentTypeOid);
                         delayResolvedBuilders.add(builder);
                     }
 
@@ -412,7 +415,7 @@ public class TypeRegistry {
                 try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
                         final int oid = (int) rs.getLong("oid");
-                        final int baseOid = (int) rs.getLong("baseoid");
+                        final int parentTypeOid = (int) rs.getLong("parentoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
                         String category = rs.getString("category");
@@ -429,7 +432,7 @@ public class TypeRegistry {
                             builder = builder.enumValues(resolveEnumValues(connection, oid));
                         }
 
-                        PostgresType result = builder.baseType(baseOid).build();
+                        PostgresType result = builder.parentType(parentTypeOid).build();
                         addType(result);
 
                         return result;
@@ -456,7 +459,7 @@ public class TypeRegistry {
                 try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
                         final int oid = (int) rs.getLong("oid");
-                        final int baseOid = (int) rs.getLong("baseoid");
+                        final int parentTypeOid = (int) rs.getLong("parentoid");
                         final int modifiers = (int) rs.getLong("modifiers");
                         String typeName = rs.getString("name");
                         String category = rs.getString("category");
@@ -473,7 +476,7 @@ public class TypeRegistry {
                             builder = builder.enumValues(resolveEnumValues(connection, oid));
                         }
 
-                        PostgresType result = builder.baseType(baseOid).build();
+                        PostgresType result = builder.parentType(parentTypeOid).build();
                         addType(result);
 
                         return result;

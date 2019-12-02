@@ -418,7 +418,15 @@ public class PostgresConnection extends JdbcConnection {
 
     @Override
     protected int resolveNativeType(String typeName) {
-        return getTypeRegistry().get(typeName).getOid();
+        return getTypeRegistry().get(typeName).getRootType().getOid();
+    }
+
+    @Override
+    protected int resolveJdbcType(int metadataJdbcType, int nativeType) {
+        // Special care needs to be taken for columns that use user-defined domain type data types
+        // where resolution of the column's JDBC type needs to be that of the root type instead of
+        // the actual column to properly influence schema building and value conversion.
+        return getTypeRegistry().get(nativeType).getRootType().getJdbcId();
     }
 
     public TypeRegistry getTypeRegistry() {

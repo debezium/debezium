@@ -40,8 +40,8 @@ public class ReplicationMessageColumnValueResolver {
             return null;
         }
 
-        if (!type.isBaseType()) {
-            return resolveValue(columnName, type.getBaseType(), fullType, value, connection, includeUnknownDatatypes, typeRegistry);
+        if (!type.isRootType()) {
+            return resolveValue(columnName, type.getParentType(), fullType, value, connection, includeUnknownDatatypes, typeRegistry);
         }
 
         if (value.isArray(type)) {

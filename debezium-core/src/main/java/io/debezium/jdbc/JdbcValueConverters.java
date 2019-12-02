@@ -245,10 +245,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 // often treated as a string, but we'll generalize and treat it as a byte array
                 return SchemaBuilder.bytes();
 
-            case Types.DISTINCT:
-                return distinctSchema(column);
-
             // Unhandled types
+            case Types.DISTINCT:
             case Types.ARRAY:
             case Types.JAVA_OBJECT:
             case Types.OTHER:
@@ -259,7 +257,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 break;
         }
         return null;
-
     }
 
     @Override
@@ -342,10 +339,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.ROWID:
                 return (data) -> convertRowId(column, fieldDefn, data);
 
-            case Types.DISTINCT:
-                return convertDistinct(column, fieldDefn);
-
             // Unhandled types
+            case Types.DISTINCT:
             case Types.ARRAY:
             case Types.JAVA_OBJECT:
             case Types.OTHER:
@@ -1242,13 +1237,5 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     private boolean supportsLargeTimeValues() {
         return adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode;
-    }
-
-    protected SchemaBuilder distinctSchema(Column column) {
-        return null;
-    }
-
-    protected ValueConverter convertDistinct(Column column, Field fieldDefn) {
-        return null;
     }
 }

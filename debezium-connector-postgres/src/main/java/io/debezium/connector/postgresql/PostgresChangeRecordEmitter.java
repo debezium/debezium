@@ -349,10 +349,10 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                             final PostgresType type = column.getType();
                             final ColumnEditor columnEditor = Column.editor()
                                     .name(column.getName())
-                                    .jdbcType(type.getJdbcId())
+                                    .jdbcType(type.getRootType().getJdbcId())
                                     .type(type.getName())
                                     .optional(column.isOptional())
-                                    .nativeType(type.getOid());
+                                    .nativeType(type.getRootType().getOid());
                             columnEditor.length(column.getTypeMetadata().getLength());
                             columnEditor.scale(column.getTypeMetadata().getScale());
                             return columnEditor.create();

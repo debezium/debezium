@@ -67,7 +67,7 @@
         <version.confluent.platform>5.3.1</version.confluent.platform>
 
         <!-- Databases -->
-        <version.postgresql.driver>42.2.8</version.postgresql.driver>
+        <version.postgresql.driver>42.2.9-SNAPSHOT</version.postgresql.driver>
         <version.mysql.server>5.7</version.mysql.server>
         <version.mysql.driver>8.0.16</version.mysql.driver>
         <version.mysql.binlog>0.19.1</version.mysql.binlog>

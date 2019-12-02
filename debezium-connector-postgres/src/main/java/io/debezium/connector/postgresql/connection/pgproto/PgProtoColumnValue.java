@@ -34,6 +34,8 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.time.Conversions;
 
 /**
+ * Replication message column sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</>
+ *
  * @author Chris Cranford
  */
 public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage> {

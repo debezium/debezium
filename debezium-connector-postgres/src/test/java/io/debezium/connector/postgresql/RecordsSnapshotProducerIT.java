@@ -14,6 +14,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -63,6 +66,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Before
     public void before() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_postgis.ddl");
         TestHelper.executeDDL("postgres_create_tables.ddl");
@@ -499,17 +503,22 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
-                .with("column.propagate.source.type", "public.alias_table.area,public.alias_table.a"));
+                .with("column.propagate.source.type", "public.alias_table.*"));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        // Specifying alias money2 results in JDBC type '2001' for 'salary2'
-        // Specifying money results in JDBC type '8' for 'salary'
-
         List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField("salary", Decimal.builder(2).optional().build(), BigDecimal.valueOf(7.25)),
-                new SchemaAndValueField("salary2", Decimal.builder(2).optional().build(), BigDecimal.valueOf(8.25)),
+                new SchemaAndValueField("salary", Decimal.builder(2).optional()
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), BigDecimal.valueOf(7.25)),
+                new SchemaAndValueField("salary2", Decimal.builder(2).optional()
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "MONEY2")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), BigDecimal.valueOf(8.25)),
                 new SchemaAndValueField("a", SchemaBuilder.float64().optional()
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERIC")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
@@ -534,14 +543,176 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
-                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with("column.propagate.source.type", "public.alias_table.value"));
 
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         List<SchemaAndValueField> expected = Collections.singletonList(
-                new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5, 0 }));
+                new SchemaAndValueField("value", Bits.builder(3)
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARBIT2")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), new byte[]{ 5, 0 }));
 
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
+    }
+
+    @Test
+    @FixFor("DBZ-1413")
+    public void shouldSnapshotDomainTypesLikeBaseTypes() throws Exception {
+        TestHelper.dropAllSchemas();
+
+        // Construct domain types
+        // note: skipped macaddr8 as that is only supported on PG10+ but was manually tested
+        TestHelper.execute("CREATE DOMAIN bit2 AS BIT(3);");
+        TestHelper.execute("CREATE DOMAIN smallint2 AS smallint;");
+        TestHelper.execute("CREATE DOMAIN integer2 as integer;");
+        TestHelper.execute("CREATE DOMAIN bigint2 as bigint;");
+        TestHelper.execute("CREATE DOMAIN real2 as real;");
+        TestHelper.execute("CREATE DOMAIN bool2 AS BOOL DEFAULT false;");
+        TestHelper.execute("CREATE DOMAIN float82 as float8;");
+        TestHelper.execute("CREATE DOMAIN numeric2 as numeric(6,2);");
+        TestHelper.execute("CREATE DOMAIN string2 AS varchar(25) DEFAULT NULL;");
+        TestHelper.execute("CREATE DOMAIN date2 AS date;");
+        TestHelper.execute("CREATE DOMAIN time2 as time;");
+        TestHelper.execute("CREATE DOMAIN timetz2 as timetz;");
+        TestHelper.execute("CREATE DOMAIN timestamp2 as timestamp;");
+        TestHelper.execute("CREATE DOMAIN timestamptz2 AS timestamptz;");
+        TestHelper.execute("CREATE DOMAIN timewotz2 as time without time zone;");
+        TestHelper.execute("CREATE DOMAIN box2 as box;");
+        TestHelper.execute("CREATE DOMAIN circle2 as circle;");
+        TestHelper.execute("CREATE DOMAIN interval2 as interval;");
+        TestHelper.execute("CREATE DOMAIN line2 as line;");
+        TestHelper.execute("CREATE DOMAIN lseg2 as lseg;");
+        TestHelper.execute("CREATE DOMAIN path2 as path;");
+        TestHelper.execute("CREATE DOMAIN point2 as point;");
+        TestHelper.execute("CREATE DOMAIN polygon2 as polygon;");
+        TestHelper.execute("CREATE DOMAIN char2 as char;");
+        TestHelper.execute("CREATE DOMAIN text2 as text;");
+        TestHelper.execute("CREATE DOMAIN json2 as json;");
+        TestHelper.execute("CREATE DOMAIN xml2 as xml;");
+        TestHelper.execute("CREATE DOMAIN uuid2 as uuid;");
+        TestHelper.execute("CREATE DOMAIN varbit2 as varbit(3);");
+        TestHelper.execute("CREATE DOMAIN inet2 as inet;");
+        TestHelper.execute("CREATE DOMAIN cidr2 as cidr;");
+        TestHelper.execute("CREATE DOMAIN macaddr2 as macaddr;");
+
+        // Create table
+        TestHelper.execute("CREATE TABLE alias_table (pk SERIAL" +
+                ", bit_base bit(3) NOT NULL, bit_alias bit2 NOT NULL" +
+                ", smallint_base smallint NOT NULL, smallint_alias smallint2 NOT NULL" +
+                ", integer_base integer NOT NULL, integer_alias integer2 NOT NULL" +
+                ", bigint_base bigint NOT NULL, bigint_alias bigint2 NOT NULL" +
+                ", real_base real NOT NULL, real_alias real2 NOT NULL" +
+                ", float8_base float8 NOT NULL, float8_alias float82 NOT NULL" +
+                ", numeric_base numeric(6,2) NOT NULL, numeric_alias numeric2 NOT NULL" +
+                ", bool_base bool NOT NULL, bool_alias bool2 NOT NULL" +
+                ", string_base varchar(25) NOT NULL, string_alias string2 NOT NULL" +
+                ", date_base date NOT NULL, date_alias date2 NOT NULL" +
+                ", time_base time NOT NULL, time_alias time2 NOT NULL" +
+                ", timetz_base timetz NOT NULL, timetz_alias timetz2 NOT NULL" +
+                ", timestamp_base timestamp NOT NULL, timestamp_alias timestamp2 NOT NULL" +
+                ", timestamptz_base timestamptz NOT NULL, timestamptz_alias timestamptz2 NOT NULL" +
+                ", timewottz_base time without time zone NOT NULL, timewottz_alias timewotz2 NOT NULL" +
+                ", box_base box NOT NULL, box_alias box2 NOT NULL" +
+                ", circle_base circle NOT NULL, circle_alias circle2 NOT NULL" +
+                ", interval_base interval NOT NULL, interval_alias interval2 NOT NULL" +
+                ", line_base line NOT NULL, line_alias line2 NOT NULL" +
+                ", lseg_base lseg NOT NULL, lseg_alias lseg2 NOT NULL" +
+                ", path_base path NOT NULL, path_alias path2 NOT NULL" +
+                ", point_base point NOT NULL, point_alias point2 NOT NULL" +
+                ", polygon_base polygon NOT NULL, polygon_alias polygon2 NOT NULL" +
+                ", char_base char NOT NULL, char_alias char2 NOT NULL" +
+                ", text_base text NOT NULL, text_alias text2 NOT NULL" +
+                ", json_base json NOT NULL, json_alias json2 NOT NULL" +
+                ", xml_base xml NOT NULL, xml_alias xml2 NOT NULL" +
+                ", uuid_base UUID NOT NULL, uuid_alias uuid2 NOT NULL" +
+                ", varbit_base varbit(3) NOT NULL, varbit_alias varbit2 NOT NULL" +
+                ", inet_base inet NOT NULL, inet_alias inet2 NOT NULL" +
+                ", cidr_base cidr NOT NULL, cidr_alias cidr2 NOT NULL" +
+                ", macaddr_base macaddr NOT NULL, macaddr_alias macaddr2 NOT NULL" +
+                ", PRIMARY KEY(pk));");
+
+        // Insert the one row we want to snapshot
+        TestHelper.execute("INSERT INTO alias_table (" +
+                "bit_base, bit_alias, " +
+                "smallint_base, smallint_alias, " +
+                "integer_base, integer_alias, " +
+                "bigint_base, bigint_alias, " +
+                "real_base, real_alias, " +
+                "float8_base, float8_alias, " +
+                "numeric_base, numeric_alias, " +
+                "bool_base, bool_alias, " +
+                "string_base, string_alias, " +
+                "date_base, date_alias, " +
+                "time_base, time_alias, " +
+                "timetz_base, timetz_alias, " +
+                "timestamp_base, timestamp_alias, " +
+                "timestamptz_base, timestamptz_alias, " +
+                "timewottz_base, timewottz_alias, " +
+                "box_base, box_alias, " +
+                "circle_base, circle_alias, " +
+                "interval_base, interval_alias, " +
+                "line_base, line_alias, " +
+                "lseg_base, lseg_alias, " +
+                "path_base, path_alias, " +
+                "point_base, point_alias, " +
+                "polygon_base, polygon_alias, " +
+                "char_base, char_alias, " +
+                "text_base, text_alias, " +
+                "json_base, json_alias, " +
+                "xml_base, xml_alias, " +
+                "uuid_base, uuid_alias, " +
+                "varbit_base, varbit_alias, " +
+                "inet_base, inet_alias, " +
+                "cidr_base, cidr_alias, " +
+                "macaddr_base, macaddr_alias " +
+                ") VALUES (" +
+                "B'101', B'101', " +
+                "1, 1, " +
+                "1, 1, " +
+                "1000, 1000, " +
+                "3.14, 3.14, " +
+                "3.14, 3.14, " +
+                "1234.12, 1234.12, " +
+                "true, true, " +
+                "'hello', 'hello', " +
+                "'2019-10-02', '2019-10-02', " +
+                "'01:02:03', '01:02:03', " +
+                "'01:02:03.123789Z', '01:02:03.123789Z', " +
+                "'2019-10-02T01:02:03.123456', '2019-10-02T01:02:03.123456', " +
+                "'2019-10-02T13:51:30.123456+02:00'::TIMESTAMPTZ, '2019-10-02T13:51:30.123456+02:00'::TIMESTAMPTZ, " +
+                "'01:02:03', '01:02:03', " +
+                "'(0,0),(1,1)', '(0,0),(1,1)', " +
+                "'10,4,10', '10,4,10', " +
+                "'1 year 2 months 3 days 4 hours 5 minutes 6 seconds', '1 year 2 months 3 days 4 hours 5 minutes 6 seconds', " +
+                "'(0,0),(0,1)', '(0,0),(0,1)', " +
+                "'((0,0),(0,1))', '((0,0),(0,1))', " +
+                "'((0,0),(0,1),(0,2))', '((0,0),(0,1),(0,2))', " +
+                "'(1,1)', '(1,1)', " +
+                "'((0,0),(0,1),(1,0),(0,0))', '((0,0),(0,1),(1,0),(0,0))', " +
+                "'a', 'a', " +
+                "'Hello World', 'Hello World', " +
+                "'{\"key\": \"value\"}', '{\"key\": \"value\"}', " +
+                "XML('<foo>Hello</foo>'), XML('<foo>Hello</foo>'), " +
+                "'40e6215d-b5c6-4896-987c-f30f3678f608', '40e6215d-b5c6-4896-987c-f30f3678f608', " +
+                "B'101', B'101', " +
+                "'192.168.0.1', '192.168.0.1', " +
+                "'192.168/24', '192.168/24', " +
+                "'08:00:2b:01:02:03', '08:00:2b:01:02:03' " +
+                ");");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final List<SchemaAndValueField> expected = schemasAndValuesForDomainAliasTypes(false);
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
     }
 
@@ -563,9 +734,6 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         final TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        // We would normally expect that the value column was created with a length of 3.
-        // However due to how the resolution works in the driver, it returns 2147483647.
-        // We probably want to avoid supporting this behavior for now?
         List<SchemaAndValueField> expected = Collections.singletonList(
                 new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5, 0 }));
 
@@ -615,5 +783,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
+    }
+
+    private long asEpochMicros(String timestamp) {
+        Instant instant = LocalDateTime.parse(timestamp).atOffset(ZoneOffset.UTC).toInstant();
+        return instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
     }
 }

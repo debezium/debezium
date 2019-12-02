@@ -17,11 +17,8 @@ import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
@@ -57,13 +54,9 @@ import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
-import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
-import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
-import io.debezium.data.Xml;
-import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -74,12 +67,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.time.Date;
-import io.debezium.time.MicroDuration;
-import io.debezium.time.MicroTime;
-import io.debezium.time.MicroTimestamp;
-import io.debezium.time.ZonedTime;
-import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
 
@@ -1591,7 +1578,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table"), false);
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.alias_table")
+                .with("column.propagate.source.type", "public.alias_table.value"), false);
 
         waitForStreamingToStart();
 
@@ -1603,7 +1591,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         List<SchemaAndValueField> expected = Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("value", SpecialValueDecimal.builder(DecimalMode.DOUBLE, 8, 2).optional().build(), 123.45));
+                new SchemaAndValueField("value", SpecialValueDecimal.builder(DecimalMode.DOUBLE, 8, 2)
+                        .optional()
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "NUMERICEX")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8")
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2")
+                        .build(), 123.45));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
@@ -1612,8 +1605,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-1413")
     public void shouldStreamValuesForAliasLikeBaseTypes() throws Exception {
-        // todo: should test all these combinations in RecordsSnapshotProducerIT
-
         TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, PRIMARY KEY (pk));");
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.DOUBLE)
@@ -1764,100 +1755,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         SourceRecord rec = assertRecordInserted("public.alias_table", PK_FIELD, 1);
         assertSourceInfo(rec, "postgres", "public", "alias_table");
 
-        // check with Jiri if we intend to have these differences
-        final ByteBuffer boxByteBuffer;
-        final ByteBuffer circleByteBuffer;
-        final ByteBuffer lineByteBuffer;
-        final ByteBuffer lsegByteBuffer;
-        final ByteBuffer pathByteBuffer;
-        final ByteBuffer polygonByteBuffer;
-        if (TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.DECODERBUFS) {
-            boxByteBuffer = ByteBuffer.wrap("(1,1),(0,0)".getBytes());
-            circleByteBuffer = ByteBuffer.wrap("<(10,4),10>".getBytes());
-            lineByteBuffer = ByteBuffer.wrap("{-1,0,0}".getBytes());
-            lsegByteBuffer = ByteBuffer.wrap("[(0,0),(0,1)]".getBytes());
-            pathByteBuffer = ByteBuffer.wrap("((0,0),(0,1),(0,2))".getBytes());
-            polygonByteBuffer = ByteBuffer.wrap("((0,0),(0,1),(1,0),(0,0))".getBytes());
-        }
-        else {
-            boxByteBuffer = ByteBuffer.wrap("(1.0,1.0),(0.0,0.0)".getBytes());
-            circleByteBuffer = ByteBuffer.wrap("<(10.0,4.0),10.0>".getBytes());
-            lineByteBuffer = ByteBuffer.wrap("{-1.0,0.0,0.0}".getBytes());
-            lsegByteBuffer = ByteBuffer.wrap("[(0.0,0.0),(0.0,1.0)]".getBytes());
-            pathByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(0.0,2.0))".getBytes());
-            polygonByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(1.0,0.0),(0.0,0.0))".getBytes());
-        }
-
-        List<SchemaAndValueField> expected = Arrays.asList(
-                new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("bit_base", Bits.builder(3).build(), new byte[]{ 5, 0 }),
-                new SchemaAndValueField("bit_alias", Bits.builder(3).build(), new byte[]{ 5, 0 }),
-                new SchemaAndValueField("smallint_base", SchemaBuilder.INT16_SCHEMA, (short) 1),
-                new SchemaAndValueField("smallint_alias", SchemaBuilder.INT16_SCHEMA, (short) 1),
-                new SchemaAndValueField("integer_base", SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("integer_alias", SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("bigint_base", SchemaBuilder.INT64_SCHEMA, 1000L),
-                new SchemaAndValueField("bigint_alias", SchemaBuilder.INT64_SCHEMA, 1000L),
-                new SchemaAndValueField("real_base", SchemaBuilder.FLOAT32_SCHEMA, 3.14f),
-                new SchemaAndValueField("real_alias", SchemaBuilder.FLOAT32_SCHEMA, 3.14f),
-                new SchemaAndValueField("float8_base", SchemaBuilder.FLOAT64_SCHEMA, 3.14),
-                new SchemaAndValueField("float8_alias", SchemaBuilder.FLOAT64_SCHEMA, 3.14),
-                new SchemaAndValueField("numeric_base", SpecialValueDecimal.builder(DecimalMode.DOUBLE, 4, 2).build(), 1234.12),
-                new SchemaAndValueField("numeric_alias", SpecialValueDecimal.builder(DecimalMode.DOUBLE, 4, 2).build(), 1234.12),
-                new SchemaAndValueField("bool_base", SchemaBuilder.BOOLEAN_SCHEMA, true),
-                new SchemaAndValueField("bool_alias", SchemaBuilder.BOOLEAN_SCHEMA, true),
-                new SchemaAndValueField("string_base", SchemaBuilder.STRING_SCHEMA, "hello"),
-                new SchemaAndValueField("string_alias", SchemaBuilder.STRING_SCHEMA, "hello"),
-                new SchemaAndValueField("date_base", Date.builder().build(), Date.toEpochDay(LocalDate.parse("2019-10-02"), null)),
-                new SchemaAndValueField("date_alias", Date.builder().build(), Date.toEpochDay(LocalDate.parse("2019-10-02"), null)),
-                new SchemaAndValueField("time_base", MicroTime.builder().build(), LocalTime.parse("01:02:03").toNanoOfDay() / 1_000),
-                new SchemaAndValueField("time_alias", MicroTime.builder().build(), LocalTime.parse("01:02:03").toNanoOfDay() / 1_000),
-                new SchemaAndValueField("timetz_base", ZonedTime.builder().build(), "01:02:03.123789Z"),
-                new SchemaAndValueField("timetz_alias", ZonedTime.builder().build(), "01:02:03.123789Z"),
-                new SchemaAndValueField("timestamp_base", MicroTimestamp.builder().build(), asEpochMicros("2019-10-02T01:02:03.123456")),
-                new SchemaAndValueField("timestamp_alias", MicroTimestamp.builder().build(), asEpochMicros("2019-10-02T01:02:03.123456")),
-                new SchemaAndValueField("timestamptz_base", ZonedTimestamp.builder().build(), "2019-10-02T11:51:30.123456Z"),
-                new SchemaAndValueField("timestamptz_alias", ZonedTimestamp.builder().build(), "2019-10-02T11:51:30.123456Z"),
-                new SchemaAndValueField("timewottz_base", MicroTime.builder().build(), LocalTime.parse("01:02:03").toNanoOfDay() / 1_000),
-                new SchemaAndValueField("timewottz_alias", MicroTime.builder().build(), LocalTime.parse("01:02:03").toNanoOfDay() / 1_000),
-                new SchemaAndValueField("interval_base", MicroDuration.builder().build(),
-                        MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, MicroDuration.DAYS_PER_MONTH_AVG)),
-                new SchemaAndValueField("interval_alias", MicroDuration.builder().build(),
-                        MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, MicroDuration.DAYS_PER_MONTH_AVG)),
-                new SchemaAndValueField("box_base", SchemaBuilder.BYTES_SCHEMA, boxByteBuffer),
-                new SchemaAndValueField("box_alias", SchemaBuilder.BYTES_SCHEMA, boxByteBuffer),
-                new SchemaAndValueField("circle_base", SchemaBuilder.BYTES_SCHEMA, circleByteBuffer),
-                new SchemaAndValueField("circle_alias", SchemaBuilder.BYTES_SCHEMA, circleByteBuffer),
-                new SchemaAndValueField("line_base", SchemaBuilder.BYTES_SCHEMA, lineByteBuffer),
-                new SchemaAndValueField("line_alias", SchemaBuilder.BYTES_SCHEMA, lineByteBuffer),
-                new SchemaAndValueField("lseg_base", SchemaBuilder.BYTES_SCHEMA, lsegByteBuffer),
-                new SchemaAndValueField("lseg_alias", SchemaBuilder.BYTES_SCHEMA, lsegByteBuffer),
-                new SchemaAndValueField("path_base", SchemaBuilder.BYTES_SCHEMA, pathByteBuffer),
-                new SchemaAndValueField("path_alias", SchemaBuilder.BYTES_SCHEMA, pathByteBuffer),
-                new SchemaAndValueField("point_base", Point.builder().build(), Point.createValue(Point.builder().build(), 1, 1)),
-                new SchemaAndValueField("point_alias", Point.builder().build(), Point.createValue(Point.builder().build(), 1, 1)),
-                new SchemaAndValueField("polygon_base", SchemaBuilder.BYTES_SCHEMA, polygonByteBuffer),
-                new SchemaAndValueField("polygon_alias", SchemaBuilder.BYTES_SCHEMA, polygonByteBuffer),
-                new SchemaAndValueField("char_base", SchemaBuilder.STRING_SCHEMA, "a"),
-                new SchemaAndValueField("char_alias", SchemaBuilder.STRING_SCHEMA, "a"),
-                new SchemaAndValueField("text_base", SchemaBuilder.STRING_SCHEMA, "Hello World"),
-                new SchemaAndValueField("text_alias", SchemaBuilder.STRING_SCHEMA, "Hello World"),
-                new SchemaAndValueField("json_base", Json.builder().build(), "{\"key\": \"value\"}"),
-                new SchemaAndValueField("json_alias", Json.builder().build(), "{\"key\": \"value\"}"),
-                new SchemaAndValueField("xml_base", Xml.builder().build(), "<foo>Hello</foo>"),
-                new SchemaAndValueField("xml_alias", Xml.builder().build(), "<foo>Hello</foo>"),
-                new SchemaAndValueField("uuid_base", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),
-                new SchemaAndValueField("uuid_alias", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),
-                new SchemaAndValueField("varbit_base", Bits.builder(3).build(), new byte[]{ 5, 0 }),
-                new SchemaAndValueField("varbit_alias", Bits.builder(3).build(), new byte[]{ 5, 0 }),
-                new SchemaAndValueField("inet_base", SchemaBuilder.STRING_SCHEMA, "192.168.0.1"),
-                new SchemaAndValueField("inet_alias", SchemaBuilder.STRING_SCHEMA, "192.168.0.1"),
-                new SchemaAndValueField("cidr_base", SchemaBuilder.STRING_SCHEMA, "192.168.0.0/24"),
-                new SchemaAndValueField("cidr_alias", SchemaBuilder.STRING_SCHEMA, "192.168.0.0/24"),
-                new SchemaAndValueField("macaddr_base", SchemaBuilder.STRING_SCHEMA, "08:00:2b:01:02:03"),
-                new SchemaAndValueField("macaddr_alias", SchemaBuilder.STRING_SCHEMA, "08:00:2b:01:02:03"));
-
-        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertRecordSchemaAndValues(schemasAndValuesForDomainAliasTypes(true), rec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();
     }
 

@@ -151,10 +151,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         int oidValue = column.nativeType();
-        return schemaBuilder(oidValue, column);
-    }
-
-    private SchemaBuilder schemaBuilder(int oidValue, Column column) {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.BIT_ARRAY:
@@ -319,10 +315,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         int oidValue = column.nativeType();
-        return converter(oidValue, column, fieldDefn);
-    }
-
-    private ValueConverter converter(int oidValue, Column column, Field fieldDefn) {
         switch (oidValue) {
             case PgOid.BIT:
             case PgOid.VARBIT:
@@ -917,55 +909,5 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return toastPlaceholderString;
         }
         return super.convertString(column, fieldDefn, data);
-    }
-
-    /**
-     *
-     * @param column
-     * @return
-     */
-    @Override
-    protected SchemaBuilder distinctSchema(Column column) {
-        return schemaBuilder(getColumnWithDomainJdbcType(column, typeRegistry.get(column.nativeType())));
-    }
-
-    /**
-     * Provides a ValueConverter that properly resolves the domain type to base type for data of a given column
-     *
-     * @param column the column definition; never null
-     * @param fieldDefn the field definition; never null
-     * @return the value converter to convert the supplied data
-     */
-    @Override
-    protected ValueConverter convertDistinct(Column column, Field fieldDefn) {
-        return converter(getColumnWithDomainJdbcType(column, typeRegistry.get(column.nativeType())), fieldDefn);
-    }
-
-    /**
-     * For a given column and type, traverse type hierarchy and return a column based on base type's JDBC type
-     *
-     * @param column the column
-     * @param postgresType the column's postgres type
-     * @return A new {@link Column} instance with appropriate native JDBC type
-     */
-    private static Column getColumnWithDomainJdbcType(Column column, PostgresType postgresType) {
-        PostgresType baseType = postgresType;
-        while (!baseType.isBaseType()) {
-            baseType = baseType.getBaseType();
-        }
-
-        // This is necessary for situations where PostgresValueConverter delegates schema and converter resolution
-        // to JdbcValueConverters where the resolution is based on the column's jdbcType. For columns that use
-        // domain alias types, this is the OID to the alias type, not the actual base type.
-        //
-        // For example:
-        // CREATE DOMAIN bool2 bool default false;
-        // CREATE TABLE (pk serial, data bool2 not null);
-        //
-        // This guarantees that when the data column's schema and value converter is resolved, it's based on the
-        // fact the resolved base type is bool, not some oid that resolves to an unhandled type.
-        //
-        // Perhaps there are better ways - TBD.
-        return column.edit().jdbcType(baseType.getJdbcId()).nativeType(baseType.getOid()).create();
     }
 }
