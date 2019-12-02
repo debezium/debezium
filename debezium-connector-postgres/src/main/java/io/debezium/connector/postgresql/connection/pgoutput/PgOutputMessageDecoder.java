@@ -113,6 +113,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             LOGGER.trace("Message Type: {}", type);
             switch (type) {
                 case TRUNCATE:
+                    // @formatter:off
                     // For now we plan to gracefully skip TRUNCATE messages.
                     // We may decide in the future that these may be emitted differently, see DBZ-1052.
                     //
@@ -127,6 +128,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     // It seems the protocol guarantees to send the most up-to-date `R` relation
                     // messages for the tables prior to the `T` truncation message, even if in the
                     // same session a `R` message was followed by an insert/update/delete message.
+                    // @formatter:on
                 case COMMIT:
                     // For now skip these message types so that the LSN associated with the message won't
                     // be flushed back to PostgreSQL. There is a potential LSN assignment concern with
@@ -477,8 +479,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         for (ColumnMetaData columnMetadata : metadata.getColumns()) {
             ColumnEditor editor = io.debezium.relational.Column.editor()
                     .name(columnMetadata.getColumnName())
-                    .jdbcType(columnMetadata.getPostgresType().getJdbcId())
-                    .nativeType(columnMetadata.getPostgresType().getOid())
+                    .jdbcType(columnMetadata.getPostgresType().getRootType().getJdbcId())
+                    .nativeType(columnMetadata.getPostgresType().getRootType().getOid())
                     .optional(columnMetadata.isOptional())
                     .type(columnMetadata.getPostgresType().getName(), columnMetadata.getTypeName())
                     .length(columnMetadata.getLength())
