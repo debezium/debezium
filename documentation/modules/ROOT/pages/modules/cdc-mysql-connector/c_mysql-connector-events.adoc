@@ -360,6 +360,7 @@ CREATE TABLE customers (
 
 === Delete change event value
 
+[source,json]
 ----
 {
   "schema": { ... },
