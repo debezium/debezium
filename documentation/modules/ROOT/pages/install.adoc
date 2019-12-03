@@ -72,7 +72,7 @@ Debezium uses (either via Kafka Connect or directly) multiple topics for storing
 The topics have to be either created by an administrator or by Kafka itself by enabling auto-creation for topics.
 There are certain limitations and recommendations which apply to topics:
 
-* Database history topic (for MySQL connector)
+* Database history topic (for the Debezium connectors for MySQL and SQL Server)
 ** Infinite (or very long) retention (no compaction!)
 ** Replication factor at least 3 for production
 ** Single partition
