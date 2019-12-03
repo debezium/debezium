@@ -244,7 +244,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
         return capturedTables
                 .stream()
                 .sorted()
-                .collect(Collectors.toCollection(HashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void determineCapturedTables(SnapshotContext ctx) throws Exception {
