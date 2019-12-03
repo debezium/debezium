@@ -6,11 +6,14 @@
 
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SERVER_TIMEZONE;
+
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -39,6 +42,7 @@ import io.debezium.util.BoundedConcurrentHashMap;
  *
  */
 public class SqlServerConnection extends JdbcConnection {
+    public static final String SERVER_TIMEZONE_PROP_NAME = "server.timezone";
 
     private static final String GET_DATABASE_NAME = "SELECT db_name()";
 
@@ -66,6 +70,7 @@ public class SqlServerConnection extends JdbcConnection {
      * actual name of the database, which could differ in casing from the database name given in the connector config.
      */
     private final String realDatabaseName;
+    private final ZoneId transactionTimezone;
 
     public static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
@@ -83,6 +88,7 @@ public class SqlServerConnection extends JdbcConnection {
         super(config, FACTORY);
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
+        transactionTimezone = retrieveTransactionTimezone();
     }
 
     /**
@@ -186,7 +192,7 @@ public class SqlServerConnection extends JdbcConnection {
             statement.setBytes(1, lsn.getBinary());
         }, singleResultMapper(rs -> {
             final Timestamp ts = rs.getTimestamp(1);
-            final Instant ret = (ts == null) ? null : ts.toInstant();
+            final Instant ret = (ts == null) ? null : ts.toLocalDateTime().atZone(transactionTimezone).toInstant();
             LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
             if (ret != null) {
                 lsnToInstantCache.put(lsn, ret);
@@ -350,6 +356,11 @@ public class SqlServerConnection extends JdbcConnection {
 
     public String getRealDatabaseName() {
         return realDatabaseName;
+    }
+
+    private ZoneId retrieveTransactionTimezone() {
+        final String serverTimezoneConfig = config().getString(SERVER_TIMEZONE_PROP_NAME, SERVER_TIMEZONE.defaultValueAsString());
+        return serverTimezoneConfig == null ? ZoneId.systemDefault() : ZoneId.of(serverTimezoneConfig, ZoneId.SHORT_IDS);
     }
 
     private String retrieveRealDatabaseName() {

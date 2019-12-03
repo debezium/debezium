@@ -1367,6 +1367,16 @@ Note that this setting is not recommended and is planned for removal in a future
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
+|`database.server.timezone`
+|
+| Timezone of the server.
+
+This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset.
+
+When unset, default behavior is to use the client (debezium connector) timezone
+
+Possible values are any valid Java `ZoneId` on `ZoneId.SHORT_ID`
+
 |=======================
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.

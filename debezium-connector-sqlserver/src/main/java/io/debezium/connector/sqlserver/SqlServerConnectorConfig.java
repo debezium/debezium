@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.function.Predicate;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -260,6 +262,25 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("The name of the database the connector should be monitoring. When working with a "
                     + "multi-tenant set-up, must be set to the CDB name.");
 
+    public static final Field SERVER_TIMEZONE = Field.create(DATABASE_CONFIG_PREFIX + SqlServerConnection.SERVER_TIMEZONE_PROP_NAME)
+            .withDisplayName("Server timezone")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withValidation((config, field, problems) -> {
+                String value = config.getString(field);
+                if (value != null) {
+                    try {
+                        ZoneId.of(value, ZoneId.SHORT_IDS);
+                    } catch (DateTimeException e) {
+                        problems.accept(field, value, "The value must be a valid ZoneId");
+                        return 1;
+                    }
+                }
+                return 0;
+            })
+            .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
+                    + "Options include: Any valid Java ZoneId");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -300,6 +321,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             USER,
             PASSWORD,
             SNAPSHOT_MODE,
+            SERVER_TIMEZONE,
             RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
@@ -323,7 +345,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         ConfigDef config = new ConfigDef();
 
         Field.group(config, "SQL Server", SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
-                USER, PASSWORD, SNAPSHOT_MODE);
+                USER, PASSWORD, SNAPSHOT_MODE, SERVER_TIMEZONE);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
