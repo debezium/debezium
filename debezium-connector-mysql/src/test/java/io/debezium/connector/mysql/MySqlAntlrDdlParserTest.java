@@ -59,6 +59,23 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1645")
+    public void shouldUpdateAndRenameTable() {
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT, val2 INT)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        parser.parse("ALTER TABLE mytable DROP COLUMN val1, RENAME TO newtable", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "newtable");
+        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnWithName("val2")).isNotNull();
+    }
+
+    @Test
     @FixFor("DBZ-1560")
     public void shouldDropPrimaryKeyColumn() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, id2 INT, val INT)";
@@ -401,7 +418,7 @@ public class MySqlAntlrDdlParserTest {
         int numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel = 5;
         int numberOfAlterViewStatements = 6;
         int numberOfDroppedViews = 7;
-        assertThat(listener.total()).isEqualTo(58 - numberOfAlteredTablesWhichDoesNotExists - numberOfIndexesOnNonExistingTables
+        assertThat(listener.total()).isEqualTo(59 - numberOfAlteredTablesWhichDoesNotExists - numberOfIndexesOnNonExistingTables
                 - numberOfCreatedIndexesWhichNotMakeChangeOnTablesModel + numberOfAlterViewStatements + numberOfDroppedViews);
         listener.forEach(this::printEvent);
     }

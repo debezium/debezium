@@ -248,9 +248,9 @@ public class AlterTableParserListener extends MySqlParserBaseListener {
             final TableId newTableId = ctx.uid() != null
                     ? parser.resolveTableId(parser.currentSchema(), parser.parseName(ctx.uid()))
                     : parser.parseQualifiedTableId(ctx.fullId());
+            parser.databaseTables().overwriteTable(tableEditor.create());
             parser.databaseTables().renameTable(tableEditor.tableId(), newTableId);
-            // databaseTables are updated clear table editor so exitAlterTable will not update a table by table editor
-            tableEditor = null;
+            tableEditor = parser.databaseTables().editTable(newTableId);
         }, tableEditor);
         super.enterAlterByRename(ctx);
     }
