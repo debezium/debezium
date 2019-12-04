@@ -376,7 +376,7 @@ public class EventRouterTest {
         final SourceRecord userEventRouted = router.apply(userEventRecord);
 
         assertThat(userEventRouted).isNotNull();
-        assertThat(userEventRouted.topic()).isEqualTo("outbox.event.user");
+        assertThat(userEventRouted.topic()).isEqualTo("outbox.event.User");
 
         final SourceRecord userUpdatedEventRecord = createEventRecord(
                 "ab720dd3-176d-40a6-96f3-6cf961d7df6a",
@@ -387,7 +387,7 @@ public class EventRouterTest {
         final SourceRecord userUpdatedEventRouted = router.apply(userUpdatedEventRecord);
 
         assertThat(userUpdatedEventRouted).isNotNull();
-        assertThat(userUpdatedEventRouted.topic()).isEqualTo("outbox.event.user");
+        assertThat(userUpdatedEventRouted.topic()).isEqualTo("outbox.event.User");
 
         final SourceRecord addressCreatedEventRecord = createEventRecord(
                 "ab720dd3-176d-40a6-96f3-6cf961d7df6a",
@@ -398,7 +398,7 @@ public class EventRouterTest {
         final SourceRecord addressCreatedEventRouted = router.apply(addressCreatedEventRecord);
 
         assertThat(addressCreatedEventRouted).isNotNull();
-        assertThat(addressCreatedEventRouted.topic()).isEqualTo("outbox.event.address");
+        assertThat(addressCreatedEventRouted.topic()).isEqualTo("outbox.event.Address");
     }
 
     @Test
