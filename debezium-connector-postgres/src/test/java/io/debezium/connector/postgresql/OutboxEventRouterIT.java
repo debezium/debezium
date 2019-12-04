@@ -129,7 +129,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
 
         assertThat(routedEvent).isNotNull();
-        assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.User");
 
         Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
         assertThat(valueStruct.getString("eventType")).isEqualTo("UserCreated");
@@ -163,7 +163,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         SourceRecord routedEvent = outboxEventRouter.apply(newEventRecord);
 
         assertThat(routedEvent).isNotNull();
-        assertThat(routedEvent.topic()).isEqualTo("outbox.event.user");
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.User");
 
         Object value = routedEvent.value();
         assertThat(routedEvent.headers().lastWithName("eventType").value()).isEqualTo("UserCreated");
@@ -246,7 +246,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         assertConnectSchemasAreEqual(null, eventRouted.valueSchema(), expectedSchema);
 
         assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
-        assertThat(eventRouted.topic()).isEqualTo("outbox.event.useremail");
+        assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
         Headers headers = eventRouted.headers();
@@ -311,7 +311,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         // Validate metadata
         assertThat(eventRouted.valueSchema()).isNotNull();
         assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
-        assertThat(eventRouted.topic()).isEqualTo("outbox.event.useremail");
+        assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
         Headers headers = eventRouted.headers();
@@ -374,7 +374,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         // Validate metadata
         assertThat(eventRouted.valueSchema()).isNull();
         assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
-        assertThat(eventRouted.topic()).isEqualTo("outbox.event.useremail");
+        assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
         Headers headers = eventRouted.headers();
@@ -422,7 +422,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         // Validate metadata
         assertThat(eventRouted.valueSchema()).isNull();
-        assertThat(eventRouted.topic()).isEqualTo("outbox.event.useremail");
+        assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
         Headers headers = eventRouted.headers();

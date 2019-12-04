@@ -165,7 +165,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         }
 
         R newRecord = r.newRecord(
-                eventStruct.getString(routeByField).toLowerCase(),
+                eventStruct.getString(routeByField),
                 null,
                 Schema.STRING_SCHEMA,
                 defineRecordKey(eventStruct, payloadId),
