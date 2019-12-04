@@ -1232,6 +1232,16 @@ So far we've seen samples of _create_ and _update_ events. Now, let's look at _d
     mysql> DELETE FROM customers WHERE id=1004;
 ----
 
+[NOTE]
+====
+If the above command fails with a foreign key constraint violation, then you will have to remove the reference of the customer address from the _addresses_ table using the following statement:
+
+[source,sql,indent=0]
+----
+    mysql> DELETE FROM addresses WHERE customer_id=1004;
+----
+====
+
 In our terminal running `watch-topic`, we see _two_ new events:
 
 [source,json,indent=0,subs="attributes"]
