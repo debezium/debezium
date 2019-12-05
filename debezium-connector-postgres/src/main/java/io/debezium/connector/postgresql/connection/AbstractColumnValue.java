@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.connection;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -38,7 +39,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractColumnValue.class);
 
     @Override
-    public Object asLocalDate() {
+    public LocalDate asLocalDate() {
         return DateTimeFormat.get().date(asString());
     }
 
@@ -68,7 +69,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asBox() {
+    public PGbox asBox() {
         try {
             return new PGbox(asString());
         }
@@ -79,7 +80,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asCircle() {
+    public PGcircle asCircle() {
         try {
             return new PGcircle(asString());
         }
@@ -101,7 +102,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asLine() {
+    public PGline asLine() {
         try {
             return new PGline(asString());
         }
@@ -112,7 +113,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asLseg() {
+    public PGlseg asLseg() {
         try {
             return new PGlseg(asString());
         }
@@ -123,7 +124,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asMoney() {
+    public PGmoney asMoney() {
         try {
             return new PGmoney(asString());
         }
@@ -134,7 +135,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asPath() {
+    public PGpath asPath() {
         try {
             return new PGpath(asString());
         }
@@ -145,7 +146,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asPoint() {
+    public PGpoint asPoint() {
         try {
             return new PGpoint(asString());
         }
@@ -156,7 +157,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
-    public Object asPolygon() {
+    public PGpolygon asPolygon() {
         try {
             return new PGpolygon(asString());
         }

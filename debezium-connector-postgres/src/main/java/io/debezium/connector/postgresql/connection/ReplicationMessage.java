@@ -7,9 +7,18 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.util.List;
+
+import org.postgresql.geometric.PGbox;
+import org.postgresql.geometric.PGcircle;
+import org.postgresql.geometric.PGline;
+import org.postgresql.geometric.PGpath;
+import org.postgresql.geometric.PGpoint;
+import org.postgresql.geometric.PGpolygon;
+import org.postgresql.util.PGmoney;
 
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
@@ -83,7 +92,7 @@ public interface ReplicationMessage {
 
         Object asDecimal();
 
-        Object asLocalDate();
+        LocalDate asLocalDate();
 
         OffsetDateTime asOffsetDateTimeAtUtc();
 
@@ -97,23 +106,23 @@ public interface ReplicationMessage {
 
         byte[] asByteArray();
 
-        Object asBox();
+        PGbox asBox();
 
-        Object asCircle();
+        PGcircle asCircle();
 
         Object asInterval();
 
-        Object asLine();
+        PGline asLine();
 
         Object asLseg();
 
-        Object asMoney();
+        PGmoney asMoney();
 
-        Object asPath();
+        PGpath asPath();
 
-        Object asPoint();
+        PGpoint asPoint();
 
-        Object asPolygon();
+        PGpolygon asPolygon();
 
         boolean isArray(PostgresType type);
 

@@ -10,7 +10,7 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalTime;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
@@ -19,6 +19,7 @@ import java.util.Arrays;
 
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.jdbc.PgArray;
+import org.postgresql.util.PGmoney;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,9 +147,9 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     }
 
     @Override
-    public Object asLocalDate() {
+    public LocalDate asLocalDate() {
         if (value.hasDatumInt32()) {
-            return (long) value.getDatumInt32();
+            return LocalDate.ofEpochDay((long) value.getDatumInt32());
         }
 
         final String s = asString();
@@ -163,8 +164,7 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
 
         final String s = asString();
         if (s != null) {
-            LocalTime localTime = DateTimeFormat.get().time(s);
-            return Duration.of(localTime.toNanoOfDay(), ChronoUnit.NANOS);
+            return DateTimeFormat.get().time(s);
         }
         return null;
     }
@@ -205,16 +205,6 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     }
 
     @Override
-    public Object asBox() {
-        return asByteArray();
-    }
-
-    @Override
-    public Object asCircle() {
-        return asByteArray();
-    }
-
-    @Override
     public Object asInterval() {
         if (value.hasDatumDouble()) {
             return value.getDatumDouble();
@@ -225,30 +215,15 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     }
 
     @Override
-    public Object asLine() {
-        return asByteArray();
-    }
-
-    @Override
-    public Object asLseg() {
-        return asByteArray();
-    }
-
-    @Override
-    public Object asMoney() {
+    public PGmoney asMoney() {
         if (value.hasDatumInt64()) {
-            return value.getDatumInt64();
+            return new PGmoney(value.getDatumInt64() / 100.0);
         }
         return super.asMoney();
     }
 
     @Override
-    public Object asPath() {
-        return asByteArray();
-    }
-
-    @Override
-    public Object asPoint() {
+    public PGpoint asPoint() {
         if (value.hasDatumPoint()) {
             PgProto.Point datumPoint = datumPoint = value.getDatumPoint();
             return new PGpoint(datumPoint.getX(), datumPoint.getY());
@@ -257,11 +232,6 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
             return super.asPoint();
         }
         return null;
-    }
-
-    @Override
-    public Object asPolygon() {
-        return asByteArray();
     }
 
     @Override
