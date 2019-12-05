@@ -624,7 +624,7 @@ Please file a https://issues.jboss.org/browse/DBZ[JIRA issue] for any specific t
 [[character-values]]
 ==== Character Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped"]
+[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped code-wordbreak-col3  code-wordbreak-col4"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -661,7 +661,7 @@ Please file a https://issues.jboss.org/browse/DBZ[JIRA issue] for any specific t
 [[numeric-values]]
 ==== Numeric Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped"]
+[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped code-wordbreak-col3 code-wordbreak-col4"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -670,7 +670,7 @@ Please file a https://issues.jboss.org/browse/DBZ[JIRA issue] for any specific t
 
 |`NUMBER[(P[, *])]`
 |`STRUCT`
-|io.debezium.data.VariableScaleDecimal
+|`io.debezium.data.VariableScaleDecimal`
 |Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |`NUMBER(P, S > 0)`
@@ -717,17 +717,17 @@ If P - S >= 19, the column will be mapped to `BYTES` (`org.apache.kafka.connect{
 
 |`FLOAT[(P)]`
 |`STRUCT`
-|io.debezium.data.VariableScaleDecimal
+|`io.debezium.data.VariableScaleDecimal`
 |Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |`DOUBLE PRECISION`
 |`STRUCT`
-|io.debezium.data.VariableScaleDecimal
+|`io.debezium.data.VariableScaleDecimal`
 |Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |`REAL`
 |`STRUCT`
-|io.debezium.data.VariableScaleDecimal
+|`io.debezium.data.VariableScaleDecimal`
 |Contains a structure with two fields: `scale` of type `INT32` that contains the scale of the transferred value and `value` of type `BYTES` containing the original value in an unscaled form.
 
 |=======================
@@ -735,7 +735,7 @@ If P - S >= 19, the column will be mapped to `BYTES` (`org.apache.kafka.connect{
 [[temporal-values]]
 ==== Temporal Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped"]
+[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped code-wordbreak-col3  code-wordbreak-col4"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -1007,7 +1007,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
 |=======================
 |Property
 |Default
