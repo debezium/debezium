@@ -31,12 +31,15 @@ public class JsonSerdeConfig extends AbstractConfig {
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Enables user to choose which of Envelope provided fields should be desrialized as the payload.")
-            .withDefault("after")
+            .withDescription("Enables user to choose which of Envelope provided fields should be deserialized as the payload."
+                    + "If not set then the envelope is provided as is.")
             .withValidation(JsonSerdeConfig::isEnvelopeFieldName);
 
     private static int isEnvelopeFieldName(Configuration config, Field field, ValidationOutput problems) {
         final String fieldName = config.getString(field);
+        if (fieldName == null) {
+            return 0;
+        }
         if (!(Envelope.FieldName.AFTER.equals(fieldName) || Envelope.FieldName.BEFORE.equals(fieldName))) {
             problems.accept(field, fieldName, "Allowed values are 'before' or 'after'");
             return 1;
@@ -64,5 +67,9 @@ public class JsonSerdeConfig extends AbstractConfig {
 
     public String sourceField() {
         return sourceField;
+    }
+
+    public boolean asEnvelope() {
+        return sourceField == null;
     }
 }

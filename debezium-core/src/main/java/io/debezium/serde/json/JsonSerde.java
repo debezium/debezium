@@ -92,9 +92,12 @@ public class JsonSerde<T> implements Serde<T> {
 
             // Schema + payload format
             if (payload != null) {
-                return reader.readValue(payload.get(config.sourceField()));
+                node = payload;
             }
             // Debezium envelope
+            if (config.asEnvelope()) {
+                return reader.readValue(node);
+            }
             else if (node.has(Envelope.FieldName.SOURCE) && node.has(config.sourceField())) {
                 return reader.readValue(node.get(config.sourceField()));
             }
