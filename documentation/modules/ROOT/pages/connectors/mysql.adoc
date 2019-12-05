@@ -147,7 +147,7 @@ Also, the above grant is equivalent to specifying any authenticating client on _
 
 [IMPORTANT]
 ====
-When using the MySQL connector with https://aws.amazon.com/rds/mysql/[Amazon RDS], https://aws.amazon.com/rds/aurora/[Amazon Aurora (MySQL compatibility)], or any other server where the connector's database user is unable to obtain a global read lock, the database user must also have the `LOCK TABLES` permission. See the section on link:#snapshots-without-global-read-locks[snapshots without global read locks] and https://issues.jboss.org/projects/DBZ/issues/DBZ-140[DBZ-140] for additional details.
+When using the MySQL connector with https://aws.amazon.com/rds/mysql/[Amazon RDS], https://aws.amazon.com/rds/aurora/[Amazon Aurora (MySQL compatibility)], or any other server where the connector's database user is unable to obtain a global read lock, the database user must also have the `LOCK TABLES` permission. See the section on link:#snapshots-without-global-read-locks[snapshots without global read locks] and {jira-url}/browse/DBZ-140[DBZ-140] for additional details.
 ====
 
 [[supported-mysql-topologies]]

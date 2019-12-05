@@ -146,7 +146,7 @@ For example, consider a SQL Server installation with an `inventory` database tha
 
 === Schema change topic
 
-The user-facing schema change topic is not implemented yet (see https://issues.jboss.org/browse/DBZ-753[DBZ-753]).
+The user-facing schema change topic is not implemented yet (see {jira-url}/browse/DBZ-753[DBZ-753]).
 
 === Events
 
