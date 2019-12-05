@@ -17,6 +17,9 @@
           <excludes>
               <!-- Exclude dependencies of Kafka APIs, since they will be available in the runtime -->
               <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
+              <exclude>com.fasterxml.jackson.core:jackson-databind:*</exclude>
+              <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
+              <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
           </excludes>
       </dependencySet>
       <dependencySet>
