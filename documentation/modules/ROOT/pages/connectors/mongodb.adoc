@@ -203,7 +203,7 @@ The `schema` portion of the key contains a Kafka Connect schema describing what 
 This example used a document with an integer identifier, but any valid MongoDB document identifier (including documents) will work. The value of the `id` field in the payload will simply be a string representing a MongoDB extended JSON serialization (strict mode) of the original document's `_id` field. Find below a few examples showing how `_id` fields of
 different types will get encoded as the event key's payload:
 
-[options="header"]
+[options="header",role="code-wordbreak-col2 code-wordbreak-col3"]
 |==========================================
 |Type    |MongoDB `_id` Value|Key's payload
 |Integer |1234|`{ "id" : "1234" }`
@@ -583,7 +583,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
 |=======================
 |Property
 |Default
@@ -679,7 +679,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-[cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
 |=======================
 |Property
 |Default
