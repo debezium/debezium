@@ -6,6 +6,8 @@
 package io.debezium.serde;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.common.serialization.Serde;
@@ -14,9 +16,12 @@ import org.junit.Test;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.debezium.data.Envelope;
 import io.debezium.util.Testing;
 
 public class SerdeTest implements Testing {
+
+    private static final int FIELDS_IN_ENVELOPE = Envelope.ALL_FIELD_NAMES.size();
 
     private static final class CompositeKey {
         public int a;
@@ -122,17 +127,39 @@ public class SerdeTest implements Testing {
     @Test
     public void valuePayloadWithSchema() {
         final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
-        valueSerde.configure(Collections.emptyMap(), false);
+        valueSerde.configure(Collections.singletonMap("from.field", "after"), false);
         final String content = Testing.Files.readResourceAsString("json/serde-with-schema.json");
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void valueEnvelopeWithSchema() {
+        final Serde<HashMap> valueSerde = Serdes.payloadJson(HashMap.class);
+        valueSerde.configure(Collections.emptyMap(), false);
+        final String content = Testing.Files.readResourceAsString("json/serde-with-schema.json");
+        Map<String, String> envelope = valueSerde.deserializer().deserialize("xx", content.getBytes());
+        Assertions.assertThat(envelope).hasSize(FIELDS_IN_ENVELOPE);
+        Assertions.assertThat(envelope.get("op")).isEqualTo("c");
     }
 
     @Test
     public void valuePayloadWithoutSchema() {
         final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
-        valueSerde.configure(Collections.emptyMap(), false);
+        valueSerde.configure(Collections.singletonMap("from.field", "after"), false);
         final String content = Testing.Files.readResourceAsString("json/serde-without-schema.json");
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void valueEnvelopeWithoutSchema() {
+        final Serde<HashMap> valueSerde = Serdes.payloadJson(HashMap.class);
+        valueSerde.configure(Collections.emptyMap(), false);
+        final String content = Testing.Files.readResourceAsString("json/serde-without-schema.json");
+        Map<String, String> envelope = valueSerde.deserializer().deserialize("xx", content.getBytes());
+        Assertions.assertThat(envelope).hasSize(5);
+        Assertions.assertThat(envelope.get("op")).isEqualTo("c");
     }
 
     @Test

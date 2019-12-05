@@ -7,6 +7,7 @@ package io.debezium.serde;
 
 import org.apache.kafka.common.serialization.Serde;
 
+import io.debezium.annotation.Incubating;
 import io.debezium.serde.json.JsonSerde;
 
 /**
@@ -15,6 +16,7 @@ import io.debezium.serde.json.JsonSerde;
  * @author Jiri Pechanec
  *
  */
+@Incubating
 public class Serdes {
 
     public static <T> Serde<T> payloadJson(Class<T> objectType) {
