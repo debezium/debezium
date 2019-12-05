@@ -782,29 +782,12 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDomainAliasTypes(boolean streaming) {
-        // check with Jiri if we intend to have these differences
-        final ByteBuffer boxByteBuffer;
-        final ByteBuffer circleByteBuffer;
-        final ByteBuffer lineByteBuffer;
-        final ByteBuffer lsegByteBuffer;
-        final ByteBuffer pathByteBuffer;
-        final ByteBuffer polygonByteBuffer;
-        if (streaming && TestHelper.decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.DECODERBUFS) {
-            boxByteBuffer = ByteBuffer.wrap("(1,1),(0,0)".getBytes());
-            circleByteBuffer = ByteBuffer.wrap("<(10,4),10>".getBytes());
-            lineByteBuffer = ByteBuffer.wrap("{-1,0,0}".getBytes());
-            lsegByteBuffer = ByteBuffer.wrap("[(0,0),(0,1)]".getBytes());
-            pathByteBuffer = ByteBuffer.wrap("((0,0),(0,1),(0,2))".getBytes());
-            polygonByteBuffer = ByteBuffer.wrap("((0,0),(0,1),(1,0),(0,0))".getBytes());
-        }
-        else {
-            boxByteBuffer = ByteBuffer.wrap("(1.0,1.0),(0.0,0.0)".getBytes());
-            circleByteBuffer = ByteBuffer.wrap("<(10.0,4.0),10.0>".getBytes());
-            lineByteBuffer = ByteBuffer.wrap("{-1.0,0.0,0.0}".getBytes());
-            lsegByteBuffer = ByteBuffer.wrap("[(0.0,0.0),(0.0,1.0)]".getBytes());
-            pathByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(0.0,2.0))".getBytes());
-            polygonByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(1.0,0.0),(0.0,0.0))".getBytes());
-        }
+        final ByteBuffer boxByteBuffer = ByteBuffer.wrap("(1.0,1.0),(0.0,0.0)".getBytes());
+        final ByteBuffer circleByteBuffer = ByteBuffer.wrap("<(10.0,4.0),10.0>".getBytes());
+        final ByteBuffer lineByteBuffer = ByteBuffer.wrap("{-1.0,0.0,0.0}".getBytes());
+        final ByteBuffer lsegByteBuffer = ByteBuffer.wrap("[(0.0,0.0),(0.0,1.0)]".getBytes());
+        final ByteBuffer pathByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(0.0,2.0))".getBytes());
+        final ByteBuffer polygonByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(1.0,0.0),(0.0,0.0))".getBytes());
 
         return Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
@@ -831,7 +814,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("time_base", MicroTime.builder().build(), LocalTime.parse("01:02:03").toNanoOfDay() / 1_000),
                 new SchemaAndValueField("time_alias", MicroTime.builder().build(), LocalTime.parse("01:02:03").toNanoOfDay() / 1_000),
                 new SchemaAndValueField("timetz_base", ZonedTime.builder().build(), "01:02:03.123789Z"),
-                // new SchemaAndValueField("timetz_alias", ZonedTime.builder().build(), "01:02:03.123789Z"),
+                new SchemaAndValueField("timetz_alias", ZonedTime.builder().build(), "01:02:03.123789Z"),
                 new SchemaAndValueField("timestamp_base", MicroTimestamp.builder().build(), asEpochMicros("2019-10-02T01:02:03.123456")),
                 new SchemaAndValueField("timestamp_alias", MicroTimestamp.builder().build(), asEpochMicros("2019-10-02T01:02:03.123456")),
                 new SchemaAndValueField("timestamptz_base", ZonedTimestamp.builder().build(), "2019-10-02T11:51:30.123456Z"),
