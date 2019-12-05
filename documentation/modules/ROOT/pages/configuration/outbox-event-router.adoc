@@ -143,9 +143,9 @@ In such case the field could be placed either in envelope or among other headers
 |The default regex to use within the RegexRouter, the default capture will allow to replace the routed field into a new topic name defined in `route.topic.replacement`
 
 |`route.topic.replacement`
-|`outbox.event{zwsp}.${routedByValue}`
+|`outbox.event{zwsp}.pass:[${routedByValue}]`
 |Router
-|The name of the topic in which the events will be routed, a replacement `${routedByValue}` is available which is the value of The column configured via `route.by.field`
+|The name of the topic in which the events will be routed, a replacement `pass:[${routedByValue}]` is available which is the value of The column configured via `route.by.field`
 
 |`route.tombstone.on.empty.payload`
 |`false`
