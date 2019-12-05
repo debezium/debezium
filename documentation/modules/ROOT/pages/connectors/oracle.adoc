@@ -11,7 +11,7 @@ Debezium's Oracle Connector can monitor and record all of the row-level changes 
 This connector is at an early stage of development and considered an incubating feature as of Debezium 0.8.
 It is not feature-complete and the structure of emitted CDC messages may change in future revisions.
 Most notably, the connector does not yet support changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
-(see https://issues.jboss.org/browse/DBZ-718[DBZ-718], scheduled for one of the upcoming 0.9.x releases).
+(see {jira-url}/browse/DBZ-718[DBZ-718], scheduled for one of the upcoming 0.9.x releases).
 It is supported though to capture tables newly added while the connector is running
 (provided the new table's name matches the connector's filter configuration).
 
@@ -22,7 +22,7 @@ As of Debezium 0.8, change events from Oracle are ingested using the https://doc
 In order to use this API and hence this connector, you need to have a license for the GoldenGate product
 (though it's not required that GoldenGate itself is installed).
 We are going to explore alternatives to using XStream in future Debezium 0.9.x releases, e.g. based on LogMiner and/or alternative solutions.
-Please track the https://issues.jboss.org/browse/DBZ-137[DBZ-137] JIRA issue and join the discussion if you are aware of potential other ways for ingesting change events from Oracle.
+Please track the {jira-url}/browse/DBZ-137[DBZ-137] JIRA issue and join the discussion if you are aware of potential other ways for ingesting change events from Oracle.
 
 [[setting-up-oracle]]
 == Setting up Oracle
@@ -145,7 +145,7 @@ exit;
 === Create an XStream Outbound Server
 
 Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
-(given the right privileges, this may be done automatically by the connector going forward, see https://issues.jboss.org/browse/DBZ-721[DBZ-721]):
+(given the right privileges, this may be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
 
 [source,indent=0]
 ----
@@ -246,7 +246,7 @@ After restart, the connector will resume from the offset (SCN) where it left off
 [[schema-change-topic]]
 === Schema Change Topic
 
-The user-facing schema change topic is not implemented yet (see https://issues.jboss.org/browse/DBZ-753[DBZ-753]).
+The user-facing schema change topic is not implemented yet (see {jira-url}/browse/DBZ-753[DBZ-753]).
 
 [[events]]
 === Events
@@ -619,7 +619,7 @@ Here, the _literal type_ describes how the value is literally represented using 
 The _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
 
 Support for further data types will be added in subsequent releases.
-Please file a https://issues.jboss.org/browse/DBZ[JIRA issue] for any specific types you are missing.
+Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are missing.
 
 [[character-values]]
 ==== Character Values

@@ -12,4 +12,4 @@ If you're trying to get your head around what Debezium is or how it works, we re
 
 == Feedback
 
-If you have questions about the documentation, or discover any issues that need to be fixed, open an issue link:https://issues.jboss.org[here].
+If you have questions about the documentation, or discover any issues that need to be fixed, open an issue link:{jira-url}[here].

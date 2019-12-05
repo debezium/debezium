@@ -11,3 +11,4 @@
 :install-version: 1.0
 :confluent-platform-version: 5.1.2
 :strimzi-version: 0.13.0
+:jira-url: https://issues.redhat.com

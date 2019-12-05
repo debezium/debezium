@@ -21,7 +21,7 @@ This SMT does *not* support the MongoDB connector.
 The Outbox Event Router SMT has the intent to provide out-of-the-box support for the Outbox Pattern.
 For more information on why and how the Outbox Pattern is used please refer our blog post link:/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange With the Outbox Pattern].
 
-For more implementation details please refer to the https://issues.jboss.org/browse/DBZ-1169[Outbox SMT Design].
+For more implementation details please refer to the {jira-url}/browse/DBZ-1169[Outbox SMT Design].
 
 A working example can also be found at our https://github.com/debezium/debezium-examples[Examples Repository] in the https://github.com/debezium/debezium-examples/tree/master/outbox[`outbox` directory].
 
