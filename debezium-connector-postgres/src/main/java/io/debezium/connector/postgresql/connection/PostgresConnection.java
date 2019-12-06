@@ -468,7 +468,7 @@ public class PostgresConnection extends JdbcConnection {
             column.jdbcType(nativeType.getRootType().getJdbcId());
 
             // For domain types, the postgres driver is unable to traverse a nested unbounded
-            // hierarchy of types and report the right length/scale of a given type.  We use
+            // hierarchy of types and report the right length/scale of a given type. We use
             // the TypeRegistry to accomplish this since it is capable of traversing the type
             // hierarchy upward to resolve length/scale regardless of hierarchy depth.
             if (TypeRegistry.DOMAIN_TYPE == nativeType.getJdbcId()) {
