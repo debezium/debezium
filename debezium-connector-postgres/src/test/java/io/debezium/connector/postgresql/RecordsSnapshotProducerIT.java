@@ -34,7 +34,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
-import org.junit.ComparisonFailure;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -716,12 +715,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
     }
 
-    @Test(expected = ComparisonFailure.class)
     @FixFor("DBZ-1413")
-    public void shouldNotSnapshotNestedDomainAliasTypeModifiersNotPropagated() throws Exception {
-        // The pgjdbc driver does not currently provide support for type modifier resolution
-        // when a domain type extends an existing domain type that extends a base type using
-        // explicit type modifiers.
+    public void shouldSnapshotNestedDomainAliasTypeModifiersNotPropagated() throws Exception {
         TestHelper.execute("CREATE DOMAIN varbit2 AS varbit(3);");
         TestHelper.execute("CREATE DOMAIN varbit2b AS varbit2;");
         TestHelper.execute("CREATE TABLE alias_table (pk SERIAL, value varbit2b NOT NULL, PRIMARY KEY (pk));");

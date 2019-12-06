@@ -1215,7 +1215,7 @@ public class JdbcConnection implements AutoCloseable {
         }
     }
 
-    private static boolean isNullable(int jdbcNullable) {
+    protected static boolean isNullable(int jdbcNullable) {
         return jdbcNullable == ResultSetMetaData.columnNullable || jdbcNullable == ResultSetMetaData.columnNullableUnknown;
     }
 
