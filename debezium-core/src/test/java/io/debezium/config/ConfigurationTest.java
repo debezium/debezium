@@ -145,7 +145,6 @@ public class ConfigurationTest {
         assertThat(ddlFilter.test("FLUSH RELAY LOGS")).isTrue();
     }
 
-
     @Test
     @FixFor("DBZ-1015")
     public void testMsgKeyColumnsField() {
