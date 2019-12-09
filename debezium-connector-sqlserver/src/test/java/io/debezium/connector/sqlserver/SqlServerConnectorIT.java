@@ -615,7 +615,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final int TABLES = 1;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo.tableb")
                 .build();
         connection.execute(
@@ -688,7 +688,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         connection.execute("ALTER TABLE table_a ADD blacklisted_column varchar(30)");
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.table_a.blacklisted_column")
                 .build();
 
@@ -733,7 +733,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "blacklist_column_table_b");
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.COLUMN_BLACKLIST, "dbo.blacklist_column_table_a.amount")
                 .build();
 
@@ -792,7 +792,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-964")
     public void shouldPropagateDatabaseDriverProperties() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with("database.applicationName", "Debezium App DBZ-964")
                 .build();
 
