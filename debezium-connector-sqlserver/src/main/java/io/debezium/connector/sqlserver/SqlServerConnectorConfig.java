@@ -16,6 +16,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
+import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
@@ -52,8 +53,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         *
+         * @deprecated to be removed in 1.1; use {@link #INITIAL_SCHEMA} instead.
          */
-        INITIAL_SCHEMA_ONLY("initial_schema_only", false);
+        @Deprecated
+        INITIAL_SCHEMA_ONLY("initial_schema_only", false),
+
+        /**
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         */
+        SCHEMA_ONLY("schema_only", false);
 
         private final String value;
         private final boolean includeData;
@@ -248,12 +257,13 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withValidation(SqlServerConnectorConfig::validateSnapshotMode)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'initial_schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
 
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
@@ -338,6 +348,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
     }
@@ -405,6 +416,27 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     @Override
     public String getContextName() {
         return Module.contextName();
+    }
+
+    /**
+     * Validate the time.precision.mode configuration.
+     *
+     * If {@code adaptive} is specified, this option has the potential to cause overflow which is why the
+     * option was deprecated and no longer supported for this connector.
+     */
+    private static int validateSnapshotMode(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(SNAPSHOT_MODE.name())) {
+            final String snapshotMode = config.getString(SNAPSHOT_MODE.name());
+            if (SnapshotMode.INITIAL_SCHEMA_ONLY.value.equals(snapshotMode)) {
+                // this will be logged as ERROR, but returning 0 doesn't prevent start-up
+                problems.accept(SNAPSHOT_MODE, snapshotMode,
+                        "The 'initial_schema_only' snapshot.mode is no longer supported and will be removed in a future revision. Use 'schema_only' instead.");
+                return 0;
+            }
+        }
+
+        // Everything checks out ok.
+        return 0;
     }
 
 }
