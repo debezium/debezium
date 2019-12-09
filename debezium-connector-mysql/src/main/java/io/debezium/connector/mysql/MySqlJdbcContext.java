@@ -39,8 +39,10 @@ public class MySqlJdbcContext implements AutoCloseable {
     protected static final String JDBC_PROPERTY_LEGACY_DATETIME = "useLegacyDatetimeCode";
 
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
+    private static final String SQL_SHOW_SLAVE_STATUS = "SHOW SLAVE STATUS";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
+    private static final String COLUMN_REPLICATE_IGNORE_TABLE = "Replicate_Ignore_Table";
 
     protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(MYSQL_CONNECTION_URL);
 
@@ -309,6 +311,36 @@ public class MySqlJdbcContext implements AutoCloseable {
         // Read the system variables from the MySQL instance and get the current database name ...
         logger.debug("Reading MySQL system variables");
         return querySystemVariables(SQL_SHOW_SYSTEM_VARIABLES);
+    }
+
+    /**
+     * Fetch slave status and retrieve Replication-Ignore-Table column values.
+     *
+     * @return the Replication-Ignore-Table variable if it is present else return null
+     */
+    protected String readMySqlReplicationIgnoreTableVariable() {
+        // Read the system Slave Status from the MySQL instance tables to ignore for replication database name ...
+        logger.debug("Reading MySQL Replication-Ignore-Table variable");
+        Map<String, String> slaveStatusMap = new HashMap<>();
+        try {
+            start();
+            jdbc.connect().query(SQL_SHOW_SLAVE_STATUS, rs -> {
+                while (rs.next()) {
+                    int columnIndex = rs.findColumn(COLUMN_REPLICATE_IGNORE_TABLE);
+                    String value = rs.getString(columnIndex);
+                    if (value != null && !value.trim().equals("")) {
+                        slaveStatusMap.put(COLUMN_REPLICATE_IGNORE_TABLE, value);
+                        logger.debug("\t{} = {}",
+                                Strings.pad(COLUMN_REPLICATE_IGNORE_TABLE, 45, ' '),
+                                Strings.pad(value, 45, ' '));
+                    }
+                }
+            });
+        }
+        catch (SQLException e) {
+            logger.debug("Doesn't have {} to ignore for replication", COLUMN_REPLICATE_IGNORE_TABLE);
+        }
+        return slaveStatusMap.get(COLUMN_REPLICATE_IGNORE_TABLE);
     }
 
     private Map<String, String> querySystemVariables(String statement) {
