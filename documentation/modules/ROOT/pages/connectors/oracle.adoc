@@ -225,7 +225,7 @@ Once the Oracle connector does complete its initial snapshot, it continues strea
 ensuring that it does not miss any updates that occurred while the snapshot was taken.
 If the connector stops again for any reason, upon restart it will simply continue streaming changes from where it previously left off.
 
-A second snapshotting mode is *initial_schema_only*.
+A second snapshotting mode is *schema_only*.
 In this case step 6 from the snapshotting routine described above won't be applied.
 I.e. the connector will still capture the structure of the relevant tables, but it won't create any `READ` events representing the complete dataset at the point of connector start-up.
 This can be useful if you're only interested in any data changes from now onwards but not the complete current state of all records.
@@ -1067,7 +1067,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |`snapshot.mode`
 |_initial_
-|A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _initial_schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
+|A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
 
 |`table.whitelist`
 |_empty string_
