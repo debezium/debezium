@@ -2,6 +2,50 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.0.CR1
+December 14th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343169)
+
+### New features since 1.0.0.Beta3
+
+* Transaction level TRANSACTION_READ_COMMITTED not implemented [DBZ-1480](https://issues.jboss.org/browse/DBZ-1480)
+* Provide change event JSON Serde for Kafka Streams [DBZ-1533](https://issues.jboss.org/browse/DBZ-1533)
+* Provide MongoDB 4.2 image [DBZ-1626](https://issues.jboss.org/browse/DBZ-1626)
+* Support PostgreSQL enum types [DBZ-920](https://issues.jboss.org/browse/DBZ-920)
+* Upgrade container images to Java 11 [DBZ-969](https://issues.jboss.org/browse/DBZ-969)
+* Support MongoDB 4.0 transaction [DBZ-1215](https://issues.jboss.org/browse/DBZ-1215)
+* Make connection timeout configurable in MySQL connection URL [DBZ-1632](https://issues.jboss.org/browse/DBZ-1632)
+* Support for arrays of uuid [DBZ-1637](https://issues.jboss.org/browse/DBZ-1637)
+* Add test matrix for SQL Server [DBZ-1644](https://issues.jboss.org/browse/DBZ-1644)
+
+
+### Breaking changes since 1.0.0.Beta3
+
+* Consolidate configuration parameters [DBZ-585](https://issues.jboss.org/browse/DBZ-585)
+
+
+### Fixes since 1.0.0.Beta3
+
+* Empty history topic treated as not existing [DBZ-1201](https://issues.jboss.org/browse/DBZ-1201)
+* Incorrect handling of type alias [DBZ-1413](https://issues.jboss.org/browse/DBZ-1413)
+* Blacklisted columns are not being filtered out when generating a Kafka message from a CDC event [DBZ-1617](https://issues.jboss.org/browse/DBZ-1617)
+* IoUtil Bugfix [DBZ-1621](https://issues.jboss.org/browse/DBZ-1621)
+* VariableLatch Bugfix [DBZ-1622](https://issues.jboss.org/browse/DBZ-1622)
+* The oracle connector scans too many objects while attempting to determine the most recent ddl time [DBZ-1631](https://issues.jboss.org/browse/DBZ-1631)
+* Connector does not update its state correctly when processing compound ALTER statement [DBZ-1645](https://issues.jboss.org/browse/DBZ-1645)
+* Outbox event router shouldn't lower-case topic names [DBZ-1648](https://issues.jboss.org/browse/DBZ-1648)
+
+
+### Other changes since 1.0.0.Beta3
+
+* Merge the code for upscaling decimal values with scale lower than defined [DBZ-825](https://issues.jboss.org/browse/DBZ-825)
+* Make Debezium project Java 11 compatible [DBZ-1402](https://issues.jboss.org/browse/DBZ-1402)
+* Run SourceClear [DBZ-1602](https://issues.jboss.org/browse/DBZ-1602)
+* Extend MySQL to test Enum with column.propagate.source.type [DBZ-1636](https://issues.jboss.org/browse/DBZ-1636)
+* Sticky ToC hides tables in PG connector docs [DBZ-1652](https://issues.jboss.org/browse/DBZ-1652)
+* Antora generates build warning  [DBZ-1654](https://issues.jboss.org/browse/DBZ-1654)
+
+
+
 ## 1.0.0.Beta3
 November 14th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343094)
 
