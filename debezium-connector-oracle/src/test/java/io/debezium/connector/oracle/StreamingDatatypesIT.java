@@ -36,7 +36,7 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_WHITELIST, whitelistedTables)
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);

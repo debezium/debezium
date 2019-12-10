@@ -370,7 +370,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldReadChangeStreamForExistingTable() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(OracleConnector.class, config);
@@ -460,7 +460,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void deleteWithoutTombstone() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(RelationalDatabaseConnectorConfig.TABLE_WHITELIST, "ORCLPDB1\\.DEBEZIUM\\.CUSTOMER")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 
