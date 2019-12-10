@@ -114,3 +114,16 @@ BEGIN
 	RETURN '12345';
 END; -- //-- delimiter ;
 #end
+#begin
+-- Create function
+CREATE FUNCTION `uuidToBinary`(_uuid BINARY(36)) RETURNS binary(16)
+    DETERMINISTIC
+    SQL SECURITY INVOKER
+RETURN
+  UNHEX(CONCAT(
+            SUBSTR(_uuid, 15, 4),
+            SUBSTR(_uuid, 10, 4),
+            SUBSTR(_uuid,  1, 8),
+            SUBSTR(_uuid, 20, 4),
+            SUBSTR(_uuid, 25) ))
+#end
