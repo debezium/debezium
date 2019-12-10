@@ -17,11 +17,9 @@ matrixJob('debezium-mysql-matrix-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH', '*/master', 'A branch/tag from which Debezium is built')
-    }
-
-    scm {
-        git('$REPOSITORY', '$BRANCH')
+        stringParam('BRANCH', 'master', 'A branch/tag from which Debezium is built')
+        stringParam('SOURCE_URL', "", "URL to productised sources")
+        booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }
 
     triggers {
@@ -29,6 +27,8 @@ matrixJob('debezium-mysql-matrix-test') {
     }
 
     wrappers {
+        preBuildCleanup()
+
         timeout {
             noActivity(1200)
         }
@@ -45,8 +45,31 @@ matrixJob('debezium-mysql-matrix-test') {
     }
 
     steps {
-        maven {
-            goals('clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae -Dmaven.test.failure.ignore=true -Dversion.mysql.server=$MYSQL_VERSION -Dmysql.port=4301 -Dmysql.replica.port=4301 -Dmysql.gtid.port=4302 -Dmysql.gtid.replica.port=4303 -P$PROFILE')
-        }
+        shell('''
+# Ensure WS cleaup
+ls -A1 | xargs rm -rf
+
+# Retrieve sources
+if [ "$PRODUCT_BUILD" == true ] ; then
+    PROFILE_PROD="pnc"
+    curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
+else
+    PROFILE_PROD="none"
+    git clone $REPOSITORY . 
+    git checkout $BRANCH
+fi
+
+# Run maven build
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae \
+    -Dmaven.test.failure.ignore=true \
+    -Dversion.mysql.server=$MYSQL_VERSION \
+    -Dmysql.port=4301 \
+    -Dmysql.replica.port=4301 \
+    -Dmysql.gtid.port=4302 \
+    -Dmysql.gtid.replica.port=4303 \
+    -P$PROFILE \
+    -Dinsecure.repositories=WARN \
+    -P$PROFILE_PROD
+''')
     }
 }

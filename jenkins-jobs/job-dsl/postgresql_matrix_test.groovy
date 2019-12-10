@@ -22,11 +22,9 @@ matrixJob('debezium-postgresql-matrix-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH', '*/master', 'A branch/tag from which Debezium is built')
-    }
-
-    scm {
-        git('$REPOSITORY', '$BRANCH')
+        stringParam('BRANCH', 'master', 'A branch/tag from which Debezium is built')
+        stringParam('SOURCE_URL', "", "URL to productised sources")
+        booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }
 
     triggers {
@@ -34,20 +32,10 @@ matrixJob('debezium-postgresql-matrix-test') {
     }
 
     wrappers {
+        preBuildCleanup()
+
         timeout {
             noActivity(1200)
-        }
-        environmentVariables {
-            groovy(
-                '''
-                if (POSTGRES_VERSION.endsWith('alpine')) {
-                ['MAVEN_ARGS': '-Dpostgres.config.file=/usr/local/share/postgresql/postgresql.conf.sample']
-                }
-                else {
-                ['MAVEN_ARGS': '-Dnone']
-                }
-                '''
-            )
         }
     }
 
@@ -62,8 +50,37 @@ matrixJob('debezium-postgresql-matrix-test') {
     }
 
     steps {
-        maven {
-            goals('clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-postgres -am -fae -Dmaven.test.failure.ignore=true -Dpostgres.port=55432 -Dversion.postgres.server=$POSTGRES_VERSION -Ddecoder.plugin.name=$DECODER_PLUGIN -Dtest.argline="-Ddebezium.test.records.waittime=5" $MAVEN_ARGS')
-        }
+        shell('''
+# Ensure WS cleaup
+ls -A1 | xargs rm -rf
+
+# Retrieve sources
+if [ "$PRODUCT_BUILD" == true ] ; then
+    PROFILE_PROD="pnc"
+    curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
+else
+    PROFILE_PROD="none"
+    git clone $REPOSITORY . 
+    git checkout $BRANCH
+fi
+
+# Setup pg config for Alpine distributions
+if [[ $POSTGRES_VERSION =~ alpine$ ]] ; then
+    MAVEN_ARGS = "-Dpostgres.config.file=/usr/local/share/postgresql/postgresql.conf.sample"
+else
+    MAVEN_ARGS="-Dnone"
+fi
+                               
+# Run maven build
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mysql -am -fae \
+    -Dmaven.test.failure.ignore=true \
+    -Dpostgres.port=55432 \
+    -Dversion.postgres.server=$POSTGRES_VERSION \
+    -Ddecoder.plugin.name=$DECODER_PLUGIN \
+    -Dtest.argline="-Ddebezium.test.records.waittime=5" \
+    -Dinsecure.repositories=WARN \
+    -P$PROFILE_PROD \
+    $MAVEN_ARGS
+''')
     }
 }

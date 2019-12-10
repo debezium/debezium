@@ -7,7 +7,7 @@ matrixJob('debezium-sqlserver-matrix-test') {
     label('Slave')
 
     axes {
-        text('VERSION', '2017', '2019')
+        text('SQL_SERVER_VERSION', '2017', '2019')
     }
 
     properties {
@@ -16,7 +16,9 @@ matrixJob('debezium-sqlserver-matrix-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH', '*/master', 'A branch/tag from which Debezium is built')
+        stringParam('BRANCH', 'master', 'A branch/tag from which Debezium is built')
+        stringParam('SOURCE_URL', "", "URL to productised sources")
+        booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }
 
     scm {
@@ -28,6 +30,8 @@ matrixJob('debezium-sqlserver-matrix-test') {
     }
 
     wrappers {
+        preBuildCleanup()
+
         timeout {
             noActivity(1200)
         }
@@ -42,20 +46,33 @@ matrixJob('debezium-sqlserver-matrix-test') {
     logRotator {
         daysToKeep(7)
     }
-
-    environmentVariables {
-        groovy('''
-            def imageVersion = [
-                '2017' : 'microsoft/mssql-server-linux:2017-CU9-GDR2',
-                '2019': 'mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04'
-            ]
-            return ['DATABASE_IMAGE': imageVersion[VERSION]]
-        ''')
-    }
-
     steps {
-        maven {
-            goals('clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-sqlserver -am -fae -Dmaven.test.failure.ignore=true -Ddocker.filter=$DATABASE_IMAGE')
-        }
+        shell('''
+# Ensure WS cleaup
+ls -A1 | xargs rm -rf
+
+# Retrieve sources
+if [ "$PRODUCT_BUILD" == true ] ; then
+    PROFILE_PROD="pnc"
+    curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
+else
+    PROFILE_PROD="none"
+    git clone $REPOSITORY . 
+    git checkout $BRANCH
+fi
+
+# Select image
+case $SQL_SERVER_VERSION in
+  "2017") DATABASE_IMAGE="microsoft/mssql-server-linux:2017-CU9-GDR2" ;;
+  "2019") DATABASE_IMAGE="mcr.microsoft.com/mssql/server:2019-GA-ubuntu-16.04" ;;
+   *) status=$status ;;
+esac
+                    
+# Run maven build
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-sqlserver -am -fae \
+    -Dmaven.test.failure.ignore=true \
+    -Ddocker.filter=$DATABASE_IMAGE \
+    -P$PROFILE_PROD 
+''')
     }
 }
