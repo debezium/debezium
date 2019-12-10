@@ -16,18 +16,17 @@ matrixJob('debezium-mongodb-matrix-test') {
 
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('BRANCH', '*/master', 'A branch/tag from which Debezium is built')
+        stringParam('BRANCH', 'master', 'A branch/tag from which Debezium is built')
+        stringParam('SOURCE_URL', "", "URL to productised sources")
+        booleanParam('PRODUCT_BUILD', false, 'Is this a productised build?')
     }
-
-    scm {
-        git('$REPOSITORY', '$BRANCH')
-    }
-
     triggers {
         cron('H 04 * * 1-5')
     }
 
     wrappers {
+        preBuildCleanup()
+
         timeout {
             noActivity(1200)
         }
@@ -44,8 +43,25 @@ matrixJob('debezium-mongodb-matrix-test') {
     }
 
     steps {
-        maven {
-            goals('clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mongodb -am -fae -Dmaven.test.failure.ignore=true -Dversion.mongo.server=$MONGODB_VERSION')
-        }
+        shell('''
+# Ensure WS cleaup
+ls -A1 | xargs rm -rf
+
+# Retrieve sources
+if [ "$PRODUCT_BUILD" == true ] ; then
+    PROFILE_PROD="pnc"
+    curl -OJs $SOURCE_URL && unzip debezium-*-src.zip
+else
+    PROFILE_PROD="none"
+    git clone $REPOSITORY . 
+    git checkout $BRANCH
+fi
+                    
+# Run maven build
+mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mongodb -am -fae \
+    -Dmaven.test.failure.ignore=true \
+    -Dversion.mongo.server=$MONGODB_VERSION \
+    -P$PROFILE_PROD 
+''')
     }
 }
