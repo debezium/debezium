@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import io.debezium.annotation.Incubating;
 import io.debezium.data.Envelope;
 
 /**
@@ -30,6 +31,7 @@ import io.debezium.data.Envelope;
  *
  * @param <T> The object type
  */
+@Incubating
 public class JsonSerde<T> implements Serde<T> {
     private static final String PAYLOAD_FIELD = "payload";
 
