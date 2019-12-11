@@ -100,11 +100,17 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     }
 
     protected ReplicationConnection createReplicationConnection(boolean exportSnapshot) throws SQLException {
+        final boolean dropSlotOnStop = config.dropSlotOnStop();
+        if (dropSlotOnStop) {
+            LOGGER.warn(
+                    "Connector has enabled automated replication slot removal upon restart ({} = true). This setting can lead to data loss in production environments!",
+                    PostgresConnectorConfig.DROP_SLOT_ON_STOP.name());
+        }
         return ReplicationConnection.builder(config.jdbcConfig())
                 .withSlot(config.slotName())
                 .withPublication(config.publicationName())
                 .withPlugin(config.plugin())
-                .dropSlotOnClose(config.dropSlotOnStop())
+                .dropSlotOnClose(dropSlotOnStop)
                 .streamParams(config.streamParams())
                 .statusUpdateInterval(config.statusUpdateInterval())
                 .withTypeRegistry(schema.getTypeRegistry())
