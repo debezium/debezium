@@ -269,6 +269,8 @@ public class SnapshotReader extends AbstractReader {
             mysql.setAutoCommit(false);
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             mysql.executeWithoutCommitting(sql.get());
+            sql.set("SET SESSION lock_wait_timeout=" + context.getConnectorConfig().snapshotLockTimeout().getSeconds());
+            mysql.executeWithoutCommitting(sql.get());
 
             // Generate the DDL statements that set the charset-related system variables ...
             Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables();
