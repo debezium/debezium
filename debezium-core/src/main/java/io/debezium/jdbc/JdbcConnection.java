@@ -292,7 +292,10 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     public JdbcConnection commit() throws SQLException {
-        connection().commit();
+        Connection conn = connection();
+        if (!conn.getAutoCommit()) {
+            conn.commit();
+        }
         return this;
     }
 
@@ -340,9 +343,7 @@ public class JdbcConnection implements AutoCloseable {
         Connection conn = connection();
         try (Statement statement = conn.createStatement();) {
             operations.apply(statement);
-            if (!conn.getAutoCommit()) {
-                conn.commit();
-            }
+            commit();
         }
         return this;
     }
