@@ -265,12 +265,22 @@ public class SnapshotReader extends AbstractReader {
             if (!isRunning()) {
                 return;
             }
-            logger.info("Step 0: disabling autocommit and enabling repeatable read transactions");
+
+            final long snapshotLockTimeout = context.getConnectorConfig().snapshotLockTimeout().getSeconds();
+            logger.info("Step 0: disabling autocommit, enabling repeatable read transactions, and setting lock wait timeout to {}",
+                    snapshotLockTimeout);
             mysql.setAutoCommit(false);
             sql.set("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             mysql.executeWithoutCommitting(sql.get());
-            sql.set("SET SESSION lock_wait_timeout=" + context.getConnectorConfig().snapshotLockTimeout().getSeconds());
+            sql.set("SET SESSION lock_wait_timeout=" + snapshotLockTimeout);
             mysql.executeWithoutCommitting(sql.get());
+            try {
+                sql.set("SET SESSION innodb_lock_wait_timeout=" + snapshotLockTimeout);
+                mysql.executeWithoutCommitting(sql.get());
+            }
+            catch (SQLException e) {
+                logger.warn("Unable to set innodb_lock_wait_timeout due to error: {}", e.getMessage());
+            }
 
             // Generate the DDL statements that set the charset-related system variables ...
             Map<String, String> systemVariables = connectionContext.readMySqlCharsetSystemVariables();
