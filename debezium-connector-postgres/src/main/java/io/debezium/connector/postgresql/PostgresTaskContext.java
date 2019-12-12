@@ -104,8 +104,8 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         if (dropSlotOnStop) {
             LOGGER.warn(
                     "Connector has enabled automated replication slot removal upon restart ({} = true). " +
-                    "This setting is not recommended for production environments, as a new replication slot " +
-                    "will be created after a connector restart, resulting in missed data change events.",
+                            "This setting is not recommended for production environments, as a new replication slot " +
+                            "will be created after a connector restart, resulting in missed data change events.",
                     PostgresConnectorConfig.DROP_SLOT_ON_STOP.name());
         }
         return ReplicationConnection.builder(config.jdbcConfig())

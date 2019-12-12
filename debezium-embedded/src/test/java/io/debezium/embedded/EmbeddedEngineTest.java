@@ -163,10 +163,11 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     }
 
     protected void consumeLines(int numberOfLines) throws InterruptedException {
-        consumeRecords(numberOfLines, record -> {
+        consumeRecords(numberOfLines, 3, record -> {
             String line = record.value().toString();
             assertThat(line).isEqualTo(generateLine(nextConsumedLineNumber));
             ++nextConsumedLineNumber;
-        });
+        },
+                false);
     }
 }

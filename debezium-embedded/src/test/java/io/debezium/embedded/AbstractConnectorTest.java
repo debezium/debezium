@@ -385,10 +385,11 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param numberOfRecords the number of records that should be consumed
      * @param breakAfterNulls the number of allowed runs when no records are received
      * @param recordConsumer the function that should be called with each consumed record
+     * @param assertRecords true if records serialization should be verified
      * @return the actual number of records that were consumed
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
-    protected int consumeRecords(int numberOfRecords, int breakAfterNulls, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
+    protected int consumeRecords(int numberOfRecords, int breakAfterNulls, Consumer<SourceRecord> recordConsumer, boolean assertRecords) throws InterruptedException {
         int recordsConsumed = 0;
         int nullReturn = 0;
         while (recordsConsumed < numberOfRecords) {
@@ -408,6 +409,9 @@ public abstract class AbstractConnectorTest implements Testing {
                     Testing.print("Consumed record " + recordsConsumed + " / " + numberOfRecords + " ("
                             + (numberOfRecords - recordsConsumed) + " more)");
                     print(record);
+                }
+                if (assertRecords) {
+                    VerifyRecord.isValid(record);
                 }
             }
             else {
@@ -431,7 +435,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
      */
     protected int consumeRecords(int numberOfRecords, Consumer<SourceRecord> recordConsumer) throws InterruptedException {
-        return consumeRecords(numberOfRecords, 3, recordConsumer);
+        return consumeRecords(numberOfRecords, 3, recordConsumer, true);
     }
 
     /**
@@ -444,7 +448,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected SourceRecords consumeRecordsByTopic(int numRecords, int breakAfterNulls) throws InterruptedException {
         SourceRecords records = new SourceRecords();
-        consumeRecords(numRecords, breakAfterNulls, records::add);
+        consumeRecords(numRecords, breakAfterNulls, records::add, true);
         return records;
     }
 
