@@ -291,6 +291,11 @@ public class JdbcConnection implements AutoCloseable {
         return this;
     }
 
+    public JdbcConnection commit() throws SQLException {
+        connection().commit();
+        return this;
+    }
+
     /**
      * Ensure a connection to the database is established.
      *

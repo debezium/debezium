@@ -115,7 +115,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
-                dataConnection.connection().commit();
+                dataConnection.commit();
                 final Lsn currentMaxLsn = dataConnection.getMaxLsn();
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation
