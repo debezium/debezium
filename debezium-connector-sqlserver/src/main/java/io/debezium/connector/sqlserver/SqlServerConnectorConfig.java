@@ -271,7 +271,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 if (value != null) {
                     try {
                         ZoneId.of(value, ZoneId.SHORT_IDS);
-                    } catch (DateTimeException e) {
+                    }
+                    catch (DateTimeException e) {
                         problems.accept(field, value, "The value must be a valid ZoneId");
                         return 1;
                     }
