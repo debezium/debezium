@@ -40,7 +40,7 @@ public abstract class CloudEventsMaker {
         public static final String PAYLOAD_FIELD_NAME = "payload";
     }
 
-    public static final String CLOUDEVENTS_SPECVERSION = "1.0-rc1";
+    public static final String CLOUDEVENTS_SPECVERSION = "1.0";
 
     private static SerializerType dataContentType;
     private static String dataSchemaUrl;
@@ -147,7 +147,7 @@ public abstract class CloudEventsMaker {
      * @return the data schema url of CloudEvents envelope
      */
     public String ceDataschema() {
-        return (dataSchemaUrl == null) ? "" : dataSchemaUrl;
+        return dataSchemaUrl;
     }
 
     /**

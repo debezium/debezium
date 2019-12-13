@@ -92,6 +92,7 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.ID)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION)).isNotNull();
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
