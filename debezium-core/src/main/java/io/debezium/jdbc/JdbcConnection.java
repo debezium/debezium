@@ -288,12 +288,11 @@ public class JdbcConnection implements AutoCloseable {
         return this;
     }
 
-    public JdbcConnection commit() throws SQLException {
+    public void commit() throws SQLException {
         Connection conn = connection();
         if (!conn.getAutoCommit()) {
             conn.commit();
         }
-        return this;
     }
 
     /**
