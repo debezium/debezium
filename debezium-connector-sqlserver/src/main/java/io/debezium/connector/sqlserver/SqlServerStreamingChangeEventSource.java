@@ -115,7 +115,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             // otherwise we might skip an incomplete transaction after restart
             boolean shouldIncreaseFromLsn = offsetContext.isSnapshotCompleted();
             while (context.isRunning()) {
-                dataConnection.commit();
+                // When reading from read-only Always On replica the default and only transaction isolation
+                // is snapshot. This means that CDC metadata are not visible for long-running transactions.
+                // It is thus necessary to restart the transaction before every read.
+                if (connectorConfig.isReadOnlyDatabaseConnection()) {
+                    dataConnection.commit();
+                }
                 final Lsn currentMaxLsn = dataConnection.getMaxLsn();
 
                 // Shouldn't happen if the agent is running, but it is better to guard against such situation

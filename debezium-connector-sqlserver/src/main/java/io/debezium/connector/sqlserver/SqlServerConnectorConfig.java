@@ -242,6 +242,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withImportance(Importance.HIGH)
             .withDescription("Password of the SQL Server database user to be used when connecting to the database.");
 
+    private static final String READ_ONLY_INTENT = "ReadOnly";
+    private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
+
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
@@ -342,6 +345,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final ColumnNameFilter columnFilter;
+    private final boolean readOnlyDatabaseConnection;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
@@ -351,6 +355,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
+        this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
     }
 
     private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
@@ -380,6 +385,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public ColumnNameFilter getColumnFilter() {
         return columnFilter;
+    }
+
+    public boolean isReadOnlyDatabaseConnection() {
+        return readOnlyDatabaseConnection;
     }
 
     @Override
