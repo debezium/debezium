@@ -465,6 +465,20 @@ public abstract class AbstractConnectorTest implements Testing {
         return records;
     }
 
+    /**
+     * Try to consume and capture exactly the specified number of records from the connector.
+     *
+     * @param numRecords the number of records that should be consumed
+     * @param true if the record serialization should be tested
+     * @return the collector into which the records were captured; never null
+     * @throws InterruptedException if the thread was interrupted while waiting for a record to be returned
+     */
+    protected SourceRecords consumeRecordsByTopic(int numRecords, boolean assertRecords) throws InterruptedException {
+        SourceRecords records = new SourceRecords();
+        consumeRecords(numRecords, 3, records::add, assertRecords);
+        return records;
+    }
+
     protected class SourceRecords {
         private final List<SourceRecord> records = new ArrayList<>();
         private final Map<String, List<SourceRecord>> recordsByTopic = new HashMap<>();
