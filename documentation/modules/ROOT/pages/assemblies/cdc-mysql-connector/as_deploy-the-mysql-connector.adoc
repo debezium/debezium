@@ -1,9 +1,15 @@
+:toc:
+:toclevels: 1
+:toc-placement: macro
+
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to deploy the CDC MySQL connector, so my applications can capture row-level changes from my databases as streams.
 :context: cdc
 [id="deploy-the-mysql-connector"]
 = Deploying the MySQL connector
+
+toc::[]
 
 include::../../modules/cdc-mysql-connector/p_install-the-mysql-connector.adoc[leveloffset=+1]
 
