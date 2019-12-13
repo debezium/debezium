@@ -1,9 +1,15 @@
+:toc:
+:toclevels: 1
+:toc-placement: macro
+
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to set up the MySQL server, so that I can more efficiently deploy the CDC MySQL connector.
 :context: cdc
 [id="setup-the-mysql-server"]
 = Setting up MySQL server
+
+toc::[]
 
 include::../../modules/cdc-mysql-connector/p_create-a-mysql-user-for-cdc.adoc[leveloffset=+1]
 
