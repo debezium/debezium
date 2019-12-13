@@ -5,11 +5,6 @@
 [id="connector-common-issues"]
 = MySQL connector common issues
 
-* xref:configuration-and-startup-errors_{context}[Configuration and startup errors]
-* xref:mysql-is-unavailable_{context}[MySQL is unavailable]
-* xref:kafka-connect-stops_{context}[Kafka Connect stops]
-* xref:mysql-purges-binlog-files_{context}[MySQL purges binlog files]
-
 include::../../modules/cdc-mysql-connector/r_configuration-and-startup-errors.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/r_mysql-is-unavailable.adoc[leveloffset=+1]

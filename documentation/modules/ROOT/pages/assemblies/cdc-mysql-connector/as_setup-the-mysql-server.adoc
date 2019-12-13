@@ -5,12 +5,6 @@
 [id="setup-the-mysql-server"]
 = Setting up MySQL server
 
-* xref:create-a-mysql-user-for-cdc_{context}[Create MySQL user]
-* xref:enable-the-mysql-binlog-for-cdc_{context}[Enable the MySQL binlog]
-* xref:enable-mysql-gtids-for-cdc_{context}[Enable MySQL GTIDs]
-* xref:setup-session-timeouts-for-cdc_{context}[Set up session timeouts]
-* xref:enable-query-log-events-for-cdc_{context}[Enable query log events]
-
 include::../../modules/cdc-mysql-connector/p_create-a-mysql-user-for-cdc.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/p_enable-the-mysql-binlog-for-cdc.adoc[leveloffset=+1]
