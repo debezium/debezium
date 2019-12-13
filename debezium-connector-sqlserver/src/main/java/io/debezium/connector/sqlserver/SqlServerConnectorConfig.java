@@ -11,6 +11,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -39,7 +41,11 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  */
 public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
+
     protected static final int DEFAULT_PORT = 1433;
+    private static final String READ_ONLY_INTENT = "ReadOnly";
+    private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
 
     /**
      * The set of predefined SnapshotMode options or aliases.
@@ -242,9 +248,6 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withImportance(Importance.HIGH)
             .withDescription("Password of the SQL Server database user to be used when connecting to the database.");
 
-    private static final String READ_ONLY_INTENT = "ReadOnly";
-    private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
-
     public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
             .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
 
@@ -353,9 +356,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
 
-        this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
         this.readOnlyDatabaseConnection = READ_ONLY_INTENT.equals(config.getString(APPLICATION_INTENT_KEY));
+        if (readOnlyDatabaseConnection) {
+            this.snapshotIsolationMode = SnapshotIsolationMode.SNAPSHOT;
+            LOGGER.info("JDBC connection has set applicationIntent = ReadOnly, switching snapshot isolation mode to {}", SnapshotIsolationMode.SNAPSHOT.name());
+        }
+        else {
+            this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
+        }
     }
 
     private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
