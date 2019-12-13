@@ -103,7 +103,7 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.EXTRAINFO).get(Envelope.FieldName.TIMESTAMP)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.EXTRAINFO).get(Envelope.FieldName.SOURCE)).isNotNull();
             msg = "inspecting the data field in the value";
-            dataJson = valueJsonDeserializer.deserialize(record.topic(), valueJson.get(CloudEventsMaker.FieldName.DATA).binaryValue());
+            dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME)).isNotNull();
             // before field may be null

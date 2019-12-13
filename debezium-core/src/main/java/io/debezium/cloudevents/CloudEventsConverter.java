@@ -181,25 +181,30 @@ public class CloudEventsConverter implements Converter {
         CloudEventsMaker maker = CloudEventsMaker.create(parser, ceSerializerType,
                 (dataSchemaRegistryUrls == null) ? null : String.join(",", dataSchemaRegistryUrls));
 
-        byte[] serializedData;
+        Schema dataSchemaType;
+        Object serializedData;
+        JsonNode serializedJsonData = null;
         byte[] serializedCloudEvents;
 
         switch (dataSerializerType) {
             case JSON:
-                JsonNode node = convertToJsonNode(maker.ceDataAttributeSchema(), maker.ceDataAttribute(), enableJsonSchemas);
-                serializedData = jsonSerializer.serialize(topic, node);
+                dataSchemaType = maker.ceDataAttributeSchema();
+                serializedJsonData = convertToJsonNode(maker.ceDataAttributeSchema(), maker.ceDataAttribute(), enableJsonSchemas);
+                serializedData = maker.ceDataAttribute();
                 break;
             case AVRO:
+                dataSchemaType = Schema.BYTES_SCHEMA;
                 serializedData = avroDataConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
                 break;
             default:
                 throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
         }
 
-        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(maker, serializedData);
+        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(maker, dataSchemaType, serializedData);
         switch (ceSerializerType) {
             case JSON:
                 JsonNode node = convertToJsonNode(ceSchemaAndValue.schema(), ceSchemaAndValue.value(), false);
+                ((ObjectNode) node).set(CloudEventsMaker.FieldName.DATA, serializedJsonData);
                 serializedCloudEvents = jsonSerializer.serialize(topic, node);
                 break;
             case AVRO:
@@ -336,7 +341,7 @@ public class CloudEventsConverter implements Converter {
         }
     }
 
-    private SchemaAndValue convertToCloudEventsFormat(CloudEventsMaker maker, byte[] serializedData) {
+    private SchemaAndValue convertToCloudEventsFormat(CloudEventsMaker maker, Schema dataSchemaType, Object serializedData) {
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(LOGGER);
         String dataSchema = maker.ceDataschema();
 
@@ -350,7 +355,7 @@ public class CloudEventsConverter implements Converter {
 
         Schema ceSchema = ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
                 .withSchema(CloudEventsMaker.FieldName.EXTRAINFO, maker.ceExtrainfoSchema())
-                .withSchema(CloudEventsMaker.FieldName.DATA, Schema.BYTES_SCHEMA)
+                .withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType)
                 .build();
 
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
