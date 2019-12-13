@@ -68,7 +68,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        SourceRecords actualRecords = consumeRecordsByTopic(2, false);
         Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
         Assertions.assertThat(actualRecords.recordsForTopic("server1.dbo.UAT_WAG_CZ_Fixed_Prop")).hasSize(1);
 
@@ -119,6 +119,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_WHITELIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*")
+                .with(SqlServerConnectorConfig.SANITIZE_FIELD_NAMES, true)
                 .build();
 
         connection.execute(
@@ -138,7 +139,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .optional()
                         .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
@@ -158,7 +159,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .optional()
                         .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
@@ -181,7 +182,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .optional()
                         .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("my col$", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("Description", Schema.STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
@@ -202,7 +203,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .optional()
                         .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("my col$", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("Description", Schema.STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
@@ -211,7 +212,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .optional()
                         .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset_Two.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("my col$", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("Description", Schema.STRING_SCHEMA)
                         .build());
         Assertions.assertThat(((Struct) record.value()).getStruct("after").getString("Description")).isEqualTo("c1");
@@ -232,7 +233,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .optional()
                         .name("server1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
-                        .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
