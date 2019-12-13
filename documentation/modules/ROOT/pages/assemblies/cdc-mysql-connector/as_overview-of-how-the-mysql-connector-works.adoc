@@ -7,14 +7,6 @@
 
 The {prodname} MySQL connector tracks the structure of the tables, performs snapshots, transforms binlog events into {prodname} change events and records where those events are recorded in Kafka.
 
-* xref:how-the-mysql-connector-uses-database-schemas_{context}[How the connector uses database schemas]
-* xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the connector performs database snapshots]
-* xref:how-the-mysql-connector-handles-schema-change-topics_{context}[How the connector handles schema change topics]
-* xref:mysql-connector-events_{context}[MySQL connector events]
-* xref:how-the-mysql-connector-maps-data-types_{context}[How the connector maps data types]
-* xref:the-mysql-connector-and-kafka-topics_{context}[The MySQL connector and Kafka topics]
-* xref:mysql-supported-topologies_{context}[MySQL supported topologies]
-
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
