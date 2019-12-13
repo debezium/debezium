@@ -338,29 +338,38 @@ public class CloudEventsConverter implements Converter {
 
     private SchemaAndValue convertToCloudEventsFormat(CloudEventsMaker maker, byte[] serializedData) {
         SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(LOGGER);
+        String dataSchema = maker.ceDataschema();
 
-        Schema ceSchema = defineSchema()
+        CESchemaBuilder ceSchemaBuilder = defineSchema()
                 .withName(adjuster.adjust(maker.ceEnvelopeSchemaName()))
-                .withSchema(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA)
-                .withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA)
-                .withSchema(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
+                .withSchema(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA);
+
+        if (dataSchema != null) {
+            ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
+        }
+
+        Schema ceSchema = ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
                 .withSchema(CloudEventsMaker.FieldName.EXTRAINFO, maker.ceExtrainfoSchema())
                 .withSchema(CloudEventsMaker.FieldName.DATA, Schema.BYTES_SCHEMA)
                 .build();
 
-        Struct ceValue = withValue(ceSchema)
+        CEValueBuilder ceValueBuilder = withValue(ceSchema)
                 .withValue(CloudEventsMaker.FieldName.ID, maker.ceId())
                 .withValue(CloudEventsMaker.FieldName.SOURCE, maker.ceSource())
                 .withValue(CloudEventsMaker.FieldName.SPECVERSION, maker.ceSpecversion())
                 .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
-                .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype())
-                .withValue(CloudEventsMaker.FieldName.DATASCHEMA, maker.ceDataschema())
-                .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
+                .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype());
+
+        if (dataSchema != null) {
+            ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
+        }
+
+        ceValueBuilder.withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
                 .withValue(CloudEventsMaker.FieldName.EXTRAINFO, maker.ceExtrainfo())
                 .withValue(CloudEventsMaker.FieldName.DATA, serializedData)
                 .build();
 
-        return new SchemaAndValue(ceSchema, ceValue);
+        return new SchemaAndValue(ceSchema, ceValueBuilder.build());
     }
 
     private JsonNode convertToJsonNode(Schema schema, Object value, boolean enableJsonSchemas) {
