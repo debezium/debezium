@@ -1,9 +1,15 @@
+:toc:
+:toclevels: 1
+:toc-placement: macro
+
 // Metadata created by nebel
 //
 // UserStory: As a Developer, I want to troubleshoot any common issues that may arise with the CDC MySQL connector, so that I can continue development.
 :context: cdc
 [id="connector-common-issues"]
 = MySQL connector common issues
+
+toc::[]
 
 include::../../modules/cdc-mysql-connector/r_configuration-and-startup-errors.adoc[leveloffset=+1]
 
