@@ -5,12 +5,6 @@
 [id="deploy-the-mysql-connector"]
 = Deploying the MySQL connector
 
-* xref:install-the-mysql-connector_{context}[Installing the MySQL connector]
-* xref:configure-the-mysql-connector_{context}[Configuring the MySQL connector]
-* xref:mysql-connector-monitoring-metrics_{context}[MySQL connector configuration properties]
-* xref:mysql-connector-configuration-properties_{context}[MySQL connector monitoring metrics]
-
-
 include::../../modules/cdc-mysql-connector/p_install-the-mysql-connector.adoc[leveloffset=+1]
 
 include::../../modules/cdc-mysql-connector/p_configure-the-mysql-connector.adoc[leveloffset=+1]
