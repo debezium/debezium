@@ -5,7 +5,9 @@
  */
 package io.debezium.cloudevents;
 
+import java.text.SimpleDateFormat;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -151,12 +153,15 @@ public abstract class CloudEventsMaker {
     }
 
     /**
-     * Get the time of CloudEvents envelope.
+     * Get the timestamp of CloudEvents envelope using the format defined in RFC 3339.
      *
-     * @return the time of CloudEvents envelope
+     * @return the timestamp of CloudEvents envelope
      */
     public String ceTime() {
-        return recordParser.getMetadata(AbstractSourceInfo.TIMESTAMP_KEY).toString();
+        long time = (long) recordParser.getMetadata(AbstractSourceInfo.TIMESTAMP_KEY);
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return formatter.format(time);
     }
 
     /**
