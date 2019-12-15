@@ -371,8 +371,7 @@ public class CloudEventsConverter implements Converter {
 
         ceValueBuilder.withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
                 .withValue(CloudEventsMaker.FieldName.EXTRAINFO, maker.ceExtrainfo())
-                .withValue(CloudEventsMaker.FieldName.DATA, serializedData)
-                .build();
+                .withValue(CloudEventsMaker.FieldName.DATA, serializedData);
 
         return new SchemaAndValue(ceSchema, ceValueBuilder.build());
     }
