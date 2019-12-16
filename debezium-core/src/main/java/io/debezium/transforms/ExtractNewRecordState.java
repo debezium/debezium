@@ -17,6 +17,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
 import org.apache.kafka.connect.transforms.Transformation;
@@ -66,6 +67,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private final InsertField<R> updatedDelegate = new InsertField.Value<R>();
     private BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache;
     private SmtManager<R> smtManager;
+    private boolean setConnectRecordTimestamp;
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -104,6 +106,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         updatedDelegate.configure(delegateConfig);
 
         schemaUpdateCache = new BoundedConcurrentHashMap<>(SCHEMA_CACHE_SIZE);
+
+        setConnectRecordTimestamp = config.getBoolean(ExtractNewRecordStateConfigDefinition.SET_CONNECT_RECORD_TIMESTAMP);
     }
 
     @Override
@@ -155,6 +159,11 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             }
         }
         else {
+            // Set the timestamp for the new record
+            if (setConnectRecordTimestamp) {
+                newRecord = setRecordTimestamp(record, newRecord);
+            }
+
             // Add on any requested source fields from the original record to the new unwrapped record
             newRecord = addSourceFields(addSourceFields, record, newRecord);
 
@@ -216,6 +225,29 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     sourceSchema.field(sourceField).schema());
         }
         return builder.build();
+    }
+
+    private R setRecordTimestamp(R originalRecord, R unsetRecord) {
+        Long sourceTimestamp = null;
+        try {
+            Struct source = ((Struct) originalRecord.value()).getStruct("source");
+            sourceTimestamp = source.getInt64("ts_ms");
+        }
+        catch (DataException e) {
+            // do nothing
+        }
+        // For snapshot events, the value of "ts_ms" field is always zero and we need not to set the timestamp.
+        if (sourceTimestamp != null && sourceTimestamp > 0L) {
+            return unsetRecord.newRecord(
+                    unsetRecord.topic(),
+                    unsetRecord.kafkaPartition(),
+                    unsetRecord.keySchema(),
+                    unsetRecord.key(),
+                    unsetRecord.valueSchema(),
+                    unsetRecord.value(),
+                    sourceTimestamp.longValue());
+        }
+        return unsetRecord;
     }
 
     @Override

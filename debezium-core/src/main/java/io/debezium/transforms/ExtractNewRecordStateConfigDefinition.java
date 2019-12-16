@@ -104,4 +104,14 @@ public class ExtractNewRecordStateConfigDefinition {
             .withDefault("")
             .withDescription("Adds each field listed from the 'source' element of the payload, prefixed with __ "
                     + "Example: 'version,connector' would add __version and __connector fields");
+
+    public static final Field SET_CONNECT_RECORD_TIMESTAMP = Field.create("set.connect.record.timestamp")
+            .withDisplayName("Set the timestamp in ConnectRecord by using the 'ts_ms' which is from the 'source' field.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("The 'ts_ms' which is from the 'source' field is the original timestamp when the event happened"
+                    + " in the database, and we can set the timestamp in ConnectRecord with it. We can get the timestamp from "
+                    + " SinkRecord on sink connector side, and easily estimate the end-to-end latency.");
 }
