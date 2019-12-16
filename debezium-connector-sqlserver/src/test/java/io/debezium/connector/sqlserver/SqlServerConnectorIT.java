@@ -10,14 +10,19 @@ import static org.junit.Assert.assertNull;
 
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
+import org.awaitility.Duration;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -146,6 +151,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1642")
     public void readOnlyApplicationIntent() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor();
+        final String appId = "readOnlyApplicationIntent-" + UUID.randomUUID();
 
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
@@ -153,6 +159,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with("database.applicationIntent", "ReadOnly")
+                .with("database.applicationName", appId)
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -196,6 +203,21 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         }
 
         assertThat(logInterceptor.containsMessage("Schema locking was disabled in connector configuration")).isTrue();
+
+        // Verify that multiple subsequent transactions are used in streaming phase with read-only intent
+        try (final SqlServerConnection admin = TestHelper.adminConnection()) {
+            final Set<Long> txIds = new HashSet<>();
+            Awaitility.await().atMost(Duration.FIVE_SECONDS).pollInterval(Duration.ONE_HUNDRED_MILLISECONDS).until(() -> {
+                admin.query(
+                        "SELECT (SELECT transaction_id FROM sys.dm_tran_session_transactions AS t WHERE s.session_id=t.session_id) FROM sys.dm_exec_sessions AS s WHERE program_name='"
+                                + appId + "'",
+                        rs -> {
+                            rs.next();
+                            txIds.add(rs.getLong(1));
+                        });
+                return txIds.size() > 2;
+            });
+        }
         stopConnector();
     }
 
