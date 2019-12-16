@@ -97,17 +97,17 @@ We welcome any feedback from a user to try the plug-in with database in managed 
 [[always-on-replica]]
 === SQL Server Always On
 
-The SQL Server plug-in can capture changes from Always On read-only replica.
+The SQL Server plug-in can capture changes from an Always On read-only replica.
 Few pre-requisities are necessary to be fulfilled
 
-* Change data capture is configured and enabled on master node.
-SQL Server does not support CDC directly on replica.
-* configuration option `database.applicationIntent` must be set to `ReadOnly`.
+* Change data capture is configured and enabled on the master node.
+SQL Server does not support CDC directly on replicas.
+* The configuration option `database.applicationIntent` must be set to `ReadOnly`.
 This is required by SQL Server.
-When Debezium detects this configuration option then it will
+When Debezium detects this configuration option then it will:
 
-** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by red-only replica
-** commit transaction in every execution of streaming query loop as this is necessary to get the latest view on CDC data
+** set `snapshot.isolation.mode` to `snapshot` as this is the only one transaction isolation mode supported by raed-only replicas
+** commit the (read-only) transaction in every execution of the streaming query loop, as this is necessary to get the latest view on CDC data
 
 [[how-the-connector-works]]
 == How the SQL Server connector works
