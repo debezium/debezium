@@ -103,7 +103,7 @@ public class SerdeTest implements Testing {
 
     @Test
     public void simpleKey() {
-        final Serde<Integer> keySerde = Serdes.payloadJson(Integer.class);
+        final Serde<Integer> keySerde = DebeziumSerdes.payloadJson(Integer.class);
         keySerde.configure(Collections.emptyMap(), true);
 
         Assertions.assertThat(keySerde.deserializer().deserialize("xx", "{\"payload\": {\"a\": 1}}".getBytes())).isEqualTo(1);
@@ -119,14 +119,14 @@ public class SerdeTest implements Testing {
 
     @Test
     public void compositeKey() {
-        final Serde<CompositeKey> keySerde = Serdes.payloadJson(CompositeKey.class);
+        final Serde<CompositeKey> keySerde = DebeziumSerdes.payloadJson(CompositeKey.class);
         keySerde.configure(Collections.emptyMap(), true);
         Assertions.assertThat(keySerde.deserializer().deserialize("xx", "{\"a\": 1, \"b\": 2}".getBytes())).isEqualTo(new CompositeKey(1, 2));
     }
 
     @Test
     public void valuePayloadWithSchema() {
-        final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
         valueSerde.configure(Collections.singletonMap("from.field", "after"), false);
         final String content = Testing.Files.readResourceAsString("json/serde-with-schema.json");
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));
@@ -135,7 +135,7 @@ public class SerdeTest implements Testing {
     @SuppressWarnings("unchecked")
     @Test
     public void valueEnvelopeWithSchema() {
-        final Serde<HashMap> valueSerde = Serdes.payloadJson(HashMap.class);
+        final Serde<HashMap> valueSerde = DebeziumSerdes.payloadJson(HashMap.class);
         valueSerde.configure(Collections.emptyMap(), false);
         final String content = Testing.Files.readResourceAsString("json/serde-with-schema.json");
         Map<String, String> envelope = valueSerde.deserializer().deserialize("xx", content.getBytes());
@@ -145,7 +145,7 @@ public class SerdeTest implements Testing {
 
     @Test
     public void valuePayloadWithoutSchema() {
-        final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
         valueSerde.configure(Collections.singletonMap("from.field", "after"), false);
         final String content = Testing.Files.readResourceAsString("json/serde-without-schema.json");
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));
@@ -154,7 +154,7 @@ public class SerdeTest implements Testing {
     @SuppressWarnings("unchecked")
     @Test
     public void valueEnvelopeWithoutSchema() {
-        final Serde<HashMap> valueSerde = Serdes.payloadJson(HashMap.class);
+        final Serde<HashMap> valueSerde = DebeziumSerdes.payloadJson(HashMap.class);
         valueSerde.configure(Collections.emptyMap(), false);
         final String content = Testing.Files.readResourceAsString("json/serde-without-schema.json");
         Map<String, String> envelope = valueSerde.deserializer().deserialize("xx", content.getBytes());
@@ -164,7 +164,7 @@ public class SerdeTest implements Testing {
 
     @Test
     public void valueBeforeField() {
-        final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
         valueSerde.configure(Collections.singletonMap("from.field", "before"), false);
 
         String content = Testing.Files.readResourceAsString("json/serde-update.json");
@@ -177,7 +177,7 @@ public class SerdeTest implements Testing {
 
     @Test
     public void valueNull() {
-        final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
         valueSerde.configure(Collections.emptyMap(), false);
 
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", "null".getBytes())).isNull();
@@ -186,7 +186,7 @@ public class SerdeTest implements Testing {
 
     @Test
     public void valuePayloadUnwrapped() {
-        final Serde<Customer> valueSerde = Serdes.payloadJson(Customer.class);
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
         valueSerde.configure(Collections.emptyMap(), false);
         final String content = Testing.Files.readResourceAsString("json/serde-unwrapped.json");
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));

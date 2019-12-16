@@ -17,7 +17,7 @@ import io.debezium.serde.json.JsonSerde;
  *
  */
 @Incubating
-public class Serdes {
+public class DebeziumSerdes {
 
     /**
      * Provides a {@link Serde} implementation that maps JSON Debezium change events into a {@code T} Java object.
