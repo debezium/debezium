@@ -119,7 +119,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                 // is snapshot. This means that CDC metadata are not visible for long-running transactions.
                 // It is thus necessary to restart the transaction before every read.
                 if (connectorConfig.isReadOnlyDatabaseConnection()) {
-                    dataConnection.commit();
+                    dataConnection.rollback();
                 }
                 final Lsn currentMaxLsn = dataConnection.getMaxLsn();
 
