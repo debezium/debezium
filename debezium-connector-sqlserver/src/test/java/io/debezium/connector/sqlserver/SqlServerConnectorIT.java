@@ -1121,7 +1121,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         connection.execute(
                 "DELETE FROM keyless WHERE id=3");
-        records = consumeRecordsByTopic(2);
+        records = consumeRecordsByTopic(2, false);
         assertThat(records.recordsForTopic("server1.dbo.keyless").get(0).key()).isNull();
         assertThat(records.recordsForTopic("server1.dbo.keyless").get(0).keySchema()).isNull();
         assertNull(records.recordsForTopic("server1.dbo.keyless").get(1).value());
