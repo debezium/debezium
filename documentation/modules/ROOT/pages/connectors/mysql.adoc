@@ -1908,6 +1908,11 @@ Can be used to avoid snapshot interruptions when starting multiple connectors in
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size.
 
+|`snapshot.lock.timeout.ms`
+|`10000`
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot.
+If table locks cannot be acquired in this time interval, the snapshot will fail. See link:#snapshots[snapshots]
+
 |`enable.time.adjuster`
 |
 |MySQL allows user to insert year value as either 2-digit or 4-digit.
