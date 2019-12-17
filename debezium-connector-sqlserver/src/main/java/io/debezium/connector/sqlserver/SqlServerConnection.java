@@ -401,7 +401,9 @@ public class SqlServerConnection extends JdbcConnection {
         }
         else {
             if (serverTimezoneConfig == null) {
-                LOGGER.warn("The '{}' option should be specified to avoid incorrect timestamp values in case of different timezones between the database server and this connector's JVM.", SERVER_TIMEZONE_PROP_NAME);
+                LOGGER.warn(
+                        "The '{}' option should be specified to avoid incorrect timestamp values in case of different timezones between the database server and this connector's JVM.",
+                        SERVER_TIMEZONE_PROP_NAME);
             }
         }
 
