@@ -48,6 +48,10 @@ public class ReplicationMessageColumnValueResolver {
             return value.asArray(columnName, type, fullType, connection);
         }
 
+        if (type.isEnumType()) {
+            return value.asString();
+        }
+
         switch (type.getName()) {
             // include all types from https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
             // plus aliases from the shorter names produced by older wal2json
