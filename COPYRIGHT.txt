@@ -66,6 +66,7 @@ Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
 Jiri Pechanec
+Johan Venant
 John Martin
 Jon Casstevens
 Jordan Bragg
