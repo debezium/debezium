@@ -238,7 +238,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
             schema.refresh(connection, tableId, connectorConfig.skipRefreshSchemaOnMissingToastableData());
         }
         catch (SQLException e) {
-            throw new ConnectException("Database error while refresing table schema");
+            throw new ConnectException("Database error while refresing table schema", e);
         }
     }
 
