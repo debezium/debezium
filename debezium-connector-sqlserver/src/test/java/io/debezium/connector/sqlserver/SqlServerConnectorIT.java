@@ -232,7 +232,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         final TimeZone currentTimeZone = TimeZone.getDefault();
         try {
-            TimeZone.setDefault(TimeZone.getTimeZone("Atlantic/Cape_Verde"));
+            TimeZone.setDefault(TimeZone.getTimeZone("Australia/Canberra"));
             final Configuration config = TestHelper.defaultConfig()
                     .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                     .build();

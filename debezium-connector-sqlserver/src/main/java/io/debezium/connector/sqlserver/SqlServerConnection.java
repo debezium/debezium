@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -210,13 +211,27 @@ public class SqlServerConnection extends JdbcConnection {
             statement.setBytes(1, lsn.getBinary());
         }, singleResultMapper(rs -> {
             final Timestamp ts = rs.getTimestamp(1);
-            final Instant ret = (ts == null) ? null : ts.toLocalDateTime().atZone(transactionTimezone).toInstant();
+            Instant ret = (ts == null) ? null : normalize(ts);
             LOGGER.trace("Timestamp of lsn {} is {}", lsn, ret);
             if (ret != null) {
                 lsnToInstantCache.put(lsn, ret);
             }
             return ret;
         }, "LSN to timestamp query must return exactly one value"));
+    }
+
+    private Instant normalize(Timestamp timestamp) {
+        Instant instant = timestamp.toInstant();
+
+        // in case the incoming timestamp was not based on UTC, shift it as per the
+        // configured timezone which must match the value used by the database
+        if (!transactionTimezone.getId().equals("UTC")) {
+            instant = instant.atZone(transactionTimezone)
+                    .toLocalDateTime()
+                    .toInstant(ZoneOffset.UTC);
+        }
+
+        return instant;
     }
 
     /**
@@ -379,12 +394,21 @@ public class SqlServerConnection extends JdbcConnection {
     private ZoneId retrieveTransactionTimezone(boolean supportsAtTimeZone) {
         final String serverTimezoneConfig = config().getString(SERVER_TIMEZONE_PROP_NAME);
 
-        if (!supportsAtTimeZone && serverTimezoneConfig == null) {
-            LOGGER.warn("The ' " + SERVER_TIMEZONE_PROP_NAME
-                    + "' option should be specified to avoid incorrect timestamp values in case of different timezones between the database server and this connector's JVM.");
+        if (supportsAtTimeZone) {
+            if (serverTimezoneConfig != null) {
+                LOGGER.warn("The '{}' option should not be specified with SQL Server 2016 and newer", SERVER_TIMEZONE_PROP_NAME);
+            }
+        }
+        else {
+            if (serverTimezoneConfig == null) {
+                LOGGER.warn("The '{}' option should be specified to avoid incorrect timestamp values in case of different timezones between the database server and this connector's JVM.", SERVER_TIMEZONE_PROP_NAME);
+            }
         }
 
-        return serverTimezoneConfig == null ? ZoneId.systemDefault() : ZoneId.of(serverTimezoneConfig, ZoneId.SHORT_IDS);
+        // Assuming UTC to be used for the ts_ms TIMESTAMP column
+        // In case AT TIME ZONE is supported, UTC is what we'll request;
+        // Otherwise, UTC is as good as any other guess
+        return serverTimezoneConfig == null ? ZoneId.of("UTC") : ZoneId.of(serverTimezoneConfig, ZoneId.SHORT_IDS);
     }
 
     private String retrieveRealDatabaseName() {
