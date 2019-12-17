@@ -1373,7 +1373,7 @@ See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
 This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset. Should only be specified when running on SQL Server 2014 or older and using different timezones for the database server and the JVM running the Debezium connector. +
 When unset, default behavior is to use the timezone of the VM running the Debezium connector. In this case, when running on on SQL Server 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
-Possible values are any valid Java `ZoneId` on `ZoneId.SHORT_ID`
+Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
 
 |=======================
 
