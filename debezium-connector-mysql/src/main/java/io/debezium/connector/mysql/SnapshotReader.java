@@ -75,7 +75,7 @@ public class SnapshotReader extends AbstractReader {
     }
 
     /**
-     * Create a snapshot reader that can use global locking onyl optionally.
+     * Create a snapshot reader that can use global locking only optionally.
      * Used mostly for testing.
      *
      * @param name the name of this reader; may not be null
@@ -279,7 +279,7 @@ public class SnapshotReader extends AbstractReader {
                 mysql.executeWithoutCommitting(sql.get());
             }
             catch (SQLException e) {
-                logger.warn("Unable to set innodb_lock_wait_timeout due to error: {}", e.getMessage());
+                logger.warn("Unable to set innodb_lock_wait_timeout", e);
             }
 
             // Generate the DDL statements that set the charset-related system variables ...
