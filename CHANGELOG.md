@@ -2,6 +2,41 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.0.Final
+December 18th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343667)
+
+### New features since 1.0.0.CR1
+
+* Support streaming changes from SQL Server "AlwaysOn" replica [DBZ-1642](https://issues.jboss.org/browse/DBZ-1642)
+
+
+### Breaking changes since 1.0.0.CR1
+
+* Rename Serdes to DebeziumSerdes [DBZ-1670](https://issues.jboss.org/browse/DBZ-1670)
+* MySQL Connector should use  "snapshot.lock.timeout.ms" [DBZ-1671](https://issues.jboss.org/browse/DBZ-1671)
+
+
+### Fixes since 1.0.0.CR1
+
+* Interpret Sql Server timestamp timezone correctly [DBZ-1643](https://issues.jboss.org/browse/DBZ-1643)
+* Sorting a HashSet only to put it back into a HashSet [DBZ-1650](https://issues.jboss.org/browse/DBZ-1650)
+* Function with RETURN only statement cannot be parsed [DBZ-1659](https://issues.jboss.org/browse/DBZ-1659)
+* Enum value resolution not working while streaming with wal2json or pgoutput [DBZ-1680](https://issues.jboss.org/browse/DBZ-1680)
+
+
+### Other changes since 1.0.0.CR1
+
+* Globally ensure in tests that records can be serialized [DBZ-824](https://issues.jboss.org/browse/DBZ-824)
+* Allow upstream teststuite to run with productised dependencies [DBZ-1658](https://issues.jboss.org/browse/DBZ-1658)
+* Upgrade to latest PostgreSQL driver 42.2.9 [DBZ-1660](https://issues.jboss.org/browse/DBZ-1660)
+* Generate warning for connectors with automatically dropped slots [DBZ-1666](https://issues.jboss.org/browse/DBZ-1666)
+* Regression test for MySQL dates in snapshot being off by one  [DBZ-1667](https://issues.jboss.org/browse/DBZ-1667)
+* Build against Apache Kafka 2.4 [DBZ-1676](https://issues.jboss.org/browse/DBZ-1676)
+* When PostgreSQL schema refresh fails, allow error to include root cause [DBZ-1677](https://issues.jboss.org/browse/DBZ-1677)
+* Prepare testsuite for RHEL 8 protobuf plugin RPM [DBZ-1536](https://issues.jboss.org/browse/DBZ-1536)
+
+
+
 ## 1.0.0.CR1
 December 14th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343169)
 

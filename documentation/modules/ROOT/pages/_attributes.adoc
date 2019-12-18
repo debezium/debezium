@@ -4,11 +4,11 @@
 :imagesdir: {moduledir}/assets/images
 :partialsdir: {moduledir}/pages/_partials
 
-:debezium-version: 1.0.0.Beta2
+:debezium-version: 1.0.0.Final
 :debezium-dev-version: 1.0
-:debezium-kafka-version: 2.3.0
+:debezium-kafka-version: 2.4.0
 :debezium-docker-label: 1.0
 :install-version: 1.0
-:confluent-platform-version: 5.1.2
+:confluent-platform-version: 5.3.1
 :strimzi-version: 0.13.0
 :jira-url: https://issues.redhat.com
