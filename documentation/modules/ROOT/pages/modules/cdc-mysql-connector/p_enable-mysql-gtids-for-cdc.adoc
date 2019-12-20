@@ -40,10 +40,10 @@ mysql> show global variables like '%GTID%';
 [source,SQL]
 ----
 +--------------------------+-------+
-| Variable_name | Value |
+| Variable_name            | Value |
 +--------------------------+-------+
-| enforce_gtid_consistency | ON |
-| gtid_mode | ON |
+| enforce_gtid_consistency | ON    |
+| gtid_mode                | ON    |
 +--------------------------+-------+
 ----
 
