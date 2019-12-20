@@ -154,6 +154,7 @@
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
+        <module>debezium-quarkus</module>
     </modules>
 
     <distributionManagement>
