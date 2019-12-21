@@ -6,7 +6,6 @@
 
 package io.debezium.connector.sqlserver;
 
-import java.math.BigDecimal;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -16,18 +15,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +33,8 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.ValueConverter;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.Clock;
-import io.debezium.util.HexConverter;
-import microsoft.sql.DateTimeOffset;
 
 /**
  * {@link JdbcConnection} extension to be used with Microsoft SQL Server
@@ -87,30 +77,13 @@ public class SqlServerConnection extends JdbcConnection {
     private final ZoneId transactionTimezone;
     private final SourceTimestampMode sourceTimestampMode;
     private final Clock clock;
-    private final SqlServerValueConverters valueConverters;
 
     public static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
     }
 
-    /**
-     * Converts JDBC string representation of a default column value to an object.
-     */
-    @FunctionalInterface
-    public interface DefaultValueMapper {
-
-        /**
-         * Parses string to an object.
-         * @param value string representation
-         * @return value
-         * @throws Exception if there is an parsing error
-         */
-        Object parse(String value) throws Exception;
-    }
-
     private final BoundedConcurrentHashMap<Lsn, Instant> lsnToInstantCache;
-
-    private final Map<String, DefaultValueMapper> defaultValueMappers;
+    private final SqlServerDefaultValueConverter defaultValueConverter;
 
     /**
      * Creates a new connection using the supplied configuration.
@@ -124,7 +97,6 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public SqlServerConnection(Configuration config, Clock clock, SourceTimestampMode sourceTimestampMode, SqlServerValueConverters valueConverters) {
         super(config, FACTORY);
-        this.valueConverters = valueConverters;
         lsnToInstantCache = new BoundedConcurrentHashMap<>(100);
         realDatabaseName = retrieveRealDatabaseName();
         boolean supportsAtTimeZone = supportsAtTimeZone();
@@ -132,7 +104,7 @@ public class SqlServerConnection extends JdbcConnection {
         lsnToTimestamp = getLsnToTimestamp(supportsAtTimeZone);
         this.clock = clock;
         this.sourceTimestampMode = sourceTimestampMode;
-        defaultValueMappers = createDefaultValueMappers();
+        defaultValueConverter = new SqlServerDefaultValueConverter(this::connection, valueConverters);
     }
 
     /**
@@ -151,75 +123,6 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         return lsnToTimestamp;
-    }
-
-    private Map<String, DefaultValueMapper> createDefaultValueMappers() {
-        Map<String, DefaultValueMapper> result = new HashMap<>();
-
-        // Exact numbers
-        result.put("bigint", v -> Long.parseLong(v.substring(2, v.length() - 3)));      // Sample value: ((3147483648.))
-        result.put("int", v -> Integer.parseInt(v.substring(2, v.length() - 2)));       // Sample value: ((2147483647))
-        result.put("smallint", v -> Short.parseShort(v.substring(2, v.length() - 2)));  // Sample value: ((32767))
-        result.put("tinyint", v -> Short.parseShort(v.substring(2, v.length() - 2)));   // Sample value: ((255))
-        result.put("bit", v -> v.equals("((1))"));                                      // Either ((1)) or ((0))
-        result.put("decimal", v -> new BigDecimal(v.substring(2, v.length() - 2)));     // Sample value: ((100.12345))
-        result.put("numeric", v -> new BigDecimal(v.substring(2, v.length() - 2)));     // Sample value: ((100.12345))
-        result.put("money", v -> new BigDecimal(v.substring(2, v.length() - 2)));       // Sample value: ((922337203685477.58))
-        result.put("smallmoney", v -> new BigDecimal(v.substring(2, v.length() - 2)));  // Sample value: ((214748.3647))
-
-        // Approximate numerics
-        result.put("float", v -> Double.parseDouble(v.substring(2, v.length() - 2)));   // Sample value: ((1.2345000000000000e+003))
-        result.put("real", v -> Float.parseFloat(v.substring(2, v.length() - 2)));      // Sample value: ((1.2345000000000000e+003))
-
-        // Date and time
-        result.put("date", v -> { // Sample value: ('2019-02-03')
-            String rawValue = v.substring(2, v.length() - 2);
-            return prepareQueryAndMap("SELECT PARSE(? AS date)", st -> st.setString(1, rawValue),
-                    singleResultMapper(rs -> rs.getDate(1), "Parse() should return exactly one result."));
-        });
-        result.put("datetime", v -> { // Sample value: ('2019-01-01 00:00:00.000')
-            String rawValue = v.substring(2, v.length() - 2);
-            return prepareQueryAndMap("SELECT PARSE(? AS datetime)", st -> st.setString(1, rawValue),
-                    singleResultMapper(rs -> rs.getTimestamp(1), "Parse() should return exactly one result."));
-        });
-        result.put("datetime2", v -> { // Sample value: ('2019-01-01 00:00:00.1234567')
-            String rawValue = v.substring(2, v.length() - 2);
-            return prepareQueryAndMap("SELECT PARSE(? AS datetime2)", st -> st.setString(1, rawValue),
-                    singleResultMapper(rs -> rs.getTimestamp(1), "Parse() should return exactly one result."));
-        });
-        result.put("datetimeoffset", v -> { // Sample value: ('2019-01-01 00:00:00.1234567+02:00')
-            String rawValue = v.substring(2, v.length() - 2);
-            return prepareQueryAndMap("SELECT PARSE(? AS datetimeoffset)", st -> st.setString(1, rawValue),
-                    singleResultMapper(rs -> (DateTimeOffset) rs.getObject(1), "Parse() should return exactly one result."));
-        });
-        result.put("smalldatetime", v -> { // Sample value: ('2019-01-01 00:00:00')
-            String rawValue = v.substring(2, v.length() - 2);
-            return prepareQueryAndMap("SELECT PARSE(? AS smalldatetime)", st -> st.setString(1, rawValue),
-                    singleResultMapper(rs -> rs.getTimestamp(1), "Parse() should return exactly one result."));
-        });
-        result.put("time", v -> { // Sample value: ('2019-01-01 00:00:00')
-            String rawValue = v.substring(2, v.length() - 2);
-            return prepareQueryAndMap("SELECT PARSE(? AS time)", st -> st.setString(1, rawValue),
-                    singleResultMapper(rs -> rs.getTime(1), "Parse() should return exactly one result."));
-        });
-
-        // Character strings
-        result.put("char", v -> v.substring(2, v.length() - 2));    // Sample value: ('aaa')
-        result.put("text", v -> v.substring(2, v.length() - 2));    // Sample value: ('aaa')
-        result.put("varchar", v -> v.substring(2, v.length() - 2)); // Sample value: ('aaa')
-
-        // Unicode character strings
-        result.put("nchar", v -> v.substring(2, v.length() - 2));       // Sample value: ('aaa')
-        result.put("ntext", v -> v.substring(2, v.length() - 2));       // Sample value: ('aaa')
-        result.put("nvarchar", v -> v.substring(2, v.length() - 2));    // Sample value: ('aaa')
-
-        // Binary strings
-        result.put("binary", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1)));     // Sample value: (0x0102030405)
-        result.put("image", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1)));      // Sample value: (0x0102030405)
-        result.put("varbinary", v -> HexConverter.convertFromHex(v.substring(3, v.length() - 1)));  // Sample value: (0x0102030405)
-
-        // Other data types, such as cursor, xml or uniqueidentifier, have been omitted.
-        return result;
     }
 
     /**
@@ -480,52 +383,6 @@ public class SqlServerConnection extends JdbcConnection {
                 .create();
     }
 
-    @Override
-    protected void setDefaultValue(ColumnEditor columnEditor, String defaultValue) {
-        if (defaultValue == null) {
-            return;
-        }
-        parseDefaultValue(columnEditor.typeName(), defaultValue)
-                .map(rawDefaultValue -> convertDefaultValue(rawDefaultValue, columnEditor))
-                .ifPresent(columnEditor::defaultValue);
-    }
-
-    private Optional<Object> parseDefaultValue(String dataType, String defaultValue) {
-        DefaultValueMapper mapper = defaultValueMappers.get(dataType);
-        if (mapper == null) {
-            LOGGER.warn("Mapper for type '{}' not found.", dataType);
-            return Optional.empty();
-        }
-
-        try {
-            return Optional.of(mapper.parse(defaultValue));
-        }
-        catch (Exception e) {
-            LOGGER.warn("Cannot parse column default value '{}' to type '{}'.", defaultValue, dataType, e);
-            return Optional.empty();
-        }
-    }
-
-    private Object convertDefaultValue(Object defaultValue, ColumnEditor columnEditor) {
-        final Column column = columnEditor.create();
-
-        // if converters is not null and the default value is not null, we need to convert default value
-        if (valueConverters != null && defaultValue != null) {
-            final SchemaBuilder schemaBuilder = valueConverters.schemaBuilder(column);
-            if (schemaBuilder == null) {
-                return defaultValue;
-            }
-            final Schema schema = schemaBuilder.build();
-            // In order to get the valueConverter for this column, we have to create a field;
-            // The index value -1 in the field will never used when converting default value;
-            // So we can set any number here;
-            final Field field = new Field(columnEditor.name(), -1, schema);
-            final ValueConverter valueConverter = valueConverters.converter(columnEditor.create(), field);
-            return valueConverter.convert(defaultValue);
-        }
-        return defaultValue;
-    }
-
     public Table getTableSchemaFromChangeTable(SqlServerChangeTable changeTable) throws SQLException {
         final DatabaseMetaData metadata = connection().getMetaData();
         final TableId changeTableId = changeTable.getChangeTableId();
@@ -631,6 +488,15 @@ public class SqlServerConnection extends JdbcConnection {
         }
         catch (Exception e) {
             throw new RuntimeException("Couldn't obtain database server version", e);
+        }
+    }
+
+    @Override
+    protected void setDefaultValue(ColumnEditor columnEditor, String defaultValue) {
+        if (defaultValue != null) {
+            defaultValueConverter
+                    .parseDefaultValue(columnEditor, defaultValue)
+                    .ifPresent(columnEditor::defaultValue);
         }
     }
 }
