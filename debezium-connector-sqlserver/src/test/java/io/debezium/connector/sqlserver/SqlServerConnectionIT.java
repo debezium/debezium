@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -105,6 +106,7 @@ public class SqlServerConnectionIT {
     }
 
     @Test
+    @FixFor("DBZ-1015")
     public void shouldProperlyGetDefaultColumnValues() throws Exception {
         try (SqlServerConnection connection = TestHelper.adminConnection()) {
             connection.connect();
@@ -176,7 +178,7 @@ public class SqlServerConnectionIT {
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
 
-            ChangeTable changeTable = new ChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
+            SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB", "dbo", "table_with_defaults"),
                     null, 0, null, null);
             Table table = connection.getTableSchemaFromTable(changeTable);
 

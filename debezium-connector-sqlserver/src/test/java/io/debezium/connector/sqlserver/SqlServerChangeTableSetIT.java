@@ -754,7 +754,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
     @Test
     public void addDefaultValue() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -780,7 +780,7 @@ public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
         TestHelper.enableTableCdc(connection, "table_dv");
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .build();
 
         start(SqlServerConnector.class, config);
