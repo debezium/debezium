@@ -444,7 +444,7 @@ public class MySqlDefaultValueTest {
 
     @Test
     @FixFor("DBZ-1204")
-    public void shouldAcceptBooleanAsDefaultValue() {
+    public void shouldAcceptBooleanAsTinyIntDefaultValue() {
         String ddl = "CREATE TABLE data(id INT, "
                 + "bval BOOLEAN DEFAULT TRUE, "
                 + "tival1 TINYINT(1) DEFAULT FALSE, "
@@ -462,6 +462,28 @@ public class MySqlDefaultValueTest {
         assertThat((Short) table.columnWithName("tival2").defaultValue()).isEqualTo((short) 3);
         assertThat((Short) table.columnWithName("tival3").defaultValue()).isEqualTo((short) 1);
         assertThat((Short) table.columnWithName("tival4").defaultValue()).isEqualTo((short) 18);
+    }
+
+    @Test
+    @FixFor("DBZ-1689")
+    public void shouldAcceptBooleanAsIntDefaultValue() {
+        String ddl = "CREATE TABLE data(id INT, "
+                + "bval BOOLEAN DEFAULT TRUE, "
+                + "ival1 INT(1) DEFAULT FALSE, "
+                + "ival2 INT(1) DEFAULT 3, "
+                + "ival3 INT(2) DEFAULT TRUE, "
+                + "ival4 INT(2) DEFAULT 18, "
+                + "PRIMARY KEY (id))";
+
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "data"));
+
+        assertThat((Boolean) table.columnWithName("bval").defaultValue()).isTrue();
+        assertThat((Integer) table.columnWithName("ival1").defaultValue()).isZero();
+        assertThat((Integer) table.columnWithName("ival2").defaultValue()).isEqualTo((int) 3);
+        assertThat((Integer) table.columnWithName("ival3").defaultValue()).isEqualTo((int) 1);
+        assertThat((Integer) table.columnWithName("ival4").defaultValue()).isEqualTo((int) 18);
     }
 
     @Test

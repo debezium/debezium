@@ -392,6 +392,8 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
         Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
         Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
+        Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
+
         assertThat(schemaA.defaultValue()).isEqualTo((short) 10);
         assertThat(schemaB.defaultValue()).isEqualTo((short) 5);
         assertThat(schemaC.defaultValue()).isEqualTo(0);
@@ -399,6 +401,7 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         assertThat(schemaE.defaultValue()).isEqualTo(null);
         assertEmptyFieldValue(record, "F");
         assertThat(schemaG.defaultValue()).isEqualTo((short) 1);
+        assertThat(schemaH.defaultValue()).isEqualTo((int) 1);
     }
 
     @Test
@@ -427,6 +430,35 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(schemaA.defaultValue()).isEqualTo((short) 1);
         assertThat(schemaB.defaultValue()).isEqualTo((short) 0);
+    }
+
+    @Test
+    @FixFor("DBZ-1689")
+    public void intBooleanTest() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+        start(MySqlConnector.class, config);
+
+        // Testing.Print.enable();
+
+        consumeRecordsByTopic(EVENT_COUNT);
+        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("CREATE TABLE int_boolean_table (" +
+                    "  A INT(1) NOT NULL DEFAULT TRUE," +
+                    "  B INT(2) NOT NULL DEFAULT FALSE" +
+                    ")");
+            conn.createStatement().execute("INSERT INTO int_boolean_table VALUES (default, default)");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("int_boolean_table")).get(0);
+        validate(record);
+
+        Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
+        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
+        assertThat(schemaA.defaultValue()).isEqualTo((int) 1);
+        assertThat(schemaB.defaultValue()).isEqualTo((int) 0);
     }
 
     @Test
