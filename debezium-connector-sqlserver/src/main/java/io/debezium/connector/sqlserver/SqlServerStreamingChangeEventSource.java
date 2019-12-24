@@ -7,6 +7,8 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -384,7 +386,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             final int dataColumnCount = resultSet.getMetaData().getColumnCount() - (COL_DATA - 1);
             final Object[] data = new Object[dataColumnCount];
             for (int i = 0; i < dataColumnCount; i++) {
-                data[i] = resultSet.getObject(COL_DATA + i);
+                if (resultSet.getMetaData().getColumnType(COL_DATA + i) == Types.TIME) {
+                    Timestamp timestamp = resultSet.getTimestamp(COL_DATA + i);
+                    data[i] = timestamp;
+                }
+                else {
+                    data[i] = resultSet.getObject(COL_DATA + i);
+                }
+
             }
             return data;
         }

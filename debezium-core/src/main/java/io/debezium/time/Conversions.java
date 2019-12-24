@@ -92,6 +92,13 @@ public final class Conversions {
                     time.getSeconds(),
                     nanosOfSecond);
         }
+        if (obj instanceof java.sql.Timestamp) {
+            java.sql.Timestamp timestamp = (java.sql.Timestamp) obj;
+            return LocalTime.of(timestamp.getHours(),
+                    timestamp.getMinutes(),
+                    timestamp.getSeconds(),
+                    timestamp.getNanos());
+        }
         if (obj instanceof java.util.Date) {
             java.util.Date date = (java.util.Date) obj;
             long millis = (int) (date.getTime() % Conversions.MILLISECONDS_PER_SECOND);
