@@ -66,8 +66,8 @@ public class MySqlDefaultValueConverter {
             return value;
         }
 
-        // boolean is also TINYINT(1)
-        if ("TINYINT".equals(column.typeName())) {
+        // boolean is also INT(1) or TINYINT(1)
+        if ("TINYINT".equals(column.typeName()) || "INT".equals(column.typeName())) {
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 return convertToBoolean(value);
             }
