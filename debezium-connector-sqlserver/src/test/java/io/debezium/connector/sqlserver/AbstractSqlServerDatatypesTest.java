@@ -128,7 +128,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME = Arrays.asList(
             new SchemaAndValueField("val_date", Date.builder().optional().build(), 17_725),
             new SchemaAndValueField("val_time_p2", Time.builder().optional().build(), 37_425_680),
-            new SchemaAndValueField("val_time", MicroTime.builder().optional().build(), 37_425_679_000L), // value truncated by the driver
+            new SchemaAndValueField("val_time", MicroTime.builder().optional().build(), 37_425_678_900L),
             new SchemaAndValueField("val_datetime2", NanoTimestamp.builder().optional().build(), 1_531_481_025_340_000_000L),
             new SchemaAndValueField("val_datetimeoffset", ZonedTimestamp.builder().optional().build(), "2018-07-13T12:23:45.456+11:00"),
             new SchemaAndValueField("val_datetime", Timestamp.builder().optional().build(), 1_531_488_225_780L),
@@ -144,7 +144,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
             new SchemaAndValueField("val_time", org.apache.kafka.connect.data.Time.builder().optional().build(),
-                    java.util.Date.from(LocalTime.of(10, 23, 45, 679_000_000).atDate(LocalDate.ofEpochDay(0)) // value truncated by the driver
+                    java.util.Date.from(LocalTime.of(10, 23, 45, 678_900_000).atDate(LocalDate.ofEpochDay(0)) // value truncated by the driver
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
             new SchemaAndValueField("val_datetime2", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),

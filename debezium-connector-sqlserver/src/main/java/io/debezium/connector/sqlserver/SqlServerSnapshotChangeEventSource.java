@@ -7,9 +7,11 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,6 +23,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolatio
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -208,6 +211,20 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     @Override
     protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM [%s].[%s]", tableId.schema(), tableId.table()));
+    }
+
+    @Override
+    protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
+
+        final ResultSetMetaData metaData = rs.getMetaData();
+        final int columnType = metaData.getColumnType(columnIndex);
+
+        if (columnType == Types.TIME) {
+            return rs.getTimestamp(columnIndex);
+        }
+        else {
+            return super.getColumnValue(rs, columnIndex, column);
+        }
     }
 
     /**
