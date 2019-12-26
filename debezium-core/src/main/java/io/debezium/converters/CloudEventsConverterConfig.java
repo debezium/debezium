@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.cloudevents;
+package io.debezium.converters;
 
 import java.util.List;
 import java.util.Map;
@@ -31,9 +31,6 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     public static final String CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
     private static final String CLOUDEVENTS_SCHEMA_REGISTRY_URL_DOC = "Comma-separated list of URLs for schema registry instances that can be used to register or look up schemas for CloudEvents.";
 
-    public static final String CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_CONFIG = "data.schema.registry.url";
-    private static final String CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_DOC = "Comma-separated list of URLs for schema registry instances that can be used to register or look up schemas for the data field of CloudEvents.";
-
     private static final ConfigDef CONFIG;
 
     static {
@@ -47,8 +44,6 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_JSON_SCHEMAS_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG, ConfigDef.Type.LIST, CLOUDEVENTS_SCHEMA_REGISTRY_URL_DOC, ConfigDef.Importance.MEDIUM,
                 CLOUDEVENTS_SCHEMA_REGISTRY_URL_DOC);
-        CONFIG.define(CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_CONFIG, ConfigDef.Type.LIST, CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_DOC, ConfigDef.Importance.MEDIUM,
-                CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_DOC);
     }
 
     public static ConfigDef configDef() {
@@ -93,14 +88,5 @@ public class CloudEventsConverterConfig extends ConverterConfig {
      */
     public List<String> cloudeventsSchemaRegistryUrls() {
         return getList(CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG);
-    }
-
-    /**
-     * Return a list of URLs for schema registry instances that can be used to register or look up schemas for the data field of CloudEvents.
-     *
-     * @return a list of schema registry URLs
-     */
-    public List<String> cloudeventsDataSchemaRegistryUrls() {
-        return getList(CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_CONFIG);
     }
 }

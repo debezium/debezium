@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.cloudevents;
+package io.debezium.converters;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.converters.CloudEventsConverter;
+import io.debezium.converters.CloudEventsMaker;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.json.JsonDeserializer;
@@ -31,7 +33,6 @@ public class CloudEventsConverterTest {
     private static final JsonDeserializer valueJsonDeserializer = new JsonDeserializer();
 
     private static final MockSchemaRegistryClient ceSchemaRegistry = new MockSchemaRegistryClient();
-    private static final MockSchemaRegistryClient dataSchemaRegistry = new MockSchemaRegistryClient();
     private static final CloudEventsConverter valueCEAvroConverter = new CloudEventsConverter();
 
     static {
@@ -47,9 +48,7 @@ public class CloudEventsConverterTest {
         avroConfig.put("cloudevents.serializer.type", "avro");
         avroConfig.put("cloudevents.data.serializer.type", "avro");
         avroConfig.put("schema.registry.url", "http://fake-url");
-        avroConfig.put("data.schema.registry.url", "http://fake-url/data");
         valueCEAvroConverter.setCESchemaRegistry(ceSchemaRegistry);
-        valueCEAvroConverter.setDataSchemaRegistry(dataSchemaRegistry);
         valueCEAvroConverter.configure(avroConfig, false);
     }
 

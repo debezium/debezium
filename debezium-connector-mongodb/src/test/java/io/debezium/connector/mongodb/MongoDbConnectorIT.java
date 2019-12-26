@@ -35,7 +35,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 import com.mongodb.util.JSON;
 
-import io.debezium.cloudevents.CloudEventsConverterTest;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
