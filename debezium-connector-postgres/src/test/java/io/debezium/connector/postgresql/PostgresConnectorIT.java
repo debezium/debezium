@@ -45,7 +45,7 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
 
-import io.debezium.cloudevents.CloudEventsConverterTest;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;

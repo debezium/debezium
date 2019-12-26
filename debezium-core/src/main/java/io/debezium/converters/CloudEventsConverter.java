@@ -3,9 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.cloudevents;
+package io.debezium.converters;
 
-import static io.debezium.cloudevents.SerializerType.withName;
+import static io.debezium.converters.SerializerType.withName;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 
 import java.io.IOException;
@@ -57,8 +57,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * schemas with {@link CloudEventsConverterConfig#CLOUDEVENTS_JSON_SCHEMAS_ENABLE_CONFIG json.schemas.enable} option.
  *
  * If the the serialization format is Avro, the URL of schema registries for CloudEvents and its data attribute can be
- * configured with {@link CloudEventsConverterConfig#CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG schema.registry.url} and
- * {@link CloudEventsConverterConfig#CLOUDEVENTS_DATA_SCHEMA_REGISTRY_URL_CONFIG data.schema.registry.url} options.
+ * configured with {@link CloudEventsConverterConfig#CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG schema.registry.url}.
  *
  * There are two modes for transferring CloudEvents as Kafka messages: structured and binary. In the structured content
  * mode, event metadata attributes and event data are placed into the Kafka message value section using an event format.
@@ -100,7 +99,6 @@ public class CloudEventsConverter implements Converter {
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
     private boolean enableJsonSchemas = CloudEventsConverterConfig.CLOUDEVENTS_JSON_SCHEMAS_ENABLE_DEFAULT;
     private List<String> schemaRegistryUrls;
-    private List<String> dataSchemaRegistryUrls;
 
     /**
      * Specify the schema registry client for CloudEvents when using Avro as its serialization format.
@@ -157,12 +155,12 @@ public class CloudEventsConverter implements Converter {
                 if (this.dataSchemaRegistry != null) {
                     avroDataConverter = new AvroConverter(dataSchemaRegistry);
                 }
-                dataSchemaRegistryUrls = ceConfig.cloudeventsDataSchemaRegistryUrls();
-                if (dataSchemaRegistryUrls == null) {
+                schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
+                if (schemaRegistryUrls == null) {
                     throw new DataException("Need url(s) for schema registry instances for the data field of CloudEvents");
                 }
                 Map<String, Object> avroConfigs = new HashMap<>(configs);
-                avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", dataSchemaRegistryUrls));
+                avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", schemaRegistryUrls));
                 avroDataConverter.configure(avroConfigs, false);
                 break;
         }
@@ -179,7 +177,7 @@ public class CloudEventsConverter implements Converter {
 
         RecordParser parser = RecordParser.create(schema, value);
         CloudEventsMaker maker = CloudEventsMaker.create(parser, ceSerializerType,
-                (dataSchemaRegistryUrls == null) ? null : String.join(",", dataSchemaRegistryUrls));
+                (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
         Schema dataSchemaType;
         Object serializedData;
