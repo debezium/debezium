@@ -18,7 +18,7 @@ You must enable binary logging for MySQL replication. The binary logs record tra
 [source,SQL]
 ----
 mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM information_schema_global_variables WHERE variable_name='log-bin';
+FROM information_schema.global_variables WHERE variable_name='log_bin';
 ----
 
 [start=2]
@@ -40,7 +40,7 @@ expire_logs_days  = 10 <5>
 [source,SQL]
 ----
 mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM information_schema_global_variables WHERE variable_name='log-bin';
+FROM information_schema.global_variables WHERE variable_name='log_bin';
 ----
 
 
@@ -57,7 +57,7 @@ FROM information_schema_global_variables WHERE variable_name='log-bin';
 
 |2
 |`log_bin`
-| The value of `log-bin` is the base name of the sequence of binlog files.
+| The value of `log_bin` is the base name of the sequence of binlog files.
 
 |3
 |`binlog_format`
