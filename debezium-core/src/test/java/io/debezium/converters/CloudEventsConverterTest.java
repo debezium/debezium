@@ -8,12 +8,9 @@ package io.debezium.converters;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.debezium.converters.CloudEventsConverter;
-import io.debezium.converters.CloudEventsMaker;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.json.JsonDeserializer;
@@ -52,7 +49,7 @@ public class CloudEventsConverterTest {
         valueCEAvroConverter.configure(avroConfig, false);
     }
 
-    public static void shouldConvertToCloudEventsInJson(SourceRecord record) throws IOException {
+    public static void shouldConvertToCloudEventsInJson(SourceRecord record) {
         JsonNode valueJson = null;
         JsonNode dataJson;
         String msg = null;
@@ -95,12 +92,10 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.EXTRAINFO)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
-            msg = "inspecting the extrainfo field in the value";
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.EXTRAINFO).get(Envelope.FieldName.OPERATION)).isNotNull();
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.EXTRAINFO).get(Envelope.FieldName.TIMESTAMP)).isNotNull();
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.EXTRAINFO).get(Envelope.FieldName.SOURCE)).isNotNull();
+            msg = "inspecting required CloudEvents extension attributes for Debezium";
+            assertThat(valueJson.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.OPERATION))).isNotNull();
+            assertThat(valueJson.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.TIMESTAMP))).isNotNull();
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();
@@ -166,13 +161,10 @@ public class CloudEventsConverterTest {
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isNotNull();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATASCHEMA)).isNotNull();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
-            assertThat(avroValue.get(CloudEventsMaker.FieldName.EXTRAINFO)).isNotNull();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
-            msg = "inspecting the extrainfo field in the value";
-            Struct avroStruct = avroValue.getStruct(CloudEventsMaker.FieldName.EXTRAINFO);
-            assertThat(avroStruct.get(Envelope.FieldName.OPERATION)).isNotNull();
-            assertThat(avroStruct.get(Envelope.FieldName.TIMESTAMP)).isNotNull();
-            assertThat(avroStruct.get(Envelope.FieldName.SOURCE)).isNotNull();
+            msg = "inspecting required CloudEvents extension attributes in the value";
+            assertThat(avroValue.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.OPERATION))).isNotNull();
+            assertThat(avroValue.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.TIMESTAMP))).isNotNull();
             msg = "inspecting the data field in the value";
             Struct avroDataField = avroValue.getStruct(CloudEventsMaker.FieldName.DATA);
             // before field may be null

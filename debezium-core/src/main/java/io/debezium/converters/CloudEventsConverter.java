@@ -15,8 +15,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Collections;
+import java.util.Set;import java.util.concurrent.ConcurrentHashMap;
 
+import io.debezium.data.Envelope;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -91,7 +93,6 @@ public class CloudEventsConverter implements Converter {
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
     private SchemaRegistryClient ceSchemaRegistry;
-    private SchemaRegistryClient dataSchemaRegistry;
     private AvroConverter avroCEConverter = new AvroConverter();
     private AvroConverter avroDataConverter = new AvroConverter();
 
@@ -107,15 +108,6 @@ public class CloudEventsConverter implements Converter {
      */
     public void setCESchemaRegistry(SchemaRegistryClient schemaRegistry) {
         this.ceSchemaRegistry = schemaRegistry;
-    }
-
-    /**
-     * Specify the schema registry for the data attribute of CloudEvents when using Avro as its serialization format.
-     *
-     * @param schemaRegistry the schema registry client
-     */
-    public void setDataSchemaRegistry(SchemaRegistryClient schemaRegistry) {
-        this.dataSchemaRegistry = schemaRegistry;
     }
 
     @Override
@@ -134,7 +126,7 @@ public class CloudEventsConverter implements Converter {
                 jsonCEConverter.configure(conf, isKey);
                 break;
             case AVRO:
-                if (this.ceSchemaRegistry != null) {
+                if (ceSchemaRegistry != null) {
                     avroCEConverter = new AvroConverter(ceSchemaRegistry);
                 }
                 schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
@@ -152,12 +144,12 @@ public class CloudEventsConverter implements Converter {
                 enableJsonSchemas = ceConfig.cloudeventsJsonSchemasEnable();
                 break;
             case AVRO:
-                if (this.dataSchemaRegistry != null) {
-                    avroDataConverter = new AvroConverter(dataSchemaRegistry);
+                if (ceSchemaRegistry != null) {
+                    avroDataConverter = new AvroConverter(ceSchemaRegistry);
                 }
                 schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
                 if (schemaRegistryUrls == null) {
-                    throw new DataException("Need url(s) for schema registry instances for the data field of CloudEvents");
+                    throw new DataException("Need url(s) for schema registry instances for CloudEvents");
                 }
                 Map<String, Object> avroConfigs = new HashMap<>(configs);
                 avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", schemaRegistryUrls));
@@ -198,7 +190,7 @@ public class CloudEventsConverter implements Converter {
                 throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
         }
 
-        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(maker, dataSchemaType, serializedData);
+        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(parser, maker, dataSchemaType, serializedData);
         switch (ceSerializerType) {
             case JSON:
                 JsonNode node = convertToJsonNode(ceSchemaAndValue.schema(), ceSchemaAndValue.value(), false);
@@ -339,37 +331,60 @@ public class CloudEventsConverter implements Converter {
         }
     }
 
-    private SchemaAndValue convertToCloudEventsFormat(CloudEventsMaker maker, Schema dataSchemaType, Object serializedData) {
-        SchemaNameAdjuster adjuster = SchemaNameAdjuster.create(LOGGER);
+    private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, Object serializedData) {
+        SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
+        AttributeNameAdjuster attributeAdjuster = ((AttributeNameAdjuster) CloudEventsConverter::adjustExtensionName).uniqueName();
         String dataSchema = maker.ceDataschema();
+        Struct source = parser.source();
+        Schema sourceSchema = parser.source().schema();
 
+        // construct schema of CloudEvents envelope
         CESchemaBuilder ceSchemaBuilder = defineSchema()
-                .withName(adjuster.adjust(maker.ceEnvelopeSchemaName()))
-                .withSchema(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA);
+                .withName(schemaNameAdjuster.adjust(maker.ceEnvelopeSchemaName()))
+                .withSchema(CloudEventsMaker.FieldName.DATACONTENTTYPE, Schema.STRING_SCHEMA)
+                .withSchema(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
+                .withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType)
+                .withSchema(attributeAdjuster.adjust(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA)
+                .withSchema(attributeAdjuster.adjust(Envelope.FieldName.TIMESTAMP), Schema.STRING_SCHEMA);
 
         if (dataSchema != null) {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
-        Schema ceSchema = ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.TIME, Schema.STRING_SCHEMA)
-                .withSchema(CloudEventsMaker.FieldName.EXTRAINFO, maker.ceExtrainfoSchema())
-                .withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType)
-                .build();
+        for (Field field : sourceSchema.fields()) {
+            Schema schema = field.schema();
+            if (Schema.BOOLEAN_SCHEMA.equals(schema)) {
+                ceSchemaBuilder.withSchema(attributeAdjuster.adjust(field.name()), Schema.BOOLEAN_SCHEMA);
+            }
+            else if (Schema.INT8_SCHEMA.equals(schema) || Schema.INT16_SCHEMA.equals(schema) || Schema.INT32_SCHEMA.equals(schema)) {
+                ceSchemaBuilder.withSchema(attributeAdjuster.adjust(field.name()), Schema.INT32_SCHEMA);
+            }
+            else {
+                ceSchemaBuilder.withSchema(attributeAdjuster.adjust(field.name()), Schema.STRING_SCHEMA);
+            }
+        }
 
+        Schema ceSchema = ceSchemaBuilder.build();
+
+        // construct value of CloudEvents Envelope
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
                 .withValue(CloudEventsMaker.FieldName.ID, maker.ceId())
                 .withValue(CloudEventsMaker.FieldName.SOURCE, maker.ceSource())
                 .withValue(CloudEventsMaker.FieldName.SPECVERSION, maker.ceSpecversion())
                 .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
-                .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype());
+                .withValue(CloudEventsMaker.FieldName.DATACONTENTTYPE, maker.ceDatacontenttype())
+                .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
+                .withValue(CloudEventsMaker.FieldName.DATA, serializedData)
+                .withValue(attributeAdjuster.adjust(Envelope.FieldName.OPERATION), parser.op())
+                .withValue(attributeAdjuster.adjust(Envelope.FieldName.TIMESTAMP), parser.ts_ms());
 
         if (dataSchema != null) {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
         }
 
-        ceValueBuilder.withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
-                .withValue(CloudEventsMaker.FieldName.EXTRAINFO, maker.ceExtrainfo())
-                .withValue(CloudEventsMaker.FieldName.DATA, serializedData);
+        for (Field field : sourceSchema.fields()) {
+            ceValueBuilder.withValue(attributeAdjuster.adjust(field.name()), source.get(field));
+        }
 
         return new SchemaAndValue(ceSchema, ceValueBuilder.build());
     }
@@ -419,8 +434,9 @@ public class CloudEventsConverter implements Converter {
                 builder.field(CloudEventsMaker.FieldName.SPECVERSION, Schema.STRING_SCHEMA);
                 builder.field(CloudEventsMaker.FieldName.TYPE, Schema.STRING_SCHEMA);
 
-                // Check required extension attributes
-                checkFieldIsDefined(CloudEventsMaker.FieldName.EXTRAINFO);
+                // Check required extension attribute names
+                checkFieldIsDefined(adjustExtensionName(Envelope.FieldName.OPERATION));
+                checkFieldIsDefined(adjustExtensionName(Envelope.FieldName.TIMESTAMP));
                 // Check the data attribute
                 checkFieldIsDefined(CloudEventsMaker.FieldName.DATA);
 
@@ -481,5 +497,69 @@ public class CloudEventsConverter implements Converter {
         CEValueBuilder withValue(String fieldName, Object value);
 
         Struct build();
+    }
+
+    /**
+     * An adjuster for the name of CloudEvents attributes.
+     */
+    @FunctionalInterface
+    public interface AttributeNameAdjuster {
+        /**
+         * Convert the original field name to a valid CloudEvents attribute name, simply removing all invalid
+         * characters
+         *
+         * @param original the original attribute name
+         * @return the valid CloudEvents attribute name
+         */
+        String adjust(String original);
+
+        /**
+         * Create a new function that keep tracking all produced attribute names, in case of duplicated names.
+         *
+         * @return the new function; never null
+         */
+        default AttributeNameAdjuster uniqueName() {
+            Set<String> alreadySeen = Collections.newSetFromMap(new ConcurrentHashMap<>());
+            return original -> {
+                String replacement = this.adjust(original);
+                if (!alreadySeen.add(replacement)) {
+                    throw new DataException("Duplicated CloudEvents extension attribute name " + replacement);
+                }
+                return replacement;
+            };
+        }
+    }
+
+    /**
+     * Adjust the name of CloudEvents attributes for Debezium events, following CloudEvents
+     * <a href="https://github.com/cloudevents/spec/blob/v1.0/spec.md#attribute-naming-conventionattribute"> attribute
+     * naming convention</a> as follows:
+     *
+     * CloudEvents attribute names MUST consist of lower-case letters ('a' to 'z') or digits ('0' to '9') from the ASCII
+     * character set. Attribute names SHOULD be descriptive and terse and SHOULD NOT exceed 20 characters in length.
+     *
+     * @param original the original field name
+     * @return the valid extension attribute name
+     */
+    public static String adjustExtensionName(String original) {
+        if (original.length() == 0) {
+            return original;
+        }
+        StringBuilder sb = new StringBuilder();
+        char c;
+        for (int i = 0; i != original.length(); ++i) {
+            c = original.charAt(i);
+            if (isValidExtensionNameCharacter(c)) {
+                sb.append(c);
+            }
+        }
+        if (sb.length() > 20) {
+            return sb.substring(0, 20);
+        }
+        return sb.toString();
+    }
+
+    private static boolean isValidExtensionNameCharacter(char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
     }
 }
