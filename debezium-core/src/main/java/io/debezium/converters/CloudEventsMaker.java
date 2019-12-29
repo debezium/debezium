@@ -29,15 +29,30 @@ public abstract class CloudEventsMaker {
      * The constants for the names of CloudEvents attributes.
      */
     public static final class FieldName {
+        /**
+         * CloudEvents context attributes (REQUIRED)
+         */
         public static final String ID = "id";
         public static final String SOURCE = "source";
         public static final String SPECVERSION = "specversion";
         public static final String TYPE = "type";
+
+        /**
+         * CloudEvents context attributes (OPTIONAL)
+         */
         public static final String DATACONTENTTYPE = "datacontenttype";
         public static final String DATASCHEMA = "dataschema";
+        public static final String SUBJECT = "subject";
         public static final String TIME = "time";
-        public static final String EXTRAINFO = "extrainfo";
+
+        /**
+         * Event data
+         */
         public static final String DATA = "data";
+
+        /**
+         * Schema and payload within event data
+         */
         public static final String SCHEMA_FIELD_NAME = "schema";
         public static final String PAYLOAD_FIELD_NAME = "payload";
     }

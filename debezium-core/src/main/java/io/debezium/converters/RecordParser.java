@@ -28,7 +28,9 @@ public abstract class RecordParser {
     private Object after;
     private Struct source;
     private String op;
+    private Schema opSchema;
     private String ts_ms;
+    private Schema ts_msSchema;
     private Schema beforeSchema;
     private Schema afterSchema;
     private String connectorType;
@@ -75,7 +77,9 @@ public abstract class RecordParser {
         after = schema.field(Envelope.FieldName.AFTER) == null ? null : record.get(Envelope.FieldName.AFTER);
         source = record.getStruct(Envelope.FieldName.SOURCE);
         op = record.getString(Envelope.FieldName.OPERATION);
+        opSchema = schema.field(Envelope.FieldName.OPERATION).schema();
         ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
+        ts_msSchema = schema.field(Envelope.FieldName.TIMESTAMP).schema();
         beforeSchema = before == null ? null : schema.field(Envelope.FieldName.BEFORE).schema();
         afterSchema = after == null ? null : schema.field(Envelope.FieldName.AFTER).schema();
         connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
@@ -118,12 +122,30 @@ public abstract class RecordParser {
     }
 
     /**
+     * Get the schema of the op field in the record.
+     *
+     * @return the schema of the op field
+     */
+    public Schema opSchema() {
+        return opSchema;
+    }
+
+    /**
      * Get the value of the ts_ms field in the record.
      *
      * @return the value of the ts_ms field
      */
     public String ts_ms() {
         return ts_ms;
+    }
+
+    /**
+     * Get the schema of the ts_ms field in the record.
+     *
+     * @return the schema of the ts_ms field
+     */
+    public Schema ts_msSchema() {
+        return ts_msSchema;
     }
 
     /**
@@ -160,6 +182,7 @@ public abstract class RecordParser {
      * @return metadata of the record
      */
     public abstract Object getMetadata(String name);
+
 
     /**
      * Parser for records produced by MySQL connectors.
