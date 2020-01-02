@@ -26,7 +26,7 @@ The MongoDB connector is also quite tolerant of changes in membership and leader
 
 The Debezium MongoDB connector uses MongoDB's oplog to capture the changes, so the connector works only with MongoDB replica sets or with sharded clusters where each shard is a separate replica set. See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster]. Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
 
-You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster.
+You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
 
 [[supported-mongodb-topologies]]
 == Supported MongoDB topologies
@@ -612,6 +612,10 @@ The following configuration properties are _required_ unless a default value is 
 |`mongodb.password`
 |
 |Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
+
+|`mongodb.authSource`
+|`admin`
+|Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication.
 
 |`mongodb.ssl.enabled`
 |`false`

@@ -59,7 +59,7 @@ public class ConnectionContext implements AutoCloseable {
         this.useHostsAsSeeds = config.getBoolean(MongoDbConnectorConfig.AUTO_DISCOVER_MEMBERS);
         final String username = config.getString(MongoDbConnectorConfig.USER);
         final String password = config.getString(MongoDbConnectorConfig.PASSWORD);
-        final String adminDbName = ReplicaSetDiscovery.ADMIN_DATABASE_NAME;
+        final String adminDbName = config.getString(MongoDbConnectorConfig.AUTH_SOURCE);
         final boolean useSSL = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
         final boolean sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
 
