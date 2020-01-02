@@ -1323,7 +1323,7 @@ Remember that we saw two events when we deleted the row? Let's look at that seco
   {
     "schema": {
       "type": "struct",
-      "name": "dbserver1.inventory.customers.Key"
+      "name": "dbserver1.inventory.customers.Key",
       "optional": false,
       "fields": [
         {
