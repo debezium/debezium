@@ -23,6 +23,12 @@ Debezium is a distributed platform that turns your existing databases into event
 
 Debezium {debezium-version} includes support for monitoring MySQL database servers with its xref:connectors/mysql.adoc[MySQL connector], and this is what we'll use in this demonstration. Support for other DBMSes will be added in future releases.
 
+== Running Debezium Sample Application
+
+The fastest way to get started with Debezium is to checkout and try our tutorial application: 
+
+https://github.com/debezium/debezium-examples/tree/master/tutorial
+
 == Running Debezium with Docker
 
 Running Debezium involves three major services: http://zookeeper.apache.org[ZooKeeper], Kafka, and Debezium's connector service. This tutorial walks you through starting a single instance of these services using http://docker.com[Docker] and https://hub.docker.com/u/debezium/[Debezium's Docker images]. Production environments, on the other hand, require running multiple instances of each service to provide the performance, reliability, replication, and fault tolerance. This can be done with a platform like https://www.openshift.com[OpenShift] and http://kubernetes.io[Kubernetes] that manages multiple Docker containers running on multiple hosts and machines, but often you'll want to xref:install.adoc[install on dedicated hardware].
