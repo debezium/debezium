@@ -23,6 +23,7 @@ import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
@@ -312,6 +313,99 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         String updateId = JSON.parse(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
         assertThat(updateId).isEqualTo(id.get());
+    }
+
+    @Test
+    @FixFor("DBZ-1168")
+    public void shouldConsumeAllEventsFromDatabaseWithCustomAuthSource() throws InterruptedException, IOException {
+
+        final String authDbName = "authdb";
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        primary().execute("Create auth database", client -> {
+            final MongoDatabase db = client.getDatabase(authDbName);
+            try {
+                db.runCommand(BsonDocument.parse("{dropUser: \"dbz\"}"));
+            }
+            catch (Exception e) {
+                logger.info("Expected error while dropping user", e);
+            }
+            db.runCommand(BsonDocument.parse(
+                    "{createUser: \"dbz\", pwd: \"pass\", roles: [{role: \"readAnyDatabase\", db: \"admin\"}]}"));
+        });
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "simpletons", "simple_objects.json");
+        storeDocuments("dbit", "restaurants", "restaurants1.json");
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.USER, "dbz")
+                .with(MongoDbConnectorConfig.PASSWORD, "pass")
+                .with(MongoDbConnectorConfig.AUTH_SOURCE, authDbName)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(12);
+        records.topics().forEach(System.out::println);
+        assertThat(records.recordsForTopic("mongo.dbit.simpletons").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(6);
+        assertThat(records.topics().size()).isEqualTo(2);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // At this point, the connector has performed the initial sync and awaits changes ...
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store more documents while the connector is still running
+        // ---------------------------------------------------------------------------------------------------------------
+        storeDocuments("dbit", "restaurants", "restaurants2.json");
+
+        // Wait until we can consume the 4 documents we just added ...
+        SourceRecords records2 = consumeRecordsByTopic(4);
+        assertThat(records2.recordsForTopic("mongo.dbit.restaurants").size()).isEqualTo(4);
+        assertThat(records2.topics().size()).isEqualTo(1);
+        records2.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+            verifyNotFromTransaction(record);
+        });
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
     }
 
     @Test

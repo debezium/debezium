@@ -133,6 +133,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.HIGH)
             .withDescription("Password to be used when connecting to MongoDB, if necessary.");
 
+    public static final Field AUTH_SOURCE = Field.create("mongodb.authsource")
+            .withDisplayName("Credentials Database")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(ReplicaSetDiscovery.ADMIN_DATABASE_NAME)
+            .withDescription("Database containing user credentials.");
+
     public static final Field POLL_INTERVAL_SEC = Field.create("mongodb.poll.interval.sec")
             .withDisplayName("Replica membership poll interval (sec)")
             .withType(Type.INT)
