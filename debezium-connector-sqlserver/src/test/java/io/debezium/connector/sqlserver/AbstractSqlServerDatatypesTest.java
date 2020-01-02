@@ -144,7 +144,7 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTe
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
             new SchemaAndValueField("val_time", org.apache.kafka.connect.data.Time.builder().optional().build(),
-                    java.util.Date.from(LocalTime.of(10, 23, 45, 678_900_000).atDate(LocalDate.ofEpochDay(0)) // value truncated by the driver
+                    java.util.Date.from(LocalTime.of(10, 23, 45, 678_900_000).atDate(LocalDate.ofEpochDay(0))
                             .atOffset(ZoneOffset.UTC)
                             .toInstant())),
             new SchemaAndValueField("val_datetime2", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
