@@ -732,6 +732,14 @@ If P - S >= 19, the column will be mapped to `BYTES` (`org.apache.kafka.connect{
 
 |=======================
 
+[[decimal-values]]
+==== Decimal Values
+When `decimal.handling.mode` configuration property is set to `precise`, then the connector will use the predefined Kafka Connect `org.apache.kafka.connect.data.Decimal` or `io.debezium.data.VariableScaleDecimal` logical types for numeric columns as described above.
+This is the default mode.
+
+However, when `decimal.handling.mode` configuration property is set to `double`, then the connector will represent the values as Java double values with schema type `FLOAT64`.
+The last option for `decimal.handling.mode` configuration property is `string`. In this case the connector will represent the values as their formatted string representation with schema type `STRING`.
+
 [[temporal-values]]
 ==== Temporal Values
 
@@ -1076,6 +1084,10 @@ The following configuration properties are _required_ unless a default value is 
 |`table.blacklist`
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _databaseName_._tableName_. May not be used with `table.whitelist`.
+
+|`decimal.handling.mode`
+|`precise`
+| Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
 
 |`max.queue.size`
 |`8192`
