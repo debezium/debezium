@@ -22,11 +22,15 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
@@ -129,6 +133,30 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
             new SchemaAndValueField("VAL_NUM_VS", VariableScaleDecimal.builder().optional().build(),
                     VariableScaleDecimal.fromLogical(VariableScaleDecimal.builder().optional().build(), new BigDecimal("77.323"))));
 
+    private static final List<SchemaAndValueField> EXPECTED_FP_AS_STRING = Arrays.asList(
+            new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
+            new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
+            new SchemaAndValueField("VAL_F", Schema.OPTIONAL_STRING_SCHEMA, "3.33"),
+            new SchemaAndValueField("VAL_F_10", Schema.OPTIONAL_STRING_SCHEMA, "8.888"),
+            new SchemaAndValueField("VAL_NUM", Schema.OPTIONAL_STRING_SCHEMA, "4.444400"),
+            new SchemaAndValueField("VAL_DP", Schema.OPTIONAL_STRING_SCHEMA, "5.555"),
+            new SchemaAndValueField("VAL_R", Schema.OPTIONAL_STRING_SCHEMA, "6.66"),
+            new SchemaAndValueField("VAL_DECIMAL", Schema.OPTIONAL_STRING_SCHEMA, "1234.567891"),
+            new SchemaAndValueField("VAL_NUMERIC", Schema.OPTIONAL_STRING_SCHEMA, "1234.567891"),
+            new SchemaAndValueField("VAL_NUM_VS", Schema.OPTIONAL_STRING_SCHEMA, "77.323"));
+
+    private static final List<SchemaAndValueField> EXPECTED_FP_AS_DOUBLE = Arrays.asList(
+            new SchemaAndValueField("VAL_BF", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
+            new SchemaAndValueField("VAL_BD", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22),
+            new SchemaAndValueField("VAL_F", Schema.OPTIONAL_FLOAT64_SCHEMA, 3.33),
+            new SchemaAndValueField("VAL_F_10", Schema.OPTIONAL_FLOAT64_SCHEMA, 8.888),
+            new SchemaAndValueField("VAL_NUM", Schema.OPTIONAL_FLOAT64_SCHEMA, 4.4444),
+            new SchemaAndValueField("VAL_DP", Schema.OPTIONAL_FLOAT64_SCHEMA, 5.555),
+            new SchemaAndValueField("VAL_R", Schema.OPTIONAL_FLOAT64_SCHEMA, 6.66),
+            new SchemaAndValueField("VAL_DECIMAL", Schema.OPTIONAL_FLOAT64_SCHEMA, 1234.567891),
+            new SchemaAndValueField("VAL_NUMERIC", Schema.OPTIONAL_FLOAT64_SCHEMA, 1234.567891),
+            new SchemaAndValueField("VAL_NUM_VS", Schema.OPTIONAL_FLOAT64_SCHEMA, 77.323));
+
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
             new SchemaAndValueField("VAL_INT", NUMBER_SCHEMA, new BigDecimal("1")),
             new SchemaAndValueField("VAL_INTEGER", NUMBER_SCHEMA, new BigDecimal("22")),
@@ -196,6 +224,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
     }
 
     protected abstract boolean insertRecordsDuringTest();
+
+    protected abstract Builder connectorConfig();
 
     private static void streamTable(String table) throws SQLException {
         connection.execute("GRANT SELECT ON " + table + " to " + TestHelper.CONNECTOR_USER);
@@ -269,6 +299,92 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
 
         Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_FP);
+    }
+
+    @Test
+    @FixFor("DBZ-1552")
+    public void fpTypesAsString() throws Exception {
+        stopConnector();
+        initializeConnectorTestFramework();
+        final Configuration config = connectorConfig()
+                .with(OracleConnectorConfig.DECIMAL_HANDLING_MODE, DecimalMode.STRING)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        Thread.sleep(2000);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertFpTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_FP");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_FP_AS_STRING);
+    }
+
+    @Test
+    @FixFor("DBZ-1552")
+    public void fpTypesAsDouble() throws Exception {
+        stopConnector();
+        initializeConnectorTestFramework();
+        final Configuration config = connectorConfig()
+                .with(OracleConnectorConfig.DECIMAL_HANDLING_MODE, DecimalMode.DOUBLE)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        Thread.sleep(2000);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertFpTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_FP");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_FP_AS_DOUBLE);
     }
 
     @Test

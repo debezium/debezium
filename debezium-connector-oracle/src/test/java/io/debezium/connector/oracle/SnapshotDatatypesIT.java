@@ -14,6 +14,7 @@ import org.junit.Rule;
 import org.junit.rules.TestName;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.util.Testing;
 
@@ -44,8 +45,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         Testing.Debug.enable();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
 
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_WHITELIST, getTableWhitelist())
+        Configuration config = connectorConfig()
                 .build();
 
         start(OracleConnector.class, config);
@@ -54,11 +54,18 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         Thread.sleep(2000);
     }
 
+    protected Builder connectorConfig() {
+        return TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_WHITELIST, getTableWhitelist());
+    }
+
     private String getTableWhitelist() {
         switch (name.getMethodName()) {
             case "stringTypes":
                 return "ORCLPDB1.debezium.type_string";
             case "fpTypes":
+            case "fpTypesAsString":
+            case "fpTypesAsDouble":
                 return "ORCLPDB1.debezium.type_fp";
             case "intTypes":
                 return "ORCLPDB1.debezium.type_int";

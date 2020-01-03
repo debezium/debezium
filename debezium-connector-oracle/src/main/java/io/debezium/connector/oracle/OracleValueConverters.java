@@ -10,6 +10,7 @@ import static io.debezium.util.NumberConversions.BYTE_FALSE;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,6 +21,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.MicroDuration;
@@ -45,7 +48,8 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private final OracleConnection connection;
 
-    public OracleValueConverters(OracleConnection connection) {
+    public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
+        super(config.getDecimalMode(), TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null);
         this.connection = connection;
     }
 
@@ -61,7 +65,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         switch (column.jdbcType()) {
             // Oracle's float is not float as in Java but a NUMERIC without scale
             case Types.FLOAT:
-                return VariableScaleDecimal.builder();
+                return variableScaleSchema(column);
             case Types.NUMERIC:
                 return getNumericSchema(column);
             case OracleTypes.BINARY_FLOAT:
@@ -106,8 +110,15 @@ public class OracleValueConverters extends JdbcValueConverters {
             return super.schemaBuilder(column);
         }
         else {
+            return variableScaleSchema(column);
+        }
+    }
+
+    private SchemaBuilder variableScaleSchema(Column column) {
+        if (decimalMode == DecimalMode.PRECISE) {
             return VariableScaleDecimal.builder();
         }
+        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(-1));
     }
 
     @Override
@@ -327,11 +338,16 @@ public class OracleValueConverters extends JdbcValueConverters {
             return null;
         }
         // TODO Need to handle special values, it is not supported in variable scale decimal
-        else if (data instanceof SpecialValueDecimal) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (SpecialValueDecimal) data);
+        if (decimalMode == DecimalMode.PRECISE) {
+            if (data instanceof SpecialValueDecimal) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), (SpecialValueDecimal) data);
+            }
+            else if (data instanceof BigDecimal) {
+                return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal((BigDecimal) data));
+            }
         }
-        else if (data instanceof BigDecimal) {
-            return VariableScaleDecimal.fromLogical(fieldDefn.schema(), new SpecialValueDecimal((BigDecimal) data));
+        else {
+            return data;
         }
         return handleUnknownData(column, fieldDefn, data);
     }

@@ -33,7 +33,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                                 OracleConnection connection) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), null,
                 new TableSchemaBuilder(
-                        new OracleValueConverters(connection),
+                        new OracleValueConverters(connectorConfig, connection),
                         schemaNameAdjuster,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
