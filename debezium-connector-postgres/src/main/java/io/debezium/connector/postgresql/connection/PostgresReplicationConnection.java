@@ -255,8 +255,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     public void initConnection() throws SQLException, InterruptedException {
         if (!hasInitedSlot) {
             initReplicationSlot();
-            initPublication();
         }
+        initPublication();
     }
 
     @Override
