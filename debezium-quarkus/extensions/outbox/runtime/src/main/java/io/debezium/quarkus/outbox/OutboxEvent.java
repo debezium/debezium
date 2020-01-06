@@ -5,6 +5,7 @@
  */
 package io.debezium.quarkus.outbox;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import javax.persistence.Column;
@@ -40,7 +41,7 @@ public class OutboxEvent {
     private String type;
 
     @NotNull
-    private Long timestamp;
+    private Instant timestamp;
 
     // todo: for now mapping this as varchar(8000).
     // Need to investigate if we can write our own hibernate type implementation that does not
@@ -53,7 +54,7 @@ public class OutboxEvent {
     OutboxEvent() {
     }
 
-    public OutboxEvent(String aggregateType, String aggregateId, String type, JsonNode payload, Long timestamp) {
+    public OutboxEvent(String aggregateType, String aggregateId, String type, JsonNode payload, Instant timestamp) {
         this.aggregateType = aggregateType;
         this.aggregateId = aggregateId;
         this.type = type;
@@ -93,11 +94,11 @@ public class OutboxEvent {
         this.type = type;
     }
 
-    public Long getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Long timestamp) {
+    public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
     }
 
