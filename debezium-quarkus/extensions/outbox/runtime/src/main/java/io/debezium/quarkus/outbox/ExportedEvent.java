@@ -5,6 +5,8 @@
  */
 package io.debezium.quarkus.outbox;
 
+import java.time.Instant;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
@@ -35,7 +37,7 @@ public interface ExportedEvent {
     /**
      * The timestamp at which the event occurred.
      */
-    Long getTimestamp();
+    Instant getTimestamp();
 
     /**
      * The event payload.
