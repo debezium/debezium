@@ -1309,6 +1309,47 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-1684")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication test specifically for pgoutput")
+    public void shouldCreatePublicationWhenReplicationSlotExists() throws Exception {
+        // Start with a clean slate and create database objects
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .build();
+
+        // Start connector with no snapshot; by default replication slot and publication should be created
+        // Wait until streaming mode begins to proceed
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+
+        // Check that publication was created
+        assertTrue(TestHelper.publicationExists());
+
+        // Stop connector, drop publication
+        stopConnector();
+        TestHelper.dropPublication();
+
+        // Create log interceptor and restart the connector, should observe publication gets re-created
+        final LogInterceptor interceptor = new LogInterceptor();
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning();
+
+        // Check that publication was created
+        assertTrue(TestHelper.publicationExists());
+
+        // Stop Connector and check log messages
+        stopConnector(value -> {
+            assertThat(interceptor.containsMessage("Creating new publication 'dbz_publication' for plugin 'PGOUTPUT'")).isTrue();
+        });
+    }
+
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {
         String insertStmt = "INSERT INTO text_table(j, jb, x, u) " +
                 "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
