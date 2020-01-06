@@ -613,9 +613,9 @@ The following configuration properties are _required_ unless a default value is 
 |
 |Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
-|`mongodb.authSource`
+|`mongodb.authsource`
 |`admin`
-|Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication.
+|Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication with another authentication database than `admin`.
 
 |`mongodb.ssl.enabled`
 |`false`
