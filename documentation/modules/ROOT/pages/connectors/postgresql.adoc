@@ -169,6 +169,10 @@ Replication slots are guaranteed to retain all WAL required for Debezium even du
 It is important for this reason to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
 For more information please see the official Postgres docs on https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[this subject].
 
+In case you working with a `synchronous_commit` setting other than `on`,
+it's recommended to set `wal_writer_delay` to a value such as 10 ms in order to achieve a low latency of change events.
+Otherwise, its default value will be applied which adds a latency of about 200 ms.
+
 [TIP]
 ====
 We strongly recommend reading and understanding https://www.postgresql.org/docs/current/static/wal-configuration.html[the official documentation] regarding the mechanics and configuration of the PostgreSQL write-ahead log.
@@ -1389,11 +1393,13 @@ The PostgreSQL connector stores externally the last processed offset (in the for
 
 ==== Cluster Failures
 
-As of `12`, PostgreSQL allows logical replication slots _only on primary servers_, which means that a PostgreSQL connector can only be pointed to the active `primary` of a database cluster. If this machine goes down, only after a new `primary` has been promoted (with the link:#output-plugin[logical decoding plugin] installed) can the connector be restarted and pointed to the new server.
+As of `12`, PostgreSQL allows logical replication slots _only on primary servers_, which means that a PostgreSQL connector can only be pointed to the active primary of a database cluster.
+Also replication slots themselves are not propagated to replicas.
+If the primary node goes down, only after a new primary has been promoted (with the link:#output-plugin[logical decoding plugin] installed) and a replication slot has been created there, the connector can be restarted and pointed to the new server.
 
-There are some really important caveats to failovers, and you should pause Debezium until you can verify that you have a replication slot intact which has not lost data.  After a failover, you will lose data unless your administration of failovers includes a process to recreate the Debezium replication slot before the application is allowed to write to the *new* primary. You also may need to verify in a failover situation that Debezium was able to read all changes in the slot **before the old primary failed**.
+There are some really important caveats to failovers, and you should pause Debezium until you can verify that you have a replication slot intact which has not lost data.  After a failover, you will miss change events unless your administration of failovers includes a process to recreate the Debezium replication slot before the application is allowed to write to the *new* primary. You also may need to verify in a failover situation that Debezium was able to read all changes in the slot **before the old primary failed**.
 
-One reliable method of recovering and verifying any lost changes (yet administratively difficult) is to recover a backup of your failed primary to the point immediately before it failed, which would allow you to inspect the replication slot for any unconsumed changes.  In any case, it is crucial that you recreate the replication slot on the new primary prior to allowing writes to it. 
+One reliable method of recovering and verifying any lost changes (yet administratively difficult) is to recover a backup of your failed primary to the point immediately before it failed, which would allow you to inspect the replication slot for any unconsumed changes. In any case, it is crucial that you recreate the replication slot on the new primary prior to allowing writes to it. 
 
 [NOTE]
 ====
