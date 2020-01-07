@@ -3,24 +3,23 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.quarkus.outbox;
+package io.debezium.outbox.quarkus;
 
 import java.time.Instant;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * Describes an event that should be exported via the "outbox" table.
  *
  * @author Chris Cranford
  */
-public interface ExportedEvent {
+public interface ExportedEvent<I, P> {
+
     /**
      * The id of the aggregate affected by a given event.  For example, the order id in case of events
      * relating to an order, or order lines of that order.  This is used to ensure ordering of events
      * within an aggregate type.
      */
-    String getAggregateId();
+    I getAggregateId();
 
     /**
      * The type of the aggregate affected by the event.  For example, "order" in case of events relating
@@ -42,5 +41,5 @@ public interface ExportedEvent {
     /**
      * The event payload.
      */
-    JsonNode getPayload();
+    P getPayload();
 }
