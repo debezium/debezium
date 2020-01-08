@@ -776,7 +776,7 @@ public class SnapshotReader extends AbstractReader {
                             if (!isRunning()) {
                                 break;
                             }
-                            readTableSchema(sql, mysql, schema, source, tableId.schema(), tableId);
+                            readTableSchema(sql, mysql, schema, source, tableId.catalog(), tableId);
                         }
                     }
                 }
