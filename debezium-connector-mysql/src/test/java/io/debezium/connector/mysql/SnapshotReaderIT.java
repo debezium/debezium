@@ -110,6 +110,7 @@ public class SnapshotReaderIT {
             builder
                     .with(MySqlConnectorConfig.USER, "cloud")
                     .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                    .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                     .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, storeOnlyMonitoredTables);
         }
         config = builder.build();
@@ -138,8 +139,14 @@ public class SnapshotReaderIT {
         // The last poll should always return null ...
         assertThat(records).isNull();
 
-        // There should be no schema changes ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(0);
+        if (!useGlobalLock) {
+            // There should be schema changes ...
+            assertThat(schemaChanges.recordCount()).isGreaterThan(0);
+        }
+        else {
+            // There should be no schema changes ...
+            assertThat(schemaChanges.recordCount()).isEqualTo(0);
+        }
 
         // Check the records via the store ...
         assertThat(store.collectionCount()).isEqualTo(5);
