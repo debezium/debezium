@@ -253,10 +253,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     @Override
     public void initConnection() throws SQLException, InterruptedException {
+        // See https://www.postgresql.org/docs/current/logical-replication-quick-setup.html
+        // For pgoutput specifically, the publication must be created before the slot.
+        initPublication();
         if (!hasInitedSlot) {
             initReplicationSlot();
         }
-        initPublication();
     }
 
     @Override
@@ -277,6 +279,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         if (useTemporarySlot()) {
             tempPart = "TEMPORARY";
         }
+
+        // See https://www.postgresql.org/docs/current/logical-replication-quick-setup.html
+        // For pgoutput specifically, the publication must be created prior to the slot.
+        initPublication();
 
         try (Statement stmt = pgConnection().createStatement()) {
             String createCommand = String.format(
