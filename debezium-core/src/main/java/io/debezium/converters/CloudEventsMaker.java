@@ -29,6 +29,7 @@ public abstract class CloudEventsMaker {
      * The constants for the names of CloudEvents attributes.
      */
     public static final class FieldName {
+
         /**
          * CloudEvents context attributes (REQUIRED)
          */
@@ -42,6 +43,8 @@ public abstract class CloudEventsMaker {
          */
         public static final String DATACONTENTTYPE = "datacontenttype";
         public static final String DATASCHEMA = "dataschema";
+
+        // TODO not used
         public static final String SUBJECT = "subject";
         public static final String TIME = "time";
 
@@ -117,6 +120,7 @@ public abstract class CloudEventsMaker {
     private static Schema getDataSchema(RecordParser recordParser) {
         SchemaBuilder builder = SchemaBuilder.struct().name(ceDataAttributeSchemaName(recordParser.connectorType()));
 
+        // TODO: shouldn't both always be part of the schema?
         if (recordParser.beforeSchema() != null) {
             builder.field(Envelope.FieldName.BEFORE, recordParser.beforeSchema());
         }

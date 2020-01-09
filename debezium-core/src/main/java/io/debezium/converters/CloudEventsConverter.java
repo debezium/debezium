@@ -39,6 +39,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.confluent.connect.avro.AvroConverter;
+import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.debezium.annotation.VisibleForTesting;
@@ -48,26 +49,26 @@ import io.debezium.util.SchemaNameAdjuster;
 /**
  * Implementation of Converter that express schemas and objects with CloudEvents specification. The serialization
  * format can be Json or Avro.
- *
+ * <p>
  * The serialization format of CloudEvents is configured with
  * {@link CloudEventsConverterConfig#CLOUDEVENTS_SERIALIZER_TYPE_CONFIG cloudevents.serializer.type} option.
- *
+ * <p>
  * The serialization format of the data attribute in CloudEvents is configured with
  * {@link CloudEventsConverterConfig#CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG cloudevents.data.serializer.type} option.
- *
+ * <p>
  * If the serialization format of the data attribute in CloudEvents is JSON, it can be configured whether to enable
  * schemas with {@link CloudEventsConverterConfig#CLOUDEVENTS_JSON_SCHEMAS_ENABLE_CONFIG json.schemas.enable} option.
- *
+ * <p>
  * If the the serialization format is Avro, the URL of schema registries for CloudEvents and its data attribute can be
  * configured with {@link CloudEventsConverterConfig#CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG schema.registry.url}.
- *
+ * <p>
  * There are two modes for transferring CloudEvents as Kafka messages: structured and binary. In the structured content
  * mode, event metadata attributes and event data are placed into the Kafka message value section using an event format.
  * In the binary content mode, the value of the event data is placed into the Kafka message's value section as-is,
  * with the content-type header value declaring its media type; all other event attributes are mapped to the Kafka
  * message's header section.
- *
- * Since kafka converters has not support headers yet, right now CloudEvents converter use structured mode as the
+ * <p>
+ * Since Kafka converters has not support headers yet, right now CloudEvents converter use structured mode as the
  * default.
  */
 public class CloudEventsConverter implements Converter {
@@ -95,22 +96,20 @@ public class CloudEventsConverter implements Converter {
     private final JsonSerializer jsonSerializer = new JsonSerializer();
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
-    private SchemaRegistryClient ceSchemaRegistry;
-    private Converter avroCEConverter = new AvroConverter();
-    private Converter avroDataConverter = new AvroConverter();
+    private final SchemaRegistryClient schemaRegistry;
+    private Converter avroConverter;
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
     private boolean enableJsonSchemas = CloudEventsConverterConfig.CLOUDEVENTS_JSON_SCHEMAS_ENABLE_DEFAULT;
     private List<String> schemaRegistryUrls;
 
-    /**
-     * Specify the schema registry client for CloudEvents when using Avro as its serialization format.
-     *
-     * @param schemaRegistry the schema registry client
-     */
-    public void setCESchemaRegistry(SchemaRegistryClient schemaRegistry) {
-        this.ceSchemaRegistry = schemaRegistry;
+    public CloudEventsConverter() {
+        this(null);
+    }
+
+    public CloudEventsConverter(MockSchemaRegistryClient schemaRegistry) {
+        this.schemaRegistry = schemaRegistry;
     }
 
     @Override
@@ -121,43 +120,39 @@ public class CloudEventsConverter implements Converter {
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
 
-        switch (ceSerializerType) {
-            case JSON:
-                final JsonConverterConfig jsonConfig = new JsonConverterConfig(conf);
-                conf.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, Boolean.FALSE.toString());
-                conf.put(JsonConverterConfig.SCHEMAS_CACHE_SIZE_CONFIG, jsonConfig.schemaCacheSize());
-                jsonCEConverter.configure(conf, isKey);
-                break;
-            case AVRO:
-                if (ceSchemaRegistry != null) {
-                    avroCEConverter = new AvroConverter(ceSchemaRegistry);
-                }
-                schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
-                if (schemaRegistryUrls == null) {
-                    throw new DataException("Need url(s) for schema registry instances for CloudEvents");
-                }
-                final Map<String, Object> avroConfigs = new HashMap<>(conf);
-                avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", schemaRegistryUrls));
-                avroCEConverter.configure(avroConfigs, false);
-                break;
+        boolean needAvroConverter = false;
+
+        if (ceSerializerType == SerializerType.JSON) {
+            final JsonConverterConfig jsonConfig = new JsonConverterConfig(conf);
+            conf.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, Boolean.FALSE.toString());
+            conf.put(JsonConverterConfig.SCHEMAS_CACHE_SIZE_CONFIG, jsonConfig.schemaCacheSize());
+            jsonCEConverter.configure(conf, isKey);
+        }
+        else {
+            needAvroConverter = true;
+
+            if (dataSerializerType == SerializerType.JSON) {
+                throw new IllegalStateException("Cannot use 'application/json' data content type within Avro events");
+            }
         }
 
-        switch (dataSerializerType) {
-            case JSON:
-                enableJsonSchemas = ceConfig.cloudeventsJsonSchemasEnable();
-                break;
-            case AVRO:
-                if (ceSchemaRegistry != null) {
-                    avroDataConverter = new AvroConverter(ceSchemaRegistry);
-                }
-                schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
-                if (schemaRegistryUrls == null) {
-                    throw new DataException("Need url(s) for schema registry instances for CloudEvents");
-                }
-                Map<String, Object> avroConfigs = new HashMap<>(configs);
-                avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", schemaRegistryUrls));
-                avroDataConverter.configure(avroConfigs, false);
-                break;
+        if (dataSerializerType == SerializerType.JSON) {
+            enableJsonSchemas = ceConfig.cloudeventsJsonSchemasEnable();
+        }
+        else {
+            needAvroConverter = true;
+        }
+
+        if (needAvroConverter) {
+            avroConverter = new AvroConverter(schemaRegistry);
+
+            schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
+            if (schemaRegistryUrls == null) {
+                throw new DataException("Need url(s) for schema registry instances for CloudEvents");
+            }
+            final Map<String, Object> avroConfigs = new HashMap<>(conf);
+            avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", schemaRegistryUrls));
+            avroConverter.configure(avroConfigs, false);
         }
     }
 
@@ -174,47 +169,54 @@ public class CloudEventsConverter implements Converter {
         CloudEventsMaker maker = CloudEventsMaker.create(parser, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
-        Schema dataSchemaType;
-        String dataSchema = null;
-        Object serializedData;
-        JsonNode serializedJsonData = null;
-        byte[] serializedCloudEvents;
+        if (ceSerializerType == SerializerType.JSON) {
+            if (dataSerializerType == SerializerType.JSON) {
+                // JSON - JSON (with schema in data)
+                if (enableJsonSchemas) {
+                    SchemaBuilder dummy = SchemaBuilder.struct();
+                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, dummy, null, new Struct(dummy));
 
-        switch (dataSerializerType) {
-            case JSON:
-                dataSchemaType = maker.ceDataAttributeSchema();
-                serializedJsonData = convertToJsonNode(maker.ceDataAttributeSchema(), maker.ceDataAttribute(), enableJsonSchemas);
-                serializedData = maker.ceDataAttribute();
-                break;
-            case AVRO:
-                dataSchemaType = Schema.BYTES_SCHEMA;
-                serializedData = avroDataConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
+                    // need to create a JSON node with schema + payload first
+                    JsonNode serializedJsonData = convertToJsonNode(maker.ceDataAttributeSchema(), maker.ceDataAttribute(), enableJsonSchemas);
 
-                // TODO DBZ-1701: the exported path should be configurable, e.g. it could be a
-                // proxy URL for external consumers or even just be omitted altogether
-                dataSchema = maker.ceDataschema() + SCHEMA_URL_PREFIX + getSchemaIdFromAvroMessage((byte[]) serializedData);
-                break;
-            default:
-                throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
-        }
+                    // replace the "data" with the schema + payload JSON node; the event itself must not have schema enabled,
+                    // so to be a proper CloudEvent
+                    ObjectNode cloudEventJson = (ObjectNode) convertToJsonNode(cloudEvent.schema(), cloudEvent.value(), false);
+                    cloudEventJson.set(CloudEventsMaker.FieldName.DATA, serializedJsonData);
 
-        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchema, serializedData);
-        switch (ceSerializerType) {
-            case JSON:
-                JsonNode node = convertToJsonNode(ceSchemaAndValue.schema(), ceSchemaAndValue.value(), false);
-                if (dataSerializerType == SerializerType.JSON) {
-                    ((ObjectNode) node).set(CloudEventsMaker.FieldName.DATA, serializedJsonData);
+                    return jsonSerializer.serialize(topic, cloudEventJson);
                 }
-                serializedCloudEvents = jsonSerializer.serialize(topic, node);
-                break;
-            case AVRO:
-                serializedCloudEvents = avroCEConverter.fromConnectData(topic, ceSchemaAndValue.schema(), ceSchemaAndValue.value());
-                break;
-            default:
-                throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
+                // JSON - JSON (without schema); can just use the regular JSON converter for the entire event
+                else {
+                    SchemaAndValue cloudEvent = convertToCloudEventsFormat(parser, maker, maker.ceDataAttributeSchema(), null, maker.ceDataAttribute());
+                    return jsonCEConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
+                }
+            }
+            // JSON - Avro; need to convert "data" to Avro first
+            else {
+                SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, parser, maker);
+                return jsonCEConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
+            }
         }
+        // Avro - Avro; need to convert "data" to Avro first
+        else {
+            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, parser, maker);
+            return avroConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
+        }
+    }
 
-        return serializedCloudEvents;
+    /**
+     * Creates a CloudEvents wrapper, converting the "data" to Avro.
+     */
+    private SchemaAndValue convertToCloudEventsFormatWithDataAsAvro(String topic, RecordParser parser, CloudEventsMaker maker) {
+        Schema dataSchemaType = Schema.BYTES_SCHEMA;
+        byte[] serializedData = avroConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
+
+        // TODO DBZ-1701: the exported path should be configurable, e.g. it could be a
+        // proxy URL for external consumers or even just be omitted altogether
+        String dataSchema = maker.ceDataschema() + SCHEMA_URL_PREFIX + getSchemaIdFromAvroMessage(serializedData);
+
+        return convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchema, serializedData);
     }
 
     /**
@@ -272,11 +274,11 @@ public class CloudEventsConverter implements Converter {
             case AVRO:
                 // First reconvert the whole CloudEvents
                 // Then reconvert the "data" field
-                SchemaAndValue ceSchemaAndValue = avroCEConverter.toConnectData(topic, value);
+                SchemaAndValue ceSchemaAndValue = avroConverter.toConnectData(topic, value);
                 Schema incompleteSchema = ceSchemaAndValue.schema();
                 Struct ceValue = (Struct) ceSchemaAndValue.value();
                 byte[] data = ceValue.getBytes(CloudEventsMaker.FieldName.DATA);
-                SchemaAndValue dataSchemaAndValue = avroDataConverter.toConnectData(topic, data);
+                SchemaAndValue dataSchemaAndValue = avroConverter.toConnectData(topic, data);
                 SchemaBuilder builder = SchemaBuilder.struct();
 
                 for (Field ceField : incompleteSchema.fields()) {
@@ -343,7 +345,7 @@ public class CloudEventsConverter implements Converter {
                     throw new DataException(e.getCause());
                 }
             case AVRO:
-                return avroDataConverter.toConnectData(topic, serializedData);
+                return avroConverter.toConnectData(topic, serializedData);
             default:
                 throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
         }
