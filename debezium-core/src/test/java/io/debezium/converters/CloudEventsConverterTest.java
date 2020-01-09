@@ -94,8 +94,8 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATA)).isNotNull();
             msg = "inspecting required CloudEvents extension attributes for Debezium";
-            assertThat(valueJson.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.OPERATION))).isNotNull();
-            assertThat(valueJson.get(CloudEventsConverter.adjustExtensionName(Envelope.FieldName.TIMESTAMP))).isNotNull();
+            assertThat(valueJson.get("iodebeziumop")).isNotNull();
+            assertThat(valueJson.get("iodebeziumtsms")).isNotNull();
             msg = "inspecting the data field in the value";
             dataJson = valueJson.get(CloudEventsMaker.FieldName.DATA);
             assertThat(dataJson.get(CloudEventsMaker.FieldName.SCHEMA_FIELD_NAME)).isNotNull();

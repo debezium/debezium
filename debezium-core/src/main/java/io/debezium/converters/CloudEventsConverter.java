@@ -365,7 +365,7 @@ public class CloudEventsConverter implements Converter {
         // construct value of CloudEvents Envelope
         CEValueBuilder ceValueBuilder = withValue(ceSchema)
                 .withValue(CloudEventsMaker.FieldName.ID, maker.ceId())
-                .withValue(CloudEventsMaker.FieldName.SOURCE, maker.ceSource())
+                .withValue(CloudEventsMaker.FieldName.SOURCE, maker.ceSource(source.getString("name")))
                 .withValue(CloudEventsMaker.FieldName.SPECVERSION, maker.ceSpecversion())
                 .withValue(CloudEventsMaker.FieldName.TYPE, maker.ceType())
                 .withValue(CloudEventsMaker.FieldName.TIME, maker.ceTime())
