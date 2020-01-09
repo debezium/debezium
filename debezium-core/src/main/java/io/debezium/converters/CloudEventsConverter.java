@@ -71,6 +71,8 @@ import io.debezium.util.SchemaNameAdjuster;
  */
 public class CloudEventsConverter implements Converter {
 
+    private static final String EXTENSION_NAME_PREFIX = "iodebezium";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
     private static Method CONVERT_TO_JSON_METHOD;
     private static Method CONVERT_TO_CONNECT_METHOD;
@@ -92,8 +94,8 @@ public class CloudEventsConverter implements Converter {
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
     private SchemaRegistryClient ceSchemaRegistry;
-    private AvroConverter avroCEConverter = new AvroConverter();
-    private AvroConverter avroDataConverter = new AvroConverter();
+    private Converter avroCEConverter = new AvroConverter();
+    private Converter avroDataConverter = new AvroConverter();
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
@@ -332,7 +334,6 @@ public class CloudEventsConverter implements Converter {
 
     private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, Object serializedData) {
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-        AttributeNameAdjuster attributeAdjuster = ((AttributeNameAdjuster) CloudEventsConverter::adjustExtensionName).uniqueName();
         String dataSchema = maker.ceDataschema();
         Struct source = parser.source();
         Schema sourceSchema = parser.source().schema();
@@ -351,10 +352,10 @@ public class CloudEventsConverter implements Converter {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
-        ceSchemaBuilder.withSchema(attributeAdjuster.adjust(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
+        ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
 
         for (Field field : sourceSchema.fields()) {
-            ceSchemaBuilder.withSchema(attributeAdjuster.adjust(field.name()), convertToCeExtensionSchema(field.schema()));
+            ceSchemaBuilder.withSchema(adjustExtensionName(field.name()), convertToCeExtensionSchema(field.schema()));
         }
 
         ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType);
@@ -373,14 +374,14 @@ public class CloudEventsConverter implements Converter {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
         }
 
-        ceValueBuilder.withValue(attributeAdjuster.adjust(Envelope.FieldName.OPERATION), parser.op());
+        ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
 
         for (Field field : sourceSchema.fields()) {
             Object value = source.get(field);
             if (field.schema().type() == Type.INT64 && value != null) {
                 value = String.valueOf((long) value);
             }
-            ceValueBuilder.withValue(attributeAdjuster.adjust(field.name()), value);
+            ceValueBuilder.withValue(adjustExtensionName(field.name()), value);
         }
 
         ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATA, serializedData);
@@ -507,48 +508,23 @@ public class CloudEventsConverter implements Converter {
     }
 
     /**
-     * An adjuster for the name of CloudEvents attributes.
-     */
-    @FunctionalInterface
-    public interface AttributeNameAdjuster {
-        /**
-         * Convert the original field name to a valid CloudEvents attribute name, simply removing all invalid
-         * characters
-         *
-         * @param original the original attribute name
-         * @return the valid CloudEvents attribute name
-         */
-        String adjust(String original);
-
-        /**
-         * Create a new function that keep tracking all produced attribute names, in case of duplicated names.
-         *
-         * @return the new function; never null
-         */
-        default AttributeNameAdjuster uniqueName() {
-            return original -> {
-                return this.adjust(original);
-            };
-        }
-    }
-
-    /**
      * Adjust the name of CloudEvents attributes for Debezium events, following CloudEvents
      * <a href="https://github.com/cloudevents/spec/blob/v1.0/spec.md#attribute-naming-conventionattribute"> attribute
      * naming convention</a> as follows:
      *
-     * CloudEvents attribute names MUST consist of lower-case letters ('a' to 'z') or digits ('0' to '9') from the ASCII
-     * character set. Attribute names SHOULD be descriptive and terse and SHOULD NOT exceed 20 characters in length.
+     * <ul>
+     * <li>prefixed with {@link #EXTENSION_NAME_PREFIX}</li>
+     * <li>CloudEvents attribute names MUST consist of lower-case letters ('a' to 'z') or digits ('0' to '9') from the ASCII
+     * character set, so any other characters are removed</li>
+     * </ul>
      *
      * @param original the original field name
      * @return the valid extension attribute name
      */
     @VisibleForTesting
     static String adjustExtensionName(String original) {
-        if (original.length() == 0) {
-            return original;
-        }
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(EXTENSION_NAME_PREFIX);
+
         char c;
         for (int i = 0; i != original.length(); ++i) {
             c = original.charAt(i);
@@ -556,9 +532,7 @@ public class CloudEventsConverter implements Converter {
                 sb.append(c);
             }
         }
-        if (sb.length() > 20) {
-            return sb.substring(0, 20);
-        }
+
         return sb.toString();
     }
 
