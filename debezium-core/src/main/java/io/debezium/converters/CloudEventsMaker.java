@@ -59,10 +59,9 @@ public abstract class CloudEventsMaker {
 
     public static final String CLOUDEVENTS_SPECVERSION = "1.0";
 
-    private static SerializerType dataContentType;
-    private static String dataSchemaUrl;
-    private static Schema ceExtrainfoSchema;
-    private static Schema ceDataAttributeSchema;
+    private final SerializerType dataContentType;
+    private final String dataSchemaUrl;
+    private final Schema ceDataAttributeSchema;
 
     RecordParser recordParser;
 
@@ -76,21 +75,19 @@ public abstract class CloudEventsMaker {
      *
      * @param parser the parser of a change record
      * @param contentType the data content type of CloudEvents
+     * @param schemaUri the URI of the schema in case of Avro; may be null
      * @return a concrete CloudEvents maker
      */
-    public static CloudEventsMaker create(RecordParser parser, SerializerType contentType) {
-        dataContentType = contentType;
-        ceExtrainfoSchema = ceDataAttributeSchema = null;
-
+    public static CloudEventsMaker create(RecordParser parser, SerializerType contentType, String schemaUri) {
         switch (parser.connectorType()) {
             case "mysql":
-                return new MysqlCloudEventsMaker(parser);
+                return new MysqlCloudEventsMaker(parser, contentType, schemaUri);
             case "postgresql":
-                return new PostgresCloudEventsMaker(parser);
+                return new PostgresCloudEventsMaker(parser, contentType, schemaUri);
             case "mongodb":
-                return new MongodbCloudEventsMaker(parser);
+                return new MongodbCloudEventsMaker(parser, contentType, schemaUri);
             case "sqlserver":
-                return new SqlserverCloudEventsMaker(parser);
+                return new SqlserverCloudEventsMaker(parser, contentType, schemaUri);
             default:
                 throw new DataException("No usable CloudEvents converters for connector type \"" + parser.connectorType() + "\"");
         }
@@ -103,16 +100,32 @@ public abstract class CloudEventsMaker {
      *
      * @param parser the parser of a change record
      * @param contentType the data content type of CloudEvents
-     * @param schemaUrl the url of data schema registry; may be null
+
      * @return a concrete CloudEvents maker
      */
-    public static CloudEventsMaker create(RecordParser parser, SerializerType contentType, String schemaUrl) {
-        dataSchemaUrl = schemaUrl;
-        return create(parser, contentType);
+    public static CloudEventsMaker create(RecordParser parser, SerializerType contentType) {
+        return create(parser, contentType, null);
     }
 
-    CloudEventsMaker(RecordParser parser) {
-        recordParser = parser;
+    private CloudEventsMaker(RecordParser parser, SerializerType contentType, String schemaUri) {
+        this.recordParser = parser;
+        this.dataContentType = contentType;
+        this.dataSchemaUrl = schemaUri;
+        this.ceDataAttributeSchema = getDataSchema(recordParser);
+    }
+
+    private static Schema getDataSchema(RecordParser recordParser) {
+        SchemaBuilder builder = SchemaBuilder.struct().name(ceDataAttributeSchemaName(recordParser.connectorType()));
+
+        if (recordParser.beforeSchema() != null) {
+            builder.field(Envelope.FieldName.BEFORE, recordParser.beforeSchema());
+        }
+
+        if (recordParser.afterSchema() != null) {
+            builder.field(Envelope.FieldName.AFTER, recordParser.afterSchema());
+        }
+
+        return builder.build();
     }
 
     /**
@@ -180,51 +193,11 @@ public abstract class CloudEventsMaker {
     }
 
     /**
-     * Construct the schema of the extrainfo field of CloudEvents envelope.
-     *
-     * @return the schema of the extrainfo field of CloudEvents envelope
-     */
-    public Schema ceExtrainfoSchema() {
-        if (ceExtrainfoSchema != null) {
-            return ceExtrainfoSchema;
-        }
-        ceExtrainfoSchema = SchemaBuilder.struct()
-                .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
-                .field(Envelope.FieldName.TIMESTAMP, Schema.STRING_SCHEMA)
-                .field(Envelope.FieldName.SOURCE, recordParser.source().schema());
-        return ceExtrainfoSchema;
-    }
-
-    /**
-     * Construct the value of the extrainfo field of CloudEvents envelope.
-     *
-     * @return the value of extrainfo field of CloudEvents envelope
-     */
-    public Struct ceExtrainfo() {
-        return new Struct(ceExtrainfoSchema())
-                .put(Envelope.FieldName.OPERATION, recordParser.op())
-                .put(Envelope.FieldName.TIMESTAMP, recordParser.ts_ms())
-                .put(Envelope.FieldName.SOURCE, recordParser.source());
-    }
-
-    /**
      * Construct the schema of the data attribute of CloudEvents.
      *
      * @return the schema of the data attribute of CloudEvents
      */
     public Schema ceDataAttributeSchema() {
-        if (ceDataAttributeSchema != null) {
-            return ceDataAttributeSchema;
-        }
-
-        SchemaBuilder builder = SchemaBuilder.struct().name(ceDataAttributeSchemaName());
-        if (recordParser.beforeSchema() != null) {
-            builder.field(Envelope.FieldName.BEFORE, recordParser.beforeSchema());
-        }
-        if (recordParser.afterSchema() != null) {
-            builder.field(Envelope.FieldName.AFTER, recordParser.afterSchema());
-        }
-        ceDataAttributeSchema = builder.build();
         return ceDataAttributeSchema;
     }
 
@@ -260,16 +233,16 @@ public abstract class CloudEventsMaker {
      *
      * @return the name of the schema of the data attribute of CloudEvents
      */
-    public String ceDataAttributeSchemaName() {
-        return "io.debezium.connector." + recordParser.connectorType() + ".Data";
+    private static String ceDataAttributeSchemaName(String connectorType) {
+        return "io.debezium.connector." + connectorType + ".Data";
     }
 
     /**
      * CloudEvents maker for records produced by MySQL connector.
      */
     public static final class MysqlCloudEventsMaker extends CloudEventsMaker {
-        MysqlCloudEventsMaker(RecordParser parser) {
-            super(parser);
+        MysqlCloudEventsMaker(RecordParser parser, SerializerType contentType, String schemaUri) {
+            super(parser, contentType, schemaUri);
         }
 
         @Override
@@ -284,8 +257,8 @@ public abstract class CloudEventsMaker {
      * CloudEvents maker for records produced by PostgreSQL connector.
      */
     public static final class PostgresCloudEventsMaker extends CloudEventsMaker {
-        PostgresCloudEventsMaker(RecordParser parser) {
-            super(parser);
+        PostgresCloudEventsMaker(RecordParser parser, SerializerType contentType, String schemaUri) {
+            super(parser, contentType, schemaUri);
         }
 
         @Override
@@ -300,8 +273,8 @@ public abstract class CloudEventsMaker {
      * CloudEvents maker for records produced by MongoDB connector.
      */
     public static final class MongodbCloudEventsMaker extends CloudEventsMaker {
-        MongodbCloudEventsMaker(RecordParser parser) {
-            super(parser);
+        MongodbCloudEventsMaker(RecordParser parser, SerializerType contentType, String schemaUri) {
+            super(parser, contentType, schemaUri);
         }
 
         @Override
@@ -315,8 +288,8 @@ public abstract class CloudEventsMaker {
      * CloudEvents maker for records produced by SQL Server connector.
      */
     public static final class SqlserverCloudEventsMaker extends CloudEventsMaker {
-        SqlserverCloudEventsMaker(RecordParser parser) {
-            super(parser);
+        SqlserverCloudEventsMaker(RecordParser parser, SerializerType contentType, String schemaUri) {
+            super(parser, contentType, schemaUri);
         }
 
         @Override
