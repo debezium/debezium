@@ -107,12 +107,16 @@ You can skip the integration tests and docker-builds with the following command:
 
     $ mvn clean install -DskipITs
 
-### Running tests of the Postgres connector using the wal2json logical decoding plug-in
+### Running tests of the Postgres connector using the wal2json or pgoutput logical decoding plug-ins
 
-The Postgres connector supports two logical decoding plug-ins for streaming changes from the DB server to the connector: decoderbufs (the default) and wal2json.
+The Postgres connector supports three logical decoding plug-ins for streaming changes from the DB server to the connector: decoderbufs (the default), wal2json, and pgoutput.
 To run the integration tests of the PG connector using wal2json, enable the "wal2json-decoder" build profile:
 
     $ mvn clean install -pl :debezium-connector-postgres -Pwal2json-decoder
+    
+To run the integration tests of the PG connector using pgoutput, enable the "pgoutput-decoder" and "postgres-10" build profiles:
+
+    $ mvn clean install -pl :debezium-connector-postgres -Ppgoutput-decoder,postgres-10
 
 A few tests currently don't pass when using the wal2json plug-in.
 Look for references to the types defined in `io.debezium.connector.postgresql.DecoderDifferences` to find these tests.
