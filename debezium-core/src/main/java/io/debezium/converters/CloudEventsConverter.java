@@ -11,6 +11,7 @@ import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,7 @@ import io.debezium.util.SchemaNameAdjuster;
  */
 public class CloudEventsConverter implements Converter {
 
+    private static final String SCHEMA_URL_PREFIX = "/schemas/ids/";
     private static final String EXTENSION_NAME_PREFIX = "iodebezium";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
@@ -173,6 +175,7 @@ public class CloudEventsConverter implements Converter {
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
         Schema dataSchemaType;
+        String dataSchema = null;
         Object serializedData;
         JsonNode serializedJsonData = null;
         byte[] serializedCloudEvents;
@@ -186,12 +189,16 @@ public class CloudEventsConverter implements Converter {
             case AVRO:
                 dataSchemaType = Schema.BYTES_SCHEMA;
                 serializedData = avroDataConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
+
+                // TODO DBZ-1701: the exported path should be configurable, e.g. it could be a
+                // proxy URL for external consumers or even just be omitted altogether
+                dataSchema = maker.ceDataschema() + SCHEMA_URL_PREFIX + getSchemaIdFromAvroMessage((byte[]) serializedData);
                 break;
             default:
                 throw new DataException("No such serializer for \"" + dataSerializerType + "\" format");
         }
 
-        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(parser, maker, dataSchemaType, serializedData);
+        SchemaAndValue ceSchemaAndValue = convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchema, serializedData);
         switch (ceSerializerType) {
             case JSON:
                 JsonNode node = convertToJsonNode(ceSchemaAndValue.schema(), ceSchemaAndValue.value(), false);
@@ -208,6 +215,14 @@ public class CloudEventsConverter implements Converter {
         }
 
         return serializedCloudEvents;
+    }
+
+    /**
+     * Obtains the schema id from the given Avro record. They are prefixed by one magic byte,
+     * followed by an int for the schem id.
+     */
+    private int getSchemaIdFromAvroMessage(byte[] serializedData) {
+        return ByteBuffer.wrap(serializedData, 1, 5).getInt();
     }
 
     @Override
@@ -334,9 +349,8 @@ public class CloudEventsConverter implements Converter {
         }
     }
 
-    private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, Object serializedData) {
+    private SchemaAndValue convertToCloudEventsFormat(RecordParser parser, CloudEventsMaker maker, Schema dataSchemaType, String dataSchema, Object serializedData) {
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
-        String dataSchema = maker.ceDataschema();
         Struct source = parser.source();
         Schema sourceSchema = parser.source().schema();
 
