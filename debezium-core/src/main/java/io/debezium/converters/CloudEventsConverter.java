@@ -94,8 +94,8 @@ public class CloudEventsConverter implements Converter {
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
     private SchemaRegistryClient ceSchemaRegistry;
-    private AvroConverter avroCEConverter = new AvroConverter();
-    private AvroConverter avroDataConverter = new AvroConverter();
+    private Converter avroCEConverter = new AvroConverter();
+    private Converter avroDataConverter = new AvroConverter();
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
