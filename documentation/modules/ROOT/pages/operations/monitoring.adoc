@@ -198,3 +198,9 @@ The Docker command to start a container using the `debezium/connect` image defin
 docker run -it --rm --name connect -p 8083:8083 -p 9012:9012 -e JMXPORT=9012 -e JMXHOST=10.0.1.10 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:latest
 ```
 
+== Prometheus and Grafana
+
+The metrics exposed by Debezium and Apache Kafka are often exported and displayed via https://prometheus.io/[Prometheus] and https://grafana.com/[Grafana].
+You can find an example for the required configuration and example dashboards for different connectors in the https://github.com/debezium/debezium-examples/tree/master/monitoring[Debezium examples repository].
+Note these dashboards are not part of Debezium itself and are maintained on a best-effort basis.
+
