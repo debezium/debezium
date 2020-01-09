@@ -45,7 +45,6 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.postgresql.util.PSQLState;
 
-import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
@@ -58,6 +57,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -1384,6 +1384,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         for (SourceRecord record : snapshot) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
         }
 
@@ -1395,6 +1396,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         for (SourceRecord record : streaming) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
         }
 
