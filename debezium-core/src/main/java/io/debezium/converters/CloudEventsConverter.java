@@ -169,7 +169,7 @@ public class CloudEventsConverter implements Converter {
         }
 
         RecordParser parser = RecordParser.create(schema, value);
-        CloudEventsMaker maker = CloudEventsMaker.create(parser, ceSerializerType,
+        CloudEventsMaker maker = CloudEventsMaker.create(parser, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls));
 
         Schema dataSchemaType;
@@ -195,7 +195,9 @@ public class CloudEventsConverter implements Converter {
         switch (ceSerializerType) {
             case JSON:
                 JsonNode node = convertToJsonNode(ceSchemaAndValue.schema(), ceSchemaAndValue.value(), false);
-                ((ObjectNode) node).set(CloudEventsMaker.FieldName.DATA, serializedJsonData);
+                if (dataSerializerType == SerializerType.JSON) {
+                    ((ObjectNode) node).set(CloudEventsMaker.FieldName.DATA, serializedJsonData);
+                }
                 serializedCloudEvents = jsonSerializer.serialize(topic, node);
                 break;
             case AVRO:
