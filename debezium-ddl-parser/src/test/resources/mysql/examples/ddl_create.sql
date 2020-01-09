@@ -98,6 +98,23 @@ create definer = current_user() trigger trg_my2 after insert on test.t2 for each
 CREATE TRIGGER mask_private_data BEFORE INSERT ON users FOR EACH ROW BEGIN SET NEW.phone = CONCAT('555', NEW.id); END; -- //-- delimiter ;
 #end
 #begin
+-- Create trigger 4
+-- CAST to JSON
+CREATE DEFINER=`ctlplane`@`%` TRIGGER `write_key_add` AFTER INSERT ON `sources` FOR EACH ROW
+BEGIN
+DECLARE i, n INT DEFAULT 0;
+SET n = JSON_LENGTH(CAST(CONVERT(NEW.write_keys USING utf8mb4) AS JSON));
+WHILE i < n DO
+INSERT INTO source_id_write_key_mapping (source_id, write_key)
+VALUES (NEW.id, JSON_UNQUOTE(JSON_EXTRACT(CAST(CONVERT(NEW.write_keys USING utf8mb4) AS JSON), CONCAT('$[', i, ']'))))
+ON DUPLICATE KEY UPDATE
+       source_id  = NEW.ID,
+       write_key  = JSON_UNQUOTE(JSON_EXTRACT(CAST(CONVERT(NEW.write_keys USING utf8mb4) AS JSON), CONCAT('$[', i, ']')));
+SET i = i + 1;
+END WHILE;
+END
+#end
+#begin
 -- Create view
 create or replace view my_view1 as select 1 union select 2 limit 0,5;
 create algorithm = merge view my_view2(col1, col2) as select * from t2 with check option;
