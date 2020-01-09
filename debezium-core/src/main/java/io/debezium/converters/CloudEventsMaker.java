@@ -123,12 +123,12 @@ public abstract class CloudEventsMaker {
     public abstract String ceId();
 
     /**
-     * Construct the source field of CloudEvents envelope.
+     * Construct the source field of CloudEvents envelope, e.g. "/debezium/postgres/dbserver1".
      *
      * @return the source field of CloudEvents envelope
      */
-    public String ceSource() {
-        return "/debezium/" + recordParser.connectorType();
+    public String ceSource(String logicalName) {
+        return "/debezium/" + recordParser.connectorType() + "/" + logicalName;
     }
 
     /**
