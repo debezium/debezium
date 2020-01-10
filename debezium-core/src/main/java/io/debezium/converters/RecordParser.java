@@ -80,8 +80,8 @@ public abstract class RecordParser {
         opSchema = schema.field(Envelope.FieldName.OPERATION).schema();
         ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
         ts_msSchema = schema.field(Envelope.FieldName.TIMESTAMP).schema();
-        beforeSchema = before == null ? null : schema.field(Envelope.FieldName.BEFORE).schema();
-        afterSchema = after == null ? null : schema.field(Envelope.FieldName.AFTER).schema();
+        beforeSchema = schema.field(Envelope.FieldName.BEFORE).schema();
+        afterSchema = schema.field(Envelope.FieldName.AFTER).schema();
         connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
     }
 

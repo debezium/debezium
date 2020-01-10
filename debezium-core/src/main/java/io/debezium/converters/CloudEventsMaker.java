@@ -122,14 +122,8 @@ public abstract class CloudEventsMaker {
     private static Schema getDataSchema(RecordParser recordParser) {
         SchemaBuilder builder = SchemaBuilder.struct().name(ceDataAttributeSchemaName(recordParser.connectorType()));
 
-        // TODO: shouldn't both always be part of the schema?
-        if (recordParser.beforeSchema() != null) {
-            builder.field(Envelope.FieldName.BEFORE, recordParser.beforeSchema());
-        }
-
-        if (recordParser.afterSchema() != null) {
-            builder.field(Envelope.FieldName.AFTER, recordParser.afterSchema());
-        }
+        builder.field(Envelope.FieldName.BEFORE, recordParser.beforeSchema());
+        builder.field(Envelope.FieldName.AFTER, recordParser.afterSchema());
 
         return builder.build();
     }
