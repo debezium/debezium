@@ -73,7 +73,6 @@ import io.debezium.util.SchemaNameAdjuster;
  */
 public class CloudEventsConverter implements Converter {
 
-    private static final String SCHEMA_URL_PREFIX = "/schemas/ids/";
     private static final String EXTENSION_NAME_PREFIX = "iodebezium";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
@@ -211,20 +210,17 @@ public class CloudEventsConverter implements Converter {
     private SchemaAndValue convertToCloudEventsFormatWithDataAsAvro(String topic, RecordParser parser, CloudEventsMaker maker) {
         Schema dataSchemaType = Schema.BYTES_SCHEMA;
         byte[] serializedData = avroConverter.fromConnectData(topic, maker.ceDataAttributeSchema(), maker.ceDataAttribute());
+        String dataSchemaUri = maker.ceDataschemaUri(getSchemaIdFromAvroMessage(serializedData));
 
-        // TODO DBZ-1701: the exported path should be configurable, e.g. it could be a
-        // proxy URL for external consumers or even just be omitted altogether
-        String dataSchema = maker.ceDataschema() + SCHEMA_URL_PREFIX + getSchemaIdFromAvroMessage(serializedData);
-
-        return convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchema, serializedData);
+        return convertToCloudEventsFormat(parser, maker, dataSchemaType, dataSchemaUri, serializedData);
     }
 
     /**
      * Obtains the schema id from the given Avro record. They are prefixed by one magic byte,
      * followed by an int for the schem id.
      */
-    private int getSchemaIdFromAvroMessage(byte[] serializedData) {
-        return ByteBuffer.wrap(serializedData, 1, 5).getInt();
+    private String getSchemaIdFromAvroMessage(byte[] serializedData) {
+        return String.valueOf(ByteBuffer.wrap(serializedData, 1, 5).getInt());
     }
 
     @Override
