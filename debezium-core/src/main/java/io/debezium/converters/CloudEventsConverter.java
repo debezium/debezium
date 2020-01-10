@@ -78,6 +78,12 @@ public class CloudEventsConverter implements Converter {
     private static final String AVRO_CONVERTER_CLASS = "io.confluent.connect.avro.AvroConverter";
     private static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
 
+    /**
+     * Suffix appended to schema names of data schema in case of Avro/Avro, to keep
+     * data schema and CE schema apart from each other
+     */
+    private static final String DATA_SCHEMA_SUFFIX = "-data";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
     private static Method CONVERT_TO_CONNECT_METHOD;
 
@@ -206,7 +212,7 @@ public class CloudEventsConverter implements Converter {
         }
         // Avro - Avro; need to convert "data" to Avro first
         else {
-            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic, parser, maker);
+            SchemaAndValue cloudEvent = convertToCloudEventsFormatWithDataAsAvro(topic + DATA_SCHEMA_SUFFIX, parser, maker);
             return avroConverter.fromConnectData(topic, cloudEvent.schema(), cloudEvent.value());
         }
     }
