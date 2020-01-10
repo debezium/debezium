@@ -95,7 +95,7 @@ public class ViewSelectedColumnsParserListener extends MySqlParserBaseListener {
                 table = parser.databaseTables().forTable(tableId);
             }
             if (atomTableItemContext.alias != null) {
-                TableId aliasTableId = parser.resolveTableId(tableId.schema(), parser.parseName(atomTableItemContext.alias));
+                TableId aliasTableId = parser.resolveTableId(tableId.catalog(), parser.parseName(atomTableItemContext.alias));
                 tableByAlias.put(aliasTableId, table);
             }
             else {
