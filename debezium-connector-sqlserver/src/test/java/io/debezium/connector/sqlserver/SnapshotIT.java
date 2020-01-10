@@ -26,12 +26,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig.Version;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
@@ -497,6 +497,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         // test snapshot
         for (SourceRecord sourceRecord : snapshotTable1) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord);
         }
 
@@ -514,6 +515,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         // test streaming
         for (SourceRecord sourceRecord : streamingTable1) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord);
         }
     }

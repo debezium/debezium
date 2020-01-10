@@ -29,12 +29,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -1970,6 +1970,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         for (SourceRecord record : table) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
         }
     }
