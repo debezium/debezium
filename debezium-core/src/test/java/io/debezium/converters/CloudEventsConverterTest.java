@@ -17,12 +17,14 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.Converter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.confluent.connect.avro.AvroConverter;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
+import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.util.Testing;
@@ -34,29 +36,35 @@ public class CloudEventsConverterTest {
 
     private static final MockSchemaRegistryClient ceSchemaRegistry = new MockSchemaRegistryClient();
 
-    private static final CloudEventsConverter valueCEJsonAvroConverter = new CloudEventsConverter(ceSchemaRegistry);
+    private static CloudEventsConverter valueCEJsonAvroConverter;
 
-    private static final CloudEventsConverter valueCEAvroConverter = new CloudEventsConverter(ceSchemaRegistry);
+    private static CloudEventsConverter valueCEAvroConverter;
 
     static {
         Map<String, Object> jsonConfig = new HashMap<>();
-        jsonConfig.put("cloudevents.serializer.type", "json");
-        jsonConfig.put("cloudevents.data.serializer.type", "json");
+        jsonConfig.put("serializer.type", "json");
+        jsonConfig.put("data.serializer.type", "json");
         jsonConfig.put("json.schemas.enable", Boolean.TRUE.toString());
-        jsonConfig.put("schemas.cache.size", String.valueOf(100));
+        jsonConfig.put("json.schemas.cache.size", String.valueOf(100));
         valueCEJsonConverter.configure(jsonConfig, false);
         valueJsonDeserializer.configure(jsonConfig, false);
 
         Map<String, Object> jsonAvroConfig = new HashMap<>();
-        jsonAvroConfig.put("cloudevents.serializer.type", "json");
-        jsonAvroConfig.put("cloudevents.data.serializer.type", "avro");
-        jsonAvroConfig.put("schema.registry.url", "http://fake-url");
+        jsonAvroConfig.put("serializer.type", "json");
+        jsonAvroConfig.put("data.serializer.type", "avro");
+        jsonAvroConfig.put("avro.schema.registry.url", "http://fake-url");
+        Converter avroConverter = new AvroConverter(ceSchemaRegistry);
+        avroConverter.configure(Configuration.from(jsonAvroConfig).subset("avro", true).asMap(), false);
+        valueCEJsonAvroConverter = new CloudEventsConverter(avroConverter);
         valueCEJsonAvroConverter.configure(jsonAvroConfig, false);
 
         Map<String, Object> avroConfig = new HashMap<>();
-        avroConfig.put("cloudevents.serializer.type", "avro");
-        avroConfig.put("cloudevents.data.serializer.type", "avro");
-        avroConfig.put("schema.registry.url", "http://fake-url");
+        avroConfig.put("serializer.type", "avro");
+        avroConfig.put("data.serializer.type", "avro");
+        avroConfig.put("avro.schema.registry.url", "http://fake-url");
+        avroConverter = new AvroConverter(ceSchemaRegistry);
+        avroConverter.configure(Configuration.from(avroConfig).subset("avro", true).asMap(), false);
+        valueCEAvroConverter = new CloudEventsConverter(avroConverter);
         valueCEAvroConverter.configure(avroConfig, false);
     }
 

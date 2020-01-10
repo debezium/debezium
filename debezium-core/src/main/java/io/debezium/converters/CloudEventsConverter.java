@@ -38,11 +38,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.confluent.connect.avro.AvroConverter;
-import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.debezium.annotation.VisibleForTesting;
+import io.debezium.config.Configuration;
+import io.debezium.config.Instantiator;
 import io.debezium.data.Envelope;
 import io.debezium.util.SchemaNameAdjuster;
 
@@ -75,6 +73,12 @@ public class CloudEventsConverter implements Converter {
 
     private static final String EXTENSION_NAME_PREFIX = "iodebezium";
 
+    /**
+     * Instantiated reflectively to avoid hard dependency to Avro converter.
+     */
+    private static final String AVRO_CONVERTER_CLASS = "io.confluent.connect.avro.AvroConverter";
+    private static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);
     private static Method CONVERT_TO_JSON_METHOD;
     private static Method CONVERT_TO_CONNECT_METHOD;
@@ -95,40 +99,41 @@ public class CloudEventsConverter implements Converter {
     private final JsonSerializer jsonSerializer = new JsonSerializer();
     private final JsonDeserializer jsonDeserializer = new JsonDeserializer();
 
-    private final SchemaRegistryClient schemaRegistry;
     private Converter avroConverter;
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
     private SerializerType dataSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT);
-    private boolean enableJsonSchemas = CloudEventsConverterConfig.CLOUDEVENTS_JSON_SCHEMAS_ENABLE_DEFAULT;
+    private boolean enableJsonSchemas;
     private List<String> schemaRegistryUrls;
 
     public CloudEventsConverter() {
         this(null);
     }
 
-    public CloudEventsConverter(MockSchemaRegistryClient schemaRegistry) {
-        this.schemaRegistry = schemaRegistry;
+    public CloudEventsConverter(Converter avroConverter) {
+        this.avroConverter = avroConverter;
     }
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
         Map<String, Object> conf = new HashMap<>(configs);
+
+        Configuration jsonConfig = Configuration.from(configs).subset("json", true);
+
         conf.put(ConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
         CloudEventsConverterConfig ceConfig = new CloudEventsConverterConfig(conf);
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
 
-        boolean needAvroConverter = false;
+        boolean usingAvro = false;
 
         if (ceSerializerType == SerializerType.JSON) {
-            final JsonConverterConfig jsonConfig = new JsonConverterConfig(conf);
-            conf.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, Boolean.FALSE.toString());
-            conf.put(JsonConverterConfig.SCHEMAS_CACHE_SIZE_CONFIG, jsonConfig.schemaCacheSize());
-            jsonCEConverter.configure(conf, isKey);
+            Map<String, String> ceJsonConfig = jsonConfig.asMap();
+            ceJsonConfig.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
+            jsonCEConverter.configure(ceJsonConfig, isKey);
         }
         else {
-            needAvroConverter = true;
+            usingAvro = true;
 
             if (dataSerializerType == SerializerType.JSON) {
                 throw new IllegalStateException("Cannot use 'application/json' data content type within Avro events");
@@ -136,22 +141,24 @@ public class CloudEventsConverter implements Converter {
         }
 
         if (dataSerializerType == SerializerType.JSON) {
-            enableJsonSchemas = ceConfig.cloudeventsJsonSchemasEnable();
+            enableJsonSchemas = jsonConfig.getBoolean(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, JsonConverterConfig.SCHEMAS_ENABLE_DEFAULT);
         }
         else {
-            needAvroConverter = true;
+            usingAvro = true;
         }
 
-        if (needAvroConverter) {
-            avroConverter = new AvroConverter(schemaRegistry);
+        if (usingAvro) {
+            Configuration avroConfig = Configuration.from(configs).subset("avro", true);
 
-            schemaRegistryUrls = ceConfig.cloudeventsSchemaRegistryUrls();
-            if (schemaRegistryUrls == null) {
-                throw new DataException("Need url(s) for schema registry instances for CloudEvents");
+            schemaRegistryUrls = avroConfig.getStrings(SCHEMA_REGISTRY_URL_CONFIG, ",");
+            if (schemaRegistryUrls == null || schemaRegistryUrls.isEmpty()) {
+                throw new DataException("Need URL(s) for schema registry instances for CloudEvents");
             }
-            final Map<String, Object> avroConfigs = new HashMap<>(conf);
-            avroConfigs.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, String.join(",", schemaRegistryUrls));
-            avroConverter.configure(avroConfigs, false);
+
+            if (avroConverter == null) {
+                avroConverter = Instantiator.getInstance(AVRO_CONVERTER_CLASS, null, null);
+                avroConverter.configure(avroConfig.asMap(), false);
+            }
         }
     }
 
