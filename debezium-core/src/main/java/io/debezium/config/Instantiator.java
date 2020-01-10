@@ -13,7 +13,7 @@ import java.util.function.Supplier;
  *
  * @author Jiri Pechanec
  */
-class Instantiator {
+public class Instantiator {
 
     /**
      * Instantiates the specified class either using the no-args constructor or the
@@ -23,7 +23,7 @@ class Instantiator {
      * @return The newly created instance or {@code null} if no class name was given
      */
     @SuppressWarnings("unchecked")
-    static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
+    public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
                              Configuration configuration) {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
@@ -34,7 +34,7 @@ class Instantiator {
                         : clazz.getConstructor(Configuration.class).newInstance(configuration);
             }
             catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException("Unable to find class" + className, e);
+                throw new IllegalArgumentException("Unable to find class " + className, e);
             }
             catch (InstantiationException e) {
                 throw new IllegalArgumentException("Unable to instantiate class " + className, e);
