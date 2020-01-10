@@ -482,7 +482,7 @@ public class SnapshotReader extends AbstractReader {
                     // Add DROP TABLE statements for all tables that we knew about AND those tables found in the databases ...
                     knownTableIds.stream()
                             .filter(id -> isRunning()) // ignore all subsequent tables if this reader is stopped
-                            .forEach(tableId -> schema.applyDdl(source, tableId.schema(),
+                            .forEach(tableId -> schema.applyDdl(source, tableId.catalog(),
                                     "DROP TABLE IF EXISTS " + quote(tableId),
                                     this::enqueueSchemaChanges));
 
