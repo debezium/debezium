@@ -76,7 +76,7 @@ public class CloudEventsConverter implements Converter {
     /**
      * Instantiated reflectively to avoid hard dependency to Avro converter.
      */
-    private static final String AVRO_CONVERTER_CLASS = "io.debezium.converters.AvroConverter";
+    private static final String AVRO_CONVERTER_CLASS = "io.confluent.connect.avro.AvroConverter";
     private static final String SCHEMA_REGISTRY_URL_CONFIG = "schema.registry.url";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudEventsConverter.class);

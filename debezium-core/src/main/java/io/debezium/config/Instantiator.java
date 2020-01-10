@@ -34,7 +34,7 @@ public class Instantiator {
                         : clazz.getConstructor(Configuration.class).newInstance(configuration);
             }
             catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException("Unable to find class" + className, e);
+                throw new IllegalArgumentException("Unable to find class " + className, e);
             }
             catch (InstantiationException e) {
                 throw new IllegalArgumentException("Unable to instantiate class " + className, e);
