@@ -730,6 +730,8 @@ To Be Done
 [[data-types]]
 === Data types
 
+https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.sql.ref.doc/doc/r0008483.html
+
 As described above, the Db2 connector represents the changes to rows with events that are structured like the table in which the row exist.
 The event contains a field for each column value, and how that value is represented in the event depends on the SQL data type of the column. This section describes this mapping.
 
@@ -744,43 +746,101 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |Semantic type (schema name)
 |Notes
 
-|`BIT`
+|`BOOLEAN`
 |`BOOLEAN`
 |n/a
 |
 
-|`TINYINT`
-|`INT16`
-|n/a
-|
-
-|`SMALLINT`
-|`INT16`
-|n/a
-|
-
-|`INT`
-|`INT32`
-|n/a
-|
 
 |`BIGINT`
 |`INT64`
 |n/a
 |
 
+|`BINARY`
+|`BYTES`
+|n/a
+|
+
+
+|`BLOB`
+|`?`
+|n/a
+|
+
+
+|`CHAR[(N)]`
+|`STRING`
+|n/a
+|
+
+|`CLOB`
+|`?`
+|n/a
+|
+
+|`DATE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+| A string representation of a timestamp with timezone information, where the timezone is GMT
+
+
+|`DECFLOAT`
+|`?`
+|n/a
+|
+
+
+|`DECIMAL`
+|`?`
+|n/a
+|
+
+
+|`DBCLOB`
+|`?`
+|n/a
+|
+
+
+|`DOUBLE`
+|`FLOAT64`
+|n/a
+|
+
+
+|`INTEGER`
+|`INT32`
+|n/a
+|
+
+
+
 |`REAL`
 |`FLOAT32`
 |n/a
 |
 
-|`FLOAT[(N)]`
-|`FLOAT64`
+
+|`SMALLINT`
+|`INT16`
 |n/a
 |
 
-|`CHAR[(N)]`
+|`TIME`
 |`STRING`
+|`io.debezium.time.ZonedTimestamp`
+| A string representation of a timestamp with timezone information, where the timezone is GMT
+
+
+|`TIMESTAMP`
+|`?`
+|`io.debezium.time.ZonedTimestamp`
+| A string representation of a timestamp with timezone information, where the timezone is GMT
+
+
+|`VARBINARY`
+|`?`
 |n/a
 |
 
@@ -789,35 +849,18 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |n/a
 |
 
-|`TEXT`
-|`STRING`
+|`VARGRAPHIC`
+|`?`
 |n/a
 |
 
-|`NCHAR[(N)]`
-|`STRING`
-|n/a
-|
-
-|`NVARCHAR[(N)]`
-|`STRING`
-|n/a
-|
-
-|`NTEXT`
-|`STRING`
-|n/a
-|
 
 |`XML`
 |`STRING`
 |`io.debezium.data.Xml`
 |Contains the string representation of a XML document
 
-|`DATETIMEOFFSET[(P)]`
-|`STRING`
-|`io.debezium.time.ZonedTimestamp`
-| A string representation of a timestamp with timezone information, where the timezone is GMT
+
 
 |=======================
 
