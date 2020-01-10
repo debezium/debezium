@@ -24,7 +24,7 @@ public class Instantiator {
      */
     @SuppressWarnings("unchecked")
     public static <T> T getInstance(String className, Supplier<ClassLoader> classloaderSupplier,
-                             Configuration configuration) {
+                                    Configuration configuration) {
         if (className != null) {
             ClassLoader classloader = classloaderSupplier != null ? classloaderSupplier.get()
                     : Configuration.class.getClassLoader();

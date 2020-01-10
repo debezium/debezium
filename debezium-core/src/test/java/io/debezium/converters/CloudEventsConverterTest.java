@@ -75,7 +75,7 @@ public class CloudEventsConverterTest {
             byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
             msg = "deserializing value using JSON deserializer";
 
-            try(JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+            try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
                 jsonDeserializer.configure(Collections.emptyMap(), false);
                 valueJson = jsonDeserializer.deserialize(record.topic(), valueBytes);
             }
@@ -160,7 +160,7 @@ public class CloudEventsConverterTest {
             byte[] valueBytes = cloudEventsConverter.fromConnectData(record.topic(), record.valueSchema(), record.value());
             msg = "deserializing value using JSON deserializer";
 
-            try(JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
+            try (JsonDeserializer jsonDeserializer = new JsonDeserializer()) {
                 jsonDeserializer.configure(Collections.emptyMap(), false);
                 valueJson = jsonDeserializer.deserialize(record.topic(), valueBytes);
             }
@@ -184,7 +184,7 @@ public class CloudEventsConverterTest {
             avroConverter.configure(Collections.singletonMap("schema.registry.url", "http://fake-url"), false);
             SchemaAndValue data = avroConverter.toConnectData(record.topic(), Base64.getDecoder().decode(dataJson.asText()));
             assertThat(data.value()).isInstanceOf(Struct.class);
-            assertThat(((Struct)data.value()).get("after")).isNotNull();
+            assertThat(((Struct) data.value()).get("after")).isNotNull();
         }
         catch (Throwable t) {
             Testing.Print.enable();

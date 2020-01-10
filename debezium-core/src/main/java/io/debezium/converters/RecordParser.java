@@ -183,7 +183,6 @@ public abstract class RecordParser {
      */
     public abstract Object getMetadata(String name);
 
-
     /**
      * Parser for records produced by MySQL connectors.
      */

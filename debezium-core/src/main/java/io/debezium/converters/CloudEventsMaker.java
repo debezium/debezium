@@ -105,7 +105,7 @@ public abstract class CloudEventsMaker {
      *
      * @param parser the parser of a change record
      * @param contentType the data content type of CloudEvents
-
+     *
      * @return a concrete CloudEvents maker
      */
     public static CloudEventsMaker create(RecordParser parser, SerializerType contentType) {
