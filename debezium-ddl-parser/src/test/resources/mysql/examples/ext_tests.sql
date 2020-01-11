@@ -33,3 +33,11 @@ select *, sqrt(a), lower(substring(str, 'a', length(str)/2)) as col3 from tab1 w
 INSERT INTO geom VALUES (GeomFromWKB(0x0101000000000000000000F03F000000000000F03F));
 select y(point(1.25, 3.47)) as y, x(point(1.25, 3.47)) as x;
 #end
+#begin
+-- Signal tests
+SIGNAL SQLSTATE '06660' SET MESSAGE_TEXT = 'Database is in read-only mode!';
+SIGNAL specialty SET MESSAGE_TEXT = 'An error occurred';
+SIGNAL SQLSTATE '01000' SET MESSAGE_TEXT = 'A warning occurred', MYSQL_ERRNO = 1000;
+SIGNAL SQLSTATE '77777';
+SIGNAL divide_by_zero;
+#end
