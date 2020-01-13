@@ -1971,7 +1971,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         for (SourceRecord record : table) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mysql", "myServer1");
         }
     }
 

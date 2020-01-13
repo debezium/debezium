@@ -498,7 +498,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         for (SourceRecord sourceRecord : snapshotTable1) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord, "sqlserver", "server1");
         }
 
         for (int i = 0; i < STREAMING_RECORDS_PER_TABLE; i++) {
@@ -516,7 +516,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         for (SourceRecord sourceRecord : streamingTable1) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord, "sqlserver", "server1");
         }
     }
 

@@ -10,12 +10,10 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
 import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.data.Envelope;
 import io.debezium.util.Collect;
 
 /**
@@ -46,7 +44,7 @@ public abstract class CloudEventsMaker {
         public static final String DATACONTENTTYPE = "datacontenttype";
         public static final String DATASCHEMA = "dataschema";
 
-        // TODO not used
+        // TODO DBZ-1701 not used
         public static final String SUBJECT = "subject";
         public static final String TIME = "time";
 
@@ -68,7 +66,7 @@ public abstract class CloudEventsMaker {
     private final String dataSchemaUriBase;
     private final Schema ceDataAttributeSchema;
 
-    RecordParser recordParser;
+    protected final RecordParser recordParser;
 
     static final Map<SerializerType, String> CONTENT_TYPE_NAME_MAP = Collect.hashMapOf(
             SerializerType.JSON, "application/json",
@@ -116,16 +114,7 @@ public abstract class CloudEventsMaker {
         this.recordParser = parser;
         this.dataContentType = contentType;
         this.dataSchemaUriBase = dataSchemaUriBase;
-        this.ceDataAttributeSchema = getDataSchema(recordParser);
-    }
-
-    private static Schema getDataSchema(RecordParser recordParser) {
-        SchemaBuilder builder = SchemaBuilder.struct().name(ceDataAttributeSchemaName(recordParser.connectorType()));
-
-        builder.field(Envelope.FieldName.BEFORE, recordParser.beforeSchema());
-        builder.field(Envelope.FieldName.AFTER, recordParser.afterSchema());
-
-        return builder.build();
+        this.ceDataAttributeSchema = recordParser.dataSchema();
     }
 
     /**
@@ -209,14 +198,7 @@ public abstract class CloudEventsMaker {
      * @return the value of the data attribute of CloudEvents
      */
     public Struct ceDataAttribute() {
-        Struct data = new Struct(ceDataAttributeSchema());
-        if (recordParser.before() != null) {
-            data.put(Envelope.FieldName.BEFORE, recordParser.before());
-        }
-        if (recordParser.after() != null) {
-            data.put(Envelope.FieldName.AFTER, recordParser.after());
-        }
-        return data;
+        return recordParser.data();
     }
 
     /**
@@ -228,15 +210,6 @@ public abstract class CloudEventsMaker {
         return recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY) + "."
                 + recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
                 + "CloudEvents.Envelope";
-    }
-
-    /**
-     * Construct the name of the schema of the data attribute of CloudEvents.
-     *
-     * @return the name of the schema of the data attribute of CloudEvents
-     */
-    private static String ceDataAttributeSchemaName(String connectorType) {
-        return "io.debezium.connector." + connectorType + ".Data";
     }
 
     /**

@@ -9,7 +9,9 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 
@@ -24,16 +26,14 @@ import io.debezium.util.Collect;
  */
 public abstract class RecordParser {
 
-    private Object before;
-    private Object after;
-    private Struct source;
-    private String op;
-    private Schema opSchema;
-    private String ts_ms;
-    private Schema ts_msSchema;
-    private Schema beforeSchema;
-    private Schema afterSchema;
-    private String connectorType;
+    private final Struct record;
+    private final Struct source;
+    private final String op;
+    private final Schema opSchema;
+    private final String ts_ms;
+    private final Schema ts_msSchema;
+    private final Schema dataSchema;
+    private final String connectorType;
 
     static final Set<String> SOURCE_FIELDS = Collect.unmodifiableSet(
             AbstractSourceInfo.DEBEZIUM_VERSION_KEY,
@@ -68,39 +68,38 @@ public abstract class RecordParser {
         }
     }
 
-    RecordParser(Schema schema, Struct record) {
-        parse(schema, record);
+    protected RecordParser(Schema schema, Struct record, String... dataFields) {
+        this.record = record;
+        this.source = record.getStruct(Envelope.FieldName.SOURCE);
+        this.op = record.getString(Envelope.FieldName.OPERATION);
+        this.opSchema = schema.field(Envelope.FieldName.OPERATION).schema();
+        this.ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
+        this.ts_msSchema = schema.field(Envelope.FieldName.TIMESTAMP).schema();
+        this.connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+        this.dataSchema = getDataSchema(schema, connectorType, dataFields);
     }
 
-    private void parse(Schema schema, Struct record) {
-        before = schema.field(Envelope.FieldName.BEFORE) == null ? null : record.get(Envelope.FieldName.BEFORE);
-        after = schema.field(Envelope.FieldName.AFTER) == null ? null : record.get(Envelope.FieldName.AFTER);
-        source = record.getStruct(Envelope.FieldName.SOURCE);
-        op = record.getString(Envelope.FieldName.OPERATION);
-        opSchema = schema.field(Envelope.FieldName.OPERATION).schema();
-        ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
-        ts_msSchema = schema.field(Envelope.FieldName.TIMESTAMP).schema();
-        beforeSchema = schema.field(Envelope.FieldName.BEFORE).schema();
-        afterSchema = schema.field(Envelope.FieldName.AFTER).schema();
-        connectorType = source.getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
-    }
+    private static Schema getDataSchema(Schema schema, String connectorType, String... fields) {
+        SchemaBuilder builder = SchemaBuilder.struct().name("io.debezium.connector.mysql.Data");
 
-    /**
-     * Get the value of the before field in the record; may be null.
-     *
-     * @return the value of the before field
-     */
-    public Object before() {
-        return before;
+        for (String field : fields) {
+            builder.field(field, schema.field(field).schema());
+        }
+
+        return builder.build();
     }
 
     /**
-     * Get the value of the after field in the record; may be null.
-     *
-     * @return the value of the after field
+     * Get the value of the data field in the record; may not be null.
      */
-    public Object after() {
-        return after;
+    public Struct data() {
+        Struct data = new Struct(dataSchema());
+
+        for (Field field : dataSchema.fields()) {
+            data.put(field, record.get(field));
+        }
+
+        return data;
     }
 
     /**
@@ -149,21 +148,10 @@ public abstract class RecordParser {
     }
 
     /**
-     * Get the schema of the before field in the record; may be null.
-     *
-     * @return the schema of the before field
+     * Get the schema of the data field in the record; may be not be null.
      */
-    public Schema beforeSchema() {
-        return beforeSchema;
-    }
-
-    /**
-     * Get the schema of the after field in the record; may be null.
-     *
-     * @return the schema of the after field
-     */
-    public Schema afterSchema() {
-        return afterSchema;
+    public Schema dataSchema() {
+        return dataSchema;
     }
 
     /**
@@ -207,7 +195,7 @@ public abstract class RecordParser {
                 QUERY_KEY);
 
         MysqlRecordParser(Schema schema, Struct record) {
-            super(schema, record);
+            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
         }
 
         @Override
@@ -237,7 +225,7 @@ public abstract class RecordParser {
                 LSN_KEY);
 
         PostgresRecordParser(Schema schema, Struct record) {
-            super(schema, record);
+            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
         }
 
         @Override
@@ -269,7 +257,7 @@ public abstract class RecordParser {
                 COLLECTION);
 
         MongodbRecordParser(Schema schema, Struct record) {
-            super(schema, record);
+            super(schema, record, Envelope.FieldName.AFTER, "patch");
         }
 
         @Override
@@ -299,7 +287,7 @@ public abstract class RecordParser {
                 EVENT_SERIAL_NO_KEY);
 
         SqlserverRecordParser(Schema schema, Struct record) {
-            super(schema, record);
+            super(schema, record, Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER);
         }
 
         @Override
