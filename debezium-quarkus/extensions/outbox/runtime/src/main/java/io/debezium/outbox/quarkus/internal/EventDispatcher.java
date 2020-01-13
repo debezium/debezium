@@ -5,15 +5,18 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
+import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_FULLNAME;
+
+import java.util.HashMap;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.persistence.EntityManager;
 
+import org.hibernate.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 import io.debezium.outbox.quarkus.ExportedEvent;
 
@@ -32,7 +35,18 @@ public class EventDispatcher {
     @Inject
     EntityManager entityManager;
 
-    public EventDispatcher() {
+    /**
+     * Debezium runtime configuration
+     */
+    DebeziumOutboxRuntimeConfig config;
+
+    /**
+     * Set the runtime configuration properties.
+     *
+     * @param outboxRuntimeProperties the configuration properties
+     */
+    public void setOutboxRuntimeProperties(DebeziumOutboxRuntimeConfig outboxRuntimeProperties) {
+        config = outboxRuntimeProperties;
     }
 
     /**
@@ -43,17 +57,21 @@ public class EventDispatcher {
     public void onExportedEvent(@Observes ExportedEvent<?, ?> event) {
         LOGGER.debug("An exported event was found for type {}", event.getType());
 
-        // Create an OutboxEvent object based on the ExportedEvent interface
-        final OutboxEvent outboxEvent = new OutboxEvent(
-                event.getAggregateType(),
-                (String) event.getAggregateId(),
-                event.getType(),
-                (JsonNode) event.getPayload(),
-                event.getTimestamp());
+        // Define the entity map-mode object using property names and values
+        final HashMap<String, Object> dataMap = new HashMap<>();
+        dataMap.put("aggregateType", event.getAggregateType());
+        dataMap.put("aggregateId", event.getAggregateId());
+        dataMap.put("type", event.getType());
+        dataMap.put("payload", event.getPayload());
+        dataMap.put("timestamp", event.getTimestamp());
 
-        // We want the events table to remain empty; however this triggers both an INSERT and DELETE
-        // in the database transaction log which is sufficient for Debezium to process the event.
-        entityManager.persist(outboxEvent);
-        entityManager.remove(outboxEvent);
+        // Unwrap to Hibernate session and save
+        Session session = entityManager.unwrap(Session.class);
+        session.save(OUTBOX_ENTITY_FULLNAME, dataMap);
+
+        // Remove entity if the configuration deems doing so, leaving useful for debugging
+        if (config.removeAfterInsert) {
+            session.delete(OUTBOX_ENTITY_FULLNAME, dataMap);
+        }
     }
 }

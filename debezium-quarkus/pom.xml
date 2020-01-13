@@ -14,22 +14,16 @@
 
     <name>Debezium Quarkus</name>
     <description>Debezium extensions for Quarkus</description>
-    <url>http://debezium.io</url>
     <inceptionYear>2019</inceptionYear>
 
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <quarkus.version>1.1.0.Final</quarkus.version>
+        <validation-api.version>2.0.2</validation-api.version>
 
-        <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.testTarget>${maven.compiler.target}</maven.compiler.testTarget>
         <maven.compiler.testSource>${maven.compiler.source}</maven.compiler.testSource>
-
-        <maven-surefire-plugin.version>3.0.0-M4</maven-surefire-plugin.version>
     </properties>
 
     <build>
@@ -38,7 +32,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${maven-compiler-plugin.version}</version>
+                    <version>${version.compiler.plugin}</version>
                     <configuration>
                         <showDeprecation>true</showDeprecation>
                         <showWarnings>true</showWarnings>
@@ -51,7 +45,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${maven-surefire-plugin.version}</version>
+                    <version>${version.surefire.plugin}</version>
                     <configuration>
                         <failIfNoTests>false</failIfNoTests>
                         <systemProperties>
@@ -63,7 +57,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>${maven-surefire-plugin.version}</version>
+                    <version>${version.surefire.plugin}</version>
                 </plugin>
 
                 <plugin>

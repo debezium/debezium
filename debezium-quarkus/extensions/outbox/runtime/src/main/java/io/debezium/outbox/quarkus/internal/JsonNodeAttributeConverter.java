@@ -16,6 +16,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
+ * Converter that knows how to convert between a {@link String} and {@link JsonNode}.
+ *
  * @author Chris Cranford
  */
 public class JsonNodeAttributeConverter implements AttributeConverter<JsonNode, String> {
