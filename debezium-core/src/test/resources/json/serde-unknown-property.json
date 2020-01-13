@@ -1,0 +1,34 @@
+{
+  "op": "u",
+  "ts_ms": 1465491411815,
+  "before": {
+    "id": 1004,
+    "first_name": "Anne-Marie",
+    "last_name": "Kretchmar",
+    "middle_name": "L",
+    "email": "annek@noanswer.org"
+  },
+  "after": {
+    "id": 1004,
+    "first_name": "Anne",
+    "last_name": "Kretchmar",
+    "middle_name": "L",
+    "email": "annek@noanswer.org"
+  },
+  "source": {
+    "version": "0.10.0.Final",
+    "connector": "mysql",
+    "name": "mysql-server-1",
+    "ts_ms": 0,
+    "snapshot": false,
+    "db": "inventory",
+    "table": "customers",
+    "server_id": 0,
+    "gtid": null,
+    "file": "mysql-bin.000003",
+    "pos": 154,
+    "row": 0,
+    "thread": 7,
+    "query": "INSERT INTO customers (first_name, last_name, email) VALUES ('Anne', 'Kretchmar', 'annek@noanswer.org')"
+  }
+}

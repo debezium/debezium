@@ -37,6 +37,14 @@ public class JsonSerdeConfig extends AbstractConfig {
                     + "If not set then the envelope is provided as is.")
             .withValidation(JsonSerdeConfig::isEnvelopeFieldName);
 
+    public static final Field UNKNOWN_PROPERTIES_IGNORED = Field.create("unknown.properties.ignored")
+            .withDisplayName("Unknown properties ignored")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls whether unknown properties will be ignored or cause a JsonMappingException when encountered.")
+            .withDefault(false);
+
     private static int isEnvelopeFieldName(Configuration config, Field field, ValidationOutput problems) {
         final String fieldName = config.getString(field);
         if (fieldName == null) {
@@ -53,10 +61,11 @@ public class JsonSerdeConfig extends AbstractConfig {
 
     static {
         CONFIG = new ConfigDef();
-        Field.group(CONFIG, "Source", FROM_FIELD);
+        Field.group(CONFIG, "Source", FROM_FIELD, UNKNOWN_PROPERTIES_IGNORED);
     }
 
     private String sourceField;
+    private boolean unknownPropertiesIgnored;
 
     public static ConfigDef configDef() {
         return CONFIG;
@@ -65,6 +74,7 @@ public class JsonSerdeConfig extends AbstractConfig {
     public JsonSerdeConfig(Map<String, ?> props) {
         super(CONFIG, props);
         this.sourceField = getString(FROM_FIELD.name());
+        this.unknownPropertiesIgnored = getBoolean(UNKNOWN_PROPERTIES_IGNORED.name());
     }
 
     public String sourceField() {
@@ -73,5 +83,9 @@ public class JsonSerdeConfig extends AbstractConfig {
 
     public boolean asEnvelope() {
         return sourceField == null;
+    }
+
+    public boolean isUnknownPropertiesIgnored() {
+        return unknownPropertiesIgnored;
     }
 }
