@@ -102,4 +102,8 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 |`from.field`
 |`N/A`
 |Empty if a message with full envelope should be deserialized, `before`/`after` if only data values before or after the change are required.
+
+|`unknown.properties.ignored`
+|`false`
+|Determines when an unknown property is encountered whether it should be silently ignored or if a runtime exception should be thrown.
 |=======================

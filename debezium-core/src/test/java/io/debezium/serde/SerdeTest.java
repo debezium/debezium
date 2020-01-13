@@ -192,4 +192,27 @@ public class SerdeTest implements Testing {
         Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes())).isEqualTo(new Customer(1004, "Anne", "Kretchmar", "annek@noanswer.org"));
     }
 
+    @Test(expected = RuntimeException.class)
+    public void valueWithUnknownPropertyThrowRuntimeException() {
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
+        valueSerde.configure(Collections.singletonMap("from.field", "before"), false);
+
+        String content = Testing.Files.readResourceAsString("json/serde-unknown-property.json");
+        Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes()))
+                .isEqualTo(new Customer(1004, "Anne-Marie", "Kretchmar", "annek@noanswer.org"));
+    }
+
+    @Test
+    public void valueWithUnknownPropertyIgnored() {
+        Map<String, Object> options = new HashMap<>();
+        options.put("from.field", "before");
+        options.put("ignore.unknown.properties", true);
+
+        final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
+        valueSerde.configure(options, false);
+
+        String content = Testing.Files.readResourceAsString("json/serde-unknown-property.json");
+        Assertions.assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes()))
+                .isEqualTo(new Customer(1004, "Anne-Marie", "Kretchmar", "annek@noanswer.org"));
+    }
 }

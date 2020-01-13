@@ -14,6 +14,7 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
@@ -36,7 +37,7 @@ public class JsonSerde<T> implements Serde<T> {
     private static final String PAYLOAD_FIELD = "payload";
 
     private final ObjectMapper mapper;
-    private final ObjectReader reader;
+    private ObjectReader reader;
     private boolean isKey;
     private JsonSerdeConfig config;
 
@@ -51,6 +52,12 @@ public class JsonSerde<T> implements Serde<T> {
     public void configure(Map<String, ?> configs, boolean isKey) {
         this.isKey = isKey;
         this.config = new JsonSerdeConfig(configs);
+
+        if (config.isUnknownPropertiesIgnored() &&
+                mapper.getDeserializationConfig().isEnabled(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)) {
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            reader = reader.without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        }
     }
 
     @Override
