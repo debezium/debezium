@@ -60,6 +60,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private DeleteHandling handleDeletes;
     private boolean addOperationHeader;
     private String[] addSourceFields;
+    private String routeByField;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
     private final InsertField<R> removedDelegate = new InsertField.Value<R>();
@@ -84,6 +85,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ? null
                 : config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
+
+        String routeFieldConfig = config.getString(ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
+        routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
 
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("field", "before");
@@ -139,6 +143,12 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         R newRecord = afterDelegate.apply(record);
         if (newRecord.value() == null) {
+            if (routeByField != null) {
+                Struct recordValue = requireStruct(record.value(), "Read record to set topic routing for DELETE");
+                String newTopicName = recordValue.getStruct("before").getString(routeByField);
+                newRecord = setTopic(newTopicName, newRecord);
+            }
+
             // Handling delete records
             switch (handleDeletes) {
                 case DROP:
@@ -148,14 +158,19 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     LOGGER.trace("Delete message {} requested to be rewritten", record.key());
                     R oldRecord = beforeDelegate.apply(record);
                     oldRecord = addSourceFields(addSourceFields, record, oldRecord);
-                    final R deleteRecord = removedDelegate.apply(oldRecord);
-                    return deleteRecord;
+                    return removedDelegate.apply(oldRecord);
                 default:
                     return newRecord;
             }
         }
         else {
             // Add on any requested source fields from the original record to the new unwrapped record
+            if (routeByField != null) {
+                Struct recordValue = requireStruct(newRecord.value(), "Read record to set topic routing for CREATE / UPDATE");
+                String newTopicName = recordValue.getString(routeByField);
+                newRecord = setTopic(newTopicName, newRecord);
+            }
+
             newRecord = addSourceFields(addSourceFields, record, newRecord);
 
             // Handling insert and update records
@@ -167,6 +182,19 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                     return newRecord;
             }
         }
+    }
+
+    private R setTopic(String updatedTopicValue, R record) {
+        String topicName = updatedTopicValue == null ? record.topic() : updatedTopicValue;
+
+        return record.newRecord(
+                topicName,
+                record.kafkaPartition(),
+                record.keySchema(),
+                record.key(),
+                record.valueSchema(),
+                record.value(),
+                record.timestamp());
     }
 
     private R addSourceFields(String[] addSourceFields, R originalRecord, R unwrappedRecord) {
