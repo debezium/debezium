@@ -3,3 +3,20 @@ title: Debezium Documentation
 version: 'master'
 nav:
   - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    debezium-version: '1.1.0.Final'
+    debezium-dev-version: '1.2'
+    debezium-kafka-version: '2.4.0'
+    debezium-docker-label: '1.1'
+    install-version: '1.1'
+    prodname: 'Debezium'
+    assemblies: '../assemblies'
+    modules: '../../modules'
+    mysql-connector-plugin-download: 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz'
+    mysql-version: '8.0'
+    context: 'debezium'
+    confluent-platform-version: '5.3.1'
+    strimzi-version: '0.13.0'
+    jira-url: 'https://issues.redhat.com'
