@@ -589,13 +589,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to drop the logical replication slot when the connector finishes orderly" +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
-    public static final Field DROP_SLOT_ON_STOP_OBSOLETE = Field.create("slot.drop_on_stop")
-            .withDisplayName("Drop slot on stop")
-            .withType(Type.BOOLEAN)
-            .withImportance(Importance.MEDIUM)
-            .withDescription(
-                    "Obsolete! Replaced with slot.drop.on.stop");
-
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -942,9 +935,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         if (getConfig().hasKey(DROP_SLOT_ON_STOP.name())) {
             return getConfig().getBoolean(DROP_SLOT_ON_STOP);
         }
-        if (getConfig().hasKey(DROP_SLOT_ON_STOP_OBSOLETE.name())) {
-            return getConfig().getBoolean(DROP_SLOT_ON_STOP_OBSOLETE);
-        }
         // Return default value
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
     }
@@ -986,9 +976,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected Map<String, ConfigValue> validate() {
-        if (getConfig().hasKey(DROP_SLOT_ON_STOP_OBSOLETE.name())) {
-            LOGGER.warn("Parameter '{}' is obsolete and is scheduled to be removed. Please use '{}'.", DROP_SLOT_ON_STOP_OBSOLETE, DROP_SLOT_ON_STOP);
-        }
         return getConfig().validate(ALL_FIELDS);
     }
 
