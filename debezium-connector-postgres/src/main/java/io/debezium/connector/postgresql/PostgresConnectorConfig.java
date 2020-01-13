@@ -872,6 +872,24 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "If starts with 'hex:' prefix it is expected that the rest of the string repesents hexadecimally encoded octets.");
 
     /**
+     * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
+     * have their values masked by the specified number of asterisk ('*') characters.
+     *
+     * @param length the number of asterisks that should appear in place of the column's string values written in source records;
+     *               must be positive
+     * @return the field; never null
+     */
+    public static final Field MASK_COLUMN(int length) {
+        if (length <= 0) {
+            throw new IllegalArgumentException("The mask length must be positive");
+        }
+        return Field.create("column.mask.with." + length + ".chars")
+                .withValidation(Field::isInteger)
+                .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
+                        + "be masked with " + length + " asterisk ('*') characters.");
+    }
+
+    /**
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS,

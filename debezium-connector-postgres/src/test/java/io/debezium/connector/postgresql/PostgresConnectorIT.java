@@ -1305,6 +1305,69 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         });
     }
 
+    @Test
+    @FixFor("DBZ-1685")
+    public void shouldConsumeEventsWithMaskedColumns() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.MASK_COLUMN(5), "s2.a.bb");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsForTopicS2.size()).isEqualTo(1);
+
+        SourceRecord record = recordsForTopicS2.remove(0);
+        VerifyRecord.isValidRead(record, PK_FIELD, 1);
+
+        Struct value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("bb")).isEqualTo("*****");
+        }
+
+        // insert and verify inserts
+        TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
+
+        actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsForTopicS2.size()).isEqualTo(1);
+
+        record = recordsForTopicS2.remove(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+
+        value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("bb")).isEqualTo("*****");
+        }
+
+        // update and verify update
+        TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
+
+        actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsForTopicS2.size()).isEqualTo(1);
+
+        record = recordsForTopicS2.remove(0);
+        VerifyRecord.isValidUpdate(record, PK_FIELD, 2);
+
+        value = (Struct) record.value();
+        if (value.getStruct("before") != null) {
+            assertThat(value.getStruct("before").getString("bb")).isEqualTo("*****");
+        }
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("bb")).isEqualTo("*****");
+        }
+
+        stopConnector();
+    }
+
     private CompletableFuture<Void> batchInsertRecords(long recordsCount, int batchSize) {
         String insertStmt = "INSERT INTO text_table(j, jb, x, u) " +
                 "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
