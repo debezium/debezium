@@ -194,51 +194,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldUseObsoleteDropSlotOnStop() throws Exception {
-        final String obsoleteParamLogMessage = "Parameter 'slot.drop_on_stop' is obsolete and is scheduled to be removed. Please use 'slot.drop.on.stop'.";
-
-        LogInterceptor logInterceptor = new LogInterceptor();
-        Configuration config = Configuration.create()
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP_OBSOLETE, true)
-                .build();
-        PostgresConnector connector = new PostgresConnector();
-        connector.validate(config.asMap());
-        assertThat(logInterceptor.containsWarnMessage(obsoleteParamLogMessage)).isTrue();
-        PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        Assertions.assertThat(connectorConfig.dropSlotOnStop()).isTrue();
-
-        logInterceptor = new LogInterceptor();
-        config = Configuration.create()
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
-                .build();
-        connector = new PostgresConnector();
-        connector.validate(config.asMap());
-        assertThat(logInterceptor.containsWarnMessage(obsoleteParamLogMessage)).isFalse();
-        connectorConfig = new PostgresConnectorConfig(config);
-        Assertions.assertThat(connectorConfig.dropSlotOnStop()).isTrue();
-
-        logInterceptor = new LogInterceptor();
-        config = Configuration.create()
-                .build();
-        connector = new PostgresConnector();
-        connector.validate(config.asMap());
-        assertThat(logInterceptor.containsWarnMessage(obsoleteParamLogMessage)).isFalse();
-        connectorConfig = new PostgresConnectorConfig(config);
-        Assertions.assertThat(connectorConfig.dropSlotOnStop()).isFalse();
-
-        logInterceptor = new LogInterceptor();
-        config = Configuration.create()
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP_OBSOLETE, false)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
-                .build();
-        connector = new PostgresConnector();
-        connector.validate(config.asMap());
-        assertThat(logInterceptor.containsWarnMessage(obsoleteParamLogMessage)).isTrue();
-        connectorConfig = new PostgresConnectorConfig(config);
-        Assertions.assertThat(connectorConfig.dropSlotOnStop()).isTrue();
-    }
-
-    @Test
     public void shouldSupportSSLParameters() throws Exception {
         // the default docker image we're testing against doesn't use SSL, so check that the connector fails to start when
         // SSL is enabled
