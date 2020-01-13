@@ -45,7 +45,7 @@ db2 control commands would have the same effect.
 The connector then produces a _change event_ for every row-level insert, update, and delete operation that was published via the _ASN SQL Tables_, recording all the change events for each table in a separate Kafka topic.
 The client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
 
-The database administrator normally enables _CDC_ in the mid-life of a table.
+The database administrator normally enables _CDC_ in the middle of the life of a table.
 This means that the connector won't have the complete history of all changes that have been made to the table.
 Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each of the whitelisted tables.
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made for tables in capture mode.
@@ -61,9 +61,14 @@ This includes snapshots: if the snapshot was not completed when the connector is
 
 Before using the Db2 connector to monitor the changes committed on the Db2 database, first enable _CDC_ on a monitored database.
 
-We recommend using the UDF functions that we provide,
-these are only for convenience and manually performing the same commands using
+We recommend using the UDF functions that we provide.
+However these are only for convenience and manually performing the same commands using
 db2 control commands would have the same effect. 
+
+We assume here that the contents of 
+debezium-connector-db2/src/test/docker/db2-cdc-docker are available
+on the machine on which Db2 is running in $HOME/asncdctools/src
+and that the user has logged-in as the db2inst1 user.
 
 First compile this function on the Db2 server, using the _bldrtn_
 C-compiler
@@ -71,7 +76,7 @@ C-compiler
 [source,shell]
 
 ----
-$ cd /asncdctools/src
+$ cd $HOME/asncdctools/src
 ----
 
 [source,shell]
@@ -87,7 +92,7 @@ Start the database if not already running:
 [source,shell]
 
 ----
-$ db2 start db $DBNAME
+$ db2 start db <DB NAME>
 
 ----
 
@@ -107,12 +112,12 @@ The database needs to have been recently backed-up so doing following if this is
 
 [source,shell]
 ----
-$ db2 backup db $DBNAME to /dev/null
+$ db2 backup db <DB NAME> to /dev/null
 ----
 
 [source,shell]
 ----
-$ db2 restart db $DBNAME
+$ db2 restart db <DB NAME>
 ----
 
 Install the UDF:
@@ -120,17 +125,19 @@ Install the UDF:
 [source,shell]
 
 ----
-$ db2 connect to $DBNAME
+$ db2 connect to <DB NAME>
+----
+
+We assume that the db2 is installed on the db2inst1 user
+
+[source,shell]
+----
+$ cp $HOME/asncdctools/src/asncdc $HOME/sqllib/function
 ----
 
 [source,shell]
 ----
-$ cp /asncdctools/src/asncdc /database/config/db2inst1/sqllib/function
-----
-
-[source,shell]
-----
-$ chmod 777 /database/config/db2inst1/sqllib/function
+$ chmod 777 $HOME/sqllib/function
 
 ----
 
@@ -141,7 +148,7 @@ Enable the UDF that allows the ASN capture agent to be started/stopped
 [source,shell]
 
 ----
-$ db2 -tvmf /asncdctools/src/asncdc_UDF.sql
+$ db2 -tvmf $HOME/asncdctools/src/asncdc_UDF.sql
 ----
 
 Create the ASN Control tables
@@ -149,7 +156,7 @@ Create the ASN Control tables
 [source,shell]
 
 ----
-$ db2 -tvmf /asncdctools/src/asncdctables.sql
+$ db2 -tvmf $HOME/asncdctools/src/asncdctables.sql
 ----
 
 
@@ -158,7 +165,7 @@ Enable the  UDF that allows us to add/remove tables to be captured
 [source,shell]
 
 ----
-$ db2 -tvmf /asncdctools/src/asncdcaddremove.sql
+$ db2 -tvmf $HOME/asncdctools/src/asncdcaddremove.sql
 ----
 
 
@@ -259,12 +266,12 @@ The Db2 connector writes events for all insert, update, and delete operations on
 
 Unlike for SQL Server, it is only possible for a connector to streams changes from one Db2 database.
 
-For example, consider a Db2 installation with an `inventory` database that contains four tables: `products`, `products_on_hand`, `customers`, and `orders` in schema `myschema`. If the connector monitoring this database were given a logical server name of `fulfillment`, then the connector would produce events on these four Kafka topics:
+For example, consider a Db2 installation with an `mydatabase` database that contains four tables: `products`, `products_on_hand`, `customers`, and `orders` in schema `myschema` then the connector would produce events on these four Kafka topics:
 
-* `fulfillment.myschema.products`
-* `fulfillment.myschema.products_on_hand`
-* `fulfillment.myschema.customers`
-* `fulfillment.myschema.orders`
+* `mydatabase.myschema.products`
+* `mydatabase.myschema.products_on_hand`
+* `mydatabase.myschema.customers`
+* `mydatabase.myschema.orders`
 
 
 === Events
@@ -701,27 +708,46 @@ It is recommend that if the structure of a source change is changed, that we:
 ==== Cold schema update
 
 This is the safest procedure but might not be feasible for applications with high-availability requirements.
-The administrator should follow this sequence of steps
+The administrator should follow this sequence of steps:
 
 1. Suspend the application that generates the database records
 2. Wait for Debezium to stream all unstreamed changes
 3. Stop Debezium connector
 4. Apply all changes to the source table schema
-5.  Mark the tables as inactive on the ASN register table
-6.  Reinit the ASN capture service (see the UDFs)
-7. Remove the old structure table from ASN
-8. Add the new structure table to ASN
-9.  Reinit the ASN capture service (see the UDFs)
-10. Resume the application
-11. Start Debezium connector
+5. Mark the tables as INACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
+6. Remove the old structure table from ASN
+7. Add the new structure table to ASN
+8. Mark the tables as ACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
+9. Resume the application
+10. Start Debezium connector
 
 
 ==== Hot schema update
 
 The hot schema update does not require any downtime in application and data processing.
-The procedure itself is also much simpler than in case of cold schema update
+The procedure itself is also much simpler than in case of cold schema update.
+First we consider an incremental change to the source, e.g. adding a new column to the end:
 
-To Be Done
+1. lock the source table to change
+2.  Mark the tables as INACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)34. Apply all changes to the source table schema
+3.  Apply all changes to the ASN table schema
+4.  Mark the tables as ACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
+
+
+Now we consider an non-incremental change to the source, e.g. adding a new column in the middle:
+
+1. lock the source table to change
+2.  Mark the tables as INACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
+3. export the data of the source table to change
+4. truncate the source table
+5. alter the source table
+6. LOAD the exported data into the altered source table 
+7. export the data of the ASN table to change
+8. truncate the ASN table
+9. alter the ASN table
+10. LOAD the exported data into the altered ASN table 
+11. Mark the tables as INACTIVE on the ASN register table and reinit the ASN capture service (see the UDFs)
+
 
 ==== Example
 
@@ -782,11 +808,11 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |`DATE`
 |`INT32`
 |`io.debezium.time.Date`
-| A string representation of a timestamp with timezone information, where the timezone is GMT
+| A string representation of a timestamp without timezone information
 
 
 |`DECFLOAT`
-|`?` --> JDBC type '1111'
+|`JDBC type '1111 Currently NOT Supported
 |n/a
 | WARN io.debezium.relational.TableSchemaBuilder  - Unexpected JDBC type '1111' for column '   ' that will be ignored
 
@@ -830,13 +856,13 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |`TIME`
 |`INT32`
 |`io.debezium.time.Time`
-| A string representation of a timestamp with timezone information, where the timezone is GMT
+| A string representation of a times without timezone information
 
 
 |`TIMESTAMP`
 |`INT64`
 |`io.debezium.time.MicroTimestamp`
-| A string representation of a timestamp with timezone information, where the timezone is GMT
+| A string representation of a timestamp without timezone information
 
 
 |`VARBINARY`
@@ -1038,12 +1064,12 @@ Using the Db2 connector is straightforward. Here is an example of the configurat
 [source,json]
 ----
 {
-  "name": "inventory-connector",  // <1>
+  "name": "db2-connector",  // <1>
   "config": {
     "connector.class": "io.debezium.connector.db2.Db2Connector", // <2>
     "database.hostname": "192.168.99.100", // <3>
-    "database.port": "1433", // <4>
-    "database.user": "sa", // <5>
+    "database.port": "50000", // <4>
+    "database.user": "db2inst1", // <5>
     "database.password": "Password!", // <6>
     "database.dbname": "mydatabase", // <7>
     "database.server.name": "fullfillment", // <8>
@@ -1284,7 +1310,7 @@ The following configuration properties are _required_ unless a default value is 
 |IP address or hostname of the Db2 database server.
 
 |`database.port`
-|`1433`
+|`50000`
 |Integer port number of the Db2 database server.
 
 |`database.user`
@@ -1446,8 +1472,8 @@ See xref:configuration/avro.adoc#names[Avro naming] for more details.
 |
 | Timezone of the server.
 
-This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset. Should only be specified when running on Db2 2014 or older and using different timezones for the database server and the JVM running the Debezium connector. +
-When unset, default behavior is to use the timezone of the VM running the Debezium connector. In this case, when running on on Db2 2014 or older and using different timezones on server and the connector, incorrect ts_ms values may be produced. +
+This is used to define the timezone of the transaction timestamp (ts_ms) retrieved from the server (which is actually not zoned). Default value is unset. +
+When unset, default behavior is to use the timezone of the VM running the Debezium connector.  +
 Possible values include "Z", "UTC", offset values like "+02:00", short zone ids like "CET", and long zone ids like "Europe/Paris".
 
 |=======================
