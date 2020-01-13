@@ -287,7 +287,7 @@ public class CloudEventsConverter implements Converter {
                 Schema incompleteSchema = ceSchemaAndValue.schema();
                 Struct ceValue = (Struct) ceSchemaAndValue.value();
                 byte[] data = ceValue.getBytes(CloudEventsMaker.FieldName.DATA);
-                SchemaAndValue dataSchemaAndValue = avroConverter.toConnectData(topic, data);
+                SchemaAndValue dataSchemaAndValue = avroConverter.toConnectData(topic + DATA_SCHEMA_SUFFIX, data);
                 SchemaBuilder builder = SchemaBuilder.struct();
 
                 for (Field ceField : incompleteSchema.fields()) {
@@ -427,7 +427,7 @@ public class CloudEventsConverter implements Converter {
             ceExtensionSchema = SchemaBuilder.bool();
         }
         // all numbers up to int32 go as int32
-        else if (schema.type() == Type.INT8 || schema.type() == Type.INT16 || schema.type() == Type.INT16) {
+        else if (schema.type() == Type.INT8 || schema.type() == Type.INT16 || schema.type() == Type.INT16 || schema.type() == Type.INT32) {
             ceExtensionSchema = SchemaBuilder.int32();
         }
         // int64 isn't supported as per CE spec

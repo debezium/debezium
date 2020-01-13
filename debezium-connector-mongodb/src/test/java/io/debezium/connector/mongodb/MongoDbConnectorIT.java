@@ -943,7 +943,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         for (SourceRecord record : topicRecords) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo");
         }
 
         storeDocuments("dbit", "restaurants", "restaurants2.json");
@@ -954,7 +954,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         for (SourceRecord record : topicRecords2) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo");
         }
 
         stopConnector();

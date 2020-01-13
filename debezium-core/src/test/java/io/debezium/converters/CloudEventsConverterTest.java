@@ -200,7 +200,7 @@ public class CloudEventsConverterTest {
         }
     }
 
-    public static void shouldConvertToCloudEventsInAvro(SourceRecord record) {
+    public static void shouldConvertToCloudEventsInAvro(SourceRecord record, String connectorName, String serverName) {
         Map<String, Object> config = new HashMap<>();
         config.put("serializer.type", "avro");
         config.put("data.serializer.type", "avro");
@@ -250,9 +250,9 @@ public class CloudEventsConverterTest {
             msg = "inspecting all required CloudEvents fields in the value";
             avroValue = (Struct) avroSchemaAndValue.value();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.ID)).isNotNull();
-            assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/postgresql/test_server");
+            assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(avroValue.get(CloudEventsMaker.FieldName.SPECVERSION)).isEqualTo("1.0");
-            assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium.postgresql.datachangeevent");
+            assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isEqualTo("avro/binary");
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.DATASCHEMA)).startsWith("http://fake-url/schemas/ids/");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TIME)).isNotNull();

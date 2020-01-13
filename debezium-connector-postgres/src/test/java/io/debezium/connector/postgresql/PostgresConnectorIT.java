@@ -1385,7 +1385,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         for (SourceRecord record : snapshot) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "postgresql", "test_server");
         }
 
         // insert some more records and test streaming
@@ -1397,7 +1397,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         for (SourceRecord record : streaming) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "postgresql", "test_server");
         }
 
         stopConnector();
