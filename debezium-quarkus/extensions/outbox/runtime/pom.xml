@@ -30,8 +30,9 @@
             <artifactId>quarkus-hibernate-orm</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-hibernate-validator</artifactId>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>${validation-api.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
