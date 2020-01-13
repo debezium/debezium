@@ -764,7 +764,7 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 
 
 |`BLOB`
-|`?`
+|`BYTES`
 |n/a
 |
 
@@ -775,30 +775,30 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |
 
 |`CLOB`
-|`?`
+|`STRING`
 |n/a
 |
 
 |`DATE`
-|`STRING`
-|`io.debezium.time.ZonedTimestamp`
+|`INT32`
+|`io.debezium.time.Date`
 | A string representation of a timestamp with timezone information, where the timezone is GMT
 
 
 |`DECFLOAT`
-|`?`
+|`?` --> JDBC type '1111'
 |n/a
-|
+| WARN io.debezium.relational.TableSchemaBuilder  - Unexpected JDBC type '1111' for column '   ' that will be ignored
 
 
 |`DECIMAL`
-|`?`
-|n/a
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
 |
 
 
 |`DBCLOB`
-|`?`
+|`STRING`
 |n/a
 |
 
@@ -828,19 +828,19 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |
 
 |`TIME`
-|`STRING`
-|`io.debezium.time.ZonedTimestamp`
+|`INT32`
+|`io.debezium.time.Time`
 | A string representation of a timestamp with timezone information, where the timezone is GMT
 
 
 |`TIMESTAMP`
-|`?`
-|`io.debezium.time.ZonedTimestamp`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
 | A string representation of a timestamp with timezone information, where the timezone is GMT
 
 
 |`VARBINARY`
-|`?`
+|`BYTES`
 |n/a
 |
 
@@ -850,7 +850,7 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 |
 
 |`VARGRAPHIC`
-|`?`
+|`STRING`
 |n/a
 |
 
