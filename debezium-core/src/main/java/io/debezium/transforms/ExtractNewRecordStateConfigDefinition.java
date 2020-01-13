@@ -96,6 +96,13 @@ public class ExtractNewRecordStateConfigDefinition {
             .withDescription("Adds the operation {@link FieldName#OPERATION operation} as a header." +
                     "Its key is '" + ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY + "'");
 
+    public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
+            .withDisplayName("The column which determines how the events will be routed, the value will replace the topic name.")
+            .withType(ConfigDef.Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("");
+
     public static final Field ADD_SOURCE_FIELDS = Field.create("add.source.fields")
             .withDisplayName("Adds the specified fields from the 'source' field from the payload if they exist.")
             .withType(ConfigDef.Type.LIST)

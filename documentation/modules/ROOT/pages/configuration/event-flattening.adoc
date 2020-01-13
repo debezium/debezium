@@ -160,4 +160,8 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`add.source.fields`
 |
 |Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record
+
+|`route.by.field`
+|
+|The column which determines how the events will be routed, the value will the topic name
 |=======================

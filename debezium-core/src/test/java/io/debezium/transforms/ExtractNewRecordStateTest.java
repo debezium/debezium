@@ -32,6 +32,22 @@ public class ExtractNewRecordStateTest {
     private static final String HANDLE_DELETES = "delete.handling.mode";
     private static final String OPERATION_HEADER = "operation.header";
     private static final String ADD_SOURCE_FIELDS = "add.source.fields";
+    private static final String ROUTE_BY_FIELD = "route.by.field";
+
+    final Schema recordSchema = SchemaBuilder.struct()
+            .field("id", SchemaBuilder.int8())
+            .field("name", SchemaBuilder.string())
+            .build();
+
+    final Schema sourceSchema = SchemaBuilder.struct()
+            .field("lsn", SchemaBuilder.int32())
+            .build();
+
+    final Envelope envelope = Envelope.defineSchema()
+            .withName("dummy.Envelope")
+            .withRecord(recordSchema)
+            .withSource(sourceSchema)
+            .build();
 
     @Test
     public void testTombstoneDroppedByDefault() {
@@ -69,42 +85,50 @@ public class ExtractNewRecordStateTest {
     }
 
     private SourceRecord createDeleteRecord() {
-        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
-        final Schema sourceSchema = SchemaBuilder.struct()
+        final Schema deleteSourceSchema = SchemaBuilder.struct()
                 .field("lsn", SchemaBuilder.int32())
                 .field("version", SchemaBuilder.string())
                 .build();
-        Envelope envelope = Envelope.defineSchema()
+
+        Envelope deleteEnvelope = Envelope.defineSchema()
                 .withName("dummy.Envelope")
                 .withRecord(recordSchema)
-                .withSource(sourceSchema)
+                .withSource(deleteSourceSchema)
                 .build();
+
         final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(sourceSchema);
+        final Struct source = new Struct(deleteSourceSchema);
 
         before.put("id", (byte) 1);
+        before.put("name", "myRecord");
         source.put("lsn", 1234);
         source.put("version", "version!");
-        final Struct payload = envelope.delete(before, source, Instant.now());
+        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
     private SourceRecord createCreateRecord() {
-        final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
-        final Schema sourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .build();
-        Envelope envelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(sourceSchema)
-                .build();
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
 
         before.put("id", (byte) 1);
+        before.put("name", "myRecord");
         source.put("lsn", 1234);
         final Struct payload = envelope.create(before, source, Instant.now());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
+    private SourceRecord createUpdateRecord() {
+        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "myRecord");
+        after.put("id", (byte) 1);
+        after.put("name", "updatedRecord");
+        source.put("lsn", 1234);
+        final Struct payload = envelope.update(before, after, source, Instant.now());
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
@@ -291,6 +315,47 @@ public class ExtractNewRecordStateTest {
             final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    public void testAddTopicRoutingField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ROUTE_BY_FIELD, "name");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrappedCreate = transform.apply(createRecord);
+            assertThat(unwrappedCreate.topic()).isEqualTo("myRecord");
+        }
+    }
+
+    @Test
+    public void testUpdateTopicRoutingField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ROUTE_BY_FIELD, "name");
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(unwrapped.topic()).isEqualTo("updatedRecord");
+        }
+    }
+
+    @Test
+    public void testDeleteTopicRoutingField() {
+        final Map<String, String> props = new HashMap<>();
+        props.put(ROUTE_BY_FIELD, "name");
+
+        final SourceRecord deleteRecord = createDeleteRecord();
+
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            props.put(HANDLE_DELETES, "none");
+            transform.configure(props);
+
+            assertThat(transform.apply(deleteRecord).topic()).isEqualTo("myRecord");
         }
     }
 
