@@ -206,7 +206,7 @@ public class SerdeTest implements Testing {
     public void valueWithUnknownPropertyIgnored() {
         Map<String, Object> options = new HashMap<>();
         options.put("from.field", "before");
-        options.put("ignore.unknown.properties", true);
+        options.put("unknown.properties.ignored", true);
 
         final Serde<Customer> valueSerde = DebeziumSerdes.payloadJson(Customer.class);
         valueSerde.configure(options, false);
