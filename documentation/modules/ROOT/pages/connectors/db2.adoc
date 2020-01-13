@@ -45,7 +45,7 @@ db2 control commands would have the same effect.
 The connector then produces a _change event_ for every row-level insert, update, and delete operation that was published via the _ASN SQL Tables_, recording all the change events for each table in a separate Kafka topic.
 The client applications read the Kafka topics that correspond to the database tables they're interested in following, and react to every row-level event it sees in those topics.
 
-The database administrator normally enables _CDC_ in the mid-life of a table.
+The database administrator normally enables _CDC_ in the middle of the life of a table.
 This means that the connector won't have the complete history of all changes that have been made to the table.
 Therefore, when the Db2 connector first connects to a particular Db2 database, it starts by performing a _consistent snapshot_ of each of the whitelisted tables.
 After the connector completes the snapshot, it continues streaming changes from the exact point at which the snapshot was made for tables in capture mode.
