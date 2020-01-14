@@ -29,6 +29,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTimestamp;
+import io.debezium.time.Timestamp;
 import io.debezium.transforms.SmtManager;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField;
 
@@ -107,10 +110,7 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
         }
         Schema payloadSchema = payloadField.schema();
 
-        Long timestamp = fieldEventTimestamp == null
-                ? debeziumEventValue.getInt64("ts_ms")
-                : eventStruct.getInt64(fieldEventTimestamp);
-
+        Long timestamp = getEventTimestampMs(debeziumEventValue, eventStruct);
         Object eventId = eventStruct.get(fieldEventId);
         Object payload = eventStruct.get(fieldPayload);
         Object payloadId = eventStruct.get(fieldPayloadId);
@@ -175,6 +175,44 @@ public class EventRouter<R extends ConnectRecord<R>> implements Transformation<R
                 headers);
 
         return regexRouter.apply(newRecord);
+    }
+
+    /**
+     * Returns the Kafka record timestamp for the outgoing record.
+     * Either obtained from the configured field or the timestamp when Debezium processed the event.
+     */
+    private Long getEventTimestampMs(Struct debeziumEventValue, Struct eventStruct) {
+        if (fieldEventTimestamp == null) {
+            return debeziumEventValue.getInt64("ts_ms");
+        }
+
+        Field timestampField = eventStruct.schema().field(fieldEventTimestamp);
+        if (timestampField == null) {
+            throw new ConnectException(String.format("Unable to find timestamp field %s in event", fieldEventTimestamp));
+        }
+
+        Long timestamp = eventStruct.getInt64(fieldEventTimestamp);
+        if (timestamp == null) {
+            return debeziumEventValue.getInt64("ts_ms");
+        }
+
+        String schemaName = timestampField.schema().name();
+
+        if (schemaName == null) {
+            throw new ConnectException(String.format("Unsupported field type %s (without logical schema name) for event timestamp", timestampField.schema().type()));
+        }
+
+        // not going through Instant here for the sake of performance
+        switch (schemaName) {
+            case Timestamp.SCHEMA_NAME:
+                return timestamp;
+            case MicroTimestamp.SCHEMA_NAME:
+                return timestamp / 1_000;
+            case NanoTimestamp.SCHEMA_NAME:
+                return timestamp / 1_000_000;
+            default:
+                throw new ConnectException(String.format("Unsupported field type %s for event timestamp", schemaName));
+        }
     }
 
     private Object defineRecordKey(Struct eventStruct, Object fallbackKey) {
