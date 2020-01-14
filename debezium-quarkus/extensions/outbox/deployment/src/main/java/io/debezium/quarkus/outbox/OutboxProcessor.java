@@ -16,6 +16,8 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmHibernateMapping;
+import org.hibernate.tuple.component.DynamicMapComponentTuplizer;
+import org.hibernate.tuple.entity.DynamicMapEntityTuplizer;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.ParameterizedType;
@@ -36,6 +38,7 @@ import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.GeneratedResourceBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 
 /**
  * Quarkus deployment processor for the Debezium "outbox" extension.
@@ -136,9 +139,16 @@ public final class OutboxProcessor {
     @BuildStep(loadsApplicationClasses = true)
     public void build(OutboxEventEntityBuildItem outboxBuildItem,
                       BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
-                      BuildProducer<GeneratedResourceBuildItem> generatedResourcesProducer) {
+                      BuildProducer<GeneratedResourceBuildItem> generatedResourcesProducer,
+                      BuildProducer<ReflectiveClassBuildItem> reflectiveClassProducer) {
         additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(EventDispatcher.class));
         generateHbmMapping(outboxBuildItem, generatedResourcesProducer);
+
+        // These are needed by Hibernate ORM for native HBM support
+        // See https://github.com/quarkusio/quarkus/pull/3894
+        // Once these are added to the ORM extension, these can be removed
+        reflectiveClassProducer.produce(new ReflectiveClassBuildItem(false, false, DynamicMapEntityTuplizer.class.getName()));
+        reflectiveClassProducer.produce(new ReflectiveClassBuildItem(false, false, DynamicMapComponentTuplizer.class.getName()));
     }
 
     private void generateHbmMapping(OutboxEventEntityBuildItem outboxBuildItem,

@@ -20,5 +20,5 @@ public class DebeziumOutboxRuntimeConfig {
      * Remove outbox entity after being inserted.  Default is {@code true}.
      */
     @ConfigItem(defaultValue = "true")
-    public Boolean removeAfterInsert;
+    public boolean removeAfterInsert;
 }

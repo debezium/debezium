@@ -26,28 +26,17 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Quarkus deployment dependencies -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm-deployment</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson-deployment</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy-deployment</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-core-deployment</artifactId>
-            <version>${quarkus.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-arc-deployment</artifactId>
-            <version>${quarkus.version}</version>
-        </dependency>
+
+        <!-- Debezium Quarkus Outbox Runtime artifact dependency -->
         <dependency>
             <groupId>io.debezium.quarkus</groupId>
             <artifactId>debezium-quarkus-outbox</artifactId>
