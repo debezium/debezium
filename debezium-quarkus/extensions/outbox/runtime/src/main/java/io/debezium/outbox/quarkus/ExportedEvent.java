@@ -7,11 +7,14 @@ package io.debezium.outbox.quarkus;
 
 import java.time.Instant;
 
+import io.debezium.annotation.Incubating;
+
 /**
  * Describes an event that should be exported via the "outbox" table.
  *
  * @author Chris Cranford
  */
+@Incubating
 public interface ExportedEvent<I, P> {
 
     /**

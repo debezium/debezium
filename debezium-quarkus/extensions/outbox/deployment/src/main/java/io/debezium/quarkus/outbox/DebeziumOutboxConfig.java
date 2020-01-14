@@ -28,35 +28,35 @@ public class DebeziumOutboxConfig {
      * The column name that contains the event id in the outbox table
      */
     @ConfigItem(defaultValue = "id")
-    public String columnIdName;
+    public String idColumnName;
 
     /**
      * The column name that contains the event key within the outbox table
      */
     @ConfigItem(defaultValue = "aggregateid")
-    public String aggregateIdName;
+    public String aggregateIdColumnName;
 
     /**
      * The column name that contains the event type in the outbox table
      */
     @ConfigItem(defaultValue = "type")
-    public String typeName;
+    public String typeColumnName;
 
     /**
      * The column name that contains the timestamp in the outbox table
      */
     @ConfigItem(defaultValue = "timestamp")
-    public String timestampName;
+    public String timestampColumnName;
 
     /**
      * The column name that contains the event payload in the outbox table
      */
     @ConfigItem(defaultValue = "payload")
-    public String payloadName;
+    public String payloadColumnName;
 
     /**
      * The column name that determines how the events will be routed in the outbox table
      */
     @ConfigItem(defaultValue = "aggregatetype")
-    public String aggregateTypeName;
+    public String aggregateTypeColumnName;
 }

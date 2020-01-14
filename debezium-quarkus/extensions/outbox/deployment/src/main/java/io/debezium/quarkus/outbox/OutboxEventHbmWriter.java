@@ -43,7 +43,7 @@ public class OutboxEventHbmWriter {
         // Setup the ID
         final JaxbHbmSimpleIdType idType = new JaxbHbmSimpleIdType();
         idType.setName("id");
-        idType.setColumnAttribute(config.columnIdName);
+        idType.setColumnAttribute(config.idColumnName);
         idType.setTypeAttribute(UUID.class.getName());
 
         final JaxbHbmGeneratorSpecificationType generatorSpecType = new JaxbHbmGeneratorSpecificationType();
@@ -55,7 +55,7 @@ public class OutboxEventHbmWriter {
         // Setup the aggregateType
         final JaxbHbmBasicAttributeType aggregateType = new JaxbHbmBasicAttributeType();
         aggregateType.setName("aggregateType");
-        aggregateType.setColumnAttribute(config.aggregateTypeName);
+        aggregateType.setColumnAttribute(config.aggregateTypeColumnName);
         aggregateType.setTypeAttribute("string");
         aggregateType.setNotNull(true);
         entityType.getAttributes().add(aggregateType);
@@ -63,7 +63,7 @@ public class OutboxEventHbmWriter {
         // Setup the aggregateIdType
         final JaxbHbmBasicAttributeType aggregateIdType = new JaxbHbmBasicAttributeType();
         aggregateIdType.setName("aggregateId");
-        aggregateIdType.setColumnAttribute(config.aggregateIdName);
+        aggregateIdType.setColumnAttribute(config.aggregateIdColumnName);
         aggregateIdType.setTypeAttribute(outboxEventEntityBuildItem.getAggregateIdType().name().toString());
         aggregateIdType.setNotNull(true);
         entityType.getAttributes().add(aggregateIdType);
@@ -71,7 +71,7 @@ public class OutboxEventHbmWriter {
         // Setup the typeType
         final JaxbHbmBasicAttributeType typeType = new JaxbHbmBasicAttributeType();
         typeType.setName("type");
-        typeType.setColumnAttribute(config.typeName);
+        typeType.setColumnAttribute(config.typeColumnName);
         typeType.setTypeAttribute("string");
         typeType.setNotNull(true);
         entityType.getAttributes().add(typeType);
@@ -79,7 +79,7 @@ public class OutboxEventHbmWriter {
         // Setup the timestampType
         final JaxbHbmBasicAttributeType timestampType = new JaxbHbmBasicAttributeType();
         timestampType.setName("timestamp");
-        timestampType.setColumnAttribute(config.timestampName);
+        timestampType.setColumnAttribute(config.timestampColumnName);
         timestampType.setTypeAttribute("Instant");
         timestampType.setNotNull(true);
         entityType.getAttributes().add(timestampType);
@@ -94,12 +94,12 @@ public class OutboxEventHbmWriter {
             payloadType.setTypeAttribute("converted::" + JsonNodeAttributeConverter.class.getName());
 
             final JaxbHbmColumnType columnType = new JaxbHbmColumnType();
-            columnType.setName(config.payloadName);
+            columnType.setName(config.payloadColumnName);
             columnType.setSqlType("varchar(8000)");
             payloadType.getColumnOrFormula().add(columnType);
         }
         else {
-            payloadType.setColumnAttribute(config.payloadName);
+            payloadType.setColumnAttribute(config.payloadColumnName);
             payloadType.setTypeAttribute(outboxEventEntityBuildItem.getPayloadType().name().toString());
         }
         entityType.getAttributes().add(payloadType);

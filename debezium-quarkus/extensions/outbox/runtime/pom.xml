@@ -7,6 +7,7 @@
         <groupId>io.debezium.quarkus</groupId>
         <artifactId>debezium-quarkus-outbox-parent</artifactId>
         <version>1.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>debezium-quarkus-outbox</artifactId>
@@ -25,19 +26,22 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Quarkus extensions -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm</artifactId>
         </dependency>
         <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-            <version>${validation-api.version}</version>
-        </dependency>
-        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jackson</artifactId>
         </dependency>
+
+        <!-- Needed primarily for @Incubating annotation -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5-internal</artifactId>
