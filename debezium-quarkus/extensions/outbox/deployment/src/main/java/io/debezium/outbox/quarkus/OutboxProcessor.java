@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.quarkus.outbox;
+package io.debezium.outbox.quarkus;
 
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_HBMXML;
 
@@ -26,7 +26,6 @@ import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-import io.debezium.outbox.quarkus.ExportedEvent;
 import io.debezium.outbox.quarkus.internal.DebeziumOutboxRecorder;
 import io.debezium.outbox.quarkus.internal.DebeziumOutboxRuntimeConfig;
 import io.debezium.outbox.quarkus.internal.EventDispatcher;

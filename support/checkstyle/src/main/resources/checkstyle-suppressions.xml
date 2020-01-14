@@ -23,5 +23,5 @@
 
     <!--exclude quarkus generated files-->
     <suppress checks="." files=".[\\/]annotations[\\/]io[\\/]debezium[\\/]outbox[\\/]quarkus[\\/]internal[\\/].*\.java$" />
-    <suppress checks="." files=".[\\/]annotations[\\/]io[\\/]debezium[\\/]quarkus[\\/]outbox[\\/].*\.java$" />
+    <suppress checks="." files=".[\\/]annotations[\\/]io[\\/]debezium[\\/]outbox[\\/]quarkus[\\/].*\.java$" />
 </suppressions>
