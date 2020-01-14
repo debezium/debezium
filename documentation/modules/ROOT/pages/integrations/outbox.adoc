@@ -1,0 +1,181 @@
+= Outbox Quarkus Extension
+include::../_attributes.adoc[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+
+This extension is inspired by the xref::configuration/outbox-event-router.adoc[Outbox Event Router] single message transformation (SMT).
+As discussed in the blog post link:/blog/2019/02/19/reliable-microservices-data-exchange-with-the-outbox-pattern/[Reliable Microservices Data Exchange with the Outbox Pattern], microservices often need to exchange information with one another and an excellent way to deal with that is using the Outbox pattern combined with Debezium's Outbox Event Router SMT.
+
+The Outbox extension's goal is to provide a Quarkus application with a reusable, highly configurable component that facilitates the use of the Outbox pattern paired with Debezium's CDC connector pipeline to reliably and asynchronously share data with any consumer of said data.
+
+== Getting Started
+
+In order to start using the Debezium Outbox Quarkus extension, the extension needs to be added as a part of the Quarkus application as follows:
+[source,xml,subs="verbatim,attributes"]
+----
+<dependency>
+  <groupId>io.debezium.quarkus</groupId>
+  <artfiactId>debezium-quarkus-outbox</artfiactId>
+  <version>{debezium-version}</version>
+</dependency>
+----
+
+The extension provides the application with the `io.debezium.outbox.quarkus.ExportedEvent` interface.
+It's expected that an application class will implement this interface and that the event will be emitted using the `javax.enterprise.event.Event` class.
+
+[NOTE]
+====
+The `ExportedEvent` interface is parameterized to allow the application to designate the Java types used by several attributes emitted by the event.
+It's important that for a given Quarkus application, *all* implementations of the `ExportedEvent` interface must use the same parameter types or a build failure will be thrown since all events will use the same underlying database table.
+====
+
+== Example
+
+The following illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
+[source,java,indent=0]
+----
+public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
+
+    private static final String TYPE = "Order";
+    private static final String EVENT_TYPE = "OrderCreated";
+
+    private final long orderId;
+    private final JsonNode jsonNode;
+    private final Instant timestamp;
+
+    public OrderCreatedEvent(Instant createdAt, Order order) {
+        this.orderId = order.getId();
+        this.timestamp = createdAt;
+        this.jsonNode = convertToJson(order);
+    }
+
+    @Override
+    public String getAggregateId() {
+        return String.valeuOf(orderId);
+    }
+
+    @Override
+    public String getAggregateType() {
+        return TYPE;
+    }
+
+    @Override
+    public JsonNode getPayload() {
+        return jsonNode;
+    }
+
+    @Override
+    public String getType() {
+        return EVENT_TYPE;
+    }
+
+    @Override
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+}
+----
+
+The following example illustrates an `OrderService` that emits the `OrderCreatedEvent`:
+[source,java,indent=0]
+----
+@ApplicationScoped
+public class OrderService {
+    @Inject
+    Event<ExportedEvent<?, ?>> event;
+
+    @Transactional
+    public Order addOrder(Order order) {
+        order = orderRepository.save(order);
+        event.fire(new OrderCreatedEvent(Instant.now(), order));
+        return order;
+    }
+}
+----
+
+When the application code fires the event by calling `Event#fire`, the Outbox extension will be notified that the event occurred and persists the contents of the event into an outbox event table within the scope of the current transaction.
+The Debezium CDC connector in conjunction with the Outbox Event Router will be monitoring this table and will be responsible for relaying that data using CDC events.
+
+To see a full end-to-end demo, the https://github.com/debezium/debezium-examples/tree/master/outbox[Outbox] example illustrates two Quarkus microservice applications using the outbox pattern to share data between them when orders are placed or cancelled.
+
+== Configuration
+
+The Outbox extension can be configured by setting options in the Quarkus `application.properties` file.
+The extension works out-of-the-box with a default configuration, but this configuration may not be ideal for every situation.
+
+=== Build time configuration options
+
+[cols="65%a,>15%a,>20%",width=100,options="header,footer"]
+|=======================
+|Configuration property
+|Type
+|Default
+
+|`quarkus.debezium-outbox.table-name`::
+The table name to be used when creating the outbox table.
+|string
+|OutboxEvent
+
+
+|`quarkus.debezium-outbox.id-column-name`::
+The column name for the event id column.
+|string
+|`id`
+
+|`quarkus.debezium-outbox.aggregate-id-column.name`::
+The column name for the event key column.
+|string
+|`aggregateid`
+
+|`quarkus.debezium-outbox.type-column-name`::
+The column name for the event type column.
+|string
+|`type`
+
+|`quarkus.debezium-outbox.timestamp-column-name`::
+The column name for the event timestamp column.
+|string
+|`timestamp`
+
+|`quarkus.debezium-outbox.payload-column-name`::
+The column name for the event payload column.
+|string
+|`payload`
+
+|`quarkus.debezium-outbox.aggregate-type-column-name`::
+The column name for the event aggregate type column.
+|string
+|`aggregatetype`
+
+|=======================
+
+[NOTE]
+====
+The build time configuration defaults will work with the Outbox Event Router SMT out of the box.
+When not using the default values, be sure that the SMT configuration matches.
+====
+
+=== Runtime configuration options
+
+[cols="65%a,>15%a,>20%",width=100,options="header,footer"]
+|=======================
+|Configuration property
+|Type
+|Default
+
+|`quarkus.debezium-outbox.remove-after-insert`::
+Whether the outbox entry is removed after having been inserted. +
++
+_The removal of the entry does not impact the Debezium connector from being able to emit CDC events.
+This is used as a way to keep the table's underlying storage from growing over time._
+|boolean
+|true
+
+|=======================
