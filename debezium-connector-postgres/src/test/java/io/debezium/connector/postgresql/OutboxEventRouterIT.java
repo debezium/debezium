@@ -170,7 +170,6 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         assertThat(value).isInstanceOf(String.class);
         JsonNode payload = (new ObjectMapper()).readTree((String) value);
         assertThat(payload.get("email").getTextValue()).isEqualTo("gh@mefi.in");
-
     }
 
     @Test
@@ -224,7 +223,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
                 "UserEmail",
                 "7bdf2e9e",
                 "{\"email\": \"gh@mefi.in\"}",
-                ", 1, true, TIMESTAMP '2019-03-24 20:52:59'"));
+                ", 1, true, TIMESTAMP(3) '2019-03-24 20:52:59'"));
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         assertThat(actualRecords.topics().size()).isEqualTo(1);
@@ -245,7 +244,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         assertConnectSchemasAreEqual(null, eventRouted.valueSchema(), expectedSchema);
 
-        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
+        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000L);
         assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
@@ -269,6 +268,38 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         assertThat(valueStruct.getInt32("eventVersion")).isEqualTo(1);
         assertThat(valueStruct.getBoolean("someBoolType")).isEqualTo(true);
         assertThat(valueStruct.getBoolean("deleted")).isEqualTo(false);
+    }
+
+    @Test
+    @FixFor("DBZ-1707")
+    public void shouldConvertMicroSecondsTimestampToMilliSeconds() throws Exception {
+        startConnectorWithNoSnapshot();
+
+        outboxEventRouter = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put("table.field.event.timestamp", "createdat");
+        outboxEventRouter.configure(config);
+
+        TestHelper.execute("ALTER TABLE outboxsmtit.outbox add createdat timestamp without time zone not null;");
+
+        TestHelper.execute(createEventInsert(
+                UUID.fromString("f9171eb6-19f3-4579-9206-0e179d2ebad7"),
+                "UserUpdated",
+                "UserEmail",
+                "7bdf2e9e",
+                "{\"email\": \"gh@mefi.in\"}",
+                ", TIMESTAMP '2019-03-24 20:52:59'"));
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        SourceRecord newEventRecord = actualRecords.recordsForTopic(topicName("outboxsmtit.outbox")).get(0);
+        SourceRecord eventRouted = outboxEventRouter.apply(newEventRecord);
+
+        // expecting microseconds value emitted for TIMESTAMP column without width to be
+        // converted to milliseconds, as that's the standard semantics of that property
+        // in Kafka
+        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000L);
     }
 
     @Test
@@ -310,7 +341,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         // Validate metadata
         assertThat(eventRouted.valueSchema()).isNotNull();
-        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
+        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000L);
         assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
@@ -373,7 +404,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
 
         // Validate metadata
         assertThat(eventRouted.valueSchema()).isNull();
-        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000000L);
+        assertThat(eventRouted.timestamp()).isEqualTo(1553460779000L);
         assertThat(eventRouted.topic()).isEqualTo("outbox.event.UserEmail");
 
         // Validate headers
