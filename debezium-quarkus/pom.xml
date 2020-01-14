@@ -26,6 +26,18 @@
         <maven.compiler.testSource>${maven.compiler.source}</maven.compiler.testSource>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-bom-deployment</artifactId>
+                <version>${quarkus.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -94,7 +106,7 @@
     </build>
 
     <modules>
-        <module>extensions</module>
+        <module>extensions/outbox</module>
     </modules>
 
 </project>

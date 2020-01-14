@@ -13,18 +13,6 @@
     <artifactId>debezium-quarkus-outbox-deployment</artifactId>
     <name>Debezium Quarkus :: Outbox :: Deployment</name>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>io.debezium.quarkus</groupId>
-                <artifactId>debezium-quarkus-bom-deployment</artifactId>
-                <version>${project.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <!-- Quarkus deployment dependencies -->
         <dependency>
@@ -40,6 +28,7 @@
         <dependency>
             <groupId>io.debezium.quarkus</groupId>
             <artifactId>debezium-quarkus-outbox</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
