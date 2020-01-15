@@ -812,9 +812,9 @@ The _semantic type_ describes how the Kafka Connect schema captures the _meaning
 
 
 |`DECFLOAT`
-|`JDBC type '1111 Currently NOT Supported
-|n/a
-| WARN io.debezium.relational.TableSchemaBuilder  - Unexpected JDBC type '1111' for column '   ' that will be ignored
+|`BYTES`
+|`org.apache.kafka.connect.data.Decimal`
+| 
 
 
 |`DECIMAL`
