@@ -14,10 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map.Entry;
+import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Timestamp;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.junit.Before;
@@ -59,6 +61,8 @@ public class MongoDataConverterTest {
             converter.convertRecord(entry, finalSchema, struct);
         }
 
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+
         assertThat(struct.toString()).isEqualTo(
                 "Struct{"
                         + "address=Struct{"
@@ -74,11 +78,11 @@ public class MongoDataConverterTest {
                         + "borough=Bronx,"
                         + "cuisine=Bakery,"
                         + "grades=["
-                        + "Struct{date=1393804800000,grade=A,score=2}, "
-                        + "Struct{date=1378857600000,grade=A,score=6}, "
-                        + "Struct{date=1358985600000,grade=A,score=10}, "
-                        + "Struct{date=1322006400000,grade=A,score=9}, "
-                        + "Struct{date=1299715200000,grade=B,score=14}"
+                        + "Struct{date=Mon Mar 03 00:00:00 UTC 2014,grade=A,score=2}, "
+                        + "Struct{date=Wed Sep 11 00:00:00 UTC 2013,grade=A,score=6}, "
+                        + "Struct{date=Thu Jan 24 00:00:00 UTC 2013,grade=A,score=10}, "
+                        + "Struct{date=Wed Nov 23 00:00:00 UTC 2011,grade=A,score=9}, "
+                        + "Struct{date=Thu Mar 10 00:00:00 UTC 2011,grade=B,score=14}"
                         + "],"
                         + "name=Morris Park Bake Shop,"
                         + "restaurant_id=30075445"
@@ -107,7 +111,7 @@ public class MongoDataConverterTest {
                         .field("borough", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("cuisine", Schema.OPTIONAL_STRING_SCHEMA)
                         .field("grades", SchemaBuilder.array(SchemaBuilder.struct().name("pub.grades").optional()
-                                .field("date", Schema.OPTIONAL_INT64_SCHEMA)
+                                .field("date", Timestamp.builder().optional().build())
                                 .field("grade", Schema.OPTIONAL_STRING_SCHEMA)
                                 .field("score", Schema.OPTIONAL_INT32_SCHEMA)
                                 .build())
