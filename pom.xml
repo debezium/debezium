@@ -81,6 +81,9 @@
         <!-- ANTLR -->
         <antlr.version>4.7.2</antlr.version>
 
+        <!-- Quarkus -->
+        <quarkus.version>1.1.1.Final</quarkus.version>
+
         <!-- Testing -->
         <version.junit>4.12</version.junit>
         <version.fest>1.4</version.fest>
@@ -154,7 +157,7 @@
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
-        <module>debezium-quarkus</module>
+        <module>debezium-quarkus-outbox</module>
     </modules>
 
     <distributionManagement>
