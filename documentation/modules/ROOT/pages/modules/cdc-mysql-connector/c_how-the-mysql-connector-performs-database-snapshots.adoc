@@ -1,6 +1,8 @@
 // Metadata created by nebel
 //
 :isImageReady: false
+:imagesdir: /assets/images
+
 [id="how-the-mysql-connector-performs-database-snapshots_{context}"]
 = How the MySQL connector performs database snapshots
 
@@ -9,7 +11,7 @@ When your {prodname} MySQL connector is first started, it performs an initial _c
 NOTE: This is the default snapshot mode which is set as `inital` in the `snapshot.mode` property. For other snapshots modes, please check out the xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 ifeval::["{isImageReady}" == "true"]
-image:../../../assets/images/debezium-architecture.png[]
+image:debezium-architecture.png[Debezium Architecture]
 endif::[]
 
 :snapshotStep: 0
