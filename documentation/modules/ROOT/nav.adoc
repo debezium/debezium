@@ -10,7 +10,6 @@
 ** xref:configuration/event-flattening.adoc[New Record State Extraction]
 ** xref:configuration/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
 ** xref:configuration/outbox-event-router.adoc[Outbox Event Router]
-** xref:configuration/serdes.adoc[Change Event SerDes]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
@@ -24,10 +23,10 @@
 ** xref:connectors/sqlserver.adoc[SQL Server]
 ** xref:connectors/cassandra.adoc[Cassandra]
 * Integrations
+** xref:configuration/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
 ** xref:operations/openshift.adoc[Running on Openshift]
-** xref:operations/amq-streams.adoc[Running with AMQ Streams]
 ** xref:operations/embedded.adoc[Embedding Debezium]
