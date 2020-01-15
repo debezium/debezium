@@ -83,6 +83,8 @@
 
         <!-- Quarkus -->
         <quarkus.version>1.1.1.Final</quarkus.version>
+        <!-- HTTP client -->
+        <version.okhttp>4.2.2</version.okhttp>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
@@ -90,6 +92,7 @@
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>3.1.6</version.awaitility>
+        <version.testcontainers>1.12.3</version.testcontainers>
 
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
@@ -158,6 +161,7 @@
         <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-quarkus-outbox</module>
+        <module>debezium-testing</module>
     </modules>
 
     <distributionManagement>
@@ -341,6 +345,34 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
+            </dependency>
+
+            <!-- Testing utilities -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${version.testcontainers}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>kafka</artifactId>
+                <version>${version.testcontainers}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>jdbc</artifactId>
+                <version>${version.testcontainers}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>${version.okhttp}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${version.testcontainers}</version>
+                <scope>test</scope>
             </dependency>
 
             <!-- Test dependencies -->
