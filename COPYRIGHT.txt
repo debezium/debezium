@@ -3,8 +3,10 @@ Aaron Rosenberg
 Addison Higham
 Adrian Kreuziger
 Akshath Patkar
+Alex Mansell
 Alexander Kovryga
 Amit Sela
+Andrea Cosentino
 Andreas Bergmeier
 Andras Istvan Nagy
 Andrew Garrett
@@ -46,6 +48,7 @@ Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
 Felix Eckhardt
+Fintan Bolton
 Gagan Agrawal
 Grant Cooksey
 Guillaume Rosauro
@@ -84,6 +87,7 @@ Leo Mei
 Lev Zemlyanov
 Listman Gamboa
 Liu Hanlin
+Liu Lang Wa
 Luis Garcés-Erice
 Maciej Bryński
 MaoXiang Pan
