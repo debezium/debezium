@@ -53,11 +53,8 @@ import io.debezium.util.SchemaNameAdjuster;
  * The serialization format of the data attribute in CloudEvents is configured with
  * {@link CloudEventsConverterConfig#CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG cloudevents.data.serializer.type} option.
  * <p>
- * If the serialization format of the data attribute in CloudEvents is JSON, it can be configured whether to enable
- * schemas with {@link CloudEventsConverterConfig#CLOUDEVENTS_JSON_SCHEMAS_ENABLE_CONFIG json.schemas.enable} option.
- * <p>
- * If the the serialization format is Avro, the URL of schema registries for CloudEvents and its data attribute can be
- * configured with {@link CloudEventsConverterConfig#CLOUDEVENTS_SCHEMA_REGISTRY_URL_CONFIG schema.registry.url}.
+ * Configuration options of the underlying converters can be passed through using the {@code json} and {@code avro}
+ * prefixes, respectively.
  * <p>
  * There are two modes for transferring CloudEvents as Kafka messages: structured and binary. In the structured content
  * mode, event metadata attributes and event data are placed into the Kafka message value section using an event format.
