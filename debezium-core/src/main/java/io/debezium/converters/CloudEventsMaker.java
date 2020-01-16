@@ -78,7 +78,7 @@ public abstract class CloudEventsMaker {
      *
      * @param parser the parser of a change record
      * @param contentType the data content type of CloudEvents
-     * @param schemaUri the URI of the schema in case of Avro; may be null
+     * @param dataSchemaUriBase the URI of the schema in case of Avro; may be null
      * @return a concrete CloudEvents maker
      */
     public static CloudEventsMaker create(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
