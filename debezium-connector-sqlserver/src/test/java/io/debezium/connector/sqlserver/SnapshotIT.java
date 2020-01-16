@@ -31,6 +31,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
@@ -478,6 +479,45 @@ public class SnapshotIT extends AbstractConnectorTest {
         Assertions.assertThat(tableC).hasSize(1);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1292")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        final Configuration config = TestHelper.defaultConfig().build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(INITIAL_RECORDS_PER_TABLE);
+        final List<SourceRecord> snapshotTable1 = snapshotRecords.recordsForTopic("server1.dbo.table1");
+
+        assertThat(snapshotTable1).hasSize(INITIAL_RECORDS_PER_TABLE);
+
+        // test snapshot
+        for (SourceRecord sourceRecord : snapshotTable1) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord, "sqlserver", "server1");
+        }
+
+        for (int i = 0; i < STREAMING_RECORDS_PER_TABLE; i++) {
+            final int id = i + INITIAL_RECORDS_PER_TABLE;
+            connection.execute(
+                    String.format("INSERT INTO table1 VALUES(%s, '%s', %s, '%s')", id, "name" + id, new BigDecimal(id + ".23"), "2018-07-18 13:28:56"));
+        }
+
+        final SourceRecords streamingRecords = consumeRecordsByTopic(STREAMING_RECORDS_PER_TABLE);
+        final List<SourceRecord> streamingTable1 = streamingRecords.recordsForTopic("server1.dbo.table1");
+
+        assertThat(streamingTable1).hasSize(INITIAL_RECORDS_PER_TABLE);
+
+        // test streaming
+        for (SourceRecord sourceRecord : streamingTable1) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(sourceRecord);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(sourceRecord, "sqlserver", "server1");
+        }
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {

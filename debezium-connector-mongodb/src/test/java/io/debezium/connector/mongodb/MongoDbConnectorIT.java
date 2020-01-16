@@ -38,6 +38,7 @@ import com.mongodb.util.JSON;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
@@ -919,6 +920,43 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             final Integer ord = (Integer) offset.get(SourceInfo.ORDER);
             assertThat(ts > monitoredTs || (ts == monitoredTs && ord > monitoredOrd));
         });
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1292")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+        storeDocuments("dbit", "restaurants", "restaurants1.json");
+        start(MongoDbConnector.class, config);
+
+        SourceRecords records = consumeRecordsByTopic(12);
+        List<SourceRecord> topicRecords = records.recordsForTopic("mongo.dbit.restaurants");
+        for (SourceRecord record : topicRecords) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo");
+        }
+
+        storeDocuments("dbit", "restaurants", "restaurants2.json");
+
+        // Wait until we can consume the 4 documents we just added ...
+        SourceRecords records2 = consumeRecordsByTopic(4);
+        List<SourceRecord> topicRecords2 = records2.recordsForTopic("mongo.dbit.restaurants");
+        for (SourceRecord record : topicRecords2) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo");
+        }
+
         stopConnector();
     }
 }

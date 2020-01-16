@@ -57,6 +57,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -1363,6 +1364,40 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         if (value.getStruct("after") != null) {
             assertThat(value.getStruct("after").getString("bb")).isEqualTo("*****");
+        }
+
+        stopConnector();
+    }
+
+    @FixFor("DBZ-1292")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE);
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(2);
+        List<SourceRecord> snapshot = snapshotRecords.allRecordsInOrder();
+
+        for (SourceRecord record : snapshot) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "postgresql", "test_server");
+        }
+
+        // insert some more records and test streaming
+        TestHelper.execute(INSERT_STMT);
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(2);
+        List<SourceRecord> streaming = streamingRecords.allRecordsInOrder();
+
+        for (SourceRecord record : streaming) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "postgresql", "test_server");
         }
 
         stopConnector();

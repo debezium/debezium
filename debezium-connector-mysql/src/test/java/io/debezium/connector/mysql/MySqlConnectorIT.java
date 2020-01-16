@@ -34,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -1947,6 +1948,31 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
             Assertions.assertThat(key.get("name")).isNotNull();
         });
 
+    }
+
+    @Test
+    @FixFor("DBZ-1292")
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        final String tableName = "products";
+
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName(tableName))
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        final SourceRecords records = consumeRecordsByTopic(PRODUCTS_TABLE_EVENT_COUNT);
+        final List<SourceRecord> table = records.recordsForTopic(DATABASE.topicForTable(tableName));
+
+        for (SourceRecord record : table) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mysql", "myServer1");
+        }
     }
 
     private void waitForStreamingRunning(String serverName) throws InterruptedException {

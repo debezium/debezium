@@ -9,8 +9,10 @@ activemq-data/
 .project
 .cache
 .settings/
+.factorypath
 .checkstyle
 .gradle/
+.vscode/
 build/
 deploy/
 target/
