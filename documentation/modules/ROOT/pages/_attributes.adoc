@@ -5,7 +5,7 @@
 :partialsdir: {moduledir}/pages/_partials
 
 :debezium-version: 1.0.0.Final
-:debezium-dev-version: 1.0
+:debezium-dev-version: 1.1
 :debezium-kafka-version: 2.4.0
 :debezium-docker-label: 1.0
 :install-version: 1.0
@@ -16,6 +16,6 @@
 :assemblies: ../assemblies
 :modules: ../../modules
 
-:mysql-connector-plugin-download: https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.0.0.Beta2/debezium-connector-mysql-1.0.0.Beta2-plugin.tar.gz
+:mysql-connector-plugin-download: https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.0.0.Final/debezium-connector-mysql-1.0.0.Final-plugin.tar.gz
 
 :mysql-version: 8.0
