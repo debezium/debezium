@@ -30,15 +30,15 @@ git:
   quiet: true
 
 # First stop MySQL and PostgreSQL that run by default (see DBZ-163). Then check Docker status. Finally,
-# install Maven 3.3.9, since the Jolokia Maven plugin requires 3.2.1 or later but Travis current runs 3.1.x
+# install Maven 3.6.3, since the Jolokia Maven plugin requires 3.2.1 or later but Travis current runs 3.1.x
 before_install:
   - sudo service mysql-5.6 stop || sudo service mysql stop
   - sudo /etc/init.d/postgresql stop
   - docker -v
   - docker ps -a
-  - wget https://archive.apache.org/dist/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.zip
-  - unzip -qq apache-maven-3.3.9-bin.zip
-  - export M2_HOME=$PWD/apache-maven-3.3.9
+  - wget https://archive.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+  - unzip -qq apache-maven-3.6.3-bin.zip
+  - export M2_HOME=$PWD/apache-maven-3.6.3
   - export PATH=$M2_HOME/bin:$PATH
   - mvn -version
 
