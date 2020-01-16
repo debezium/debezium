@@ -23,6 +23,8 @@
 ** xref:connectors/oracle.adoc[Oracle]
 ** xref:connectors/sqlserver.adoc[SQL Server]
 ** xref:connectors/cassandra.adoc[Cassandra]
+* Integrations
+** xref:integrations/serdes.adoc[Change Event SerDes]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
