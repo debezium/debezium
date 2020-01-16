@@ -26,7 +26,7 @@
 
         <!-- Debezium Quarkus Outbox Runtime artifact dependency -->
         <dependency>
-            <groupId>io.debezium.quarkus</groupId>
+            <groupId>io.debezium</groupId>
             <artifactId>debezium-quarkus-outbox</artifactId>
             <version>${project.version}</version>
         </dependency>
