@@ -23,9 +23,9 @@
 ** xref:connectors/sqlserver.adoc[SQL Server]
 ** xref:connectors/cassandra.adoc[Cassandra]
 * Integrations
-** xref:configuration/serdes.adoc[Change Event SerDes]
+** xref:integrations/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
-** xref:configuration/cloudevents.adoc[CloudEvents]
+** xref:integrations/cloudevents.adoc[CloudEvents]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
