@@ -7,7 +7,6 @@ ifndef::site-gen-antora[]
 :partialsdir: {moduledir}/pages/_partials
 endif::[]
 
-:ProductName: Debezium
 :debezium-version: 1.0.0.Final
 :debezium-dev-version: 1.1
 :debezium-kafka-version: 2.4.0
