@@ -163,5 +163,5 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 
 |`route.by.field`
 |
-|The column which determines how the events will be routed, the value will the topic name
+|The column which determines how the events will be routed, the value will the topic name; obtained from the old record state for delete events, and from the new record state otherwise
 |=======================

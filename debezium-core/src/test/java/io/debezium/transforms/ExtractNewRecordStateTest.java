@@ -346,15 +346,14 @@ public class ExtractNewRecordStateTest {
 
     @Test
     public void testDeleteTopicRoutingField() {
-        final Map<String, String> props = new HashMap<>();
-        props.put(ROUTE_BY_FIELD, "name");
-
-        final SourceRecord deleteRecord = createDeleteRecord();
-
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ROUTE_BY_FIELD, "name");
             props.put(HANDLE_DELETES, "none");
+
             transform.configure(props);
 
+            final SourceRecord deleteRecord = createDeleteRecord();
             assertThat(transform.apply(deleteRecord).topic()).isEqualTo("myRecord");
         }
     }
