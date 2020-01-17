@@ -23,7 +23,7 @@ JMX can be enabled in Zookeeper, Kafka, and Kafka Connect using their standard i
 
 Zookeeper has built-in support for JMX. When running Zookeeper using a local installation, the `zkServer.sh` script recognizes the following environment variables:
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Environment Variable
 |Default
@@ -51,7 +51,7 @@ Zookeeper has built-in support for JMX. When running Zookeeper using a local ins
 When running Kafka using a local installation, the `kafka-server-start.sh` script recognizes the following environment variables:
 
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Environment Variable
 |Default
@@ -72,7 +72,7 @@ When running Kafka using a local installation, the `kafka-server-start.sh` scrip
 When running Kafka using a local installation, the `connect-distributed.sh` script recognizes the following environment variables:
 
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Environment Variable
 |Default
@@ -96,7 +96,7 @@ Enable JMX for a JVM running in a Docker container requires several additional o
 
 The `debezium/zookeeper` image recognizes the following JMX-related environment variables:
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Environment Variable
 |Default
@@ -125,15 +125,16 @@ The `debezium/zookeeper` image recognizes the following JMX-related environment 
 
 The following example Docker command start a container using the `debezium/zookeeper` image with values for the `JMXPORT` and `JMXHOST` environment variables, and maps the Docker host's port 9010 to the container's JMX port:
 
-```
+[source,shell]
+----
 docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 debezium/zookeeper:latest
-```
+----
 
 === Kafka in Docker
 
 The `debezium/kafka` image recognizes the following JMX-related environment variables:
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Environment Variable
 |Default
@@ -159,15 +160,16 @@ The `debezium/kafka` image recognizes the following JMX-related environment vari
 
 The following example Docker command start a container using the `debezium/kafka` image with values for the `JMXPORT` and `HOST_NAME` environment variables, and maps the Docker host's port 9011 to the container's JMX port:
 
-```
+[source,shell]
+----
 docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper debezium/kafka:latest
-```
+----
 
 === Kafka Connect in Docker
 
 The `debezium/connect` image recognizes the following JMX-related environment variables:
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Environment Variable
 |Default
@@ -194,9 +196,10 @@ The following example Docker command start a container using the `debezium/conne
 
 The Docker command to start a container using the `debezium/connect` image defines these variables using Docker's standard `-e` parameter, and maps the JMX port to a port on the Docker host. For example, the following command starts a container with JMX exposed on port 9011:
 
-```
+[source,shell]
+----
 docker run -it --rm --name connect -p 8083:8083 -p 9012:9012 -e JMXPORT=9012 -e JMXHOST=10.0.1.10 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:latest
-```
+----
 
 == Prometheus and Grafana
 

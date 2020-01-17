@@ -8,6 +8,11 @@ include::../_attributes.adoc[]
 
 toc::[]
 
+[NOTE]
+====
+This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
+====
+
 The Cassanadra connector can monitor a Cassandra cluster and record all row-level changes. The connector must be deployed locally on each node in the Cassandra cluster. The first time the connector connects to a Cassandra node, it performs a snapshot of all CDC-enabled tables in all keyspaces. The connector will also read the changes that are written to Cassandra commit logs and generates corresponding insert, update, and delete events. All events for each table are recorded in a separate kafka topic, where they can be consumed easily by applications and services.
 
 
@@ -30,6 +35,7 @@ Cassandra is different from the other Debezium connectors since it is not implem
 [WARNING]
 ====
 The following features are currently not supported by the Cassandra connector. Changes resulted from any of these features are ignored:
+
 * TTLs
 * Range deletes
 * Static columns
@@ -49,21 +55,20 @@ Before the Debezium Cassandra connector can be used to monitor the changes in a 
 
 To enable CDC, update the following CDC config in `cassandra.yaml`:
 
-[source]
+[source,yaml]
 ----
 cdc_enabled: true
 ----
 
 Additional CDC configs are have the following default values:
 
-[source]
+[source,yaml]
 ----
-cdc_raw_directory:          $CASSANDRA_HOME/data/cdc_raw
-cdc_free_space_in_mb:         4096
-cdc_free_space_check_interval_ms:   250
+cdc_raw_directory: $CASSANDRA_HOME/data/cdc_raw
+cdc_free_space_in_mb: 4096
+cdc_free_space_check_interval_ms: 250
 ----
 
-where:
 * `cdc_enabled` enables or disables CDC operations node-wide
 * `cdc_free_space_in_mb` determines the destination for commit log segments to be moved after all corresponding memtables are flushed
 * `cdc_free_space_in_mb` is the maximum capacity allocated to store commit log segments, and defaults to the minimum of 4096 MB and 1/8 of volume space.
@@ -75,7 +80,7 @@ where:
 
 Once CDC is enabled on the Cassandra node, each table must be be explicitly enabled for CDC as well via the CREATE TABLE or ALTER TABLE command. For example:
 
-[source]
+[source,sql]
 ----
 CREATE TABLE foo (a int, b text, PRIMARY KEY(a)) WITH cdc=true;
 
@@ -129,7 +134,7 @@ Cassandra's commit logs come with a set of limitations, which are critical for i
 * Cassandra does not perform read-before-write, as a result commit logs do not record the value of every column in the changed row, it only records the values of columns that have been modified (except for partition key columns, which are always recorded as they are required in Cassandra DML commands).
 * Due to the nature of CQL, _insert_ DMLs can result in a row insertion or update; _update_ DMLs can result in a row insertion, update, or deletion; _delete_ DMLs can result in a row update or deletion. Since queries are not recorded in commit logs, CDC event type is classified based on the effect on the row in a relational database sense.
 
-#TODO: is there a way to determine event type which corresponds to the actual Cassandra DML statement? and if so, is that preferred over the semantic of these events?
+**TODO**: is there a way to determine event type which corresponds to the actual Cassandra DML statement? and if so, is that preferred over the semantic of these events?
 
 [NOTE]
 ====
@@ -155,18 +160,18 @@ For example, consider a Cassandra installation with an `inventory` keyspace that
 * `fulfillment.inventory.customers`
 * `fulfillment.inventory.orders`
 
-#TODO: for topic name, is _clusterName_._keyspaceName_._tableName_ okay? or should it be _connectorName_._keyspaceName_._tableName_ or _connectorName_._clusterName_._keyspaceName_._tableName_?
+**TODO**: for topic name, is _clusterName_._keyspaceName_._tableName_ okay? or should it be _connectorName_._keyspaceName_._tableName_ or _connectorName_._clusterName_._keyspaceName_._tableName_?
 
 [[schema-evolution]]
 === Schema Evolution
 
 DDLs are not recorded in commit logs. When the schema of a table change, this change is issued from one of the Cassandra node and propagated to other nodes via Gossip Protocol. This implies detection of schema changes are achieved on a best-effort basis. This is done by periodically polling the schema of each cdc-enabled table in the cluster via a Cassandra driver, and then update the cached version of the schema. Because of this implementation, if a new column is added to a table and then writes are issued against that column immediately, it is possible that data from that column will not be reflected in the CDC event. This is why it is recommened to pause for some time (configured with `schema.refresh.interval.ms`) after issuing a schema change.
 
-#TODO: it may be possible to reactively refresh schema whenever an unexpect column appears in a mutation to improve schema change detection; worth looking into.
+**TODO**: it may be possible to reactively refresh schema whenever an unexpect column appears in a mutation to improve schema change detection; worth looking into.
 
 When sending a message to a topic t, the Avro schema for the key and the value will be automatically registered in the Confluent Schema Registry under the subject t-key and t-value, respectively, if the compatibility test passes. Although it is possible to replay a history of all table schemas via the Schema Registry, only the latest schema of each table is used to generate CDC events.
 
-#TODO: look into if it's possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it's possible right now, because writes to Cassandra node are not received in order.
+**TODO**: look into if it's possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it's possible right now, because writes to Cassandra node are not received in order.
 
 [[events]]
 === Events
@@ -178,7 +183,7 @@ All data change events produced by the Cassandra connector have a key and a valu
 
 For a given table, the change event's key will have a structure that contains a field for each column in the primary key of the table at the time the event was created. Consider an `inventory` database with a `customers` table defined as:
 
-[source,indent=0]
+[source,sql,indent=0]
 ----
 CREATE TABLE customers (
   id bigint,
@@ -440,11 +445,11 @@ The following is a JSON representation of a value schema for a _create_ event fo
 }
 ----
 
-#TODO: verify max timestamp != deletion timestamp in case of deletion DDLs
+**TODO**: verify max timestamp != deletion timestamp in case of deletion DDLs
 
 Given the following `insert` DML:
 
-[source,indent=0]
+[source,sql,indent=0]
 ----
 INSERT INTO customers (
   id,
@@ -511,7 +516,7 @@ The value payload in JSON representation would look like this:
 
 Given the following `update` DML:
 
-[source,indent=0]
+[source,sql,indent=0]
 ----
 UPDATE customers
 SET email = "annek_new@noanswer.org"
@@ -559,6 +564,7 @@ The value payload in JSON representation would look like this:
 ----
 
 When we compare this to the value in the _insert_ event, we see a couple differences:
+
 * The `op` field value is now `u`, signifying that this row changed because of an update.
 * The `after` field now has the updated state of the row, and here we can see that the email value is now `annek_new@noanswer.org`. Notice that `first_name` and `last_name` are null, this is because these fields did not change during this update. However, `id` and `registration_date` are still included, because these are the primary keys of this table.
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the commit log.
@@ -566,7 +572,7 @@ When we compare this to the value in the _insert_ event, we see a couple differe
 
 Finally, given the following `delete` DML:
 
-[source]
+[source,sql]
 ----
 DELETE FROM customers
 WHERE id = 1001 AND registration_date = 1562202942545;
@@ -609,14 +615,15 @@ The value payload in JSON representation would look like this:
 ----
 
 When we compare this to the value in the _insert_ and _update_ event, we see a couple differences:
+
 * The `op` field value is now `d`, signifying that this row changed because of a deletion.
 * The `after` field only contains values for `id` and `registration_date` because this is a deletion by primary keys.
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the commit log.
 * The `ts_ms` shows the timestamp milliseconds which the connector processed this event.
 
-#TODO: given TTL is not currently support, would it be better to remove delete_ts? would it also be okay to derive whether a field is set or not by looking at the each column to see if it's null?
+**TODO**: given TTL is not currently support, would it be better to remove delete_ts? would it also be okay to derive whether a field is set or not by looking at the each column to see if it's null?
 
-#TODO: discuss tombstone events in Cassandra connector
+**TODO**: discuss tombstone events in Cassandra connector
 
 [[data-types]]
 === Data Types
@@ -625,7 +632,7 @@ As described above, the Cassandra connector represents the changes to rows with 
 
 The following table describes how the connector maps each of the Cassandra data types to an Avro type.
 
-[cols="30%a, 30%a, 40%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a, 30%a, 40%a",width=100,options="header"]
 |=======================
 |Cassandra Data Type
 |Literal Type (Schema Type)
@@ -737,7 +744,7 @@ The following table describes how the connector maps each of the Cassandra data 
 
 |=======================
 
-#TODO: add logical types
+**TODO**: add logical types
 
 [[when-things-go-wrong]]
 === When Things Go Wrong
@@ -776,7 +783,7 @@ The Cassandra connector should be deployed each Cassandra node in a Cassandra cl
 
 The following represents an example .properties configuration file for running and testing the Cassandra Connector locally:
 
-[source,indent=0]
+[source,properties,indent=0]
 ----
 connector.name=test_connector
 commit.log.relocation.dir=/Users/test_user/debezium-connector-cassandra/test_dir/relocation/
@@ -812,7 +819,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[snapshot-metrics]]
 ==== Snapshot Metrics
 
-[cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,10%a,60%a",width=100,options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -850,7 +857,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[commitlog-metrics]]
 ==== Commitlog Metrics
 
-[cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,10%a,60%a",width=100,options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -878,7 +885,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[connector-properties]]
 === Connector properties
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default
@@ -1001,7 +1008,7 @@ The connector also supports pass-through configuration properties that are used 
 
 For example, the follwoing connector configuration properties can be used to http://kafka.apache.org/documentation.html#security_configclients[secure connections to the Kafka broker]:
 
-[source,indent=0]
+[source,properties,indent=0]
 ----
 kafka.producer.security.protocol=SSL
 kafka.producer.ssl.keystore.location=/var/private/ssl/kafka.server.keystore.jks

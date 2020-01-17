@@ -83,7 +83,7 @@ This result was achieved with the link:#configuration-options[default configurat
 
 [[configuration-options]]
 === Configuration options
-[cols="30%a,10%a,10%a,50%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,10%a,10%a,50%a",width=100,options="header"]
 |=======================
 |Property
 |Default
@@ -175,7 +175,7 @@ payload       | jsonb                  |
 
 After observing all those pieces we can see what the default configuration does:
 
-[cols="30%a,70%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,70%a",width=100,options="header"]
 |=======================
 |Table Column
 |Effect

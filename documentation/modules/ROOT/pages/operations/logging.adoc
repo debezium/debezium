@@ -32,7 +32,8 @@ To configure logging, you specify the desired level for each logger and the appe
 
 If you're running Debezium connectors in a Kafka Connect process, then Kafka Connect will use the Log4J configuration file (e.g., `config/connect-log4j.properties`) in the Kafka installation. The following are snippets from this file:
 
-[source]
+.log4j.properties
+[source,properties]
 ----
 log4j.rootLogger=INFO, stdout <1>
 
@@ -54,7 +55,8 @@ For the most part, the Debezium code sends its log messages to loggers with name
 
 This means that you can easily control all of the log messages for a specific class or for all of the classes within or under a specific package. For example, to turn on debug logging for the _entire_ MySQL connector (and the database history implementation used by the connector) might be as simple as adding the following line(s) to your `log4j.properties` file:
 
-[listing,indent=0,options="nowrap"]
+.log4j.properties
+[listing,properties,indent=0,options="nowrap"]
 ----
 ...
 log4j.logger.io.debezium.connector.mysql=DEBUG, stdout <1>
@@ -72,7 +74,8 @@ Configuring logging is a tradeoff: provide too little and it's not clear what is
 
 You can also configure logging for a specific subset of the classes within the connector, simply by adding more lines like those above except for more specific logger names. For example, maybe you're not sure why the MySQL connector is skipping some events when it is processing the binlog. Rather than turn on `DEBUG` or `TRACE` logging for whole connector, you can set the connector's logging to `INFO` and then configure `DEBUG` or `TRACE` on just the class that's reading the binlog. For example:
 
-[listing,indent=0,options="nowrap"]
+.log4j.properties
+[listing,properties,indent=0,options="nowrap"]
 ----
 ...
 log4j.logger.io.debezium.connector.mysql=INFO, stdout <1>
@@ -99,7 +102,8 @@ Most Debezium connectors use multiple threads to perform different activities, a
 
 You can use these properties within the appender's pattern defined in the `log4j.properties` file. For example, the following is a modification of the `stdout` appender's layout to use these MDC properties:
 
-[listing,indent=0,options="nowrap"]
+.log4j.properties
+[listing,properties,indent=0,options="nowrap"]
 ----
 ...
 log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n
@@ -108,7 +112,7 @@ log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connecto
 
 This will produce messages in the log similar to these:
 
-[listing,indent=0,options="nowrap"]
+[listing,shell,indent=0,options="nowrap"]
 ----
 ...
 2017-02-07 20:49:37,692 INFO   MySQL|dbserver1|snapshot  Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull with user 'debezium'   [io.debezium.connector.mysql.SnapshotReader]
@@ -128,7 +132,8 @@ The containers use a `LOG_LEVEL` environment variable to set the log level for t
 
 If you need more control, create a new image that is based on ours, except in your `Dockerfile` copy your own `log4j.properties` file into the image:
 
-[listing,indent=0,options="nowrap"]
+.Dockerfile
+[listing,dockerfile,indent=0,options="nowrap"]
 ----
 ...
 COPY log4j.properties $KAFKA_HOME/config/log4j.properties
