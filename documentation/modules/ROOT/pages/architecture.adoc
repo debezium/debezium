@@ -1,6 +1,5 @@
 = Debezium Architecture
 include::_attributes.adoc[]
-:imagesdir: /assets/images
 
 Most commonly, Debezium is deployed via Apache https://kafka.apache.org/documentation/#connect[Kafka Connect].
 Kafka Connect is a framework and runtime for implementing and operating
