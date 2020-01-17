@@ -248,7 +248,7 @@ EmbeddedEngine engine = EmbeddedEngine.create()
 
 The following configuration properties are _required_ unless a default value is available (for the sake of text formatting the package names of Java classes are replaced with `<...>`).
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default
