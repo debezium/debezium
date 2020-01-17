@@ -10,7 +10,7 @@ toc::[]
 
 [NOTE]
 ====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems will using this extension.
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this extension.
 ====
 
 == Overview
@@ -48,6 +48,8 @@ It's important that for a given Quarkus application, *all* implementations of th
 == Example
 
 The following illustrates an implementation of the `ExportedEvent` interface representing an order that has been created:
+
+.OrderCreatedEvent.java
 [source,java,indent=0]
 ----
 public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
@@ -93,6 +95,8 @@ public class OrderCreatedEvent implements ExportedEvent<String, JsonNode> {
 ----
 
 The following example illustrates an `OrderService` that emits the `OrderCreatedEvent`:
+
+.OrderService.java
 [source,java,indent=0]
 ----
 @ApplicationScoped
@@ -121,7 +125,7 @@ The extension works out-of-the-box with a default configuration, but this config
 
 === Build time configuration options
 
-[cols="65%a,>15%a,>20%",width=100,options="header,footer"]
+[cols="65%a,>15%a,>20%",width=100,options="header"]
 |=======================
 |Configuration property
 |Type
@@ -173,7 +177,7 @@ When not using the default values, be sure that the SMT configuration matches.
 
 === Runtime configuration options
 
-[cols="65%a,>15%a,>20%",width=100,options="header,footer"]
+[cols="65%a,>15%a,>20%",width=100,options="header"]
 |=======================
 |Configuration property
 |Type

@@ -7,11 +7,14 @@ include::../_attributes.adoc[]
 
 toc::[]
 
+[NOTE]
+====
+This connector is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems.
+====
+
 Debezium's Oracle Connector can monitor and record all of the row-level changes in the databases on an Oracle server.
-This connector is at an early stage of development and considered an incubating feature as of Debezium 0.8.
-It is not feature-complete and the structure of emitted CDC messages may change in future revisions.
 Most notably, the connector does not yet support changes to the structure of captured tables (e.g. `ALTER TABLE...`) after the initial snapshot has been completed
-(see {jira-url}/browse/DBZ-718[DBZ-718], scheduled for one of the upcoming 0.9.x releases).
+(see {jira-url}/browse/DBZ-718[DBZ-718]).
 It is supported though to capture tables newly added while the connector is running
 (provided the new table's name matches the connector's filter configuration).
 
@@ -21,7 +24,7 @@ It is supported though to capture tables newly added while the connector is runn
 As of Debezium 0.8, change events from Oracle are ingested using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
 In order to use this API and hence this connector, you need to have a license for the GoldenGate product
 (though it's not required that GoldenGate itself is installed).
-We are going to explore alternatives to using XStream in future Debezium 0.9.x releases, e.g. based on LogMiner and/or alternative solutions.
+We are currently exploring alternatives to using XStream for a future Debezium release, e.g. based on LogMiner and/or alternative solutions.
 Please track the {jira-url}/browse/DBZ-137[DBZ-137] JIRA issue and join the discussion if you are aware of potential other ways for ingesting change events from Oracle.
 
 [[setting-up-oracle]]
@@ -624,7 +627,7 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 [[character-values]]
 ==== Character Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped code-wordbreak-col3  code-wordbreak-col4"]
+[cols="20%a,15%a,30%a,35%a",width=150,options="header"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -661,7 +664,7 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 [[numeric-values]]
 ==== Numeric Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped code-wordbreak-col3 code-wordbreak-col4"]
+[cols="20%a,15%a,30%a,35%a",width=150,options="header"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -743,7 +746,7 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 [[temporal-values]]
 ==== Temporal Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header,footer",role="table table-bordered table-striped code-wordbreak-col3  code-wordbreak-col4"]
+[cols="20%a,15%a,30%a,35%a",width=150,options="header"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -792,7 +795,7 @@ Extract the archive into a directory, e.g. _/path/to/instant_client/.
 Copy the files _ojdbc8.jar_ and _xstreams.jar_ from the Instant Client into Kafka's _libs_ directory.
 Create the environment variable `LD_LIBRARY_PATH`, pointing to the Instant Client directory:
 
-[source,indent=0]
+[source,bash,indent=0]
 ----
 LD_LIBRARY_PATH=/path/to/instant_client/
 ----
@@ -802,7 +805,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 
 The following shows an example JSON request for registering an instance of the Debezium Oracle connector:
 
-[source,indent=0]
+[source,json,indent=0]
 ----
 {
     "name": "inventory-connector",
@@ -835,7 +838,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 ===== *MBean: debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
 
-[cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,10%a,60%a",width=100,options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -906,7 +909,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 ===== *MBean: debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_*
 
-[cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,10%a,60%a",width=100,options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -968,7 +971,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 ===== *MBean: debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_*
 
-[cols="30%a,10%a,60%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,10%a,60%a",width=100,options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -1015,7 +1018,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default

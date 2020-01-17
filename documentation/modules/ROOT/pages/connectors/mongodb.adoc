@@ -601,7 +601,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a",options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default
@@ -702,7 +702,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-[cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped code-wordbreak-col"]
+[cols="35%a,10%a,55%a",width=100,options="header"]
 |=======================
 |Property
 |Default

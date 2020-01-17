@@ -24,7 +24,7 @@ It consists of enterprise grade configuration files and images that bring Kafka 
 
 First we install the operators and templates for the Kafka broker and Kafka Connect into our OpenShift project:
 
-[listing,subs="attributes",options="nowrap"]
+[source,shell,subs="attributes",options="nowrap"]
 ----
 export STRIMZI_VERSION={strimzi-version}
 git clone -b $STRIMZI_VERSION https://github.com/strimzi/strimzi-kafka-operator
@@ -37,7 +37,7 @@ oc create -f install/cluster-operator && oc create -f examples/templates/cluster
 
 Next we will deploy a Kafka broker cluster and a Kafka Connect cluster and then create a Kafka Connect image with the Debezium connectors installed:
 
-[listing,subs="attributes",options="nowrap"]
+[source,shell,subs="attributes",options="nowrap"]
 ----
 # Deploy an ephemeral single instance Kafka broker
 oc process strimzi-ephemeral -p CLUSTER_NAME=broker -p ZOOKEEPER_NODE_COUNT=1 -p KAFKA_NODE_COUNT=1 -p KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -p KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 | oc apply -f -
