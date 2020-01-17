@@ -6,21 +6,21 @@ include::_attributes.adoc[]
 Debezium uses http://docker.com/[Docker] in many ways, including within our tutorials, to run databases we test against, and to run the tools that build our website. There are lots of good summaries and tutorials you can follow to learn more about Docker, but we wanted to capture some tips and techniques for getting the most out of Docker when it comes to Debezium.
 
 [[linux]]
-## Docker on Linux, Windows, and OS X
+== Docker on Linux, Windows, and OS X
 
 Docker uses Linux containers, and therefore currently runs natively only on Linux and runs on OS X and Windows using those platform's virtualization mechanisms. Make sure that Docker is installed using the https://docs.docker.com/engine/installation/[latest documentation and tools] for Linux, OS X, and Windows. You can either manually start Docker or configure it to run automatically on startup. In either case, the _Docker host_ is your local machine.
 
 If you're using these installations, there is no need to read the rest of the document.
 
 [[docker-toolbox]]
-## Docker Toolbox on Windows and OS X
+== Docker Toolbox on Windows and OS X
 
 The older approach for running Docker on Windows and OS X is more complicated, and it requires using https://www.docker.com/toolbox[Docker Toolbox] and its https://docs.docker.com/machine/get-started/[Docker Machine] to run the Docker host in a _virtual machine_. Make sure you follow the instructions to install or upgrade Docker Toolbox. Docker Machine supports running multiple virtual machines, but from this point on we'll assume that you're going to run the virtual machine named "default".
 
 The rest of this document explains how to use Docker Machine.
 
 [[start-docker]]
-### Start Docker
+=== Start Docker
 
 First, check the status of the "default" machine:
 
@@ -56,7 +56,7 @@ As of Docker Machine 0.6, you can leave off the name of the machine of many comm
 ====
 
 [[docker-host]]
-### The Docker host
+=== The Docker host
 
 An important concept when working with Docker is the _Docker host_. In order to communicate with software running in a Docker container, one or more of the container's exposed ports must be mapped to ports on the Docker host. Other software can then communicate with the container by using one of those Docker host ports.
 
@@ -88,7 +88,7 @@ The `DOCKER_HOST` environment variable includes the IP address of the virtual ma
 Be aware that this address may change whenver you start up the named virtual machine using Docker Machine.
 
 [[port-forwarding]]
-#### Port forwarding
+==== Port forwarding
 
 Rather than pointing your apps or browser to the the specific IP address of the Docker host virtual machine (on Windows and OS X), you can use Docker Machine or Boot2Docker to monitor a specific port on your local machine and forward all requests on that port to the Docker host. For Docker Machine, start a new terminal and run the following commands to forward port 4242:
 
@@ -108,7 +108,7 @@ or, for Boot2Docker:
 
 Adjust the port number as necessary. Use CTRL-C to stop this port forwarding process when you're finished testing.
 
-### Troubleshooting Docker
+=== Troubleshooting Docker
 
 If you're using Docker Machine, you may sometimes get the following error when running one of the Docker commands:
 
