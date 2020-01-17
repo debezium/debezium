@@ -277,7 +277,7 @@ different types will get encoded as the event key's payload:
 ifndef::cdc-product[]
 [WARNING]
 ====
-As of Debezium 0.3.0, the MongoDB connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and collections names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
+The MongoDB connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and collections names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
 
 This can lead to unexpected conflicts in schemas names when the logical server name, database names, and table names contain other characters, and the only distinguishing characters between table full names are invalid and thus replaced with underscores. The connector attempts to produce an exception in this such cases, but only when the conflicts exist between schemas used within a single connector.
 ====
@@ -461,13 +461,11 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 
 [WARNING]
 ====
+The content of the patch field is provided by MongoDB itself and its exact format depends on the specific database version.
+You should therefore be prepared for potential changes to the format when upgrading the MongoDB instance to a new version.
 The content of the `patch` field is provided by MongoDB itself and its exact format depends on the version.
-ifndef::cdc-product[]
-You can thus expect that the messages will not be same for MongoDB 3.4 and 3.6 and you should be careful
-while upgrading the MongoDB instance to a new version.
 
 All examples in this document were obtained from MongoDB 3.4 and might differ if you use a different one.
-endif::cdc-product[]
 ====
 
 [NOTE]
