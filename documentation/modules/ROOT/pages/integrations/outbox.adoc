@@ -5,7 +5,6 @@ include::../_attributes.adoc[]
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
-:imagesdir: /assets/images
 
 toc::[]
 

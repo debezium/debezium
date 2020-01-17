@@ -1,7 +1,6 @@
 // Metadata created by nebel
 //
 :isImageReady: false
-:imagesdir: /assets/images
 
 [id="how-the-mysql-connector-performs-database-snapshots_{context}"]
 = How the MySQL connector performs database snapshots
