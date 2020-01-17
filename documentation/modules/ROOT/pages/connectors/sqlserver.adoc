@@ -1,4 +1,4 @@
-= {ProductName} Connector for SQL Server
+= {prodname} Connector for SQL Server
 
 ifndef::cdc-product[]
 include::../_attributes.adoc[]
@@ -24,7 +24,7 @@ For more information about support scope, see link:https://access.redhat.com/sup
 ====
 endif::cdc-product[]
 
-{ProductName}'s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
+{prodname}'s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
 ifndef::cdc-product[]
 This connector was added in Debezium 0.9.0.
 endif::cdc-product[]
@@ -130,7 +130,7 @@ endif::cdc-product[]
 === Snapshots
 
 SQL Server CDC is not designed to store the complete history of database changes.
-It is thus necessary that {ProductName} establishes the baseline of current database content and streams it to the Kafka.
+It is thus necessary that {prodname} establishes the baseline of current database content and streams it to the Kafka.
 This is achieved via a process called snapshotting.
 
 By default (snapshotting mode *initial*) the connector will upon the first startup perform an initial _consistent snapshot_ of the database
@@ -155,7 +155,7 @@ Then the connector identifies a change table for each of the source tables and e
 
 1. For each change table read all changes that were created between last stored maximum LSN and current maximum LSN
 2. Order the read changes incrementally according to commit LSN and change LSN.
-This ensures that the changes are replayed by {ProductName} in the same order as were made to the database.
+This ensures that the changes are replayed by {prodname} in the same order as were made to the database.
 3. Pass commit and change LSNs as offsets to Kafka Connect.
 4. Store the maximum LSN and repeat the loop.
 
@@ -192,7 +192,7 @@ If not, then all invalid characters will automatically be replaced with an under
 This can lead to unexpected conflicts when the logical server name, schema names, and table names contain other characters, and the only distinguishing characters between table full names are invalid and thus replaced with underscores.
 ====
 
-{ProductName} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events may change over time.
 This could be difficult for consumers to deal with, so to make it easy Kafka Connect makes each event self-contained.
 Every message key and value has two parts: a _schema_ and _payload_.
 The schema describes the structure of the payload, while the payload contains the actual data.
@@ -265,7 +265,7 @@ The payload section of every change event value produced by the SQL Server conne
 * `before` is an optional field that if present contains the state of the row _before_ the event occurred. The structure is described by the `server1.dbo.customers.Value` Kafka Connect schema, which the `server1` connector uses for all rows in the `dbo.customers` table.
 
 * `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure is described by the same `server1.dbo.customers.Value` Kafka Connect schema used in `before`.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the {ProductName} version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting).
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of SQL Server contains these fields: the {prodname} version, the connector name, whether the event is part of an ongoing snapshot or not, the commit LSN (not while snapshotting), the LSN of the change, database, schema and table where the change happened, and a timestamp representing the point in time when the record was changed in the source database (during snapshotting, it'll be the point in time of snapshotting).
 +
 Also a field `event_serial_no` is present during streaming.
 This is used to differentiate among events that have the same commit and change LSN.
@@ -273,7 +273,7 @@ There are mostly two situations when you can see it present with value different
 +
 ** update events will have the value set to `2`, this is because the update generates two events in the CDC change table of SQL Server (https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation]).
 The first one contains the old values and the second one contains new values.
-So the first one is dropped and the values from it are used with the second one to create the {ProductName} change event.
+So the first one is dropped and the values from it are used with the second one to create the {prodname} change event.
 ** when a primary key is updated, then SQL Server emits two records - `delete` to remove the record with the old primary key value and `insert` to create the record with the new primary key.
 Both operations share the same commit and change LSN and their event numbers are `1` and `2`.
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
@@ -519,14 +519,14 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 * The `event_serial_no` field has value `2`.
 That is due to the update event composed of two events behind the scenes and we are exposing only the second one.
 If you are interested in details please check the https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/cdc-capture-instance-ct-transact-sql?view=sql-server-2017[source documentation] and refer to the field `$operation`.
-* The `ts_ms` shows the timestamp that {ProductName} processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 There are several things we can learn by just looking at this `payload` section. We can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
 The `source` structure tells us information about SQL Server's record of this change (providing traceability), but more importantly this has information we can compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same SQL Server commit as other events.
 
 [NOTE]
 ====
-When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {ProductName} will output _three_ events: a `DELETE` event and a link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
+When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and a link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
 [[sqlserver-delete-events]]
@@ -573,7 +573,7 @@ If we look at the `payload` portion, we see a number of differences compared wit
 * The `before` field now has the state of the row that was deleted with the database commit.
 * The `after` field is null, signifying that the row no longer exists
 * The `source` field structure has many of the same values as before, except the `ts_ms`, `commit_lsn` and `change_lsn` fields have changed
-* The `ts_ms` shows the timestamp that {ProductName} processed this event.
+* The `ts_ms` shows the timestamp that {prodname} processed this event.
 
 This event gives a consumer all kinds of information that it can use to process the removal of this row.
 
@@ -589,18 +589,18 @@ To make this possible, the SQL Server connector always follows the _delete_ even
 [[schema-evolution]]
 === Database schema evolution
 
-{ProductName} is able to capture schema changes over time.
+{prodname} is able to capture schema changes over time.
 Due to the way CDC is implemented in SQL Server, it is necessary to work in co-operation with a database operator in order to ensure the connector continues to produce data change events when the schema is updated.
 
-As was already mentioned before, {ProductName} uses SQL Server's change data capture functionality.
+As was already mentioned before, {prodname} uses SQL Server's change data capture functionality.
 This means that SQL Server creates a capture table that contains all changes executed on the source table.
 Unfortunately, the capture table is static and needs to be updated when the source table structure changes.
 This update is not done by the connector itself but must be executed by an operator with elevated privileges.
 
 There are generally two procedures how to execute the schema change:
 
-* cold - this is executed when {ProductName} is stopped
-* hot - executed while {ProductName} is running
+* cold - this is executed when {prodname} is stopped
+* hot - executed while {prodname} is running
 
 Both approaches have their own advantages and disadvantages.
 
@@ -629,13 +629,13 @@ This is the safest procedure but might not be feasible for applications with hig
 The operator should follow this sequence of steps
 
 1. Suspend the application that generates the database records
-2. Wait for {ProductName} to stream all unstreamed changes
+2. Wait for {prodname} to stream all unstreamed changes
 3. Stop the connector
 4. Apply all changes to the source table schema
 5. Create a new capture table for the update source table using `sys.sp_cdc_enable_table` procedure with a unique value for parameter `@capture_instance`
 6. Resume the application
 7. Start the connector
-8. When {ProductName} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name
+8. When {prodname} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name
 
 ==== Hot schema update
 
@@ -644,7 +644,7 @@ The procedure itself is also much simpler than in case of cold schema update
 
 1. Apply all changes to the source table schema
 2. Create a new capture table for the update source table using `sys.sp_cdc_enable_table` procedure with a unique value for parameter `@capture_instance`
-3. When {ProductName} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name
+3. When {prodname} starts streaming from the new capture table it is possible to drop the old one using `sys.sp_cdc_disable_table` stored procedure with parameter `@capture_instance` set to the old capture instance name
 
 The hot schema update has one drawback.
 There is a period of time between the database schema update and creating the new capture instance.
@@ -918,7 +918,7 @@ The `DATETIME`, `SMALLDATETIME` and `DATETIME2` types represent a timestamp with
 Such columns are converted into an equivalent Kafka Connect value based on UTC.
 So for instance the `DATETIME2` value "2018-06-20 15:13:16.945104" is represented by a `io.debezium.time.MicroTimestamp` with the value "1529507596945104".
 
-Note that the timezone of the JVM running Kafka Connect and {ProductName} does not affect this conversion.
+Note that the timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
 
 ==== Decimal values
 
@@ -990,10 +990,10 @@ NOTE: The above example assumes you have extracted the {prodname} SQL Server con
 
 .Additional resources
 
-For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {ProductName} installation guides.
+For more information on the deployment process, and deploying connectors with AMQ Streams, refer to the {prodname} installation guides.
 
-* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {ProductName} on OpenShift]
-* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {ProductName} on RHEL]
+* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_openshift[Installing {prodname} on OpenShift]
+* link:https://access.redhat.com/documentation/en-us/red_hat_integration/2019-12/html-single/installing_change_data_capture_on_rhel[Installing {prodname} on RHEL]
 endif::cdc-product[]
 
 ifndef::cdc-product[]
@@ -1042,7 +1042,7 @@ Here is an example of the configuration for a connector instance that monitors a
 <6> The password for the SQL Server user
 <7> The name of the database to capture changes from
 <8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
-<9> A list of all tables whose changes {ProductName} should capture
+<9> A list of all tables whose changes {prodname} should capture
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
@@ -1418,7 +1418,7 @@ This property contains a comma-separated list of fully-qualified tables _(SCHEMA
 changes to the structure of the `source` block in order to unify the exposed structure across
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
-Note that this setting is not recommended and is planned for removal in a future {ProductName} version.
+Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
