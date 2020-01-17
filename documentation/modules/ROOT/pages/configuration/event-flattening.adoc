@@ -139,7 +139,7 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 
 [[configuration_options]]
 == Configuration options
-[cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",width=100,options="header"]
 |=======================
 |Property
 |Default

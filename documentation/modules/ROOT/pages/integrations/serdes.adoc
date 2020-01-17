@@ -10,7 +10,7 @@ toc::[]
 
 [NOTE]
 ====
-This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems will using these SerDes.
+This feature is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using these SerDes.
 ====
 
 Debezium generates data change events in the form of a complex message structure.
@@ -93,7 +93,7 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 [[configuration_options]]
 === Configuration options
 
-[cols="35%a,10%a,55%a",width=100,options="header,footer",role="table table-bordered table-striped"]
+[cols="35%a,10%a,55%a",width=100,options="header"]
 |=======================
 |Property
 |Default
