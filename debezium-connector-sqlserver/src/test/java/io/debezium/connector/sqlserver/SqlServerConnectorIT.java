@@ -24,7 +24,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -209,7 +208,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         // Verify that multiple subsequent transactions are used in streaming phase with read-only intent
         try (final SqlServerConnection admin = TestHelper.adminConnection()) {
             final Set<Long> txIds = new HashSet<>();
-            Awaitility.await().atMost(Duration.FIVE_SECONDS).pollInterval(Duration.ONE_HUNDRED_MILLISECONDS).until(() -> {
+            Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
                 admin.query(
                         "SELECT (SELECT transaction_id FROM sys.dm_tran_session_transactions AS t WHERE s.session_id=t.session_id) FROM sys.dm_exec_sessions AS s WHERE program_name='"
                                 + appId + "'",
