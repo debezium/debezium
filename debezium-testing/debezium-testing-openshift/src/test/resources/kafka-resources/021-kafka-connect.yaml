@@ -1,0 +1,27 @@
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaConnect
+metadata:
+  name: debezium-kafka-connect-cluster
+spec:
+  version: ${version.kafka}
+  image: ${image.fullname}
+  bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
+  logging:
+    name: connect-logging
+    type: external
+  tls:
+    trustedCertificates:
+    - certificate: ca.crt
+      secretName: debezium-kafka-cluster-cluster-ca-cert
+  replicas: 1
+  metrics:
+    lowercaseOutputName: true
+  config:
+    config.storage.replication.factor: 1
+    offset.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+  template:
+    connectContainer:
+      env:
+        - name: "JMX_PORT"
+          value: "5000"
