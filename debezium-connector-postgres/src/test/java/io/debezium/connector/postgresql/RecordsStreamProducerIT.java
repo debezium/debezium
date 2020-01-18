@@ -39,7 +39,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
@@ -1168,7 +1167,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 IntStream.range(0, filteredCount)
                         .mapToObj(x -> "INSERT INTO s1.a (pk) VALUES (default);")
                         .collect(Collectors.joining()));
-        Awaitility.await().alias("WAL growing log message").pollInterval(Duration.ONE_SECOND).atMost(Duration.TEN_SECONDS).until(() -> logInterceptor.containsWarnMessage(
+        Awaitility.await().alias("WAL growing log message").pollInterval(1, TimeUnit.SECONDS).atMost(10, TimeUnit.SECONDS).until(() -> logInterceptor.containsWarnMessage(
                 "Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation."));
     }
 

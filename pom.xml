@@ -91,7 +91,7 @@
         <version.fest>1.4</version.fest>
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
-        <version.awaitility>3.1.6</version.awaitility>
+        <version.awaitility>4.0.1</version.awaitility>
         <version.testcontainers>1.12.5</version.testcontainers>
         <version.jsonpath>2.4.0</version.jsonpath>
         <version.okhttp>4.2.2</version.okhttp>
@@ -117,6 +117,8 @@
         <version.checkstyle.plugin>3.0.0</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.2.0</version.impsort>
+        <version.surefire.plugin>2.22.2</version.surefire.plugin>
+        <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
 
         <!-- Dockerfiles -->
         <docker.maintainer>Debezium community</docker.maintainer>

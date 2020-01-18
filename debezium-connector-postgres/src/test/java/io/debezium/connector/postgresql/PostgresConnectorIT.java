@@ -34,7 +34,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
-import org.awaitility.Duration;
 import org.awaitility.core.ConditionTimeoutException;
 import org.fest.assertions.Assertions;
 import org.junit.After;
@@ -846,7 +845,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
                 // Wait max 2 seconds for LSN change
                 try {
-                    Awaitility.await().atMost(Duration.TWO_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                    Awaitility.await().atMost(2, TimeUnit.MINUTES.SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
                 }
                 catch (ConditionTimeoutException e) {
                     // We do not require all flushes to succeed in time
@@ -894,7 +893,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
                 try {
                     // Wait max 5 seconds for LSN change caused by DDL_STATEMENT
-                    Awaitility.await().atMost(Duration.FIVE_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                    Awaitility.await().atMost(5, TimeUnit.SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
                 }
                 catch (ConditionTimeoutException e) {
                     // We do not require all flushes to succeed in time

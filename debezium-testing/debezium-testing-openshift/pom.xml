@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <parent>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-testing</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>debezium-testing-openshift</artifactId>
+  <name>Debezium OpenShift integration test-suite</name>
+
+  <properties>
+    <version.fabric8.client>4.6.4</version.fabric8.client>
+    <version.strimzi>0.16.2</version.strimzi>
+    <version.junit5>5.5.1</version.junit5>
+    <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
+    <version.assertj>3.11.1</version.assertj>
+
+    <image.fullname>quay.io/debezium/kafka:${project.version}-latest-kafka-${version.kafka}</image.fullname>
+
+    <!--OCP configuration-->
+    <ocp.project.debezium>debezium</ocp.project.debezium>
+    <ocp.project.mysql>debezium-mysql</ocp.project.mysql>
+    <ocp.project.postgresql>debezium-postgresql</ocp.project.postgresql>
+
+    <!--Strimzi configuration-->
+    <strimzi.operator.connectors>true</strimzi.operator.connectors>
+
+    <!--MySQL configuration-->
+    <database.mysql.port>3306</database.mysql.port>
+    <database.mysql.username>mysqluser</database.mysql.username>
+    <database.mysql.password>mysqlpw</database.mysql.password>
+    <database.mysql.dbz.username>debezium</database.mysql.dbz.username>
+    <database.mysql.dbz.password>dbz</database.mysql.dbz.password>
+    <database.mysql.root.password>debezium</database.mysql.root.password>
+
+    <!--MySQL configuration-->
+    <database.postgresql.port>5432</database.postgresql.port>
+    <database.postgresql.username>debezium</database.postgresql.username>
+    <database.postgresql.password>debezium</database.postgresql.password>
+    <database.postgresql.dbname>debezium</database.postgresql.dbname>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.fabric8</groupId>
+        <artifactId>kubernetes-client-bom</artifactId>
+        <version>${version.fabric8.client}</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.fabric8</groupId>
+      <artifactId>openshift-client</artifactId>
+      <version>${version.fabric8.client}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+      <version>${version.kafka}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.strimzi</groupId>
+      <artifactId>api</artifactId>
+      <version>${version.strimzi}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-slf4j-impl</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${version.junit5}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>${version.junit5}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit-pioneer</groupId>
+      <artifactId>junit-pioneer</artifactId>
+      <version>${version.junit5.pioneer}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${version.assertj}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>${version.awaitility}</version>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <profile>
+      <id>image</id>
+
+      <properties>
+        <image.push.skip>true</image.push.skip>
+        <image.push.registry>quay.io</image.push.registry>
+        <image.registry>${image.push.registry}</image.registry>
+        <image.version.strimzi>latest</image.version.strimzi>
+        <image.name>debezium/kafka:${project.version}-${image.version.strimzi}-kafka-${version.kafka}</image.name>
+        <image.fullname>${image.push.registry}/${image.name}</image.fullname>
+        <image.base.name>strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
+      </properties>
+
+      <dependencies>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-mysql</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+          <version>${project.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-postgres</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+          <version>${project.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-sqlserver</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+          <version>${project.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>io.debezium</groupId>
+          <artifactId>debezium-connector-mongodb</artifactId>
+          <classifier>plugin</classifier>
+          <type>zip</type>
+          <version>${project.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>mysql</groupId>
+          <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+      </dependencies>
+
+      <build>
+        <plugins>
+          <plugin>
+            <!-- Possibly replaceable by Fabric8 plugin-->
+            <groupId>io.fabric8</groupId>
+            <artifactId>docker-maven-plugin</artifactId>
+            <configuration>
+              <imagePullPolicy>IfNotPresent</imagePullPolicy>
+              <pushRegistry>${image.push.registry}</pushRegistry>
+              <skipPush>${image.push.skip}</skipPush>
+              <images>
+                <image>
+                  <name>${image.name}</name>
+                  <build>
+                    <from>${image.base.name}</from>
+                    <assembly>
+                      <targetDir>/opt/kafka/plugins</targetDir>
+                      <inline>
+                        <dependencySets>
+                          <dependencySet>
+                            <outputDirectory>.</outputDirectory>
+                            <unpack>true</unpack>
+                            <includes>
+                              <include>io.debezium:debezium-connector-*:zip:plugin</include>
+                            </includes>
+                          </dependencySet>
+                        </dependencySets>
+                      </inline>
+                    </assembly>
+                  </build>
+                </image>
+              </images>
+            </configuration>
+            <!--
+            Connect this plugin to the maven lifecycle around the integration-test phase:
+            -->
+            <executions>
+              <execution>
+                <id>build</id>
+                <phase>pre-integration-test</phase>
+                <goals>
+                  <goal>build</goal>
+                  <goal>push</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>openshiftITs</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <skipTests>${skipITs}</skipTests>
+              <enableAssertions>true</enableAssertions>
+              <trimStackTrace>false</trimStackTrace>
+              <systemPropertyVariables>
+                <test.ocp.url>${ocp.url}</test.ocp.url>
+                <test.ocp.username>${ocp.username}</test.ocp.username>
+                <test.ocp.password>${ocp.password}</test.ocp.password>
+                <test.ocp.secret.rhio.path>${ocp.rhio.secret.path}</test.ocp.secret.rhio.path>
+                <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
+                <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
+                <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>
+                <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
+
+                <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
+                <test.database.mysql.dbz.username>${database.mysql.dbz.username}</test.database.mysql.dbz.username>
+                <test.database.mysql.dbz.password>${database.mysql.dbz.password}</test.database.mysql.dbz.password>
+                <test.database.mysql.port>${database.mysql.port}</test.database.mysql.port>
+
+                <test.database.postgresql.host>${database.postgresql.host}</test.database.postgresql.host>
+                <test.database.postgresql.port>${database.postgresql.port}</test.database.postgresql.port>
+                <test.database.postgresql.username>${database.postgresql.username}</test.database.postgresql.username>
+                <test.database.postgresql.password>${database.postgresql.password}</test.database.postgresql.password>
+                <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
+              </systemPropertyVariables>
+            </configuration>
+            <executions>
+              <execution>
+                <id>tests-openshift</id>
+                <goals>
+                  <goal>integration-test</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+
+        <testResources>
+          <testResource>
+            <directory>src/test/resources</directory>
+            <filtering>true</filtering>
+          </testResource>
+        </testResources>
+      </build>
+    </profile>
+  </profiles>
+</project>
