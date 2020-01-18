@@ -12,5 +12,6 @@
   <packaging>pom</packaging>
   <modules>
     <module>debezium-testing-testcontainers</module>
+    <module>debezium-testing-openshift</module>
   </modules>
 </project>

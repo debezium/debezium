@@ -17,6 +17,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
@@ -297,7 +298,7 @@ public final class TestHelper {
 
     protected static void waitForDefaultReplicationSlotBeActive() {
         try (PostgresConnection connection = create()) {
-            Awaitility.await().atMost(org.awaitility.Duration.FIVE_SECONDS).until(() -> connection.prepareQueryAndMap(
+            Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> connection.prepareQueryAndMap(
                     "select * from pg_replication_slots where slot_name = ? and database = ? and plugin = ? and active = true", statement -> {
                         statement.setString(1, ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
                         statement.setString(2, "postgres");
