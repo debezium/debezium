@@ -41,6 +41,11 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
+        if (buffer == null) {
+            processor.process(null);
+            return;
+        }
+
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(

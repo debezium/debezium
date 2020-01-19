@@ -402,11 +402,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
                 ByteBuffer read = stream.readPending();
                 final long lastReceiveLsn = stream.getLastReceiveLSN().asLong();
-                if (read == null) {
-                    return false;
-                }
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startingLsn, lastReceiveLsn);
-                if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startingLsn, skipFirstFlushRecord)) {
+                if (read != null && messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startingLsn, skipFirstFlushRecord)) {
                     return false;
                 }
                 deserializeMessages(read, processor);
