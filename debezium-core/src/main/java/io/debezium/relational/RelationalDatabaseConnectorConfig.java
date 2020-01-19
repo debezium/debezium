@@ -262,6 +262,23 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                     "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
+    public static final Field ERROR_HANDLING_MAX_RETRIES = Field.create("error.max.retries")
+            .withDisplayName("Max retries on error")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(0)
+            .withDescription("The maximum number of times to retry on errors before failing the task. "
+                    + "When '-1' is set it will retry endlessly. Default is 0 meaning no retry.");
+    public static final Field ERROR_HANDLING_RETRY_BACKOFF_MS = Field.create("error.retry.backoff")
+            .withDisplayName("Retry backoff (ms)")
+            .withType(Type.LONG)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(3000l)
+            .withDescription("The time in milliseconds to wait following an error before a retry attempt is made. "
+                    + "Default is 3000 millis.");
+
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
