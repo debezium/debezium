@@ -4,6 +4,8 @@ The Debezium documentation in [documentation](https://github.com/debezium/debezi
 
 * [Antora Quickstart](#quick-start)
 * [What to change _after_ releasing new version](#release)
+* [Contributing to the Documentation](#contributing)
+
 
 <div id='quick-start'></div>
 
@@ -24,7 +26,7 @@ The Antora framework is opinionated about its directory structure, which is why 
                  |
                  └─── (content)  
 ```
-    
+
 ### Component descriptors
 
 The Antora documentation system uses a concept called component descriptors.  Debezium makes use of a single component descriptor called `ROOT` since we want to document all features in a single section.  In the future if we find documenting connectors or certain features separately from others, we can look at using multiple component desecriptor layouts, however for now we use the `ROOT` descriptor for this purpose.
@@ -117,3 +119,61 @@ Whenever any release is made, its important that the `_attributes.adoc` file [he
 ### Antora YAML
 
 The antora component descriptor file, `antora.yml` only needs to be updated when the next anticipated release will be a new major or minor.  Since documentation is maintained using a `<MAJOR>.<MINOR>` scheme, this file would only be changed when transitioning from version _0.9_ to _0.10_ or _1.1_ to _2.0_ as an example.
+
+<div id='contributing'></div>
+
+## Contributing to the Documentation
+
+Follow these guidelines for contributing to the Debezium documentation.
+
+### Using AsciiDoc attributes
+
+AsciiDoc attributes are effectively like variables, enabling you to insert short snippets of text into the documentation.
+They are typically used for abstracting content like version numbers, branding, and root URLs.
+For example, to insert the contents of the `prodname` attribute (which currently resolves to `Debezium`), use the AsciiDoc syntax, `{prodname}`.
+
+We recommend that you use the following attributes when contributing content to the Debezium documentation:
+
+* `{prodname}` instead of Debezium.
+
+Attributes are defined both in the [playbook.yml](https://github.com/debezium/debezium.github.io/blob/develop/playbook.yml) file and also (replicated) in the [playbook_author.yml](https://github.com/debezium/debezium.github.io/blob/develop/playbook_author.yml) file in the https://github.com/debezium/debezium.github.io/ repository.
+
+### Cross references
+
+If you need to link to another section or location anywhere in the Debezium documentation, the recommended approach is to use anchor IDs in combination with the `xref:` cross-referencing macro.
+
+For example, if you want to link to a section called _Custom connector_, first of all define an anchor on the line preceding the heading, as follows:
+```
+[id="custom-connector"]
+== Custom connector
+```
+
+You can then link to this section from anywhere in the documentation using this syntax:
+```
+xref:custom-connector[]
+```
+
+Note the following advantages of the `xref:` macro:
+* You do not need to specify or know the location of the file where the `custom-connector` ID is defined.
+AsciiDoc automatically figures this out at build time.
+* Consequently, if you move files around, you will not break any links.
+* When you build the documentation, AsciiDoc automatically converts the cross-reference into a link using the title text, _Custom connector_, in the link.
+If you change the title of the section, AsciiDoc will automatically update the link text to match.
+
+### Adding images
+
+To add an image to the documentation:
+1. Add your image file to the `documentation/modules/ROOT/assets/images` directory.
+2. Reference the image using the syntax `image::MY_IMAGE.png[]` (or for an inline image, `image:MY_IMAGE.png[]`).
+
+At build time, AsciiDoc reads the value of the standard `imagesdir` attribute to discover the location of images.
+There is no need to set this attribute yourself, it is already defined for you.
+Note that if you view or render a _single_ AsciiDoc file, you will not be able to view the image.
+Because of the way the images are organized (in combination with the `imagesdir` attribute), you can only see the images correctly rendered when you build the whole documentation set using Antora.
+
+### Best practices
+
+Note the following additional recommendations:
+
+* If your contribution also involves reformatting large amounts of text (modifying white space, line breaks, and so on), please make these reformatting updates in a _separate_ commit.
+It is much easier for reviewers to focus on the technical changes in the content, if commits are not polluted by large amounts of trivial formatting changes.
