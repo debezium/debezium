@@ -5,10 +5,16 @@
  */
 package io.debezium.connector.common;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.ERROR_HANDLING_MAX_RETRIES;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.ERROR_HANDLING_RETRY_BACKOFF_MS;
+
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,13 +26,18 @@ import io.debezium.pipeline.spi.OffsetContext;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
- * such as validation of the configuration.
+ * such as validation of the configuration, retrying in case of error on poll.
  *
  * @author Gunnar Morling
+ * @author Tomasz Rojek
  */
 public abstract class BaseSourceTask extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
+
+    private int remainingRetries;
+    private int maxRetries;
+    private long retryBackoffMillis;
 
     @Override
     public final void start(Map<String, String> props) {
@@ -46,6 +57,10 @@ public abstract class BaseSourceTask extends SourceTask {
             });
         }
 
+        maxRetries = config.getInteger(ERROR_HANDLING_MAX_RETRIES);
+        remainingRetries = maxRetries;
+        retryBackoffMillis = config.getLong(ERROR_HANDLING_RETRY_BACKOFF_MS);
+
         start(config);
     }
 
@@ -57,6 +72,45 @@ public abstract class BaseSourceTask extends SourceTask {
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
     protected abstract void start(Configuration config);
+
+    @Override
+    public List<SourceRecord> poll() throws InterruptedException {
+        if (retryingOnErrorEnabled()) {
+            return pollWithRetryOnException();
+        }
+        else {
+            return pollRecords();
+        }
+    }
+
+    private boolean retryingOnErrorEnabled() {
+        return maxRetries != 0;
+    }
+
+    private List<SourceRecord> pollWithRetryOnException() throws InterruptedException {
+        List<SourceRecord> records = null;
+        try {
+            records = pollRecords();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Poll failed, remaining retries={}", remainingRetries, e);
+
+            if (remainingRetries == 0) {
+                throw new ConnectException(e);
+            }
+            else {
+                Thread.sleep(retryBackoffMillis);
+                if (remainingRetries > 0) {
+                    remainingRetries--;
+                }
+                throw new RetriableException(e);
+            }
+        }
+        remainingRetries = maxRetries;
+        return records;
+    }
+
+    protected abstract List<SourceRecord> pollRecords() throws InterruptedException;
 
     /**
      * Returns all configuration {@link Field} supported by this source task.

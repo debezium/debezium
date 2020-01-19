@@ -420,7 +420,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    protected List<SourceRecord> pollRecords() throws InterruptedException {
         Reader currentReader = readers;
         if (currentReader == null) {
             return null;

@@ -217,7 +217,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    protected List<SourceRecord> pollRecords() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
         final List<SourceRecord> sourceRecords = records.stream()

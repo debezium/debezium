@@ -152,7 +152,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    protected List<SourceRecord> pollRecords() throws InterruptedException {
         if (replicatorError != null) {
             throw new ConnectException("Failing connector task, at least one of the replicators has failed", replicatorError);
         }
