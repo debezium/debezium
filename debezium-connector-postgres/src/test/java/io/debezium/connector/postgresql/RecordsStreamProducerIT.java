@@ -1016,8 +1016,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "INSERT INTO s1.b (bb) VALUES (22);";
 
         // streaming from database is non-blocking so we should receive many heartbeats
-        final int expectedAtMostStartHeartbeats = 10;
-        final int expectedHeartbeats = 5;
+        // plus keepalive messages also generate heartbeats
+        final int expectedAtMostStartHeartbeats = 500;
+        final int expectedHeartbeats = 250;
         // heartbeat for unfiltered table, data change, heartbeats
         consumer = testConsumer(expectedAtMostStartHeartbeats + 1 + expectedHeartbeats);
         consumer.setIgnoreExtraRecords(true);
