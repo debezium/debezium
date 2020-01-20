@@ -103,7 +103,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
 
             if (previousOffset == null && slotInfo != null) {
-                LOGGER.info("No previous offset found");
+                LOGGER.warn("Replication slot present, but no previous offset found. Recovering from slot");
                 previousOffset = PostgresOffsetContext.slotResumeOffsetContext(connectorConfig, slotInfo, clock);
             }
 
