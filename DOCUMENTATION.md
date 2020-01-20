@@ -2,12 +2,23 @@
 
 The Debezium documentation in [documentation](https://github.com/debezium/debezium/tree/master/documentation) is built using the [Antora Framework](https://www.antora.org).
 
-* [Antora Quickstart](#quick-start)
-* [What to change _after_ releasing new version](#release)
-* [Contributing to the Documentation](#contributing)
-
-
-<div id='quick-start'></div>
+- [Antora Quickstart](#antora-quickstart)
+    - [Component descriptors](#component-descriptors)
+    - [Page content](#page-content)
+    - [Linking to content](#linking-to-content)
+        - [External](#external)
+        - [Internal](#internal)
+    - [Navigation Pane](#navigation-pane)
+    - [Antora Configuration](#antora-configuration)
+    - [Attributes](#attributes)
+- [What to change _after_ releasing new version](#what-to-change-_after_-releasing-new-version)
+    - [Attributes](#attributes-1)
+    - [Antora YAML](#antora-yaml)
+- [Contributing to the Documentation](#contributing-to-the-documentation)
+    - [Using AsciiDoc attributes](#using-asciidoc-attributes)
+    - [Cross references](#cross-references)
+    - [Adding images](#adding-images)
+    - [Best practices](#best-practices)
 
 ## Antora Quickstart
 
@@ -103,8 +114,6 @@ The current attributes file looks similar to the following:
 
 ```
 
-<div id='release'></div>
-
 ## What to change _after_ releasing new version
 
 It's important that 2 files be properly maintained after the repository transitions between releases
@@ -119,8 +128,6 @@ Whenever any release is made, its important that the `_attributes.adoc` file [he
 ### Antora YAML
 
 The antora component descriptor file, `antora.yml` only needs to be updated when the next anticipated release will be a new major or minor.  Since documentation is maintained using a `<MAJOR>.<MINOR>` scheme, this file would only be changed when transitioning from version _0.9_ to _0.10_ or _1.1_ to _2.0_ as an example.
-
-<div id='contributing'></div>
 
 ## Contributing to the Documentation
 
@@ -177,3 +184,8 @@ Note the following additional recommendations:
 
 * If your contribution also involves reformatting large amounts of text (modifying white space, line breaks, and so on), please make these reformatting updates in a _separate_ commit.
 It is much easier for reviewers to focus on the technical changes in the content, if commits are not polluted by large amounts of trivial formatting changes.
+* Avoid long lines for the sake of simpler diffs;
+instead of sticking to a hard character number limit,
+put one sentence or line of thought per line.
+It's not a black-or-white rule, but it works surprisingly well after getting used to it.
+E.g. commas are a good indicator for moving to a new line.

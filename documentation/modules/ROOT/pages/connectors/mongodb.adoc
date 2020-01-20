@@ -463,7 +463,6 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 ====
 The content of the patch field is provided by MongoDB itself and its exact format depends on the specific database version.
 You should therefore be prepared for potential changes to the format when upgrading the MongoDB instance to a new version.
-The content of the `patch` field is provided by MongoDB itself and its exact format depends on the version.
 
 All examples in this document were obtained from MongoDB 3.4 and might differ if you use a different one.
 ====
