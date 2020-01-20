@@ -28,12 +28,14 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
         // if message is empty pass control right to ReplicationMessageProcessor to update WAL position info
         if (buffer == null) {
             processor.process(null);
-        } else {
+        }
+        else {
             processNotEmptyMessage(buffer, processor, typeRegistry);
         }
     }
 
-    protected abstract void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException;
+    protected abstract void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
+            throws SQLException, InterruptedException;
 
     @Override
     public boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord) {
