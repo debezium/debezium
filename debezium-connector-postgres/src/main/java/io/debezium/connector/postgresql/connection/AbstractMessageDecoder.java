@@ -6,9 +6,13 @@
 package io.debezium.connector.postgresql.connection;
 
 import java.nio.ByteBuffer;
+import java.sql.SQLException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.connector.postgresql.TypeRegistry;
+import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 
 /**
  * Abstract implementation of {@link MessageDecoder} that all decoders should inherit from.
@@ -18,6 +22,18 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractMessageDecoder implements MessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMessageDecoder.class);
+
+    @Override
+    public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
+        // if message is empty pass control right to ReplicationMessageProcessor to update WAL position info
+        if (buffer == null) {
+            processor.process(null);
+        } else {
+            processNotEmptyMessage(buffer, processor, typeRegistry);
+        }
+    }
+
+    protected abstract void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException;
 
     @Override
     public boolean shouldMessageBeSkipped(ByteBuffer buffer, Long lastReceivedLsn, Long startLsn, boolean skipFirstFlushRecord) {

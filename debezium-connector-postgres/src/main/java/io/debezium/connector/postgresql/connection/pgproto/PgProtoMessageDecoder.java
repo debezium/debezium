@@ -34,12 +34,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoMessageDecoder.class);
 
     @Override
-    public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
-        if (buffer == null) {
-            processor.process(null);
-            return;
-        }
-
+    public void processNotEmptyMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         try {
             if (!buffer.hasArray()) {
                 throw new IllegalStateException(
