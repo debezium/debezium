@@ -21,6 +21,7 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
@@ -204,6 +205,18 @@ public class PostgresOffsetContext implements OffsetContext {
         catch (SQLException e) {
             throw new ConnectException("Database processing error", e);
         }
+    }
+
+    public static PostgresOffsetContext slotResumeOffsetContext(PostgresConnectorConfig connectorConfig, SlotState slotInfo, Clock clock) {
+        LOGGER.info("Resuming offset context from Replication Slot's confirmed_flushed_lsn '{}'", slotInfo.slotLastFlushedLsn());
+        return new PostgresOffsetContext(
+                connectorConfig,
+                slotInfo.slotLastFlushedLsn(),
+                null,
+                slotInfo.slotCatalogXmin(),
+                clock.currentTimeAsInstant(),
+                false,
+                false);
     }
 
     public OffsetState asOffsetState() {

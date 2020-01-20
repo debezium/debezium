@@ -84,7 +84,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
         schema = new PostgresSchema(connectorConfig, typeRegistry, databaseCharset, topicSelector);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicSelector);
-        final PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
+        PostgresOffsetContext previousOffset = (PostgresOffsetContext) getPreviousOffset(new PostgresOffsetContext.Loader(connectorConfig));
         final Clock clock = Clock.system();
 
         final SourceInfo sourceInfo = new SourceInfo(connectorConfig);
@@ -100,6 +100,11 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
             catch (SQLException e) {
                 LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot");
+            }
+
+            if (previousOffset == null && slotInfo != null) {
+                LOGGER.info("No previous offset found");
+                previousOffset = PostgresOffsetContext.slotResumeOffsetContext(connectorConfig, slotInfo, clock);
             }
 
             if (previousOffset == null) {
