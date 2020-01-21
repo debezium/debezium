@@ -879,6 +879,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         final Set<String> flushLsn = new HashSet<>();
         TestHelper.execute(INSERT_STMT);
+
         Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
             final SourceRecords actualRecords = consumeRecordsByTopic(1);
             final List<SourceRecord> topicRecords = actualRecords.recordsForTopic(topicName("s1.a"));
@@ -890,8 +891,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             for (int i = 0; i < recordCount; i++) {
                 TestHelper.execute(DDL_STATEMENT);
 
-                // Wait max 2 seconds for LSN change
                 try {
+                    // Wait max 5 seconds for LSN change caused by DDL_STATEMENT
                     Awaitility.await().atMost(Duration.FIVE_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
                 }
                 catch (ConditionTimeoutException e) {
