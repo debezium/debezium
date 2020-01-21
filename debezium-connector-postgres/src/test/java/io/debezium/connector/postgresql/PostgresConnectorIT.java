@@ -879,8 +879,16 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         final Set<String> flushLsn = new HashSet<>();
         TestHelper.execute(INSERT_STMT);
-        final SourceRecords actualRecords = consumeRecordsByTopic(1);
-        assertThat(actualRecords.topics().size()).isEqualTo(1);
+        // When server starts streaming WAL for logical replication slot
+        // it responds to frontend with CopyBothResponse message.
+        // After that Primary keepalive message is sent first
+        // (its lsn will be updated by Postgres connector later if heartbeat is enabled)
+        // And only then XLogData with Insert Statement is sent
+        final SourceRecords actualRecords = consumeRecordsByTopic(2);
+
+        // Check there are two topics: one for the heartbeat topic and one for the table topic
+        assertThat(actualRecords.topics().size()).isEqualTo(2);
+        assertThat(actualRecords.recordsForTopic("__debezium-heartbeat.test_server").size()).isEqualTo(1);
         assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
 
         try (final PostgresConnection connection = TestHelper.create()) {
@@ -888,8 +896,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             for (int i = 0; i < recordCount; i++) {
                 TestHelper.execute(DDL_STATEMENT);
 
-                // Wait max 2 seconds for LSN change
                 try {
+                    // Wait max 5 seconds for LSN change caused by DDL_STATEMENT
                     Awaitility.await().atMost(Duration.FIVE_SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
                 }
                 catch (ConditionTimeoutException e) {
