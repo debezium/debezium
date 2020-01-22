@@ -93,7 +93,7 @@ The deserializer behaviour is driven by the `from.field` configuration option an
 [[configuration_options]]
 === Configuration options
 
-[cols="35%a,10%a,55%a",width=100,options="header"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default

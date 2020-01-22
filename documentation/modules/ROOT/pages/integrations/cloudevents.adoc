@@ -111,7 +111,7 @@ Finally, it's also possible to use Avro for the entire envelope as well as the `
 
 The following configuration options exist when usi
 
-[cols="35%a,10%a,55%a",width=100,options="header"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default

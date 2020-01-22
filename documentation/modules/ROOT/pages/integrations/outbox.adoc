@@ -125,7 +125,7 @@ The extension works out-of-the-box with a default configuration, but this config
 
 === Build time configuration options
 
-[cols="65%a,>15%a,>20%",width=100,options="header"]
+[cols="65%a,>15%a,>20%",options="header"]
 |=======================
 |Configuration property
 |Type
@@ -177,7 +177,7 @@ When not using the default values, be sure that the SMT configuration matches.
 
 === Runtime configuration options
 
-[cols="65%a,>15%a,>20%",width=100,options="header"]
+[cols="65%a,>15%a,>20%",options="header"]
 |=======================
 |Configuration property
 |Type

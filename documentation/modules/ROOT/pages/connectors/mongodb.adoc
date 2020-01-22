@@ -601,11 +601,9 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 
 The following configuration properties are _required_ unless a default value is available.
 
-[cols="35%a,10%a,55%a",options="header"]
+[cols="35%a,10%a,55%a"]
 |=======================
-|Property
-|Default
-|Description
+|Property |Default |Description
 
 |`name`
 |
@@ -702,7 +700,7 @@ Defaults to 0, which indicates that the server chooses an appropriate fetch size
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-[cols="35%a,10%a,55%a",width=100,options="header"]
+[cols="35%a,10%a,55%a",options="header"]
 |=======================
 |Property
 |Default
@@ -796,7 +794,7 @@ The attempts to reconnect are controlled by three properties:
 
 Each delay is double that of the prior delay, up to the maximum delay. Given the default values, the following table shows the delay for each failed connection attempt and the total accumulated time before failure.
 
-[width=75,cols="30%a,30%a,40%a",options="header,footer",role="table table-bordered table-striped"]
+[cols="30%a,30%a,40%a",options="header"]
 |=======================
 |Reconnection attempt number
 |Delay before attempt, in seconds
