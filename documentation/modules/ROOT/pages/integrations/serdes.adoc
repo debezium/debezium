@@ -28,7 +28,7 @@ The consumer creates a serde instance using
 
 [source,java,indent=0]
 ----
-final Serde<MyType> serde = Serdes.payloadJson(MyType.class);
+final Serde<MyType> serde = DebeziumSerdes.payloadJson(MyType.class);
 ----
 
 The consumer will then receive the logical Java type `MyType` whose fields are initiated from the JSON message.
