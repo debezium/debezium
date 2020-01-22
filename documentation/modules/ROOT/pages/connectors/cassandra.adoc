@@ -632,7 +632,7 @@ As described above, the Cassandra connector represents the changes to rows with 
 
 The following table describes how the connector maps each of the Cassandra data types to an Avro type.
 
-[cols="30%a, 30%a, 40%a",width=100,options="header"]
+[cols="30%a, 30%a, 40%a",options="header"]
 |=======================
 |Cassandra Data Type
 |Literal Type (Schema Type)
@@ -819,7 +819,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[snapshot-metrics]]
 ==== Snapshot Metrics
 
-[cols="30%a,10%a,60%a",width=100,options="header"]
+[cols="30%a,10%a,60%a",options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -857,7 +857,7 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 [[commitlog-metrics]]
 ==== Commitlog Metrics
 
-[cols="30%a,10%a,60%a",width=100,options="header"]
+[cols="30%a,10%a,60%a",options="header"]
 |=======================
 |Attribute Name
 |Type
