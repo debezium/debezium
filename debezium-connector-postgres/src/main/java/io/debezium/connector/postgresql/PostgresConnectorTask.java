@@ -156,7 +156,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     previousOffset,
                     errorHandler,
                     PostgresConnector.class,
-                    connectorConfig.getLogicalName(),
+                    connectorConfig,
                     new PostgresChangeEventSourceFactory(
                             connectorConfig,
                             snapshotter,

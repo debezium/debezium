@@ -22,6 +22,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.time.Conversions;
@@ -38,9 +39,10 @@ public class PostgresOffsetContext implements OffsetContext {
     private final Map<String, String> partition;
     private boolean lastSnapshotRecord;
     private Long lastCompletelyProcessedLsn;
+    private final TransactionContext transactionContext;
 
     private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Long lsn, Long lastCompletelyProcessedLsn, Long txId, Instant time, boolean snapshot,
-                                  boolean lastSnapshotRecord) {
+                                  boolean lastSnapshotRecord, TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
@@ -55,6 +57,7 @@ public class PostgresOffsetContext implements OffsetContext {
         else {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
+        this.transactionContext = transactionContext;
     }
 
     @Override
@@ -175,7 +178,8 @@ public class PostgresOffsetContext implements OffsetContext {
             final Instant useconds = Conversions.toInstantFromMicros((Long) offset.get(SourceInfo.TIMESTAMP_USEC_KEY));
             final boolean snapshot = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
             final boolean lastSnapshotRecord = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Boolean.FALSE);
-            return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, txId, useconds, snapshot, lastSnapshotRecord);
+            return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, txId, useconds, snapshot, lastSnapshotRecord,
+                    TransactionContext.load(offset));
         }
     }
 
@@ -199,7 +203,8 @@ public class PostgresOffsetContext implements OffsetContext {
                     txId,
                     clock.currentTimeAsInstant(),
                     false,
-                    false);
+                    false,
+                    new TransactionContext());
         }
         catch (SQLException e) {
             throw new ConnectException("Database processing error", e);
@@ -223,5 +228,10 @@ public class PostgresOffsetContext implements OffsetContext {
     @Override
     public void event(DataCollectionId tableId, Instant instant) {
         sourceInfo.update(instant, (TableId) tableId);
+    }
+
+    @Override
+    public TransactionContext getTransactionContext() {
+        return transactionContext;
     }
 }

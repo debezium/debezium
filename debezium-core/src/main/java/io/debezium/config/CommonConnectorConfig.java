@@ -158,6 +158,14 @@ public abstract class CommonConnectorConfig {
             .withDescription("Whether field names will be sanitized to Avro naming conventions")
             .withDefault(Boolean.FALSE);
 
+    public static final Field PROVIDE_TRANSACTION_METADATA = Field.create("provide.transaction.metadata")
+            .withDisplayName("Store transaction metadata information in a dedicated topic.")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Enables transaction metadata extraction together with event counting")
+            .withDefault(Boolean.FALSE);
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -169,6 +177,7 @@ public abstract class CommonConnectorConfig {
     private final int snapshotFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean sanitizeFieldNames;
+    private final boolean shouldProvideTransactionMetadata;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -182,6 +191,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
+        this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
     }
 
     /**
@@ -224,6 +234,10 @@ public abstract class CommonConnectorConfig {
 
     public int getSnapshotFetchSize() {
         return snapshotFetchSize;
+    }
+
+    public boolean shouldProvideTransactionMetadata() {
+        return shouldProvideTransactionMetadata;
     }
 
     @SuppressWarnings("unchecked")

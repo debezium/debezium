@@ -6,7 +6,6 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -128,33 +127,12 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 previousOffset,
                 errorHandler,
                 SqlServerConnector.class,
-                connectorConfig.getLogicalName(),
+                connectorConfig,
                 new SqlServerChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
                 dispatcher,
                 schema);
 
         coordinator.start(taskContext, this.queue, new SqlServerEventMetadataProvider());
-    }
-
-    /**
-     * Loads the connector's persistent offset (if present) via the given loader.
-     */
-    @Override
-    protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
-        Map<String, ?> partition = loader.getPartition();
-
-        Map<String, Object> previousOffset = context.offsetStorageReader()
-                .offsets(Collections.singleton(partition))
-                .get(partition);
-
-        if (previousOffset != null) {
-            OffsetContext offsetContext = loader.load(previousOffset);
-            LOGGER.info("Found previous offset {}", offsetContext);
-            return offsetContext;
-        }
-        else {
-            return null;
-        }
     }
 
     @Override
