@@ -203,6 +203,10 @@ public class EventDispatcher<T extends DataCollectionId> {
         queue.enqueue(new DataChangeEvent(record));
     }
 
+    public void dispatchTransactionMessage(SourceRecord record) throws InterruptedException {
+        queue.enqueue(new DataChangeEvent(record));
+    }
+
     /**
      * Change record receiver used during snapshotting. Allows for a deferred submission of records, which is needed in
      * order to set the "snapshot completed" offset field, which we can't send to Kafka Connect without sending an

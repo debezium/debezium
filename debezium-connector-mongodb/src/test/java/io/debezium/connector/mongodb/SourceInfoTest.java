@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * @author Randall Hauch
@@ -259,6 +260,7 @@ public class SourceInfoTest {
                 .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
+                .field("transaction", TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .field("rs", Schema.STRING_SCHEMA)
                 .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)

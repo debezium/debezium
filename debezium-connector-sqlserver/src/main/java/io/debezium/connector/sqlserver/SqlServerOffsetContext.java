@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
@@ -27,13 +28,15 @@ public class SqlServerOffsetContext implements OffsetContext {
     private final SourceInfo sourceInfo;
     private final Map<String, String> partition;
     private boolean snapshotCompleted;
+    private final TransactionContext transactionContext;
 
     /**
      * The index of the current event within the current transaction.
      */
     private long eventSerialNo;
 
-    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo) {
+    public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted, long eventSerialNo,
+                                  TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
@@ -49,10 +52,11 @@ public class SqlServerOffsetContext implements OffsetContext {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
         this.eventSerialNo = eventSerialNo;
+        this.transactionContext = transactionContext;
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, 1);
+        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext());
     }
 
     @Override
@@ -69,11 +73,11 @@ public class SqlServerOffsetContext implements OffsetContext {
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
         }
         else {
-            return Collect.hashMapOf(
+            return transactionContext.store(Collect.hashMapOf(
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
                     SourceInfo.CHANGE_LSN_KEY,
                     sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
-                    SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo);
+                    SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo));
         }
     }
 
@@ -158,7 +162,8 @@ public class SqlServerOffsetContext implements OffsetContext {
                 eventSerialNo = Long.valueOf(0);
             }
 
-            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo);
+            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
+                    TransactionContext.load(offset));
         }
     }
 
@@ -182,5 +187,10 @@ public class SqlServerOffsetContext implements OffsetContext {
     public void event(DataCollectionId tableId, Instant timestamp) {
         sourceInfo.setSourceTime(timestamp);
         sourceInfo.setTableId((TableId) tableId);
+    }
+
+    @Override
+    public TransactionContext getTransactionContext() {
+        return transactionContext;
     }
 }

@@ -22,7 +22,7 @@ public interface DataChangeEventListener {
     /**
      * Invoked if an event is processed for a captured table.
      */
-    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value);
+    void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException;
 
     /**
      * Invoked for events pertaining to non-whitelisted tables.

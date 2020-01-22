@@ -11,6 +11,7 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.DataCollectionId;
 
 /**
@@ -69,4 +70,6 @@ public interface OffsetContext {
      * Records the name of the collection and the timestamp of the last event
      */
     void event(DataCollectionId collectionId, Instant timestamp);
+
+    TransactionContext getTransactionContext();
 }

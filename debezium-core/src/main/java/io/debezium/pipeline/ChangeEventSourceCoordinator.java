@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
@@ -28,6 +29,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.util.Threads;
 
@@ -49,6 +51,7 @@ public class ChangeEventSourceCoordinator {
     private final ExecutorService executor;
     private final EventDispatcher<?> eventDispatcher;
     private final RelationalDatabaseSchema schema;
+    private final CommonConnectorConfig connectorConfig;
 
     private volatile boolean running;
     private volatile StreamingChangeEventSource streamingSource;
@@ -56,12 +59,14 @@ public class ChangeEventSourceCoordinator {
     private SnapshotChangeEventSourceMetrics snapshotMetrics;
     private StreamingChangeEventSourceMetrics streamingMetrics;
 
-    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType, String logicalName,
+    public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
+                                        CommonConnectorConfig connectorConfig,
                                         ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, RelationalDatabaseSchema schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
+        this.connectorConfig = connectorConfig;
         this.changeEventSourceFactory = changeEventSourceFactory;
-        this.executor = Threads.newSingleThreadExecutor(connectorType, logicalName, "change-event-source-coordinator");
+        this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
     }
@@ -93,7 +98,8 @@ public class ChangeEventSourceCoordinator {
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
-                    eventDispatcher.setEventListener(streamingMetrics);
+                    eventDispatcher.setEventListener(new CompositeDataChangeEventListener(streamingMetrics,
+                            new TransactionMonitor(connectorConfig, metadataProvider, eventDispatcher::dispatchTransactionMessage)));
                     streamingMetrics.connected(true);
                     LOGGER.info("Starting streaming");
                     streamingSource.execute(context);

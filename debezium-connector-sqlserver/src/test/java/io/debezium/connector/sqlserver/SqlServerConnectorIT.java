@@ -380,6 +380,70 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void transactionMetadata() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int ID_START = 10;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        Testing.Print.enable();
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.setAutoCommit(false);
+        final String[] inserts = new String[RECORDS_PER_TABLE * 2];
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            inserts[2 * i] = "INSERT INTO tablea VALUES(" + id + ", 'a')";
+            inserts[2 * i + 1] = "INSERT INTO tableb VALUES(" + id + ", 'b')";
+        }
+        connection.execute(inserts);
+        connection.setAutoCommit(true);
+
+        connection.execute("INSERT INTO tableb VALUES(1000, 'b')");
+
+        // BEGIN, data, END, BEGIN, data
+        final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
+        final List<SourceRecord> tx = records.recordsForTopic("__debezium.transaction.server1");
+        Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+        Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
+        Assertions.assertThat(tx).hasSize(3);
+
+        final List<SourceRecord> all = records.allRecordsInOrder();
+        final Struct begin = (Struct) all.get(0).value();
+        final Struct beginKey = (Struct) all.get(0).key();
+        Assertions.assertThat(begin.getString("status")).isEqualTo("BEGIN");
+        Assertions.assertThat(begin.getInt64("event_count")).isNull();
+        final String txId = begin.getString("id");
+        Assertions.assertThat(beginKey.getString("id")).isEqualTo(txId);
+
+        long counter = 1;
+        for (int i = 1; i <= 2 * RECORDS_PER_TABLE; i++) {
+            final Struct change = ((Struct) all.get(i).value()).getStruct("source").getStruct("transaction");
+            Assertions.assertThat(change.getString("id")).isEqualTo(txId);
+            Assertions.assertThat(change.getInt64("total_order")).isEqualTo(counter);
+            Assertions.assertThat(change.getInt64("data_collection_order")).isEqualTo((counter + 1) / 2);
+            counter++;
+        }
+
+        final Struct end = (Struct) all.get(2 * RECORDS_PER_TABLE + 1).value();
+        final Struct endKey = (Struct) all.get(2 * RECORDS_PER_TABLE + 1).key();
+        Assertions.assertThat(end.getString("status")).isEqualTo("END");
+        Assertions.assertThat(end.getString("id")).isEqualTo(txId);
+        Assertions.assertThat(end.getInt64("event_count")).isEqualTo(2 * RECORDS_PER_TABLE);
+        Assertions.assertThat(endKey.getString("id")).isEqualTo(txId);
+
+        stopConnector();
+    }
+
+    @Test
     public void updatePrimaryKey() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
