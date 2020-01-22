@@ -261,6 +261,16 @@ public final class TestHelper {
         }
     }
 
+    protected static void createDefaultReplicationSlot() {
+        try {
+            execute("CREATE_REPLICATION_SLOT " + ReplicationConnection.Builder.DEFAULT_SLOT_NAME +
+                    " LOGICAL " + decoderPlugin().getPostgresPluginName());
+        }
+        catch (Exception e) {
+            LOGGER.debug("Error creating replication slot", e);
+        }
+    }
+
     protected static void dropPublication() {
         dropPublication(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
     }

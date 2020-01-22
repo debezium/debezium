@@ -252,36 +252,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldResumeFromConfirmedFlushLsnWhenLastOffsetNotPresent() throws Exception {
-        TestHelper.execute(SETUP_TABLES_STMT);
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
-        start(PostgresConnector.class, configBuilder.build());
-        assertConnectorIsRunning();
-        waitForStreamingRunning();
-
-        // insert 2 new records
-        TestHelper.execute(INSERT_STMT);
-        assertRecordsAfterInsert(2, 2, 2);
-
-        // now stop the connector and delete the offset storage
-        stopConnector();
-        assertNoRecordsToConsume();
-        Files.delete(OFFSET_STORE_PATH);
-
-        // insert some more records
-        TestHelper.execute(INSERT_STMT);
-
-        // start the connector back up and check that a new snapshot has not been performed (we're running initial only mode)
-        // but the 2 records that we were inserted while we were down will be retrieved
-        start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
-        assertConnectorIsRunning();
-
-        assertRecordsAfterInsert(2, 3, 3);
-    }
-
-    @Test
     @FixFor("DBZ-1174")
     public void shouldUseMicrosecondsForTransactionCommitTime() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
@@ -349,7 +319,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
             TestHelper.execute(INSERT_STMT);
         }
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
                 .with(PostgresConnectorConfig.MAX_QUEUE_SIZE, recordCount / 2)
                 .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 10)
                 .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1");
@@ -361,6 +331,76 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Assertions.assertThat(records.recordsForTopic("test_server.s1.a")).hasSize(recordCount);
 
         stopConnector();
+    }
+
+    @Test
+    public void shouldSnapshotWhenOffsetMissingAndReplicationSlotInactive() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+        Files.delete(OFFSET_STORE_PATH);
+
+        shouldConsumeMessagesFromSnapshot();
+    }
+
+    private static class NoSnapShotDetectedException extends AssertionError {
+    }
+
+    @Test(expected = NoSnapShotDetectedException.class)
+    public void shouldNotSnapshotWhenOffsetMissingButReplicationSlotActive() throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.createDefaultReplicationSlot();
+
+        // Activate the Replication slot by streaming changes from it
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // Stop the connector and delete the offset storage
+        stopConnector();
+        assertNoRecordsToConsume();
+        Files.delete(OFFSET_STORE_PATH);
+
+        // Assert that no snapshot occurs
+        try {
+            shouldConsumeMessagesFromSnapshot();
+        }
+        catch (AssertionError e) {
+            throw new NoSnapShotDetectedException();
+        }
+    }
+
+    @Test
+    public void shouldResumeStreamFromActiveReplicationSlotWhenOffsetNotAvailable() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        // insert 2 new records
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
+
+        // now stop the connector and delete the offset storage
+        stopConnector();
+        assertNoRecordsToConsume();
+        Files.delete(OFFSET_STORE_PATH);
+
+        // insert some more records
+        TestHelper.execute(INSERT_STMT);
+
+        // start the connector back up and check that a new snapshot has not been performed (we're running initial only mode)
+        // but the 2 records that we were inserted while we were down will be retrieved
+        start(PostgresConnector.class, configBuilder.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE).build());
+        assertConnectorIsRunning();
+
+        assertRecordsAfterInsert(2, 3, 3);
     }
 
     @Test
