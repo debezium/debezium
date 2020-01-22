@@ -627,7 +627,7 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 [[character-values]]
 ==== Character Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header"]
+[cols="20%a,15%a,30%a,35%a",options="header"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -664,7 +664,7 @@ Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types you are m
 [[numeric-values]]
 ==== Numeric Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header"]
+[cols="20%a,15%a,30%a,35%a",options="header"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -746,7 +746,7 @@ The last option for `decimal.handling.mode` configuration property is `string`. 
 [[temporal-values]]
 ==== Temporal Values
 
-[cols="20%a,15%a,30%a,35%a",width=150,options="header"]
+[cols="20%a,15%a,30%a,35%a",options="header"]
 |=======================
 |Oracle Data Type
 |Literal type (schema type)
@@ -838,7 +838,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 ===== *MBean: debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
 
-[cols="30%a,10%a,60%a",width=100,options="header"]
+[cols="30%a,10%a,60%a",options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -909,7 +909,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 ===== *MBean: debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_*
 
-[cols="30%a,10%a,60%a",width=100,options="header"]
+[cols="30%a,10%a,60%a",options="header"]
 |=======================
 |Attribute Name
 |Type
@@ -971,7 +971,7 @@ Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in sup
 
 ===== *MBean: debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_*
 
-[cols="30%a,10%a,60%a",width=100,options="header"]
+[cols="30%a,10%a,60%a",options="header"]
 |=======================
 |Attribute Name
 |Type
