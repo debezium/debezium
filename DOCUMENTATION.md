@@ -92,42 +92,77 @@ The `nav` attribute describes an array of navigation AsciiDoc files uses to buil
 
 The `version` attribute is the most important aspect of this file.  This designates the naming convention to be used when referencing what _version_ this documentation represents.  This can be an actual version number as shown above, in which case it should be quoted.  Other examples could be things like `stable` or `latest`.
 
+**NOTE**: As of Antora 2.3, the `antora.yml` file can now define Asciidoc attributes, which are discussed below.
+
 ### Attributes
 
-Should a documentation page need to reference attributes, e.g. version numbers, this can be accomplished by importing the `_attributes.adoc` file in the `.adoc` documentation page.  If the attribute is new, its generally a good idea to update the `_attributes.adoc` with it so that it can be reused and updated in a single place.
+Should a documentation page need to reference attributes, e.g. version numbers, this can be accomplished in two ways:
 
-The current attributes file looks similar to the following:
+1. Defined in the `antora.yml` component descriptor in this repository.
+2. Defined in the Antora playbook files in the Debezium website repository.
+
+The general rule is if an attribute changes frequently or is related to a specific version or subset of versions of Debezium, it likely belongs in the `antora.yml` file in this repository.  If the attribute changes infrequent or is not specific to a given version of Debezium, its easier to maintain that in the various playbook files in the Debezium website repository.
+
+Lets say we need to add an attribute that points to our JIRA issue for issue links, that would be an example of an attrbute that would be defined in the playbook.  But if we needed to add an attribute that points to a specific version of a naven artifact or reference a specific version of a dependency, that's more appropriate for the `antora.yml` component descriptor located in this repository. 
+
+The current `antora.yml` component descriptor looks similar to the following:
 ```
-:moduledir: ..
-:attachmentsdir: {moduledir}/assets/attachments
-:examplesdir: {moduledir}/examples
-:imagesdir: {moduledir}/assets/images
-:partialsdir: {moduledir}/pages/_partials
+asciidoc:
+  attributes:
+    debezium-version: '1.1.0.Final'
+    debezium-dev-version: '1.2'
+    debezium-kafka-version: '2.4.0'
+    debezium-docker-label: '1.1'
+    install-version: '1.1'
+    assemblies: '../assemblies'
+    modules: '../../modules'
+    mysql-connector-plugin-download: 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz'
+    mysql-version: '8.0'
+    confluent-platform-version: '5.3.1'
+    strimzi-version: '0.13.0'
+```
 
-:debezium-version: 0.10.0.Beta4
-:debezium-dev-version: 0.10
-:debezium-kafka-version: 2.3.0
-:debezium-docker-label: 0.10
-:install-version: 0.10
-:confluent-platform-version: 5.1.2
-:strimzi-version: 0.10.0
+Attributes are defined by creating a nested yaml structure under `asciidoc.attributes` where the key-value attribute pairs are to be defined.  
 
+The playbook files in the website repository use the same layout, shown here:
+```
+# Global asciidoc attributes here, used across all versions of documentation
+asciidoc:
+  attributes:
+    prodname: 'Debezium'
+    context: 'debezium'
+    jira-url: 'https://issues.redhat.com'
+    # because of how handlebars templates work with page.attributes, this must be prefixed with "page-"
+    page-copyright-year: '2020'
+``` 
+
+**NOTE**: Given that the Debezium documentation is consumed downstream by other processes, do not define attributes in the `_attributes.adoc` file and use it as an include nor should you define attributes locally in a given .adoc file.
+
+## What to change _before_ releasing a new version
+
+The `antora.yml` file in the `master` branch always uses version called _master_.  It is important right before a release when applying the change log and contributor changes to modify this file to reference the correct major and minor version.  It's also important to make any necessary changes to version-specific attributes in this file at the same time.
+
+So when releasing version 2.1 as an example, change `antora.yml` from:
+```
+version: 'master'
+```
+to
+```
+version: '2.1'
 ```
 
 ## What to change _after_ releasing new version
 
-It's important that 2 files be properly maintained after the repository transitions between releases
+After the repository has been tagged, it is important to change the `antora.yml` back to _master_ and update any attributes post-release.
 
-* _attributes.adoc
-* antora.yml
-
-### Attributes
-
-Whenever any release is made, its important that the `_attributes.adoc` file [here](https://www.github.com/debezium/tree/master/documentation/modules/ROOT/pages/_attributes.adoc) is updated to reflect the version change.  For example, if version _0.9.4.Final_ was just released, the attributes file should be updated to with version _0.9.5.Final_ or whatever the next anticipated release will be.
-
-### Antora YAML
-
-The antora component descriptor file, `antora.yml` only needs to be updated when the next anticipated release will be a new major or minor.  Since documentation is maintained using a `<MAJOR>.<MINOR>` scheme, this file would only be changed when transitioning from version _0.9_ to _0.10_ or _1.1_ to _2.0_ as an example.
+So after releasing version 2.1 as an example, change `antora.yml` from:
+```
+version: '2.1'
+```
+to
+```
+version: 'master'
+``` 
 
 ## Contributing to the Documentation
 
@@ -143,7 +178,7 @@ We recommend that you use the following attributes when contributing content to 
 
 * `{prodname}` instead of Debezium.
 
-Attributes are defined both in the [playbook.yml](https://github.com/debezium/debezium.github.io/blob/develop/playbook.yml) file and also (replicated) in the [playbook_author.yml](https://github.com/debezium/debezium.github.io/blob/develop/playbook_author.yml) file in the https://github.com/debezium/debezium.github.io/ repository.
+See the [Attributes](#attributes) section for more details.
 
 ### Cross references
 
