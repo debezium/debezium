@@ -436,6 +436,7 @@ tableOption
     | STATS_SAMPLE_PAGES '='? decimalLiteral                        #tableOptionSamplePage
     | TABLESPACE uid tablespaceStorage?                             #tableOptionTablespace
     | tablespaceStorage                                             #tableOptionTablespace
+    | TRANSACTIONAL '='? ('0' | '1')                                #tableOptionTransactional
     | UNION '='? '(' tables ')'                                     #tableOptionUnion
     ;
 
@@ -2451,7 +2452,7 @@ keywordsCanBeId
     | STATS_SAMPLE_PAGES | STATUS | STOP | STORAGE | STRING
     | SUBCLASS_ORIGIN | SUBJECT | SUBPARTITION | SUBPARTITIONS | SUSPEND | SWAPS
     | SWITCHES | TABLE_NAME | TABLESPACE | TEMPORARY | TEMPTABLE | THAN | TRADITIONAL
-    | TRANSACTION | TRIGGERS | TRUNCATE | UNDEFINED | UNDOFILE
+    | TRANSACTION | TRANSACTIONAL | TRIGGERS | TRUNCATE | UNDEFINED | UNDOFILE
     | UNDO_BUFFER_SIZE | UNINSTALL | UNKNOWN | UNTIL | UPGRADE | USER | USE_FRM | USER_RESOURCES
     | VALIDATION | VALUE | VARIABLES | VIEW | WAIT | WARNINGS | WITHOUT
     | WORK | WRAPPER | X509 | XA | XML
