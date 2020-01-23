@@ -604,6 +604,7 @@ TEMPTABLE:                           'TEMPTABLE';
 THAN:                                'THAN';
 TRADITIONAL:                         'TRADITIONAL';
 TRANSACTION:                         'TRANSACTION';
+TRANSACTIONAL:                       'TRANSACTIONAL';
 TRIGGERS:                            'TRIGGERS';
 TRUNCATE:                            'TRUNCATE';
 UNDEFINED:                           'UNDEFINED';
