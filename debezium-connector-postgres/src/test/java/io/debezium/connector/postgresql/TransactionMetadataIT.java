@@ -22,8 +22,6 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
-import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
-import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
@@ -61,7 +59,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIs(value = io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName.DECODERBUFS, reason = "Only pgoutput plguin has enabled BEGIN/COMMIT messages")
     public void transactionMetadata() throws InterruptedException {
         Testing.Print.enable();
 
@@ -91,37 +88,5 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         assertRecordTransactionMetadata(records.get(1), txId, 1, 1);
         assertRecordTransactionMetadata(records.get(2), txId, 2, 1);
         assertEndTransaction(records.get(3), txId, 2);
-    }
-
-    @Test
-    @SkipWhenDecoderPluginNameIsNot(value = io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName.DECODERBUFS, reason = "Only pgoutput plguin has enabled BEGIN/COMMIT messages")
-    public void transactionMetadataForProtobuf() throws InterruptedException {
-        Testing.Print.enable();
-
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.execute(SETUP_TABLES_STMT);
-        Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
-                .build();
-        start(PostgresConnector.class, config);
-        assertConnectorIsRunning();
-        TestHelper.waitForDefaultReplicationSlotBeActive();
-
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
-
-        // insert and verify 2 new records
-        TestHelper.execute(INSERT_STMT);
-
-        // BEGIN, 2 * data, END
-        final List<SourceRecord> records = consumeRecordsByTopic(3).allRecordsInOrder();
-
-        Assertions.assertThat(records).hasSize(3);
-        final String txId = assertBeginTransaction(records.get(0));
-        assertRecordTransactionMetadata(records.get(1), txId, 1, 1);
-        assertRecordTransactionMetadata(records.get(2), txId, 2, 1);
     }
 }

@@ -9,6 +9,8 @@ enum Op {
     INSERT = 0;
     UPDATE = 1;
     DELETE = 2;
+    BEGIN  = 3;
+    COMMIT = 4;
 }
 
 message Point {
