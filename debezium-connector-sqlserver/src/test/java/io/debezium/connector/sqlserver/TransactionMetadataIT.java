@@ -295,30 +295,4 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
-
-    private String assertBeginTransaction(SourceRecord record) {
-        final Struct begin = (Struct) record.value();
-        final Struct beginKey = (Struct) record.key();
-        Assertions.assertThat(begin.getString("status")).isEqualTo("BEGIN");
-        Assertions.assertThat(begin.getInt64("event_count")).isNull();
-        final String txId = begin.getString("id");
-        Assertions.assertThat(beginKey.getString("id")).isEqualTo(txId);
-        return txId;
-    }
-
-    private void assertEndTransaction(SourceRecord record, String expectedTxId, long expectedEventCount) {
-        final Struct end = (Struct) record.value();
-        final Struct endKey = (Struct) record.key();
-        Assertions.assertThat(end.getString("status")).isEqualTo("END");
-        Assertions.assertThat(end.getString("id")).isEqualTo(expectedTxId);
-        Assertions.assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
-        Assertions.assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
-    }
-
-    private void assertRecordTransactionMetadata(SourceRecord record, String expectedTxId, long expectedTotalOrder, long expectedCollectionOrder) {
-        final Struct change = ((Struct) record.value()).getStruct("source").getStruct("transaction");
-        Assertions.assertThat(change.getString("id")).isEqualTo(expectedTxId);
-        Assertions.assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
-        Assertions.assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
-    }
 }

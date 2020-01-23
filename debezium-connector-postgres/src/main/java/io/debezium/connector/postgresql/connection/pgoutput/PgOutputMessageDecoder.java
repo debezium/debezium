@@ -38,6 +38,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Column;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -130,13 +131,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     // same session a `R` message was followed by an insert/update/delete message.
                     // @formatter:on
                 case COMMIT:
-                    // For now skip these message types so that the LSN associated with the message won't
-                    // be flushed back to PostgreSQL. There is a potential LSN assignment concern with
-                    // ReplicationConnectionIT#testHowRelationMessagesAreReceived where the first COMMIT
-                    // in the stream has the same LSN as the following BEGIN and INSERT, which leads to
-                    // the stream ignoring the first INSERT in the second set of statements processed.
-                    // Since COMMIT does not alter decoder state, this is likely fine for now.
-                    return true;
                 case BEGIN:
                 case RELATION:
                     // BEGIN
@@ -180,10 +174,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         final MessageType messageType = MessageType.forType((char) buffer.get());
         switch (messageType) {
             case BEGIN:
-                handleBeginMessage(buffer);
+                handleBeginMessage(buffer, processor);
                 break;
             case COMMIT:
-                handleCommitMessage(buffer);
+                handleCommitMessage(buffer, processor);
                 break;
             case RELATION:
                 handleRelationMessage(buffer, typeRegistry);
@@ -218,8 +212,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * Callback handler for the 'B' begin replication message.
      *
      * @param buffer The replication stream buffer
+     * @param processor The replication message processor
      */
-    private void handleBeginMessage(ByteBuffer buffer) {
+    private void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         long lsn = buffer.getLong(); // LSN
         this.commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
         this.transactionId = buffer.getInt();
@@ -227,14 +222,16 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
         LOGGER.trace("XID of transaction: {}", transactionId);
+        processor.process(new TransactionMessage(Operation.BEGIN, transactionId, commitTimestamp));
     }
 
     /**
      * Callback handler for the 'C' commit replication message.
      *
      * @param buffer The replication stream buffer
+     * @param processor The replication message processor
      */
-    private void handleCommitMessage(ByteBuffer buffer) {
+    private void handleCommitMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         int flags = buffer.get(); // flags, currently unused
         long lsn = buffer.getLong(); // LSN of the commit
         long endLsn = buffer.getLong(); // End LSN of the transaction
@@ -244,6 +241,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Commit LSN: {}", lsn);
         LOGGER.trace("End LSN of transaction: {}", endLsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
+        processor.process(new TransactionMessage(Operation.COMMIT, transactionId, commitTimestamp));
     }
 
     /**

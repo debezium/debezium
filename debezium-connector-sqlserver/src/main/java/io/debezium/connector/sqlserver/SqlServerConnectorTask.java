@@ -115,13 +115,16 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
         errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
 
+        final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
+
         final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new);
+                DataChangeEvent::new,
+                metadataProvider);
 
         coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
@@ -132,7 +135,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 dispatcher,
                 schema);
 
-        coordinator.start(taskContext, this.queue, new SqlServerEventMetadataProvider());
+        coordinator.start(taskContext, this.queue, metadataProvider);
     }
 
     @Override

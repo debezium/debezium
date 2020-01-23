@@ -49,6 +49,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
+import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -802,6 +803,46 @@ public abstract class AbstractConnectorTest implements Testing {
         finally {
             offsetStore.stop();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    protected String assertBeginTransaction(SourceRecord record) {
+        final Struct begin = (Struct) record.value();
+        final Struct beginKey = (Struct) record.key();
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+
+        Assertions.assertThat(begin.getString("status")).isEqualTo("BEGIN");
+        Assertions.assertThat(begin.getInt64("event_count")).isNull();
+        final String txId = begin.getString("id");
+        Assertions.assertThat(beginKey.getString("id")).isEqualTo(txId);
+
+        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(txId);
+        return txId;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected void assertEndTransaction(SourceRecord record, String expectedTxId, long expectedEventCount) {
+        final Struct end = (Struct) record.value();
+        final Struct endKey = (Struct) record.key();
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+
+        Assertions.assertThat(end.getString("status")).isEqualTo("END");
+        Assertions.assertThat(end.getString("id")).isEqualTo(expectedTxId);
+        Assertions.assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
+        Assertions.assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
+
+        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected void assertRecordTransactionMetadata(SourceRecord record, String expectedTxId, long expectedTotalOrder, long expectedCollectionOrder) {
+        final Struct change = ((Struct) record.value()).getStruct("source").getStruct("transaction");
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+
+        Assertions.assertThat(change.getString("id")).isEqualTo(expectedTxId);
+        Assertions.assertThat(change.getInt64("total_order")).isEqualTo(expectedTotalOrder);
+        Assertions.assertThat(change.getInt64("data_collection_order")).isEqualTo(expectedCollectionOrder);
+        Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {

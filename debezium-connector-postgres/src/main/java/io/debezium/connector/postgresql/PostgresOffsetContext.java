@@ -87,7 +87,7 @@ public class PostgresOffsetContext implements OffsetContext {
         if (lastCompletelyProcessedLsn != null) {
             result.put(LAST_COMPLETELY_PROCESSED_LSN_KEY, lastCompletelyProcessedLsn);
         }
-        return result;
+        return sourceInfo.isSnapshot() ? result : transactionContext.store(result);
     }
 
     @Override

@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
@@ -126,8 +128,25 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
                         return;
                     }
+                    if (TransactionMessage.isTransactionalMessage(message) && !connectorConfig.shouldProvideTransactionMetadata()) {
+                        LOGGER.trace("Received transactional message {}", message);
+                        return;
+                    }
                     if (message.isLastEventForLsn()) {
                         lastCompletelyProcessedLsn = lsn;
+                    }
+
+                    if (TransactionMessage.isTransactionalMessage(message)) {
+                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
+                                taskContext.getSlotXmin(connection));
+                        if (message.getOperation() == Operation.BEGIN) {
+                            dispatcher.dispatchTransactionStartedEvent(Long.toString(message.getTransactionId()), offsetContext);
+                        }
+                        else if (message.getOperation() == Operation.COMMIT) {
+                            dispatcher.dispatchTransactionCommittedEvent(offsetContext);
+                        }
+                        maybeWarnAboutGrowingWalBacklog(true);
+                        return;
                     }
 
                     final TableId tableId = PostgresSchema.parse(message.getTable());
@@ -135,6 +154,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
                             taskContext.getSlotXmin(connection));
+
                     boolean dispatched = dispatcher.dispatchDataChangeEvent(
                             tableId,
                             new PostgresChangeRecordEmitter(
