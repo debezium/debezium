@@ -22,8 +22,8 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
-import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
-import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs.DecoderPluginName;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
@@ -61,7 +61,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput plguin has enabled BEGIN/COMMIT messages")
+    @SkipWhenDecoderPluginNameIs(value = DecoderPluginName.DECODERBUFS, reason = "Only pgoutput plguin has enabled BEGIN/COMMIT messages")
     public void transactionMetadata() throws InterruptedException {
         Testing.Print.enable();
 

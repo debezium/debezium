@@ -19,7 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.document.Array;
 import io.debezium.document.Array.Entry;
 import io.debezium.document.Document;
@@ -64,10 +66,12 @@ public class NonStreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
             }
             else {
                 Iterator<Entry> it = changes.iterator();
+                processor.process(new TransactionMessage(Operation.BEGIN, txId, commitTime));
                 while (it.hasNext()) {
                     Value value = it.next().getValue();
                     processor.process(new Wal2JsonReplicationMessage(txId, commitTime, value.asDocument(), containsMetadata, !it.hasNext(), typeRegistry));
                 }
+                processor.process(new TransactionMessage(Operation.COMMIT, txId, commitTime));
             }
         }
         catch (final IOException e) {

@@ -18,7 +18,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 
@@ -148,6 +150,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
                         commitTime = dateTime.systemTimestampToInstant(timestamp);
                         messageInProgress = true;
                         currentChunk = null;
+                        processor.process(new TransactionMessage(Operation.BEGIN, txId, commitTime));
                     }
                 }
             }
@@ -181,6 +184,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
             // No more changes
             doProcessMessage(processor, typeRegistry, currentChunk, true);
             messageInProgress = false;
+            processor.process(new TransactionMessage(Operation.COMMIT, txId, commitTime));
         }
         else {
             throw new ConnectException("Chunk arrived in unexpected state");
