@@ -51,6 +51,10 @@ class PgProtoReplicationMessage implements ReplicationMessage {
                 return Operation.UPDATE;
             case DELETE:
                 return Operation.DELETE;
+            case BEGIN:
+                return Operation.BEGIN;
+            case COMMIT:
+                return Operation.COMMIT;
         }
         throw new IllegalArgumentException(
                 "Unknown operation '" + rawMessage.getOp() + "' in replication stream message");
