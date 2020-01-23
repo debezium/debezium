@@ -22,11 +22,13 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
+import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DataCollectionSchema;
@@ -58,6 +60,7 @@ public class EventDispatcher<T extends DataCollectionId> {
     private DataChangeEventListener eventListener = DataChangeEventListener.NO_OP;
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<T> inconsistentSchemaHandler;
+    private final TransactionMonitor transactionMonitor;
 
     /**
      * Change event receiver for events dispatched from a streaming change event source.
@@ -66,13 +69,14 @@ public class EventDispatcher<T extends DataCollectionId> {
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-                           ChangeEventCreator changeEventCreator) {
-        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null);
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider) {
+        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-                           ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler) {
+                           ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler,
+                           EventMetadataProvider metadataProvider) {
         this.topicSelector = topicSelector;
         this.schema = schema;
         this.historizedSchema = schema instanceof HistorizedDatabaseSchema
@@ -85,6 +89,7 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
+        this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::dispatchTransactionMessage);
         heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
                 connectorConfig.getLogicalName());
     }
@@ -148,6 +153,7 @@ public class EventDispatcher<T extends DataCollectionId> {
                 public void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
                                          OffsetContext offset)
                         throws InterruptedException {
+                    transactionMonitor.dataEvent(dataCollectionId, offset, key, value);
                     eventListener.onEvent(dataCollectionId, offset, key, value);
                     streamingReceiver.changeRecord(schema, operation, key, value, offset);
                 }
@@ -161,6 +167,14 @@ public class EventDispatcher<T extends DataCollectionId> {
                 this::enqueueHeartbeat);
 
         return handled;
+    }
+
+    public void dispatchTransactionCommittedEvent(OffsetContext offset) throws InterruptedException {
+        transactionMonitor.transactionComittedEvent(offset);
+    }
+
+    public void dispatchTransactionStartedEvent(String transactionId, OffsetContext offset) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(transactionId, offset);
     }
 
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {

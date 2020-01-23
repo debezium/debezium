@@ -18,7 +18,6 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
-import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionId;
@@ -41,7 +40,7 @@ import io.debezium.util.SchemaNameAdjuster;
  * @author Jiri Pechanec
  */
 @NotThreadSafe
-public class TransactionMonitor implements DataChangeEventListener {
+public class TransactionMonitor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionMonitor.class);
     private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
@@ -85,8 +84,7 @@ public class TransactionMonitor implements DataChangeEventListener {
         this.connectorConfig = connectorConfig;
     }
 
-    @Override
-    public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException {
+    public void dataEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) throws InterruptedException {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
@@ -111,6 +109,22 @@ public class TransactionMonitor implements DataChangeEventListener {
             beginTransaction(offset);
         }
         transactionEvent(offset, source, value);
+    }
+
+    public void transactionComittedEvent(OffsetContext offset) throws InterruptedException {
+        if (!connectorConfig.shouldProvideTransactionMetadata()) {
+            return;
+        }
+        endTransaction(offset);
+        offset.getTransactionContext().endTransaction();
+    }
+
+    public void transactionStartedEvent(String transactionId, OffsetContext offset) throws InterruptedException {
+        if (!connectorConfig.shouldProvideTransactionMetadata()) {
+            return;
+        }
+        offset.getTransactionContext().beginTransaction(transactionId);
+        beginTransaction(offset);
     }
 
     private void transactionEvent(OffsetContext offsetContext, DataCollectionId source, Struct value) {
@@ -152,13 +166,5 @@ public class TransactionMonitor implements DataChangeEventListener {
 
         sender.accept(new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
-    }
-
-    @Override
-    public void onFilteredEvent(String event) {
-    }
-
-    @Override
-    public void onErroneousEvent(String event) {
     }
 }

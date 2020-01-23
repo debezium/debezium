@@ -29,7 +29,6 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.util.Threads;
 
@@ -98,8 +97,7 @@ public class ChangeEventSourceCoordinator {
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
                     streamingSource = changeEventSourceFactory.getStreamingChangeEventSource(snapshotResult.getOffset());
-                    eventDispatcher.setEventListener(new CompositeDataChangeEventListener(streamingMetrics,
-                            new TransactionMonitor(connectorConfig, metadataProvider, eventDispatcher::dispatchTransactionMessage)));
+                    eventDispatcher.setEventListener(streamingMetrics);
                     streamingMetrics.connected(true);
                     LOGGER.info("Starting streaming");
                     streamingSource.execute(context);

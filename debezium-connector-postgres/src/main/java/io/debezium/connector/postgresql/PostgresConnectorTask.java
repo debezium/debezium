@@ -143,6 +143,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
             errorHandler = new ErrorHandler(PostgresConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
 
+            final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
+
             final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     topicSelector,
@@ -150,7 +152,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     queue,
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     DataChangeEvent::new,
-                    PostgresChangeRecordEmitter::updateSchema);
+                    PostgresChangeRecordEmitter::updateSchema,
+                    metadataProvider);
 
             coordinator = new ChangeEventSourceCoordinator(
                     previousOffset,
@@ -171,7 +174,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     dispatcher,
                     schema);
 
-            coordinator.start(taskContext, this.queue, new PostgresEventMetadataProvider());
+            coordinator.start(taskContext, this.queue, metadataProvider);
         }
         finally {
             previousContext.restore();
