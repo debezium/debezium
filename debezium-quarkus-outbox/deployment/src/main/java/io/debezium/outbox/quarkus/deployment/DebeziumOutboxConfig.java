@@ -5,6 +5,9 @@
  */
 package io.debezium.outbox.quarkus.deployment;
 
+import java.util.Optional;
+
+import io.quarkus.runtime.annotations.ConfigGroup;
 import io.quarkus.runtime.annotations.ConfigItem;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
@@ -25,38 +28,283 @@ public class DebeziumOutboxConfig {
     public String tableName;
 
     /**
-     * The column name that contains the event id in the outbox table
+     * Outbox identifier configurable attributes
      */
-    @ConfigItem(defaultValue = "id")
-    public String idColumnName;
+    @ConfigItem
+    public DebeziumOutboxConfigId id;
 
     /**
-     * The column name that contains the event key within the outbox table
+     * Outbox aggregate-id configurable attributes
      */
-    @ConfigItem(defaultValue = "aggregateid")
-    public String aggregateIdColumnName;
+    @ConfigItem
+    public DebeziumOutboxConfigAggregateId aggregateId;
 
     /**
-     * The column name that contains the event type in the outbox table
+     * Outbox aggregate-type configurable attributes
      */
-    @ConfigItem(defaultValue = "type")
-    public String typeColumnName;
+    @ConfigItem
+    public DebeziumOutboxConfigAggregateType aggregateType;
 
     /**
-     * The column name that contains the timestamp in the outbox table
+     * Outbox type configurable attributes
      */
-    @ConfigItem(defaultValue = "timestamp")
-    public String timestampColumnName;
+    @ConfigItem
+    public DebeziumOutboxConfigType type;
 
     /**
-     * The column name that contains the event payload in the outbox table
+     * Outbox timestamp configurable attributes
      */
-    @ConfigItem(defaultValue = "payload")
-    public String payloadColumnName;
+    @ConfigItem
+    public DebeziumOutboxConfigTimestamp timestamp;
 
     /**
-     * The column name that determines how the events will be routed in the outbox table
+     * Outbox payload configurable attributes
      */
-    @ConfigItem(defaultValue = "aggregatetype")
-    public String aggregateTypeColumnName;
+    @ConfigItem
+    public DebeziumOutboxConfigPayload payload;
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigId {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "id")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
+    }
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigAggregateType {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "aggregatetype")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
+
+        /**
+         * The column length.
+         */
+        @ConfigItem
+        public Optional<Integer> length;
+
+        /**
+         * The column scale.
+         */
+        @ConfigItem
+        public Optional<Integer> scale;
+
+        /**
+         * The column precision.
+         */
+        @ConfigItem
+        public Optional<Integer> precision;
+
+        /**
+         * The column's attribute converter fully qualified class name.
+         * @see javax.persistence.AttributeConverter
+         */
+        @ConfigItem
+        public Optional<String> converter;
+
+        /**
+         * Whether the column is nullable.
+         */
+        @ConfigItem(defaultValue = "false")
+        public boolean nullable;
+    }
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigAggregateId {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "aggregateid")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
+
+        /**
+         * The column length.
+         */
+        @ConfigItem
+        public Optional<Integer> length;
+
+        /**
+         * The column scale.
+         */
+        @ConfigItem
+        public Optional<Integer> scale;
+
+        /**
+         * The column precision.
+         */
+        @ConfigItem
+        public Optional<Integer> precision;
+
+        /**
+         * The column's attribute converter fully qualified class name.
+         * @see javax.persistence.AttributeConverter
+         */
+        @ConfigItem
+        public Optional<String> converter;
+
+        /**
+         * Whether the column is nullable.
+         */
+        @ConfigItem(defaultValue = "false")
+        public boolean nullable;
+    }
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigType {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "type")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
+
+        /**
+         * The column length.
+         */
+        @ConfigItem
+        public Optional<Integer> length;
+
+        /**
+         * The column scale.
+         */
+        @ConfigItem
+        public Optional<Integer> scale;
+
+        /**
+         * The column precision.
+         */
+        @ConfigItem
+        public Optional<Integer> precision;
+
+        /**
+         * The column's attribute converter fully qualified class name.
+         * @see javax.persistence.AttributeConverter
+         */
+        @ConfigItem
+        public Optional<String> converter;
+
+        /**
+         * Whether the column is nullable.
+         */
+        @ConfigItem(defaultValue = "false")
+        public boolean nullable;
+    }
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigTimestamp {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "timestamp")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
+
+        /**
+         * The column length.
+         */
+        @ConfigItem
+        public Optional<Integer> length;
+
+        /**
+         * The column scale.
+         */
+        @ConfigItem
+        public Optional<Integer> scale;
+
+        /**
+         * The column precision.
+         */
+        @ConfigItem
+        public Optional<Integer> precision;
+
+        /**
+         * The column's attribute converter fully qualified class name.
+         * @see javax.persistence.AttributeConverter
+         */
+        @ConfigItem
+        public Optional<String> converter;
+
+        /**
+         * Whether the column is nullable.
+         */
+        @ConfigItem(defaultValue = "false")
+        public boolean nullable;
+    }
+
+    @ConfigGroup
+    public static class DebeziumOutboxConfigPayload {
+        /**
+         * The column name.
+         */
+        @ConfigItem(defaultValue = "payload")
+        public String name;
+
+        /**
+         * The column definition.
+         */
+        @ConfigItem
+        public Optional<String> columnDefinition;
+
+        /**
+         * The column length.
+         */
+        @ConfigItem
+        public Optional<Integer> length;
+
+        /**
+         * The column scale.
+         */
+        @ConfigItem
+        public Optional<Integer> scale;
+
+        /**
+         * The column precision.
+         */
+        @ConfigItem
+        public Optional<Integer> precision;
+
+        /**
+         * The column's attribute converter fully qualified class name.
+         * @see javax.persistence.AttributeConverter
+         */
+        @ConfigItem
+        public Optional<String> converter;
+
+        /**
+         * Whether the column is nullable.
+         */
+        @ConfigItem(defaultValue = "true")
+        public boolean nullable;
+    }
 }

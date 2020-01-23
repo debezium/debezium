@@ -26,6 +26,8 @@ import io.debezium.outbox.quarkus.internal.JsonNodeAttributeConverter;
  */
 public class OutboxEventHbmWriter {
 
+    private static final String JACKSON_JSONNODE = "com.fasterxml.jackson.databind.JsonNode";
+
     static JaxbHbmHibernateMapping write(DebeziumOutboxConfig config, OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
         final JaxbHbmHibernateMapping mapping = new JaxbHbmHibernateMapping();
 
@@ -40,70 +42,161 @@ public class OutboxEventHbmWriter {
         generatorType.setClazz("uuid2");
         mapping.getIdentifierGenerator().add(generatorType);
 
-        // Setup the ID
-        final JaxbHbmSimpleIdType idType = new JaxbHbmSimpleIdType();
-        idType.setName("id");
-        idType.setColumnAttribute(config.idColumnName);
-        idType.setTypeAttribute(UUID.class.getName());
-
-        final JaxbHbmGeneratorSpecificationType generatorSpecType = new JaxbHbmGeneratorSpecificationType();
-        generatorSpecType.setClazz("uuid2");
-        idType.setGenerator(generatorSpecType);
-
-        entityType.setId(idType);
-
-        // Setup the aggregateType
-        final JaxbHbmBasicAttributeType aggregateType = new JaxbHbmBasicAttributeType();
-        aggregateType.setName("aggregateType");
-        aggregateType.setColumnAttribute(config.aggregateTypeColumnName);
-        aggregateType.setTypeAttribute("string");
-        aggregateType.setNotNull(true);
-        entityType.getAttributes().add(aggregateType);
-
-        // Setup the aggregateIdType
-        final JaxbHbmBasicAttributeType aggregateIdType = new JaxbHbmBasicAttributeType();
-        aggregateIdType.setName("aggregateId");
-        aggregateIdType.setColumnAttribute(config.aggregateIdColumnName);
-        aggregateIdType.setTypeAttribute(outboxEventEntityBuildItem.getAggregateIdType().name().toString());
-        aggregateIdType.setNotNull(true);
-        entityType.getAttributes().add(aggregateIdType);
-
-        // Setup the typeType
-        final JaxbHbmBasicAttributeType typeType = new JaxbHbmBasicAttributeType();
-        typeType.setName("type");
-        typeType.setColumnAttribute(config.typeColumnName);
-        typeType.setTypeAttribute("string");
-        typeType.setNotNull(true);
-        entityType.getAttributes().add(typeType);
-
-        // Setup the timestampType
-        final JaxbHbmBasicAttributeType timestampType = new JaxbHbmBasicAttributeType();
-        timestampType.setName("timestamp");
-        timestampType.setColumnAttribute(config.timestampColumnName);
-        timestampType.setTypeAttribute("Instant");
-        timestampType.setNotNull(true);
-        entityType.getAttributes().add(timestampType);
-
-        // Setup the payloadType
-        final JaxbHbmBasicAttributeType payloadType = new JaxbHbmBasicAttributeType();
-        payloadType.setName("payload");
-
-        // todo: this needs some more testing with varied data types
-        final String payloadClassType = outboxEventEntityBuildItem.getPayloadType().name().toString();
-        if (payloadClassType.equals("com.fasterxml.jackson.databind.JsonNode")) {
-            payloadType.setTypeAttribute("converted::" + JsonNodeAttributeConverter.class.getName());
-
-            final JaxbHbmColumnType columnType = new JaxbHbmColumnType();
-            columnType.setName(config.payloadColumnName);
-            columnType.setSqlType("varchar(8000)");
-            payloadType.getColumnOrFormula().add(columnType);
-        }
-        else {
-            payloadType.setColumnAttribute(config.payloadColumnName);
-            payloadType.setTypeAttribute(outboxEventEntityBuildItem.getPayloadType().name().toString());
-        }
-        entityType.getAttributes().add(payloadType);
+        // Setup attributes
+        entityType.setId(createIdAttribute(config));
+        entityType.getAttributes().add(createAggregateTypeAttribute(config));
+        entityType.getAttributes().add(createAggregateIdAttribute(config, outboxEventEntityBuildItem));
+        entityType.getAttributes().add(createTypeAttribute(config));
+        entityType.getAttributes().add(createTimestampAttribute(config));
+        entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
 
         return mapping;
+    }
+
+    private static JaxbHbmSimpleIdType createIdAttribute(DebeziumOutboxConfig config) {
+        final JaxbHbmSimpleIdType attribute = new JaxbHbmSimpleIdType();
+        attribute.setName("id");
+        attribute.setTypeAttribute(UUID.class.getName());
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.id.name);
+        config.id.columnDefinition.ifPresent(column::setSqlType);
+        attribute.getColumn().add(column);
+
+        final JaxbHbmGeneratorSpecificationType generator = new JaxbHbmGeneratorSpecificationType();
+        generator.setClazz("uuid2");
+        attribute.setGenerator(generator);
+
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createAggregateTypeAttribute(DebeziumOutboxConfig config) {
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName("aggregateType");
+        attribute.setNotNull(!config.aggregateType.nullable);
+        if (config.aggregateType.converter.isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.aggregateType.converter.get());
+        }
+        else {
+            attribute.setTypeAttribute("string");
+        }
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.aggregateType.name);
+        config.aggregateType.columnDefinition.ifPresent(column::setSqlType);
+        config.aggregateType.length.ifPresent(column::setLength);
+        config.aggregateType.scale.ifPresent(column::setScale);
+        config.aggregateType.precision.ifPresent(column::setPrecision);
+        attribute.getColumnOrFormula().add(column);
+
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createAggregateIdAttribute(DebeziumOutboxConfig config,
+                                                                        OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName("aggregateId");
+        attribute.setNotNull(!config.aggregateId.nullable);
+        if (config.aggregateId.converter.isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.aggregateId.converter.get());
+        }
+        else {
+            attribute.setTypeAttribute(outboxEventEntityBuildItem.getAggregateIdType().name().toString());
+        }
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.aggregateId.name);
+        config.aggregateId.columnDefinition.ifPresent(column::setSqlType);
+        config.aggregateId.length.ifPresent(column::setLength);
+        config.aggregateId.scale.ifPresent(column::setScale);
+        config.aggregateId.precision.ifPresent(column::setPrecision);
+        attribute.getColumnOrFormula().add(column);
+
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createTypeAttribute(DebeziumOutboxConfig config) {
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName("type");
+        attribute.setNotNull(!config.type.nullable);
+        if (config.type.converter.isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.type.converter.get());
+        }
+        else {
+            attribute.setTypeAttribute("string");
+        }
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.type.name);
+        config.type.columnDefinition.ifPresent(column::setSqlType);
+        config.type.length.ifPresent(column::setLength);
+        config.type.precision.ifPresent(column::setPrecision);
+        config.type.scale.ifPresent(column::setScale);
+        attribute.getColumnOrFormula().add(column);
+
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createTimestampAttribute(DebeziumOutboxConfig config) {
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName("timestamp");
+        attribute.setNotNull(!config.timestamp.nullable);
+        if (config.timestamp.converter.isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.timestamp.converter.get());
+        }
+        else {
+            attribute.setTypeAttribute("Instant");
+        }
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.timestamp.name);
+        config.timestamp.columnDefinition.ifPresent(column::setSqlType);
+        config.timestamp.length.ifPresent(column::setLength);
+        config.timestamp.precision.ifPresent(column::setPrecision);
+        config.timestamp.scale.ifPresent(column::setScale);
+        attribute.getColumnOrFormula().add(column);
+
+        return attribute;
+    }
+
+    private static JaxbHbmBasicAttributeType createPayloadAttribute(DebeziumOutboxConfig config,
+                                                                    OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
+
+        final boolean isJacksonJsonNode = isPayloadJacksonJsonNode(outboxEventEntityBuildItem);
+
+        final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
+        attribute.setName("payload");
+        attribute.setNotNull(!config.payload.nullable);
+
+        if (config.payload.converter.isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.payload.converter.get());
+        }
+        else if (isJacksonJsonNode) {
+            attribute.setTypeAttribute("converted::" + JsonNodeAttributeConverter.class.getName());
+        }
+        else {
+            attribute.setTypeAttribute(outboxEventEntityBuildItem.getPayloadType().name().toString());
+        }
+
+        final JaxbHbmColumnType column = new JaxbHbmColumnType();
+        column.setName(config.payload.name);
+
+        if (config.payload.columnDefinition.isPresent()) {
+            column.setSqlType(config.payload.columnDefinition.get());
+        }
+        else if (isJacksonJsonNode) {
+            column.setSqlType("varchar(8000)");
+        }
+
+        config.payload.length.ifPresent(column::setLength);
+        config.payload.precision.ifPresent(column::setPrecision);
+        config.payload.scale.ifPresent(column::setScale);
+        attribute.getColumnOrFormula().add(column);
+
+        return attribute;
+    }
+
+    private static boolean isPayloadJacksonJsonNode(OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
+        return outboxEventEntityBuildItem.getPayloadType().name().toString().equals(JACKSON_JSONNODE);
     }
 }
