@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.jdbc.PgConnection;
+import org.postgresql.core.BaseConnection;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
@@ -167,7 +167,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
             int position = getPosition(columnName, table, values);
             if (position != -1) {
-                Object value = column.getValue(() -> (PgConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
+                Object value = column.getValue(() -> (BaseConnection) connection.connection(), connectorConfig.includeUnknownDatatypes());
                 if (sourceOfToasted) {
                     cachedOldToastedValues.put(columnName, value);
                 }
