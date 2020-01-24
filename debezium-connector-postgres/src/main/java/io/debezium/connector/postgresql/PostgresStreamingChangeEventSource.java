@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.jdbc.PgConnection;
+import org.postgresql.core.BaseConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -246,6 +246,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     @FunctionalInterface
     public static interface PgConnectionSupplier {
-        PgConnection get() throws SQLException;
+        BaseConnection get() throws SQLException;
     }
 }

@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.kafka.connect.errors.ConnectException;
-import org.postgresql.jdbc.PgConnection;
+import org.postgresql.core.BaseConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
@@ -400,7 +400,7 @@ public class PostgresConnection extends JdbcConnection {
 
     private Charset determineDatabaseCharset() {
         try {
-            return Charset.forName(((PgConnection) connection()).getEncoding().name());
+            return Charset.forName(((BaseConnection) connection()).getEncoding().name());
         }
         catch (SQLException e) {
             throw new RuntimeException("Couldn't obtain encoding for database " + database(), e);

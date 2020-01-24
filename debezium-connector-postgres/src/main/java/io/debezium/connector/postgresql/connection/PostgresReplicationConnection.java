@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.postgresql.core.BaseConnection;
 import org.postgresql.core.ServerVersion;
-import org.postgresql.jdbc.PgConnection;
 import org.postgresql.replication.LogSequenceNumber;
 import org.postgresql.replication.PGReplicationStream;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -302,8 +302,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    protected PgConnection pgConnection() throws SQLException {
-        return (PgConnection) connection(false);
+    protected BaseConnection pgConnection() throws SQLException {
+        return (BaseConnection) connection(false);
     }
 
     private SlotCreationResult parseSlotCreation(ResultSet rs) {
