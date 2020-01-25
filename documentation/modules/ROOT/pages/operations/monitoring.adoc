@@ -163,7 +163,7 @@ The following example Docker command start a container using the `debezium/kafka
 docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper debezium/kafka:latest
 ```
 
-== Kafka Connect in Docker
+=== Kafka Connect in Docker
 
 The `debezium/connect` image recognizes the following JMX-related environment variables:
 
