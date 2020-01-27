@@ -103,7 +103,10 @@ Should a documentation page need to reference attributes, e.g. version numbers, 
 
 The general rule is if an attribute changes frequently or is related to a specific version or subset of versions of Debezium, it likely belongs in the `antora.yml` file in this repository.  If the attribute changes infrequent or is not specific to a given version of Debezium, its easier to maintain that in the various playbook files in the Debezium website repository.
 
-Lets say we need to add an attribute that points to our JIRA issue for issue links, that would be an example of an attrbute that would be defined in the playbook.  But if we needed to add an attribute that points to a specific version of a naven artifact or reference a specific version of a dependency, that's more appropriate for the `antora.yml` component descriptor located in this repository. 
+Lets say we need to add an attribute that points to our JIRA issue for issue links, 
+that would be an example of an attrbute that would be defined in the playbook.
+But if we needed to add an attribute that points to a specific version of a Maven artifact or reference a specific version of a dependency, 
+that's more appropriate for the `antora.yml` component descriptor located in this repository. 
 
 The current `antora.yml` component descriptor looks similar to the following:
 ```
@@ -137,32 +140,6 @@ asciidoc:
 ``` 
 
 **NOTE**: Given that the Debezium documentation is consumed downstream by other processes, do not define attributes in the `_attributes.adoc` file and use it as an include nor should you define attributes locally in a given .adoc file.
-
-## What to change _before_ releasing a new version
-
-The `antora.yml` file in the `master` branch always uses version called _master_.  It is important right before a release when applying the change log and contributor changes to modify this file to reference the correct major and minor version.  It's also important to make any necessary changes to version-specific attributes in this file at the same time.
-
-So when releasing version 2.1 as an example, change `antora.yml` from:
-```
-version: 'master'
-```
-to
-```
-version: '2.1'
-```
-
-## What to change _after_ releasing new version
-
-After the repository has been tagged, it is important to change the `antora.yml` back to _master_ and update any attributes post-release.
-
-So after releasing version 2.1 as an example, change `antora.yml` from:
-```
-version: '2.1'
-```
-to
-```
-version: 'master'
-``` 
 
 ## Contributing to the Documentation
 
