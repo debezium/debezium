@@ -90,19 +90,21 @@ public class OracleConnectorTask extends BaseSourceTask {
 
         errorHandler = new ErrorHandler(OracleConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
 
+        final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
+
         EventDispatcher<TableId> dispatcher = new EventDispatcher<>(connectorConfig, topicSelector, schema, queue,
-                connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new);
+                connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new, metadataProvider);
 
         coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
                 errorHandler,
                 OracleConnector.class,
-                connectorConfig.getLogicalName(),
+                connectorConfig,
                 new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema),
                 dispatcher,
                 schema);
 
-        coordinator.start(taskContext, this.queue, new OracleEventMetadataProvider());
+        coordinator.start(taskContext, this.queue, metadataProvider);
     }
 
     @Override

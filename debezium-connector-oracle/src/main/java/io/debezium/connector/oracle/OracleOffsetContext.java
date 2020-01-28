@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
@@ -27,19 +28,23 @@ public class OracleOffsetContext implements OffsetContext {
     private final Map<String, String> partition;
 
     private final SourceInfo sourceInfo;
+    private final TransactionContext transactionContext;
 
     /**
      * Whether a snapshot has been completed or not.
      */
     private boolean snapshotCompleted;
 
-    private OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, LcrPosition lcrPosition, boolean snapshot, boolean snapshotCompleted) {
+    private OracleOffsetContext(OracleConnectorConfig connectorConfig, long scn, LcrPosition lcrPosition,
+                                boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
 
         sourceInfo = new SourceInfo(connectorConfig);
         sourceInfo.setScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
         sourceInfoSchema = sourceInfo.schema();
+
+        this.transactionContext = transactionContext;
 
         this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
@@ -57,6 +62,7 @@ public class OracleOffsetContext implements OffsetContext {
         private LcrPosition lcrPosition;
         private boolean snapshot;
         private boolean snapshotCompleted;
+        private TransactionContext transactionContext;
 
         public Builder logicalName(OracleConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
@@ -83,8 +89,13 @@ public class OracleOffsetContext implements OffsetContext {
             return this;
         }
 
+        public Builder transactionContext(TransactionContext transactionContext) {
+            this.transactionContext = transactionContext;
+            return this;
+        }
+
         OracleOffsetContext build() {
-            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted);
+            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, transactionContext);
         }
     }
 
@@ -109,10 +120,14 @@ public class OracleOffsetContext implements OffsetContext {
             return offset;
         }
         else {
+            final Map<String, Object> offset = new HashMap<>();
             if (sourceInfo.getLcrPosition() != null) {
-                return Collections.singletonMap(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
+                offset.put(SourceInfo.LCR_POSITION_KEY, sourceInfo.getLcrPosition().toString());
             }
-            return Collections.singletonMap(SourceInfo.SCN_KEY, sourceInfo.getScn());
+            else {
+                offset.put(SourceInfo.SCN_KEY, sourceInfo.getScn());
+            }
+            return transactionContext.store(offset);
         }
     }
 
@@ -200,6 +215,11 @@ public class OracleOffsetContext implements OffsetContext {
         sourceInfo.setSourceTime(timestamp);
     }
 
+    @Override
+    public TransactionContext getTransactionContext() {
+        return transactionContext;
+    }
+
     public static class Loader implements OffsetContext.Loader {
 
         private final OracleConnectorConfig connectorConfig;
@@ -220,7 +240,7 @@ public class OracleOffsetContext implements OffsetContext {
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
-            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted);
+            return new OracleOffsetContext(connectorConfig, scn, lcrPosition, snapshot, snapshotCompleted, TransactionContext.load(offset));
         }
     }
 }

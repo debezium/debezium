@@ -21,6 +21,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -119,6 +120,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         ctx.offset = OracleOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
+                .transactionContext(new TransactionContext())
                 .build();
     }
 
