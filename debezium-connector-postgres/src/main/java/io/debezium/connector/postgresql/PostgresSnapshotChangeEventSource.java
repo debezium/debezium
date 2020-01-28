@@ -210,7 +210,16 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             switch (type.getOid()) {
                 case PgOid.MONEY:
                     // TODO author=Horia Chiorean date=14/11/2016 description=workaround for https://github.com/pgjdbc/pgjdbc/issues/100
-                    return new PGmoney(rs.getString(columnIndex)).val;
+                    final String sMoney = rs.getString(columnIndex);
+                    if (sMoney == null) {
+                        return sMoney;
+                    }
+                    try {
+                        return new PGmoney(sMoney).val;
+                    }
+                    catch (SQLException e) {
+                        return sMoney;
+                    }
                 case PgOid.BIT:
                     return rs.getString(columnIndex);
                 case PgOid.NUMERIC:
