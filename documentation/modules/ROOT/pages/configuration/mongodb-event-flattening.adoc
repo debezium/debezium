@@ -20,13 +20,6 @@ This SMT is supported only for the MongoDB connector.
 See xref:configuration/event-flattening.adoc[here] for the relational database equivalent to this SMT.
 ====
 
-[WARNING]
-====
-0.9.0 Backwards compatible breaking changes
-
-Breaking changes were introduced together with handling deletions features, the previous default behavior was to keep deletion messages, now the new default behavior is to remove them. To change this setting please refer to link:#configuration_options[`delete.handling.mode`] and link:#configuration_options[`drop.tombstones`]
-====
-
 The Debezium MongoDB connector generates the data in a form of a complex message structure.
 The message consists of two parts:
 
