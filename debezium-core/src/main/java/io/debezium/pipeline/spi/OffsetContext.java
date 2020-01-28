@@ -71,5 +71,11 @@ public interface OffsetContext {
      */
     void event(DataCollectionId collectionId, Instant timestamp);
 
+    /**
+     * Provide a context used by {@link TransactionMonitor} so persist its internal state into offsets to survive
+     * between restarts.
+     *
+     * @return transaction context
+     */
     TransactionContext getTransactionContext();
 }

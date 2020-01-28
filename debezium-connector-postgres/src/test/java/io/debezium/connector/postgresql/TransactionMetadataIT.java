@@ -23,7 +23,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.util.Testing;
 
 public class TransactionMetadataIT extends AbstractConnectorTest {
 
@@ -36,7 +35,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
             "CREATE TABLE s2.a (pk SERIAL, aa integer, bb varchar(20), PRIMARY KEY(pk));" +
             INSERT_STMT;
-    private PostgresConnector connector;
 
     @Rule
     public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
@@ -60,7 +58,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
     @Test
     public void transactionMetadata() throws InterruptedException {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
