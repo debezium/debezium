@@ -73,7 +73,7 @@ public class OutboxEventHbmWriter {
     private static JaxbHbmBasicAttributeType createAggregateTypeAttribute(DebeziumOutboxConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("aggregateType");
-        attribute.setNotNull(!config.aggregateType.nullable);
+        attribute.setNotNull(true);
         if (config.aggregateType.converter.isPresent()) {
             attribute.setTypeAttribute("converted::" + config.aggregateType.converter.get());
         }
@@ -84,9 +84,6 @@ public class OutboxEventHbmWriter {
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
         column.setName(config.aggregateType.name);
         config.aggregateType.columnDefinition.ifPresent(column::setSqlType);
-        config.aggregateType.length.ifPresent(column::setLength);
-        config.aggregateType.scale.ifPresent(column::setScale);
-        config.aggregateType.precision.ifPresent(column::setPrecision);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -96,7 +93,7 @@ public class OutboxEventHbmWriter {
                                                                         OutboxEventEntityBuildItem outboxEventEntityBuildItem) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("aggregateId");
-        attribute.setNotNull(!config.aggregateId.nullable);
+        attribute.setNotNull(true);
         if (config.aggregateId.converter.isPresent()) {
             attribute.setTypeAttribute("converted::" + config.aggregateId.converter.get());
         }
@@ -107,9 +104,6 @@ public class OutboxEventHbmWriter {
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
         column.setName(config.aggregateId.name);
         config.aggregateId.columnDefinition.ifPresent(column::setSqlType);
-        config.aggregateId.length.ifPresent(column::setLength);
-        config.aggregateId.scale.ifPresent(column::setScale);
-        config.aggregateId.precision.ifPresent(column::setPrecision);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -118,7 +112,7 @@ public class OutboxEventHbmWriter {
     private static JaxbHbmBasicAttributeType createTypeAttribute(DebeziumOutboxConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("type");
-        attribute.setNotNull(!config.type.nullable);
+        attribute.setNotNull(true);
         if (config.type.converter.isPresent()) {
             attribute.setTypeAttribute("converted::" + config.type.converter.get());
         }
@@ -129,9 +123,6 @@ public class OutboxEventHbmWriter {
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
         column.setName(config.type.name);
         config.type.columnDefinition.ifPresent(column::setSqlType);
-        config.type.length.ifPresent(column::setLength);
-        config.type.precision.ifPresent(column::setPrecision);
-        config.type.scale.ifPresent(column::setScale);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -140,7 +131,7 @@ public class OutboxEventHbmWriter {
     private static JaxbHbmBasicAttributeType createTimestampAttribute(DebeziumOutboxConfig config) {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("timestamp");
-        attribute.setNotNull(!config.timestamp.nullable);
+        attribute.setNotNull(true);
         if (config.timestamp.converter.isPresent()) {
             attribute.setTypeAttribute("converted::" + config.timestamp.converter.get());
         }
@@ -151,9 +142,6 @@ public class OutboxEventHbmWriter {
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
         column.setName(config.timestamp.name);
         config.timestamp.columnDefinition.ifPresent(column::setSqlType);
-        config.timestamp.length.ifPresent(column::setLength);
-        config.timestamp.precision.ifPresent(column::setPrecision);
-        config.timestamp.scale.ifPresent(column::setScale);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -166,7 +154,7 @@ public class OutboxEventHbmWriter {
 
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("payload");
-        attribute.setNotNull(!config.payload.nullable);
+        attribute.setNotNull(false);
 
         if (config.payload.converter.isPresent()) {
             attribute.setTypeAttribute("converted::" + config.payload.converter.get());
@@ -188,9 +176,6 @@ public class OutboxEventHbmWriter {
             column.setSqlType("varchar(8000)");
         }
 
-        config.payload.length.ifPresent(column::setLength);
-        config.payload.precision.ifPresent(column::setPrecision);
-        config.payload.scale.ifPresent(column::setScale);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
