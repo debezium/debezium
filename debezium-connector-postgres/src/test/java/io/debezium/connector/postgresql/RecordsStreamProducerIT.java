@@ -15,6 +15,7 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -48,9 +49,12 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationConnection.Builder;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
@@ -999,10 +1003,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-800")
     public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
-        // the low heartbeat interval should make sure that a heartbeat message is emitted after each change record
-        // received from Postgres
+        // the high heartbeat interval should make sure that a heartbeat message is emitted only
+        // after insert statement which allows to check that lsn is not flushed by itself
+        // but only when heartbeat message is produced
         startConnector(config -> config
-                .with(Heartbeat.HEARTBEAT_INTERVAL, "1")
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "10000")
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.b")
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
@@ -1012,33 +1017,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         String statement = "CREATE SCHEMA s1;" +
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
-                "INSERT INTO s1.a (aa) VALUES (11);" +
-                "INSERT INTO s1.b (bb) VALUES (22);";
+                "INSERT INTO s1.a (aa) VALUES (11);";
 
-        // streaming from database is non-blocking so we should receive many heartbeats
-        // plus keepalive messages also generate heartbeats
-        final int expectedAtMostStartHeartbeats = 500;
-        final int expectedHeartbeats = 250;
-        // heartbeat for unfiltered table, data change, heartbeats
-        consumer = testConsumer(expectedAtMostStartHeartbeats + 1 + expectedHeartbeats);
+        // consumer will contain only a heartbeat for unfiltered table
+        consumer = testConsumer(1);
         consumer.setIgnoreExtraRecords(true);
-        executeAndWait(statement);
 
-        // change record for s1.b and heartbeats
-        Optional<SourceRecord> record;
-        int startHeartbeats = 0;
-        while (true) {
-            record = isHeartBeatRecordInserted();
-            if (record.isPresent()) {
-                assertThat(startHeartbeats).describedAs("Too many start heartbeats").isLessThanOrEqualTo(expectedAtMostStartHeartbeats);
-                break;
-            }
-            startHeartbeats++;
-        }
+        try (PostgresConnection postgresConnection = TestHelper.create()) {
 
-        assertRecordInserted(record.get(), "s1.b", PK_FIELD, 1);
-        for (int i = 0; i < expectedHeartbeats; i++) {
-            assertHeartBeatRecordInserted();
+            TestHelper.execute(statement);
+
+            // check if client's lsn is not flushed yet
+            SlotState slotState = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
+            long flushLsn = slotState.slotLastFlushedLsn();
+            // serverLsn is the latest server lsn and is equal to insert statement lsn
+            long serverLsn = postgresConnection.currentXLogLocation();
+            assertNotEquals("lsn should not be flushed until heartbeat is produced", serverLsn, flushLsn);
+
+            // awaiting heartbeat to be produced
+            consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
+
+            SourceRecord record = consumer.remove();
+
+            long heartbeatLsn = (Long) record.sourceOffset().get("lsn");
+
+            // check if heartbeat lsn is equal to or greater than server lsn
+            assertTrue("Heartbeat lsn must be equal to or greater than lsn of insert statement", heartbeatLsn >= serverLsn);
+
+            // check if flushed lsn is equal to or greater than server lsn
+            TimeUnit.SECONDS.sleep(1); // wait a little to be sure server has updated last flushed lsn
+            SlotState slotStateAfterHeartbeat = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
+            long flushedLsn = slotStateAfterHeartbeat.slotLastFlushedLsn();
+            assertTrue("lsn should be flushed when heartbeat is produced", flushedLsn >= serverLsn);
         }
     }
 
