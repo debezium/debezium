@@ -8,6 +8,10 @@ package io.debezium.connector.mongodb.transforms;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,8 +84,17 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // Test insert
         primary().execute("insert", client -> {
+            long timestamp = ZonedDateTime.of(2020, 1, 28, 10, 00, 33, 0, ZoneId.of("UTC")).toEpochSecond();
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
-                    .insertOne(Document.parse("{'_id': 1, 'dataStr': 'hello', 'dataInt': 123, 'dataLong': 80000000000}"));
+                    .insertOne(Document.parse(
+                            "{"
+                                    + "  '_id': 1, "
+                                    + "  'dataStr': 'hello', "
+                                    + "  'dataInt': 123, "
+                                    + "  'dataLong': 80000000000, "
+                                    + "  'dataDate': ISODate(\"2020-01-27T10:47:12.311Z\"), "
+                                    + "  'dataTimestamp': Timestamp(" + timestamp + ", 1)" // seconds since epoch, operation counter within second
+                                    + "}"));
         });
 
         SourceRecords records = consumeRecordsByTopic(1);
@@ -99,6 +112,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(transformedInsertValue.get("dataStr")).isEqualTo("hello");
         assertThat(transformedInsertValue.get("dataInt")).isEqualTo(123);
         assertThat(transformedInsertValue.get("dataLong")).isEqualTo(80_000_000_000l);
+        assertThat(transformedInsertValue.get("dataDate")).isEqualTo(Date.from(Instant.from(ZonedDateTime.of(2020, 1, 27, 10, 47, 12, 311000000, ZoneId.of("UTC")))));
+        assertThat(transformedInsertValue.get("dataTimestamp")).isEqualTo(Date.from(Instant.from(ZonedDateTime.of(2020, 1, 28, 10, 00, 33, 0, ZoneId.of("UTC")))));
 
         // Test update
         primary().execute("update", client -> {
