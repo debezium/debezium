@@ -45,7 +45,7 @@ public class TransactionMonitor {
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionMonitor.class);
     private static final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
 
-    private static final String TOPIC_PREFIX = "__debezium.transaction.";
+    private static final String TOPIC_SUFFIX = ".transaction";
 
     public static final String DEBEZIUM_TRANSACTION_KEY = "transaction";
     public static final String DEBEZIUM_TRANSACTION_ID_KEY = "id";
@@ -78,7 +78,7 @@ public class TransactionMonitor {
 
     public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider, BlockingConsumer<SourceRecord> sender) {
         Objects.requireNonNull(eventMetadataProvider);
-        this.topicName = TOPIC_PREFIX + connectorConfig.getLogicalName();
+        this.topicName = connectorConfig.getLogicalName() + TOPIC_SUFFIX;
         this.eventMetadataProvider = eventMetadataProvider;
         this.sender = sender;
         this.connectorConfig = connectorConfig;
