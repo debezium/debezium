@@ -92,7 +92,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 1 + 1);
         final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.tableb");
-        final List<SourceRecord> tx = records.recordsForTopic("__debezium.transaction.server1");
+        final List<SourceRecord> tx = records.recordsForTopic("server1.transaction");
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE + 1);
         Assertions.assertThat(tx).hasSize(3);
@@ -242,7 +242,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         sourceRecords = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * TABLES + (2 * RECORDS_PER_TABLE - 1));
         tableA = sourceRecords.recordsForTopic("server1.dbo.tablea");
         tableB = sourceRecords.recordsForTopic("server1.dbo.tableb");
-        List<SourceRecord> txMetadata = sourceRecords.recordsForTopic("__debezium.transaction.server1");
+        List<SourceRecord> txMetadata = sourceRecords.recordsForTopic("server1.transaction");
 
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
