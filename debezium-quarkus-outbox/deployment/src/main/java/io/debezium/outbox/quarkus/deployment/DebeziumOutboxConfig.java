@@ -93,35 +93,11 @@ public class DebeziumOutboxConfig {
         public Optional<String> columnDefinition;
 
         /**
-         * The column length.
-         */
-        @ConfigItem
-        public Optional<Integer> length;
-
-        /**
-         * The column scale.
-         */
-        @ConfigItem
-        public Optional<Integer> scale;
-
-        /**
-         * The column precision.
-         */
-        @ConfigItem
-        public Optional<Integer> precision;
-
-        /**
          * The column's attribute converter fully qualified class name.
          * @see javax.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
-
-        /**
-         * Whether the column is nullable.
-         */
-        @ConfigItem(defaultValue = "false")
-        public boolean nullable;
     }
 
     @ConfigGroup
@@ -139,35 +115,11 @@ public class DebeziumOutboxConfig {
         public Optional<String> columnDefinition;
 
         /**
-         * The column length.
-         */
-        @ConfigItem
-        public Optional<Integer> length;
-
-        /**
-         * The column scale.
-         */
-        @ConfigItem
-        public Optional<Integer> scale;
-
-        /**
-         * The column precision.
-         */
-        @ConfigItem
-        public Optional<Integer> precision;
-
-        /**
          * The column's attribute converter fully qualified class name.
          * @see javax.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
-
-        /**
-         * Whether the column is nullable.
-         */
-        @ConfigItem(defaultValue = "false")
-        public boolean nullable;
     }
 
     @ConfigGroup
@@ -185,35 +137,11 @@ public class DebeziumOutboxConfig {
         public Optional<String> columnDefinition;
 
         /**
-         * The column length.
-         */
-        @ConfigItem
-        public Optional<Integer> length;
-
-        /**
-         * The column scale.
-         */
-        @ConfigItem
-        public Optional<Integer> scale;
-
-        /**
-         * The column precision.
-         */
-        @ConfigItem
-        public Optional<Integer> precision;
-
-        /**
          * The column's attribute converter fully qualified class name.
          * @see javax.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
-
-        /**
-         * Whether the column is nullable.
-         */
-        @ConfigItem(defaultValue = "false")
-        public boolean nullable;
     }
 
     @ConfigGroup
@@ -231,35 +159,11 @@ public class DebeziumOutboxConfig {
         public Optional<String> columnDefinition;
 
         /**
-         * The column length.
-         */
-        @ConfigItem
-        public Optional<Integer> length;
-
-        /**
-         * The column scale.
-         */
-        @ConfigItem
-        public Optional<Integer> scale;
-
-        /**
-         * The column precision.
-         */
-        @ConfigItem
-        public Optional<Integer> precision;
-
-        /**
          * The column's attribute converter fully qualified class name.
          * @see javax.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
-
-        /**
-         * Whether the column is nullable.
-         */
-        @ConfigItem(defaultValue = "false")
-        public boolean nullable;
     }
 
     @ConfigGroup
@@ -277,34 +181,10 @@ public class DebeziumOutboxConfig {
         public Optional<String> columnDefinition;
 
         /**
-         * The column length.
-         */
-        @ConfigItem
-        public Optional<Integer> length;
-
-        /**
-         * The column scale.
-         */
-        @ConfigItem
-        public Optional<Integer> scale;
-
-        /**
-         * The column precision.
-         */
-        @ConfigItem
-        public Optional<Integer> precision;
-
-        /**
          * The column's attribute converter fully qualified class name.
          * @see javax.persistence.AttributeConverter
          */
         @ConfigItem
         public Optional<String> converter;
-
-        /**
-         * Whether the column is nullable.
-         */
-        @ConfigItem(defaultValue = "true")
-        public boolean nullable;
     }
 }

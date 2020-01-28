@@ -157,30 +157,10 @@ The database-specific column definition for the aggregate id.
 |string
 |
 
-|`quarkus.debezium-outbox.aggregate-id.length`::
-The length of the event key column.
-|integer
-|
-
-|`quarkus.debezium-outbox.aggregate-id.scale`::
-The scale of the event key column.
-|integer
-|
-
-|`quarkus.debezium-outbox.aggregate-id.precision`::
-The precision of the event key column.
-|integer
-|
-
 |`quarkus.debezium-outbox.aggregate-id.converter`::
 The JPA AttributeConverter for the event key column.
 |string
 |
-
-|`quarkus.debezium-outbox.aggregate-id.nullable`::
-Whether the event key column is nullable.
-|boolean
-|false
 
 |`quarkus.debezium-outbox.aggregate-type-name`::
 The column name for the event aggregate type column.
@@ -192,30 +172,10 @@ The database-specific column definition for the aggregate type.
 |string
 |
 
-|`quarkus.debezium-outbox.aggregate-type.length`::
-The length of the event aggregate type column.
-|integer
-|
-
-|`quarkus.debezium-outbox.aggregate-type.scale`::
-The scale of the event aggregate type column.
-|integer
-|
-
-|`quarkus.debezium-outbox.aggregate-type.precision`::
-The precision of the event aggregate type column.
-|integer
-|
-
 |`quarkus.debezium-outbox.aggregate-type.converter`::
 The JPA AttributeConverter for the event aggregate type column.
 |string
 |
-
-|`quarkus.debezium-outbox.aggregate-type.nullable`::
-Whether the event aggregate type column is nullable.
-|boolean
-|false
 
 |`quarkus.debezium-outbox.type.name`::
 The column name for the event type column.
@@ -227,30 +187,10 @@ The database-specific column definition for the event type.
 |string
 |
 
-|`quarkus.debezium-outbox.type.length`::
-The length of the event type column.
-|integer
-|
-
-|`quarkus.debezium-outbox.type.scale`::
-The scale of the event type column.
-|integer
-|
-
-|`quarkus.debezium-outbox.type.precision`::
-The precision of the event type column.
-|integer
-|
-
 |`quarkus.debezium-outbox.type.converter`::
 The JPA AttributeConverter for the event type column.
 |string
 |
-
-|`quarkus.debezium-outbox.type.nullable`::
-Whether the event type column is nullable.
-|boolean
-|false
 
 |`quarkus.debezium-outbox.timestamp.name`::
 The column name for the event timestamp column.
@@ -262,30 +202,10 @@ The database-specific column definition for the event timestamp.
 |string
 |
 
-|`quarkus.debezium-outbox.timestamp.length`::
-The length of the event timestamp column.
-|integer
-|
-
-|`quarkus.debezium-outbox.timestamp.scale`::
-The scale of the event timestamp column.
-|integer
-|
-
-|`quarkus.debezium-outbox.timestamp.precision`::
-The precision of the event timestamp column.
-|integer
-|
-
 |`quarkus.debezium-outbox.timestamp.converter`::
 The JPA AttributeConverter for the event timestamp column.
 |string
 |
-
-|`quarkus.debezium-outbox.timestamp.nullable`::
-Whether the event timestamp column is nullable.
-|boolean
-|false
 
 |`quarkus.debezium-outbox.payload.name`::
 The column name for the event payload column.
@@ -297,30 +217,10 @@ The database-specific column definition for the event payload.
 |string
 |
 
-|`quarkus.debezium-outbox.payload.length`::
-The length of the event payload column.
-|integer
-|
-
-|`quarkus.debezium-outbox.payload.scale`::
-The scale of the event payload column.
-|integer
-|
-
-|`quarkus.debezium-outbox.payload.precision`::
-The precision of the event payload column.
-|integer
-|
-
 |`quarkus.debezium-outbox.payload.converter`::
 The JPA AttributeConverter for the event payload column.
 |string
 |
-
-|`quarkus.debezium-outbox.payload.nullable`::
-Whether the event payload column is nullable.
-|boolean
-|true
 
 |=======================
 
