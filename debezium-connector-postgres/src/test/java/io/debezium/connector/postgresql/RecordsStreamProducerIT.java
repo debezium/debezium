@@ -16,6 +16,7 @@ import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -1003,11 +1004,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("DBZ-800")
     public void shouldReceiveHeartbeatAlsoWhenChangingNonWhitelistedTable() throws Exception {
-        // the high heartbeat interval should make sure that a heartbeat message is emitted only
-        // after insert statement which allows to check that lsn is not flushed by itself
-        // but only when heartbeat message is produced
         startConnector(config -> config
-                .with(Heartbeat.HEARTBEAT_INTERVAL, "10000")
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(PostgresConnectorConfig.POLL_INTERVAL_MS, "50")
                 .with(PostgresConnectorConfig.TABLE_WHITELIST, "s1\\.b")
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
@@ -1019,8 +1017,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
                 "INSERT INTO s1.a (aa) VALUES (11);";
 
-        // consumer will contain only a heartbeat for unfiltered table
-        consumer = testConsumer(1);
+        // only heartbeats records
+        consumer = testConsumer(15);
         consumer.setIgnoreExtraRecords(true);
 
         try (PostgresConnection postgresConnection = TestHelper.create()) {
@@ -1034,10 +1032,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             long serverLsn = postgresConnection.currentXLogLocation();
             assertNotEquals("lsn should not be flushed until heartbeat is produced", serverLsn, flushLsn);
 
-            // awaiting heartbeat to be produced
-            consumer.await(TestHelper.waitTimeForRecords() * 10, TimeUnit.SECONDS);
-
-            SourceRecord record = consumer.remove();
+            // awaiting heartbeats to be produced
+            consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+            SourceRecord record = null;
+            while (!consumer.isEmpty()) {
+                record = consumer.remove();
+            }
+            assertNotNull("heartbeats are not generated", record);
 
             long heartbeatLsn = (Long) record.sourceOffset().get("lsn");
 
@@ -1045,7 +1046,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertTrue("Heartbeat lsn must be equal to or greater than lsn of insert statement", heartbeatLsn >= serverLsn);
 
             // check if flushed lsn is equal to or greater than server lsn
-            TimeUnit.SECONDS.sleep(1); // wait a little to be sure server has updated last flushed lsn
             SlotState slotStateAfterHeartbeat = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
             long flushedLsn = slotStateAfterHeartbeat.slotLastFlushedLsn();
             assertTrue("lsn should be flushed when heartbeat is produced", flushedLsn >= serverLsn);
