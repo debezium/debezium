@@ -16,6 +16,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
+
 /**
  * An immutable descriptor for the structure of Debezium message envelopes. An {@link Envelope} can be created for each message
  * schema using the {@link #defineSchema()} builder, and once created can generate {@link Struct} objects representing CREATE,
@@ -87,6 +89,10 @@ public final class Envelope {
          */
         public static final String SOURCE = "source";
         /**
+         * The optional metadata information associated with transaction - like transaction id.
+         */
+        public static final String TRANSACTION = "transaction";
+        /**
          * The {@code ts_ms} field is used to store the information about the local time at which the connector
          * processed/generated the event. The timestamp values are the number of milliseconds past epoch (January 1, 1970), and
          * determined by the {@link System#currentTimeMillis() JVM current time in milliseconds}. Note that the <em>accuracy</em>
@@ -113,6 +119,7 @@ public final class Envelope {
         fields.add(FieldName.BEFORE);
         fields.add(FieldName.AFTER);
         fields.add(FieldName.SOURCE);
+        fields.add(FieldName.TRANSACTION);
         ALL_FIELD_NAMES = Collections.unmodifiableSet(fields);
     }
 
@@ -203,10 +210,12 @@ public final class Envelope {
             public Envelope build() {
                 builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
+                builder.field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
                 checkFieldIsDefined(FieldName.OPERATION, OPERATION_REQUIRED);
                 checkFieldIsDefined(FieldName.BEFORE, false);
                 checkFieldIsDefined(FieldName.AFTER, false);
                 checkFieldIsDefined(FieldName.SOURCE, false);
+                checkFieldIsDefined(FieldName.TRANSACTION, false);
                 if (!missingFields.isEmpty()) {
                     throw new IllegalStateException("The envelope schema is missing field(s) " + String.join(", ", missingFields));
                 }

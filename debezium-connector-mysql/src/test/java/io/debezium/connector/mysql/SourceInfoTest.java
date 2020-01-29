@@ -28,7 +28,6 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 public class SourceInfoTest {
 
@@ -656,7 +655,6 @@ public class SourceInfoTest {
                 .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
-                .field("transaction", TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .field("table", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("server_id", Schema.INT64_SCHEMA)
                 .field("gtid", Schema.OPTIONAL_STRING_SCHEMA)

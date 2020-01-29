@@ -133,16 +133,11 @@ public class TransactionMonitor {
             LOGGER.debug("Event with key {} without value. Cannot enrich source block.");
             return;
         }
-        final Struct sourceBlock = value.getStruct(Envelope.FieldName.SOURCE);
-        if (sourceBlock == null) {
-            LOGGER.debug("Event with key {} with value {} lacks source block. Cannot be enriched.");
-            return;
-        }
         final Struct txStruct = new Struct(TRANSACTION_BLOCK_SCHEMA);
         txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         txStruct.put(DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, offsetContext.getTransactionContext().getTotalEventCount());
         txStruct.put(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, dataCollectionEventOrder);
-        sourceBlock.put(DEBEZIUM_TRANSACTION_KEY, txStruct);
+        value.put(Envelope.FieldName.TRANSACTION, txStruct);
     }
 
     private void beginTransaction(OffsetContext offsetContext) throws InterruptedException {

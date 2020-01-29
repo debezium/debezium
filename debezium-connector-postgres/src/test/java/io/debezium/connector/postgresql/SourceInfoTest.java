@@ -16,7 +16,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.TableId;
 import io.debezium.time.Conversions;
 
@@ -69,7 +68,6 @@ public class SourceInfoTest {
                 .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
-                .field("transaction", TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)
