@@ -17,7 +17,6 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.relational.TableId;
 
 public class SourceInfoTest {
@@ -96,7 +95,6 @@ public class SourceInfoTest {
                 .field("ts_ms", Schema.INT64_SCHEMA)
                 .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
                 .field("db", Schema.STRING_SCHEMA)
-                .field("transaction", TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("change_lsn", Schema.OPTIONAL_STRING_SCHEMA)

@@ -13,7 +13,6 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.data.Enum;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * Common information provided by all connectors in either source field or offsets.
@@ -43,8 +42,7 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
                 .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
                 .field(AbstractSourceInfo.SNAPSHOT_KEY, SNAPSHOT_RECORD_SCHEMA)
-                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(TransactionMonitor.DEBEZIUM_TRANSACTION_KEY, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
+                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA);
     }
 
     protected Struct commonStruct(T sourceInfo) {

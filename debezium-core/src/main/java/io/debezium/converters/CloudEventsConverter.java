@@ -431,9 +431,6 @@ public class CloudEventsConverter implements Converter {
         else if (schema.type() == Type.STRING || schema.type() == Type.INT64) {
             ceExtensionSchema = SchemaBuilder.string();
         }
-        else if (schema.type() == Type.STRUCT) {
-            ceExtensionSchema = SchemaBuilder.string();
-        }
         // further attribute types may be supported in the future, but the ones above are the ones
         // currently used in the "source" block of Debezium events
         else {

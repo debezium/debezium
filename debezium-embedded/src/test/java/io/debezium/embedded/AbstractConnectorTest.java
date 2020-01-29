@@ -836,7 +836,7 @@ public abstract class AbstractConnectorTest implements Testing {
 
     @SuppressWarnings("unchecked")
     protected void assertRecordTransactionMetadata(SourceRecord record, String expectedTxId, long expectedTotalOrder, long expectedCollectionOrder) {
-        final Struct change = ((Struct) record.value()).getStruct("source").getStruct("transaction");
+        final Struct change = ((Struct) record.value()).getStruct("transaction");
         final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
 
         Assertions.assertThat(change.getString("id")).isEqualTo(expectedTxId);
