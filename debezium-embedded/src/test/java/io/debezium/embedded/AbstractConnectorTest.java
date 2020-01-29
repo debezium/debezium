@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
@@ -821,7 +822,7 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     @SuppressWarnings("unchecked")
-    protected void assertEndTransaction(SourceRecord record, String expectedTxId, long expectedEventCount) {
+    protected void assertEndTransaction(SourceRecord record, String expectedTxId, long expectedEventCount, Map<String, Number> expectedPerTableCount) {
         final Struct end = (Struct) record.value();
         final Struct endKey = (Struct) record.key();
         final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
@@ -831,6 +832,10 @@ public abstract class AbstractConnectorTest implements Testing {
         Assertions.assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
         Assertions.assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
 
+        Assertions
+                .assertThat(((List<Object>) end.getArray("data_collections")).stream().map(x -> (Struct) x)
+                        .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
+                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
         Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
     }
 

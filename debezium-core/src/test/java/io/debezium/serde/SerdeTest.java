@@ -139,7 +139,7 @@ public class SerdeTest implements Testing {
         valueSerde.configure(Collections.emptyMap(), false);
         final String content = Testing.Files.readResourceAsString("json/serde-with-schema.json");
         Map<String, String> envelope = valueSerde.deserializer().deserialize("xx", content.getBytes());
-        Assertions.assertThat(envelope).hasSize(FIELDS_IN_ENVELOPE);
+        Assertions.assertThat(envelope).hasSize(FIELDS_IN_ENVELOPE - 1); // tx block not present
         Assertions.assertThat(envelope.get("op")).isEqualTo("c");
     }
 
