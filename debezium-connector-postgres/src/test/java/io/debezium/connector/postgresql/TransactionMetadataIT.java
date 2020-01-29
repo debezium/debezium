@@ -23,6 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.util.Collect;
 
 public class TransactionMetadataIT extends AbstractConnectorTest {
 
@@ -85,6 +86,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         final String txId = assertBeginTransaction(records.get(0));
         assertRecordTransactionMetadata(records.get(1), txId, 1, 1);
         assertRecordTransactionMetadata(records.get(2), txId, 2, 1);
-        assertEndTransaction(records.get(3), txId, 2);
+        assertEndTransaction(records.get(3), txId, 2, Collect.hashMapOf("s1.a", 1, "s2.a", 1));
     }
 }

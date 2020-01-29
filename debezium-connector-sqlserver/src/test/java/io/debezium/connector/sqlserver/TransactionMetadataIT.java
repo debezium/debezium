@@ -26,6 +26,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
 /**
@@ -106,7 +107,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             counter++;
         }
 
-        assertEndTransaction(all.get(2 * RECORDS_PER_TABLE + 1), txId, 2 * RECORDS_PER_TABLE);
+        assertEndTransaction(all.get(2 * RECORDS_PER_TABLE + 1), txId, 2 * RECORDS_PER_TABLE,
+                Collect.hashMapOf("testDB.dbo.tablea", RECORDS_PER_TABLE, "testDB.dbo.tableb", RECORDS_PER_TABLE));
         stopConnector();
     }
 
@@ -184,7 +186,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         assertThat(records).hasSize(expectedRecords);
 
         if (firstTxId != null) {
-            assertEndTransaction(records.get(0), firstTxId, 1);
+            assertEndTransaction(records.get(0), firstTxId, 1, Collect.hashMapOf("testDB.dbo.tablea", 1));
         }
         final String batchTxId = assertBeginTransaction(records.get(txBeginIndex));
 
@@ -247,7 +249,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         Assertions.assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(tableB).hasSize(RECORDS_PER_TABLE);
         Assertions.assertThat(txMetadata).hasSize(1 + 2 * RECORDS_PER_TABLE - 1);
-        assertEndTransaction(txMetadata.get(0), batchTxId, 2 * RECORDS_PER_TABLE);
+        assertEndTransaction(txMetadata.get(0), batchTxId, 2 * RECORDS_PER_TABLE,
+                Collect.hashMapOf("testDB.dbo.tablea", RECORDS_PER_TABLE, "testDB.dbo.tableb", RECORDS_PER_TABLE));
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = i + ID_RESTART;
@@ -272,7 +275,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
             assertRecordTransactionMetadata(recordA, txId, 1, 1);
             assertRecordTransactionMetadata(recordB, txId, 2, 1);
             if (i < RECORDS_PER_TABLE - 1) {
-                assertEndTransaction(txMetadata.get(2 * i + 2), txId, 2);
+                assertEndTransaction(txMetadata.get(2 * i + 2), txId, 2, Collect.hashMapOf("testDB.dbo.tablea", 1, "testDB.dbo.tableb", 1));
             }
         }
     }

@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.txmetadata;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,7 +36,8 @@ public class TransactionContext {
     private static final int OFFSET_TABLE_COUNT_PREFIX_LENGTH = OFFSET_TABLE_COUNT_PREFIX.length();
 
     private String transactionId = null;
-    private Map<String, Long> perTableEventCount = new HashMap<>();
+    private final Map<String, Long> perTableEventCount = new HashMap<>();
+    private final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
     private long totalEventCount = 0;
 
     public TransactionContext() {
@@ -103,6 +105,10 @@ public class TransactionContext {
         final long dataCollectionEventOrder = perTableEventCount.getOrDefault(sourceName, 0L).longValue() + 1;
         perTableEventCount.put(sourceName, Long.valueOf(dataCollectionEventOrder));
         return dataCollectionEventOrder;
+    }
+
+    public Map<String, Long> getPerTableEventCount() {
+        return viewPerTableEventCount;
     }
 
     @Override

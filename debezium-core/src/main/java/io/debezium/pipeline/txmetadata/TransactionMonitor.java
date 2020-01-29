@@ -5,7 +5,12 @@
  */
 package io.debezium.pipeline.txmetadata;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -53,6 +58,8 @@ public class TransactionMonitor {
     public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY = "data_collection_order";
     public static final String DEBEZIUM_TRANSACTION_STATUS_KEY = "status";
     public static final String DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY = "event_count";
+    public static final String DEBEZIUM_TRANSACTION_COLLECTION_KEY = "data_collection";
+    public static final String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
 
     public static final Schema TRANSACTION_BLOCK_SCHEMA = SchemaBuilder.struct().optional()
             .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
@@ -60,15 +67,22 @@ public class TransactionMonitor {
             .field(DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
             .build();
 
-    private static Schema TRANSACTION_KEY_SCHEMA = SchemaBuilder.struct()
+    private static final Schema TRANSACTION_KEY_SCHEMA = SchemaBuilder.struct()
             .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataKey"))
             .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
             .build();
-    private static Schema TRANSACTION_VALUE_SCHEMA = SchemaBuilder.struct()
+
+    private static final Schema EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA = SchemaBuilder.struct()
+            .field(DEBEZIUM_TRANSACTION_COLLECTION_KEY, Schema.STRING_SCHEMA)
+            .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.INT64_SCHEMA)
+            .build();
+
+    private static final Schema TRANSACTION_VALUE_SCHEMA = SchemaBuilder.struct()
             .name(schemaNameAdjuster.adjust("io.debezium.connector.common.TransactionMetadataValue"))
             .field(DEBEZIUM_TRANSACTION_STATUS_KEY, Schema.STRING_SCHEMA)
             .field(DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
             .field(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+            .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
             .build();
 
     private final EventMetadataProvider eventMetadataProvider;
@@ -158,6 +172,16 @@ public class TransactionMonitor {
         value.put(DEBEZIUM_TRANSACTION_STATUS_KEY, TransactionStatus.END.name());
         value.put(DEBEZIUM_TRANSACTION_ID_KEY, offsetContext.getTransactionContext().getTransactionId());
         value.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, offsetContext.getTransactionContext().getTotalEventCount());
+
+        final Set<Entry<String, Long>> perTableEventCount = offsetContext.getTransactionContext().getPerTableEventCount().entrySet();
+        final List<Struct> valuePerTableCount = new ArrayList<>(perTableEventCount.size());
+        for (Map.Entry<String, Long> tableEventCount : perTableEventCount) {
+            final Struct perTable = new Struct(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA);
+            perTable.put(DEBEZIUM_TRANSACTION_COLLECTION_KEY, tableEventCount.getKey());
+            perTable.put(DEBEZIUM_TRANSACTION_EVENT_COUNT_KEY, tableEventCount.getValue());
+            valuePerTableCount.add(perTable);
+        }
+        value.put(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, valuePerTableCount);
 
         sender.accept(new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
                 topicName, null, key.schema(), key, value.schema(), value));
