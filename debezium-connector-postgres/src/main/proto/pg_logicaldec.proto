@@ -5,6 +5,7 @@ option java_outer_classname = "PgProto";
 option optimize_for = SPEED;
 
 enum Op {
+    UNKNOWN = -1;
     INSERT = 0;
     UPDATE = 1;
     DELETE = 2;
