@@ -12,6 +12,7 @@ env:
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-mongodb -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mongo.server=4.0"'
   - MAVEN_CLI: '"clean install -B -pl debezium-quarkus-outbox -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-quarkus-outbox-integration-tests -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
   - MAVEN_CLI: '"clean install -B -pl debezium-testing -am -amd -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
 
 sudo: required
