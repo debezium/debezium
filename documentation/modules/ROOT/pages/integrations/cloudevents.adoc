@@ -54,7 +54,10 @@ The following example shows a CloudEvents event of the Debezium Postgres connect
   "iodebeziumtxId" : "565",
   "iodebeziumlsn" : "29274832",
   "iodebeziumxmin" : null,
-  "data" : {                                         <9>
+  "iodebeziumtxid": "565",                           <9>
+  "iodebeziumtxtotalorder": "1",
+  "iodebeziumtxdatacollectionorder": "1",
+  "data" : {                                         <10>
     "before" : null,
     "after" : {
       "pk" : 1,
@@ -71,7 +74,8 @@ The following example shows a CloudEvents event of the Debezium Postgres connect
 <6> Describes the content type of the `data` attribute; JSON in this case
 <7> Operation type identifier (one of (r)ead, (c)reate, (u)pdate or (d)elete)
 <8> All the `source` attributes known from Debezium data change events are mapped to CloudEvents extension attributes, using the "iodebezium" prefix for the attribute name
-<9> The actual data change itself; depending on the kind of change and the type of connector, may contain the `before`, `after` and/or `patch` fields
+<9> All the `transaction` attributes known from Debezium data change events (when enabled in connector) are mapped to CloudEvents extension attributes, using the "iodebeziumtx" prefix for the attribute name
+<10> The actual data change itself; depending on the kind of change and the type of connector, may contain the `before`, `after` and/or `patch` fields
 
 Alternatively, Avro can be used as content type for the `data` attribute:
 
@@ -97,6 +101,9 @@ Alternatively, Avro can be used as content type for the `data` attribute:
   "iodebeziumtxId" : "578",
   "iodebeziumlsn" : "33227720",
   "iodebeziumxmin" : null,
+  "iodebeziumtxid": "578",
+  "iodebeziumtxtotalorder": "1",
+  "iodebeziumtxdatacollectionorder": "1",
   "data" : "AAAAAAEAAgICAg=="                        <3>
 }
 ----
