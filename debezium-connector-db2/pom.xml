@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.debezium</groupId>
-        <artifactId>debezium-parent</artifactId>
+        <artifactId>debezium-incubator-parent</artifactId>
         <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
@@ -26,20 +26,17 @@
         <docker.showLogs>true</docker.showLogs>
     </properties>
 
-
-
-
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
         </dependency>
-    <!-- Db2 JDBC driver -->
+        <!-- Db2 JDBC driver -->
         <!-- https://mvnrepository.com/artifact/com.ibm.db2/jcc -->
         <dependency>
             <groupId>com.ibm.db2</groupId>
             <artifactId>jcc</artifactId>
-            <version>11.5.0.0</version>
+            <version>${version.db2.driver}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
