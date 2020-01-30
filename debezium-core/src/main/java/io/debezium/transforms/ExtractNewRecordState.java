@@ -5,11 +5,11 @@
  */
 package io.debezium.transforms;
 
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.data.Envelope;
-import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
-import io.debezium.util.BoundedConcurrentHashMap;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -24,10 +24,11 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.data.Envelope;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
+import io.debezium.util.BoundedConcurrentHashMap;
 
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values

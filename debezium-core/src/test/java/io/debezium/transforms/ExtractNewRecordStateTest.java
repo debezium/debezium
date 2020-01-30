@@ -5,8 +5,13 @@
  */
 package io.debezium.transforms;
 
-import io.debezium.data.Envelope;
-import io.debezium.doc.FixFor;
+import static org.fest.assertions.Assertions.assertThat;
+
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -15,12 +20,8 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import static org.fest.assertions.Assertions.assertThat;
+import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Jiri Pechanec
