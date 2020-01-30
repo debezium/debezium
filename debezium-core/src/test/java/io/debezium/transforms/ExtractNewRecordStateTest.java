@@ -5,13 +5,8 @@
  */
 package io.debezium.transforms;
 
-import static org.fest.assertions.Assertions.assertThat;
-
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
+import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -20,8 +15,12 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
-import io.debezium.data.Envelope;
-import io.debezium.doc.FixFor;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Jiri Pechanec
@@ -33,6 +32,8 @@ public class ExtractNewRecordStateTest {
     private static final String OPERATION_HEADER = "operation.header";
     private static final String ADD_SOURCE_FIELDS = "add.source.fields";
     private static final String ROUTE_BY_FIELD = "route.by.field";
+    private static final String ADD_OPERATION_FIELD = "add.operation.field";
+    private static final String ADD_TIMESTAMP_FIELD = "add.timestamp.field";
 
     final Schema recordSchema = SchemaBuilder.struct()
             .field("id", SchemaBuilder.int8())
@@ -314,7 +315,20 @@ public class ExtractNewRecordStateTest {
 
             final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("source__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    public void testAddOperationField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_OPERATION_FIELD, "true");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createComplexCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
         }
     }
 
@@ -367,8 +381,8 @@ public class ExtractNewRecordStateTest {
 
             final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
-            assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
+            assertThat(((Struct) unwrapped.value()).get("source__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).getString("source__version")).isEqualTo("version!");
         }
     }
 
@@ -382,7 +396,7 @@ public class ExtractNewRecordStateTest {
             final SourceRecord createRecord = createComplexCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
 
-            assertThat(((Struct) unwrapped.value()).schema().field("__nope")).isNull();
+            assertThat(((Struct) unwrapped.value()).schema().field("source__nope")).isNull();
         }
     }
 
@@ -398,7 +412,7 @@ public class ExtractNewRecordStateTest {
             final SourceRecord deleteRecord = createDeleteRecord();
             final SourceRecord unwrapped = transform.apply(deleteRecord);
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("source__lsn")).isEqualTo(1234);
         }
     }
 
@@ -414,8 +428,23 @@ public class ExtractNewRecordStateTest {
             final SourceRecord deleteRecord = createDeleteRecord();
             final SourceRecord unwrapped = transform.apply(deleteRecord);
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
-            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
-            assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
+            assertThat(((Struct) unwrapped.value()).get("source__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).getString("source__version")).isEqualTo("version!");
+        }
+    }
+
+    @Test
+    public void testAddOperationFieldHandleDeleteRewrite() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_OPERATION_FIELD, "true");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
         }
     }
 

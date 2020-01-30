@@ -5,11 +5,11 @@
  */
 package io.debezium.transforms;
 
-import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
-
-import java.util.HashMap;
-import java.util.Map;
-
+import io.debezium.config.Configuration;
+import io.debezium.config.Field;
+import io.debezium.data.Envelope;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
+import io.debezium.util.BoundedConcurrentHashMap;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -24,11 +24,10 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.Configuration;
-import io.debezium.config.Field;
-import io.debezium.data.Envelope;
-import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
-import io.debezium.util.BoundedConcurrentHashMap;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values
@@ -53,6 +52,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
     private static final String PURPOSE = "source field insertion";
     private static final int SCHEMA_CACHE_SIZE = 64;
+    private static final String OPERATION_FIELD_NAME = "op";
+    private static final String TIMESTAMP_FIELD_NAME = "ts_ms";
+    private static final String SOURCE_STRUCT_NAME = "source";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
 
@@ -60,6 +62,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private DeleteHandling handleDeletes;
     private boolean addOperationHeader;
     private String[] addSourceFields;
+    private boolean addOperationField;
+    private boolean addTimestampField;
     private String routeByField;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
@@ -85,6 +89,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ? null
                 : config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
+
+        addOperationField = config.getBoolean(ExtractNewRecordStateConfigDefinition.ADD_OPERATION_FIELD);
+        addTimestampField = config.getBoolean(ExtractNewRecordStateConfigDefinition.ADD_TIMESTAMP_FIELD);
 
         String routeFieldConfig = config.getString(ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
         routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
@@ -157,7 +164,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 case REWRITE:
                     LOGGER.trace("Delete message {} requested to be rewritten", record.key());
                     R oldRecord = beforeDelegate.apply(record);
-                    oldRecord = addSourceFields(addSourceFields, record, oldRecord);
+                    oldRecord = addMetadataFields(addOperationField, addTimestampField, addSourceFields, record, oldRecord);
+
                     return removedDelegate.apply(oldRecord);
                 default:
                     return newRecord;
@@ -171,7 +179,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 newRecord = setTopic(newTopicName, newRecord);
             }
 
-            newRecord = addSourceFields(addSourceFields, record, newRecord);
+            newRecord = addMetadataFields(addOperationField, addTimestampField, addSourceFields, record, newRecord);
 
             // Handling insert and update records
             switch (handleDeletes) {
@@ -197,26 +205,30 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 record.timestamp());
     }
 
-    private R addSourceFields(String[] addSourceFields, R originalRecord, R unwrappedRecord) {
-        // Return if no source fields to add
-        if (addSourceFields == null) {
+    private R addMetadataFields(boolean addOperationField, boolean addTimestampField, String[] addSourceFields, R originalRecord, R unwrappedRecord) {
+        // Return if no fields to add
+        if (!addOperationField && !addTimestampField && addSourceFields == null) {
             return unwrappedRecord;
         }
 
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
-        Struct source = ((Struct) originalRecord.value()).getStruct("source");
+        Struct originalRecordValue = (Struct) originalRecord.value();
 
-        // Get (or compute) the updated schema from the cache
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), s -> makeUpdatedSchema(s, source.schema(), addSourceFields));
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(),
+                s -> makeUpdatedSchema(addOperationField, addTimestampField, addSourceFields, value.schema(), originalRecordValue));
 
-        // Create the updated struct
-        final Struct updatedValue = new Struct(updatedSchema);
+        // Update the value with the new fields
+        Struct updatedValue = new Struct(updatedSchema);
         for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
             updatedValue.put(field.name(), value.get(field));
+
         }
-        for (String sourceField : addSourceFields) {
-            updatedValue.put(ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField, source.get(sourceField));
-        }
+
+        updatedValue = addOperationField ? updateValue(new String[]{ OPERATION_FIELD_NAME }, updatedValue, originalRecordValue, "") : updatedValue;
+        updatedValue = addTimestampField ? updateValue(new String[]{ TIMESTAMP_FIELD_NAME }, updatedValue, originalRecordValue, "") : updatedValue;
+
+        Struct structSource = originalRecordValue.getStruct(SOURCE_STRUCT_NAME);
+        updatedValue = addSourceFields != null ? updateValue(addSourceFields, updatedValue, structSource, SOURCE_STRUCT_NAME) : updatedValue;
 
         return unwrappedRecord.newRecord(
                 unwrappedRecord.topic(),
@@ -228,22 +240,40 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 unwrappedRecord.timestamp());
     }
 
-    private Schema makeUpdatedSchema(Schema schema, Schema sourceSchema, String[] addSourceFields) {
-        final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
+    private Schema makeUpdatedSchema(boolean addOperationField, boolean addTimestampField, String[] addSourceFields, Schema schema, Struct originalRecordValue) {
         // Get fields from original schema
+        SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             builder.field(field.name(), field.schema());
         }
-        // Add the requested source fields, throw exception if a specified source field is not part of the source schema
-        for (String sourceField : addSourceFields) {
-            if (sourceSchema.field(sourceField) == null) {
-                throw new ConfigException("Source field specified in 'add.source.fields' does not exist: " + sourceField);
+
+        // Update the schema with the new fields
+        builder = addOperationField ? updateSchema(new String[]{ OPERATION_FIELD_NAME }, builder, originalRecordValue.schema(), "") : builder;
+        builder = addTimestampField ? updateSchema(new String[]{ TIMESTAMP_FIELD_NAME }, builder, originalRecordValue.schema(), "") : builder;
+
+        final Struct structSource = originalRecordValue.getStruct(SOURCE_STRUCT_NAME);
+        builder = addSourceFields != null ? updateSchema(addSourceFields, builder, structSource.schema(), SOURCE_STRUCT_NAME) : builder;
+
+        return builder.build();
+    }
+
+    private SchemaBuilder updateSchema(String[] addMetadataFields, SchemaBuilder builder, Schema structSchema, String structPrefix) {
+        for (String field : addMetadataFields) {
+            if (structSchema.field(field) == null) {
+                throw new ConfigException("Field specified in 'add.metadata.fields' does not exist: " + field);
             }
             builder.field(
-                    ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + sourceField,
-                    sourceSchema.field(sourceField).schema());
+                    structPrefix + ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + field,
+                    structSchema.field(field).schema());
         }
-        return builder.build();
+        return builder;
+    }
+
+    private Struct updateValue(String[] addMetadataFields, Struct updatedValue, Struct struct, String structPrefix) {
+        for (String field : addMetadataFields) {
+            updatedValue.put(structPrefix + ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + field, struct.get(field));
+        }
+        return updatedValue;
     }
 
     @Override

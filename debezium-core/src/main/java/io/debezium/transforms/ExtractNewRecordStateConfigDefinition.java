@@ -109,6 +109,22 @@ public class ExtractNewRecordStateConfigDefinition {
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault("")
-            .withDescription("Adds each field listed from the 'source' element of the payload, prefixed with __ "
-                    + "Example: 'version,connector' would add __version and __connector fields");
+            .withDescription("Adds each field listed from the 'source' element of the payload, prefixed with source__ "
+                    + "Example: 'version,connector' would add source__version and source__connector fields");
+
+    public static final Field ADD_OPERATION_FIELD = Field.create("add.operation.field")
+            .withDisplayName("Adds the operation ('op') field from the payload.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Adds the operation ('op') field of the payload, prefixed with __ ");
+
+    public static final Field ADD_TIMESTAMP_FIELD = Field.create("add.timestamp.field")
+            .withDisplayName("Adds the timestamp ('ts_ms') field from the payload.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Adds the timestamp ('ts_ms') field of the payload, prefixed with __ ");
 }
