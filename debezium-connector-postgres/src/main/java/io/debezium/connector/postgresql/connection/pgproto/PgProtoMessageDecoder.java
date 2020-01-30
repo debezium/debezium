@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection.pgproto;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Set;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
@@ -20,7 +21,9 @@ import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
+import io.debezium.connector.postgresql.proto.PgProto.Op;
 import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
+import io.debezium.util.Collect;
 
 /**
  * ProtoBuf deserialization of message sent by <a href="https://github.com/debezium/postgres-decoderbufs">Postgres Decoderbufs</a>.
@@ -32,6 +35,9 @@ import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 public class PgProtoMessageDecoder extends AbstractMessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoMessageDecoder.class);
+    private static final Set<Op> SUPPORTED_OPS = Collect.unmodifiableSet(Op.INSERT, Op.UPDATE, Op.DELETE);
+
+    private boolean warnedOnUnkownOp = false;
 
     @Override
     public void processMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
@@ -49,6 +55,13 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
                         Integer.toUnsignedLong(message.getTransactionId()),
                         message.getNewTupleCount(),
                         message.getNewTypeinfoCount()));
+            }
+            if (!SUPPORTED_OPS.contains(message.getOp())) {
+                if (!warnedOnUnkownOp) {
+                    LOGGER.warn("Received message with type '{}' that is unknown to this version of connector, consider upgrading", message.getOp());
+                    warnedOnUnkownOp = true;
+                }
+                return;
             }
             processor.process(new PgProtoReplicationMessage(message, typeRegistry));
         }
