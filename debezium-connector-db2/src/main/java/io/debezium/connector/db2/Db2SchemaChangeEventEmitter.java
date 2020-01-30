@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.db2;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Table;
 import io.debezium.schema.SchemaChangeEvent;
@@ -19,8 +16,6 @@ import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
  * @author Jiri Pechanec
  */
 public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Db2SchemaChangeEventEmitter.class);
 
     private final Db2OffsetContext offsetContext;
     private final ChangeTable changeTable;

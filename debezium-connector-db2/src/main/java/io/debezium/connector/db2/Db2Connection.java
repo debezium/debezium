@@ -54,9 +54,6 @@ public class Db2Connection extends JdbcConnection {
 
     private static final String LSN_TO_TIMESTAMP = "SELECT CURRENT TIMEstamp FROM sysibm.sysdummy1  WHERE ? > X'00000000000000000000000000000000'";
 
-    private static final String INCREMENT_LSN = " SELECT *" +
-            " FROM (select CAST(CAST( ? AS VARCHAR(16) FOR BIT DATA) AS VARCHAR(32)) AS LSN from sysibm.sysdummy1)   FETCH FIRST ROW ONLY;";
-
     private static final String GET_ALL_CHANGES_FOR_TABLE = "SELECT "
             + "CASE "
             + "WHEN IBMSNAP_OPERATION = 'D' AND (LEAD(cdc.IBMSNAP_OPERATION,1,'X') OVER (PARTITION BY cdc.IBMSNAP_COMMITSEQ ORDER BY cdc.IBMSNAP_INTENTSEQ)) ='I' THEN 3 "

@@ -165,16 +165,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
             }
 
             LOGGER.info("Reading structure of schema '{}'", schema);
-            /**
-            jdbcConnection.readSchema(
-                    snapshotContext.tables,
-                    snapshotContext.catalogName,
-                    schema,
-                    connectorConfig.getTableFilters().dataCollectionFilter(),
-                    null,
-                    false
-            );
-             **/
+
             jdbcConnection.readSchema(
                     snapshotContext.tables,
                     null,
