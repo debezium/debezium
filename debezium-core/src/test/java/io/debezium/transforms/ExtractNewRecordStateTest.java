@@ -33,6 +33,8 @@ public class ExtractNewRecordStateTest {
     private static final String OPERATION_HEADER = "operation.header";
     private static final String ADD_SOURCE_FIELDS = "add.source.fields";
     private static final String ROUTE_BY_FIELD = "route.by.field";
+    private static final String ADD_FIELDS = "add.fields";
+    private static final String ADD_HEADERS = "add.headers";
 
     final Schema recordSchema = SchemaBuilder.struct()
             .field("id", SchemaBuilder.int8())
@@ -319,6 +321,96 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    public void testAddField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_FIELDS, "op");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
+        }
+    }
+
+    @Test
+    public void testAddFields() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_FIELDS, "op,lsn");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    public void testAddFieldsSpecifyStruct() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_FIELDS, "op,source.lsn");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
+            assertThat(((Struct) unwrapped.value()).get("__source__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    public void testAddHeader() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_HEADERS, "op");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(unwrapped.headers()).hasSize(1);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
+        }
+    }
+
+    @Test
+    public void testAddHeaders() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_HEADERS, "op,lsn");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(unwrapped.headers()).hasSize(2);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+        }
+    }
+
+    @Test
+    public void testAddHeadersSpecifyStruct() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_HEADERS, "op,source.lsn");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecord();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(unwrapped.headers()).hasSize(2);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__source__lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+        }
+    }
+
+    @Test
     public void testAddTopicRoutingField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -416,6 +508,53 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
             assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
             assertThat(((Struct) unwrapped.value()).getString("__version")).isEqualTo("version!");
+        }
+    }
+
+    @Test
+    public void testAddFieldHandleDeleteRewrite() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_FIELDS, "op");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
+        }
+    }
+
+    @Test
+    public void testAddFieldsHandleDeleteRewrite() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_FIELDS, "op,lsn");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    public void testAddFieldsSpecifyStructHandleDeleteRewrite() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_FIELDS, "op,source.lsn");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
+            assertThat(((Struct) unwrapped.value()).get("__source__lsn")).isEqualTo(1234);
         }
     }
 
