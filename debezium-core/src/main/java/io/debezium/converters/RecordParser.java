@@ -28,6 +28,7 @@ public abstract class RecordParser {
 
     private final Struct record;
     private final Struct source;
+    private final Struct transaction;
     private final String op;
     private final Schema opSchema;
     private final String ts_ms;
@@ -71,6 +72,7 @@ public abstract class RecordParser {
     protected RecordParser(Schema schema, Struct record, String... dataFields) {
         this.record = record;
         this.source = record.getStruct(Envelope.FieldName.SOURCE);
+        this.transaction = record.schema().field(Envelope.FieldName.TRANSACTION) != null ? record.getStruct(Envelope.FieldName.TRANSACTION) : null;
         this.op = record.getString(Envelope.FieldName.OPERATION);
         this.opSchema = schema.field(Envelope.FieldName.OPERATION).schema();
         this.ts_ms = record.getInt64(Envelope.FieldName.TIMESTAMP).toString();
@@ -109,6 +111,15 @@ public abstract class RecordParser {
      */
     public Struct source() {
         return source;
+    }
+
+    /**
+     * Get the value of the transaction field in the record.
+     *
+     * @return the value of the transaction field
+     */
+    public Struct transaction() {
+        return transaction;
     }
 
     /**

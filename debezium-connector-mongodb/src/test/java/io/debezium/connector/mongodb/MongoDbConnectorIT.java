@@ -941,9 +941,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         SourceRecords records = consumeRecordsByTopic(12);
         List<SourceRecord> topicRecords = records.recordsForTopic("mongo.dbit.restaurants");
         for (SourceRecord record : topicRecords) {
-            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo");
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo", false);
         }
 
         storeDocuments("dbit", "restaurants", "restaurants2.json");
@@ -952,9 +952,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         SourceRecords records2 = consumeRecordsByTopic(4);
         List<SourceRecord> topicRecords2 = records2.recordsForTopic("mongo.dbit.restaurants");
         for (SourceRecord record : topicRecords2) {
-            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record);
-            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo");
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, false);
+            CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "mongodb", "mongo", false);
         }
 
         stopConnector();

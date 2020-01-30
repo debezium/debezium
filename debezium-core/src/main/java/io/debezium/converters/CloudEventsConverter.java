@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.connect.data.Field;
@@ -41,6 +42,7 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.data.Envelope;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -68,6 +70,7 @@ import io.debezium.util.SchemaNameAdjuster;
 public class CloudEventsConverter implements Converter {
 
     private static final String EXTENSION_NAME_PREFIX = "iodebezium";
+    private static final String TX_ATTRIBUTE_PREFIX = "tx";
 
     /**
      * Instantiated reflectively to avoid hard dependency to Avro converter.
@@ -165,6 +168,10 @@ public class CloudEventsConverter implements Converter {
     @Override
     public byte[] fromConnectData(String topic, Schema schema, Object value) {
         if (schema == null || value == null) {
+            return null;
+        }
+        if (!schema.name().endsWith(".Envelope")) {
+            // TODO Handling of non-data messages like schema change or transaction metadata
             return null;
         }
         if (schema.type() != STRUCT) {
@@ -361,6 +368,7 @@ public class CloudEventsConverter implements Converter {
         SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
         Struct source = parser.source();
         Schema sourceSchema = parser.source().schema();
+        final Struct transaction = parser.transaction();
 
         // construct schema of CloudEvents envelope
         CESchemaBuilder ceSchemaBuilder = defineSchema()
@@ -378,9 +386,10 @@ public class CloudEventsConverter implements Converter {
 
         ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
 
-        for (Field field : sourceSchema.fields()) {
-            ceSchemaBuilder.withSchema(adjustExtensionName(field.name()), convertToCeExtensionSchema(field.schema()));
-        }
+        ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
+
+        // transaction attributes
+        ceSchemaFromSchema(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceSchemaBuilder, CloudEventsConverter::txExtensionName, true);
 
         ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATA, dataSchemaType);
 
@@ -400,12 +409,10 @@ public class CloudEventsConverter implements Converter {
 
         ceValueBuilder.withValue(adjustExtensionName(Envelope.FieldName.OPERATION), parser.op());
 
-        for (Field field : sourceSchema.fields()) {
-            Object value = source.get(field);
-            if (field.schema().type() == Type.INT64 && value != null) {
-                value = String.valueOf((long) value);
-            }
-            ceValueBuilder.withValue(adjustExtensionName(field.name()), value);
+        ceValueFromStruct(source, sourceSchema, ceValueBuilder, CloudEventsConverter::adjustExtensionName);
+
+        if (transaction != null) {
+            ceValueFromStruct(transaction, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA, ceValueBuilder, CloudEventsConverter::txExtensionName);
         }
 
         ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATA, serializedData);
@@ -413,11 +420,27 @@ public class CloudEventsConverter implements Converter {
         return new SchemaAndValue(ceSchema, ceValueBuilder.build());
     }
 
+    private void ceValueFromStruct(Struct struct, Schema schema, CEValueBuilder ceValueBuilder, Function<String, String> nameMapper) {
+        for (Field field : schema.fields()) {
+            Object value = struct.get(field);
+            if (field.schema().type() == Type.INT64 && value != null) {
+                value = String.valueOf((long) value);
+            }
+            ceValueBuilder.withValue(nameMapper.apply(field.name()), value);
+        }
+    }
+
+    private void ceSchemaFromSchema(Schema schema, CESchemaBuilder ceSchemaBuilder, Function<String, String> nameMapper, boolean alwaysOptional) {
+        for (Field field : schema.fields()) {
+            ceSchemaBuilder.withSchema(nameMapper.apply(field.name()), convertToCeExtensionSchema(field.schema(), alwaysOptional));
+        }
+    }
+
     /**
      * Converts the given source attribute schema into a corresponding CE extension schema.
      * The types supported there are limited, e.g. int64 can only be represented as string.
      */
-    private Schema convertToCeExtensionSchema(Schema schema) {
+    private Schema convertToCeExtensionSchema(Schema schema, boolean alwaysOptional) {
         SchemaBuilder ceExtensionSchema;
 
         if (schema.type() == Type.BOOLEAN) {
@@ -437,11 +460,15 @@ public class CloudEventsConverter implements Converter {
             throw new IllegalArgumentException("Source field of type " + schema.type() + " cannot be converted into CloudEvents extension attribute.");
         }
 
-        if (schema.isOptional()) {
+        if (alwaysOptional || schema.isOptional()) {
             ceExtensionSchema.optional();
         }
 
         return ceExtensionSchema.build();
+    }
+
+    private Schema convertToCeExtensionSchema(Schema schema) {
+        return convertToCeExtensionSchema(schema, false);
     }
 
     private static CESchemaBuilder defineSchema() {
@@ -538,6 +565,10 @@ public class CloudEventsConverter implements Converter {
         }
 
         return sb.toString();
+    }
+
+    private static String txExtensionName(String name) {
+        return adjustExtensionName(TX_ATTRIBUTE_PREFIX + name);
     }
 
     private static boolean isValidExtensionNameCharacter(char c) {
