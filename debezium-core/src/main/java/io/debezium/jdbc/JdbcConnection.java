@@ -121,7 +121,9 @@ public class JdbcConnection implements AutoCloseable {
      */
     public static ConnectionFactory patternBasedFactory(String urlPattern, Field... variables) {
         return (config) -> {
-            LOGGER.trace("Config: {}", config.asProperties());
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Config: {}", propsWithMaskedPassword(config.asProperties()));
+            }
             Properties props = config.asProperties();
             Field[] varsWithDefaults = combineVariables(variables,
                     JdbcConfiguration.HOSTNAME,
@@ -130,10 +132,14 @@ public class JdbcConnection implements AutoCloseable {
                     JdbcConfiguration.PASSWORD,
                     JdbcConfiguration.DATABASE);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
-            LOGGER.trace("Props: {}", props);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
+            }
             LOGGER.trace("URL: {}", url);
             Connection conn = DriverManager.getConnection(url, props);
-            LOGGER.debug("Connected to {} with {}", url, props);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Connected to {} with {}", url, propsWithMaskedPassword(props));
+            }
             return conn;
         };
     }
@@ -159,7 +165,9 @@ public class JdbcConnection implements AutoCloseable {
     public static ConnectionFactory patternBasedFactory(String urlPattern, String driverClassName,
                                                         ClassLoader classloader, Field... variables) {
         return (config) -> {
-            LOGGER.trace("Config: {}", config.asProperties());
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Config: {}", propsWithMaskedPassword(config.asProperties()));
+            }
             Properties props = config.asProperties();
             Field[] varsWithDefaults = combineVariables(variables,
                     JdbcConfiguration.HOSTNAME,
@@ -168,7 +176,9 @@ public class JdbcConnection implements AutoCloseable {
                     JdbcConfiguration.PASSWORD,
                     JdbcConfiguration.DATABASE);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
-            LOGGER.trace("Props: {}", props);
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
+            }
             LOGGER.trace("URL: {}", url);
             Connection conn = null;
             try {
@@ -183,9 +193,20 @@ public class JdbcConnection implements AutoCloseable {
             catch (ClassNotFoundException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
                 throw new SQLException(e);
             }
-            LOGGER.debug("Connected to {} with {}", url, props);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Connected to {} with {}", url, propsWithMaskedPassword(props));
+            }
             return conn;
         };
+    }
+
+    private static Properties propsWithMaskedPassword(Properties props) {
+        final Properties filtered = new Properties();
+        filtered.putAll(props);
+        if (props.containsKey(JdbcConfiguration.PASSWORD.name())) {
+            filtered.put(JdbcConfiguration.PASSWORD.name(), "***");
+        }
+        return filtered;
     }
 
     private static Field[] combineVariables(Field[] overriddenVariables,
