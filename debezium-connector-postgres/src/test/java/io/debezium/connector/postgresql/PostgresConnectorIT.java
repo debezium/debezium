@@ -879,9 +879,11 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
         final Set<String> flushLsn = new HashSet<>();
         TestHelper.execute(INSERT_STMT);
-        final SourceRecords actualRecords = consumeRecordsByTopic(1);
-        assertThat(actualRecords.topics().size()).isEqualTo(1);
-        assertThat(actualRecords.recordsForTopic(topicName("s1.a")).size()).isEqualTo(1);
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+            final SourceRecords actualRecords = consumeRecordsByTopic(1);
+            final List<SourceRecord> topicRecords = actualRecords.recordsForTopic(topicName("s1.a"));
+            return topicRecords != null && topicRecords.size() == 1;
+        });
 
         try (final PostgresConnection connection = TestHelper.create()) {
             flushLsn.add(getConfirmedFlushLsn(connection));
