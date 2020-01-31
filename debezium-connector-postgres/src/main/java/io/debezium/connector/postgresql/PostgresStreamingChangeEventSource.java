@@ -21,7 +21,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
-import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
@@ -128,7 +127,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
                         return;
                     }
-                    if (TransactionMessage.isTransactionalMessage(message) && !connectorConfig.shouldProvideTransactionMetadata()) {
+                    if (message.isTransactionalMessage() && !connectorConfig.shouldProvideTransactionMetadata()) {
                         LOGGER.trace("Received transactional message {}", message);
                         return;
                     }
@@ -136,7 +135,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         lastCompletelyProcessedLsn = lsn;
                     }
 
-                    if (TransactionMessage.isTransactionalMessage(message)) {
+                    if (message.isTransactionalMessage()) {
                         offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
                                 taskContext.getSlotXmin(connection));
                         if (message.getOperation() == Operation.BEGIN) {

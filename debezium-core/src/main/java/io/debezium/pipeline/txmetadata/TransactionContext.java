@@ -24,7 +24,6 @@ import io.debezium.schema.DataCollectionId;
  *
  * The state of this context is stored in offsets and is recovered upon restart.
  *
- *
  * @author Jiri Pechanec
  */
 @NotThreadSafe
@@ -39,9 +38,6 @@ public class TransactionContext {
     private final Map<String, Long> perTableEventCount = new HashMap<>();
     private final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
     private long totalEventCount = 0;
-
-    public TransactionContext() {
-    }
 
     private void reset() {
         transactionId = null;

@@ -180,6 +180,13 @@ public interface ReplicationMessage {
         return true;
     }
 
+    /**
+     * Whether this message represents the begin or end of a transaction.
+     */
+    default boolean isTransactionalMessage() {
+        return getOperation() == Operation.BEGIN || getOperation() == Operation.COMMIT;
+    }
+
     public class TransactionMessage implements ReplicationMessage {
 
         private final long transationId;
