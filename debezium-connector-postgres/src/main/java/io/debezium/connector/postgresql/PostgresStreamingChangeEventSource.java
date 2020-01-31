@@ -121,14 +121,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     final Long lsn = stream.lastReceivedLsn();
                     if (message == null) {
                         LOGGER.trace("Received empty message");
-                        lastCompletelyProcessedLsn = lsn;
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
-                        maybeWarnAboutGrowingWalBacklog(false);
-                        dispatcher.dispatchHeartbeatEvent(offsetContext);
+                        skipMessage(lsn);
                         return;
                     }
                     if (message.isTransactionalMessage() && !connectorConfig.shouldProvideTransactionMetadata()) {
                         LOGGER.trace("Received transactional message {}", message);
+                        skipMessage(lsn);
                         return;
                     }
                     if (message.isLastEventForLsn()) {
@@ -203,6 +201,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 }
             }
         }
+    }
+
+    private void skipMessage(final Long lsn) throws SQLException, InterruptedException {
+        lastCompletelyProcessedLsn = lsn;
+        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
+        maybeWarnAboutGrowingWalBacklog(false);
+        dispatcher.dispatchHeartbeatEvent(offsetContext);
     }
 
     /**
