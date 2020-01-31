@@ -67,10 +67,6 @@ public class TransactionMessage implements ReplicationMessage {
         return commitTime;
     }
 
-    public static boolean isTransactionalMessage(ReplicationMessage message) {
-        return message.getOperation() == Operation.BEGIN || message.getOperation() == Operation.COMMIT;
-    }
-
     @Override
     public String toString() {
         return "TransactionMessage [transationId=" + transationId + ", commitTime=" + commitTime + ", operation="
