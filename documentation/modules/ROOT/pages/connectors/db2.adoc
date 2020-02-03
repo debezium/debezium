@@ -307,10 +307,10 @@ Consider a `customers` table defined in the `mydatabase` database's schema `MYSC
 [source,sql,indent=0]
 ----
 CREATE TABLE customers (
-  id INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
-  first_name VARCHAR(255) NOT NULL,
-  last_name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE
+ ID INTEGER IDENTITY(1001,1) NOT NULL PRIMARY KEY,
+ FIRST_NAME VARCHAR(255) NOT NULL,
+ LAST_NAME VARCHAR(255) NOT NULL,
+ EMAIL VARCHAR(255) NOT NULL UNIQUE
 );
 ----
 
@@ -326,14 +326,14 @@ Every change event for the `customers` table while it has this definition will f
             {
                 "type": "int32",
                 "optional": false,
-                "field": "id"
+                "field": "ID"
             }
         ],
         "optional": false,
         "name": "mydatabase.MYSCHEMA.CUSTOMERS.Key"
     },
     "payload": {
-        "id": 1004
+        "ID": 1004
     }
 }
 ----
@@ -389,22 +389,22 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           {
             "type": "int32",
             "optional": false,
-            "field": "id"
+            "field": "ID"
           },
           {
             "type": "string",
             "optional": false,
-            "field": "first_name"
+            "field": "FIRST_NAME"
           },
           {
             "type": "string",
             "optional": false,
-            "field": "last_name"
+            "field": "LAST_NAME"
           },
           {
             "type": "string",
             "optional": false,
-            "field": "email"
+            "field": "EMAIL"
           }
         ],
         "optional": true,
@@ -417,22 +417,22 @@ Let's look at what a _create_ event value might look like for our `customers` ta
           {
             "type": "int32",
             "optional": false,
-            "field": "id"
+            "field": "ID"
           },
           {
             "type": "string",
             "optional": false,
-            "field": "first_name"
+            "field": "FIRST_NAME"
           },
           {
             "type": "string",
             "optional": false,
-            "field": "last_name"
+            "field": "LAST_NAME"
           },
           {
             "type": "string",
             "optional": false,
-            "field": "email"
+            "field": "EMAIL"
           }
         ],
         "optional": true,
@@ -515,10 +515,10 @@ Let's look at what a _create_ event value might look like for our `customers` ta
   "payload": {
     "before": null,
     "after": {
-      "id": 1005,
-      "first_name": "john",
-      "last_name": "doe",
-      "email": "john.doe@example.org"
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "john.doe@example.org"
     },
     "source": {
       "version": "{debezium-version}",
@@ -546,7 +546,7 @@ The names of the schemas for the `before` and `after` fields are of the form _lo
 This means that when using the link:/docs/faq/#avro-converter[Avro Converter], the resulting Avro schems for _each table_ in each _logical source_ have their own evolution and history.
 ====
 
-If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the row was created (since `op=c`), and that the `after` field value contains the values of the new inserted row's' `id`, `first_name`, `last_name`, and `email` columns.
+If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the row was created (since `op=c`), and that the `after` field value contains the values of the new inserted row's' `ID`, `FIRST_NAME`, `LAST_NAME`, and `EMAIL` columns.
 
 [TIP]
 ====
@@ -566,16 +566,16 @@ Here's an example:
   "schema": { ... },
   "payload": {
     "before": {
-      "id": 1005,
-      "first_name": "john",
-      "last_name": "doe",
-      "email": "john.doe@example.org"
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "john.doe@example.org"
     },
     "after": {
-      "id": 1005,
-      "first_name": "john",
-      "last_name": "doe",
-      "email": "noreply@example.org"
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "noreply@example.org"
     },
     "source": {
       "version": "{debezium-version}",
@@ -624,10 +624,10 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
   },
   "payload": {
     "before": {
-      "id": 1005,
-      "first_name": "john",
-      "last_name": "doe",
-      "email": "noreply@example.org"
+      "ID": 1005,
+      "FIRST_NAME": "john",
+      "LAST_NAME": "doe",
+      "EMAIL": "noreply@example.org"
     },
     "after": null,
     "source": {
@@ -1043,7 +1043,7 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 == Deploying a connector
 
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's Db2` connector is easy.
-Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/0.9.0.Alpha1/debezium-connector-sqlserver-0.9.0.Alpha1-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to http://docs.confluent.io/{confluent-platform-version}/connect/userguide.html#installing-plugins[Kafka Connect's classpath].
+Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to http://docs.confluent.io/{confluent-platform-version}/connect/userguide.html#installing-plugins[Kafka Connect's classpath].
 Restart your Kafka Connect process to pick up the new JARs.
 
 If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Container images] for Zookeeper, Kafka and Kafka Connect with the Db2 connector already pre-installed and ready to go.
