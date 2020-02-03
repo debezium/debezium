@@ -72,7 +72,7 @@
         <version.mysql.driver>8.0.16</version.mysql.driver>
         <version.mysql.binlog>0.19.1</version.mysql.binlog>
         <version.mongo.server>3.6</version.mongo.server>
-        <version.mongo.driver>3.12.0</version.mongo.driver>
+        <version.mongo.driver>3.12.1</version.mongo.driver>
         <version.sqlserver.driver>7.2.2.jre8</version.sqlserver.driver>
 
         <!-- Connectors -->
