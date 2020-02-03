@@ -35,7 +35,7 @@ public class CassandraConnectorContext {
         this.queue = new BlockingEventQueue<>(this.config.pollIntervalMs(), this.config.maxQueueSize(), this.config.maxBatchSize());
 
         // Setting up schema holder ...
-        this.schemaHolder = new SchemaHolder(this.cassandraClient, this.config.connectorName(), this.config.getSourceInfoStructMaker());
+        this.schemaHolder = new SchemaHolder(this.cassandraClient, this.config.kafkaTopicPrefix(), this.config.getSourceInfoStructMaker());
 
         // Setting up a file-based offset manager ...
         this.offsetWriter = new FileOffsetWriter(this.config.offsetBackingStoreDir());

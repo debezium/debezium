@@ -37,12 +37,12 @@ public class SchemaHolder {
     private final Map<KeyspaceTable, KeyValueSchema> tableToKVSchemaMap = new ConcurrentHashMap<>();
 
     private final CassandraClient cassandraClient;
-    private final String connectorName;
+    private final String kafkaTopicPrefix;
     private final SourceInfoStructMaker sourceInfoStructMaker;
 
-    public SchemaHolder(CassandraClient cassandraClient, String connectorName, SourceInfoStructMaker sourceInfoStructMaker) {
+    public SchemaHolder(CassandraClient cassandraClient, String kafkaTopicPrefix, SourceInfoStructMaker sourceInfoStructMaker) {
         this.cassandraClient = cassandraClient;
-        this.connectorName = connectorName;
+        this.kafkaTopicPrefix = kafkaTopicPrefix;
         this.sourceInfoStructMaker = sourceInfoStructMaker;
         refreshSchemas();
     }
@@ -88,7 +88,7 @@ public class SchemaHolder {
         TableMetadata latest = cassandraClient.getCdcEnabledTableMetadata(keyspaceTable.keyspace, keyspaceTable.table);
         if (existing != latest) {
             if (existing == null) {
-                tableToKVSchemaMap.put(keyspaceTable, new KeyValueSchema(connectorName, latest, sourceInfoStructMaker));
+                tableToKVSchemaMap.put(keyspaceTable, new KeyValueSchema(kafkaTopicPrefix, latest, sourceInfoStructMaker));
                 LOGGER.debug("Updated schema for {}", keyspaceTable);
             }
             if (latest == null) {
@@ -117,7 +117,7 @@ public class SchemaHolder {
         latestTableMetadataMap.forEach((table, metadata) -> {
             TableMetadata existingTableMetadata = tableToKVSchemaMap.containsKey(table) ? tableToKVSchemaMap.get(table).tableMetadata() : null;
             if (existingTableMetadata != metadata) {
-                KeyValueSchema keyValueSchema = new KeyValueSchema(connectorName, metadata, sourceInfoStructMaker);
+                KeyValueSchema keyValueSchema = new KeyValueSchema(kafkaTopicPrefix, metadata, sourceInfoStructMaker);
                 tableToKVSchemaMap.put(table, keyValueSchema);
                 LOGGER.debug("Updated schema for {}", table);
             }
@@ -129,10 +129,10 @@ public class SchemaHolder {
         private final Schema keySchema;
         private final Schema valueSchema;
 
-        KeyValueSchema(String connectorName, TableMetadata tableMetadata, SourceInfoStructMaker sourceInfoStructMaker) {
+        KeyValueSchema(String kafkaTopicPrefix, TableMetadata tableMetadata, SourceInfoStructMaker sourceInfoStructMaker) {
             this.tableMetadata = tableMetadata;
-            this.keySchema = getKeySchema(connectorName, tableMetadata);
-            this.valueSchema = getValueSchema(connectorName, tableMetadata, sourceInfoStructMaker);
+            this.keySchema = getKeySchema(kafkaTopicPrefix, tableMetadata);
+            this.valueSchema = getValueSchema(kafkaTopicPrefix, tableMetadata, sourceInfoStructMaker);
         }
 
         public TableMetadata tableMetadata() {
@@ -147,11 +147,11 @@ public class SchemaHolder {
             return valueSchema;
         }
 
-        private Schema getKeySchema(String connectorName, TableMetadata tm) {
+        private Schema getKeySchema(String kafkaTopicPrefix, TableMetadata tm) {
             if (tm == null) {
                 return null;
             }
-            SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(NAMESPACE + "." + getKeyName(connectorName, tm));
+            SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(NAMESPACE + "." + getKeyName(kafkaTopicPrefix, tm));
             for (ColumnMetadata cm : tm.getPrimaryKey()) {
                 AbstractType<?> convertedType = CassandraTypeConverter.convert(cm.getType());
                 Schema colSchema = CassandraTypeDeserializer.getSchemaBuilder(convertedType).build();
@@ -162,11 +162,11 @@ public class SchemaHolder {
             return schemaBuilder.build();
         }
 
-        private Schema getValueSchema(String connectorName, TableMetadata tm, SourceInfoStructMaker sourceInfoStructMaker) {
+        private Schema getValueSchema(String kafkaTopicPrefix, TableMetadata tm, SourceInfoStructMaker sourceInfoStructMaker) {
             if (tm == null) {
                 return null;
             }
-            return SchemaBuilder.struct().name(NAMESPACE + "." + getValueName(connectorName, tm))
+            return SchemaBuilder.struct().name(NAMESPACE + "." + getValueName(kafkaTopicPrefix, tm))
                     .field(Record.TIMESTAMP, Schema.INT64_SCHEMA)
                     .field(Record.OPERATION, Schema.STRING_SCHEMA)
                     .field(Record.SOURCE, sourceInfoStructMaker.schema())
@@ -174,12 +174,12 @@ public class SchemaHolder {
                     .build();
         }
 
-        private static String getKeyName(String connectorName, TableMetadata tm) {
-            return connectorName + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Key";
+        private static String getKeyName(String kafkaTopicPrefix, TableMetadata tm) {
+            return kafkaTopicPrefix + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Key";
         }
 
-        private static String getValueName(String connectorName, TableMetadata tm) {
-            return connectorName + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Value";
+        private static String getValueName(String kafkaTopicPrefix, TableMetadata tm) {
+            return kafkaTopicPrefix + "." + tm.getKeyspace().getName() + "." + tm.getName() + ".Value";
         }
     }
 }
