@@ -910,4 +910,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
         return super.convertString(column, fieldDefn, data);
     }
+
+    @Override
+    protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
+        if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
+            return toastPlaceholderString;
+        }
+        return super.handleUnknownData(column, fieldDefn, data);
+    }
 }
