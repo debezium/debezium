@@ -42,7 +42,18 @@ CREATE TABLE hstore_table (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_mul (pk serial, hs hstore, hsarr hstore[], PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_null (pk serial, hs hstore, PRIMARY KEY(pk));
 CREATE TABLE hstore_table_with_special (pk serial, hs hstore, PRIMARY KEY(pk));
-CREATE TABLE not_null_table (pk serial, val numeric(20,8), created_at timestamp not null, created_at_tz timestamptz not null, ctime time not null, ctime_tz timetz not null, cdate date not null, cmoney money not null, cbits bit(3) not null, PRIMARY KEY(pk));
+
+CREATE TABLE not_null_table (pk serial,
+    val numeric(20,8), created_at timestamp not null, created_at_tz timestamptz not null, ctime time not null,
+    ctime_tz timetz not null, cdate date not null, cmoney money not null, cbits bit(3) not null,
+    csmallint smallint not null, cinteger integer not null, cbigint bigint not null, creal real not null,
+    cbool bool not null, cfloat8 float8 not null, cnumeric numeric(6,2) not null, cvarchar varchar(5) not null,
+    cbox box not null, ccircle circle not null, cinterval interval not null, cline line not null, clseg lseg not null,
+    cpath path not null, cpoint point not null, cpolygon polygon not null, cchar char not null, ctext text not null,
+    cjson json not null, cxml xml not null, cuuid uuid not null, cvarbit varbit(3) not null, cinet inet not null,
+    ccidr cidr not null, cmacaddr macaddr not null,
+    PRIMARY KEY(pk));
+
 CREATE TABLE table_without_pk(id serial, val INTEGER);
 DROP SCHEMA IF EXISTS "Quoted_"" . Schema" CASCADE;
 CREATE SCHEMA "Quoted_"" . Schema";

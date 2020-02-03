@@ -59,6 +59,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
+import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -344,6 +345,40 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-1158")
+    public void shouldProcessNotNullColumnsFallbacksReplicaIdentity() throws Exception {
+        // Use adaptive here as its the connector default
+        final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
+        if (before != null) {
+            Assertions.assertThat(before.get("csmallint")).isEqualTo((short) 0);
+            Assertions.assertThat(before.get("cinteger")).isEqualTo(0);
+            Assertions.assertThat(before.get("cbigint")).isEqualTo(0L);
+            Assertions.assertThat(before.get("creal")).isEqualTo(0.f);
+            Assertions.assertThat(before.get("cbool")).isEqualTo(false);
+            Assertions.assertThat(before.get("cfloat8")).isEqualTo(0.0);
+            Assertions.assertThat(before.get("cnumeric")).isEqualTo(new BigDecimal("0.00"));
+            Assertions.assertThat(before.get("cvarchar")).isEqualTo("");
+            Assertions.assertThat(before.get("cbox")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("ccircle")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("cinterval")).isEqualTo(0L);
+            Assertions.assertThat(before.get("cline")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("clseg")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("cpath")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("cpoint")).isEqualTo(Point.createValue(Point.builder().build(), 0, 0));
+            Assertions.assertThat(before.get("cpolygon")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("cchar")).isEqualTo("");
+            Assertions.assertThat(before.get("ctext")).isEqualTo("");
+            Assertions.assertThat(before.get("cjson")).isEqualTo("");
+            Assertions.assertThat(before.get("cxml")).isEqualTo("");
+            Assertions.assertThat(before.get("cuuid")).isEqualTo("");
+            Assertions.assertThat(before.get("cvarbit")).isEqualTo(new byte[0]);
+            Assertions.assertThat(before.get("cinet")).isEqualTo("");
+            Assertions.assertThat(before.get("ccidr")).isEqualTo("");
+            Assertions.assertThat(before.get("cmacaddr")).isEqualTo("");
+        }
+    }
+
     private Struct testProcessNotNullColumns(TemporalPrecisionMode temporalMode) throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -353,8 +388,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.TIME_PRECISION_MODE, temporalMode));
 
         consumer.expects(1);
-        executeAndWait(
-                "INSERT INTO not_null_table VALUES (default, 30, '2019-02-10 11:34:58', '2019-02-10 11:35:00', '10:20:11', '10:20:12', '2019-02-01', '$20', B'101')");
+        executeAndWait("INSERT INTO not_null_table VALUES (default, 30, '2019-02-10 11:34:58', '2019-02-10 11:35:00', "
+                + "'10:20:11', '10:20:12', '2019-02-01', '$20', B'101', 32766, 2147483646, 9223372036854775806, 3.14, "
+                + "true, 3.14768, 1234.56, 'Test', '(0,0),(1,1)', '<(0,0),1>', '01:02:03', '{0,1,2}', '((0,0),(1,1))', "
+                + "'((0,0),(0,1),(0,2))', '(1,1)', '((0,0),(0,1),(1,1))', 'a', 'hello world', '{\"key\": 123}', "
+                + "'<doc><item>abc</item></doc>', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', B'101', '192.168.1.100', "
+                + "'192.168.1', '08:00:2b:01:02:03');");
+
         consumer.remove();
 
         consumer.expects(1);
