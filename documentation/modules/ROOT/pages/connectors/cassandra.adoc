@@ -120,7 +120,7 @@ The Cassandra connector will typically spend the vast majority of its time readi
 
 Commit logs' binary data are deserialized with Cassandra's CommitLogReader and CommitLogReadHandler. Each deserialized object is called a `mutation` in Cassandra. A `mutation` contains one or more change events.
 
-As the Cassandra connector reads the commit log, it transform the log events into Debezium _create_, _update_, or _delete_ events that include the position in the commit log where the event was found. The Cassandra connector encode these change events with Avro and publish them to the appropriate Kafka topics.
+As the Cassandra connector reads the commit log, it transform the log events into Debezium _create_, _update_, or _delete_ events that include the position in the commit log where the event was found. The Cassandra connector encode these change events with Kafka Connect converters and publish them to the appropriate Kafka topics.
 
 [[limitations-of-commit-logs]]
 === Limitations of Commit Logs
@@ -169,7 +169,7 @@ DDLs are not recorded in commit logs. When the schema of a table change, this ch
 
 **TODO**: it may be possible to reactively refresh schema whenever an unexpect column appears in a mutation to improve schema change detection; worth looking into.
 
-When sending a message to a topic t, the Avro schema for the key and the value will be automatically registered in the Confluent Schema Registry under the subject t-key and t-value, respectively, if the compatibility test passes. Although it is possible to replay a history of all table schemas via the Schema Registry, only the latest schema of each table is used to generate CDC events.
+When sending a message to a topic, the Kafka Connect schema for the key and the value will be automatically registered in the Confluent Schema Registry under the subject t-key and t-value, respectively, if the compatibility test passes. Although it is possible to replay a history of all table schemas via the Schema Registry, only the latest schema of each table is used to generate CDC events.
 
 **TODO**: look into if it's possible to leverage schema history to rebuild schema that exist at the specific position in the commit log, rather than the current schema, when restarting the connector. I don't think it's possible right now, because writes to Cassandra node are not received in order.
 
@@ -236,10 +236,10 @@ Although the `column.blacklist` configuration property allows you to remove colu
 [[change-events-value]]
 ==== Change event's value
 
-The value of the change event message is a bit more complciated. Every change event value produced by Cassandra connector has an envelope structure with the following fields:
+The value of the change event message is a bit more complicated. Every change event value produced by Cassandra connector has an envelope structure with the following fields:
 
-* `op` is a mandatory field that contains a string value describing the type of operation. Values for the Cassandra connector are `c` for create, `u` for update, and `d` for delete.
-* `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure will be described by the `cassandra-cluster-1.inventory.customers.Value` Avro schema, which represent the cluster, keyspace, and table the event is referring to.
+* `op` is a mandatory field that contains a string value describing the type of operation. Values for the Cassandra connector are `i` for insert, `u` for update, and `d` for delete.
+* `after` is an optional field that if present contains the state of the row _after_ the event occurred. The structure will be described by the `cassandra-cluster-1.inventory.customers.Value` Kafka Connect schema, which represent the cluster, keyspace, and table the event is referring to.
 * `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of Cassandra contains several fields: the Debezium version, the connector name, the Cassandra cluster name, the name of the commit log file where the event was recorded, the position in that commit log file where the event appeared, whether this event was part of a snapshot, name of the affected keyspace and table, and the maximum timestamp of the partition update in microseconds.
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Cassandra connector) at which the connector processed the event.
 
@@ -630,7 +630,7 @@ When we compare this to the value in the _insert_ and _update_ event, we see a c
 
 As described above, the Cassandra connector represents the changes to rows with events that are structured like the table in which the row exist. The event contains a field for each column value, and how that value is represented in the event depends on the Cassandra data type of the column. This section describes this mapping.
 
-The following table describes how the connector maps each of the Cassandra data types to an Avro type.
+The following table describes how the connector maps each of the Cassandra data types to an Kafka Connect data type.
 
 [cols="30%a, 30%a, 40%a",options="header"]
 |=======================
@@ -966,7 +966,7 @@ the offset will be flushed every time.
 
 |`max.queue.size`
 |`8192`
-|Positive integer value that specifies the maximum size of the blocking queue into which change events read from the commit log are placed before they are written to Kafka. This queue can provide back pressure to the commit log reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the max.batch.size property. The capacity of the queue to hold deserialized records before they are converted to Avro Records and emitted to Kafka.
+|Positive integer value that specifies the maximum size of the blocking queue into which change events read from the commit log are placed before they are written to Kafka. This queue can provide back pressure to the commit log reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the max.batch.size property. The capacity of the queue to hold deserialized records before they are converted to Kafka Connect structs and emitted to Kafka.
 
 |`max.batch.size`
 |`2048`
