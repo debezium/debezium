@@ -116,24 +116,27 @@ public class Db2ConnectorTask extends BaseSourceTask {
 
         errorHandler = new ErrorHandler(Db2Connector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
 
+        final Db2EventMetadataProvider metadataProvider = new Db2EventMetadataProvider();
+
         final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicSelector,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
-                DataChangeEvent::new);
+                DataChangeEvent::new,
+                metadataProvider);
 
         coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
                 errorHandler,
                 Db2Connector.class,
-                connectorConfig.getLogicalName(),
+                connectorConfig,
                 new Db2ChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
                 dispatcher,
                 schema);
 
-        coordinator.start(taskContext, this.queue, new Db2EventMetadataProvider());
+        coordinator.start(taskContext, this.queue, metadataProvider);
     }
 
     /**
