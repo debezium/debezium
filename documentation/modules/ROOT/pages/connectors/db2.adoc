@@ -31,6 +31,8 @@ All of the events for each table are recorded in a separate Kafka topic, where t
 The functionality of the connector is based upon the https://www.ibm.com/support/pages/q-replication-and-sql-replication-product-documentation-pdf-format-version-101-linux-unix-and-windows[ASN Capture/Apply agents] 
 that enable SQL Replication within DB2.
 
+In order to use ASN and hence this connector, you need to have a license for the IBM InfoSphere Data Replication (IIDR) product.
+It is not required that IIDR itself is installed.
 
 The capture agent generates ASN tables for all tables in CDC mode, these ASN tables can be queried via a SQL interface in order to read change events.
 Using this mechanism a Db2 ASN capture agent monitors all databases and tables that the user is interested in and stores the changes into specifically created ASN tables.
@@ -1043,13 +1045,12 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 == Deploying a connector
 
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's Db2` connector is easy.
-First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment.
+First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive],
+extract it, and add the contained directory to https://docs.confluent.io/current/connect/managing/install.html#install-connector-manually[Kafka Connect's plug-in path].
 
-In addition, due to licensing reasons you need to explicitly obtain the jdbc driver for Db2.
-This is available at link:https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[Db2 jdbc driver].
-
-Then add the directory with the JARs to http://docs.confluent.io/{confluent-platform-version}/connect/userguide.html#installing-plugins[Kafka Connect's classpath].
-Restart your Kafka Connect process to pick up the new JARs.
+In addition, due to licensing reasons you need to separately obtain the https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
+Add the JDBC driver JAR to the directory with the Debezium Db2 connector JARs.
+Restart your Kafka Connect process to pick up the new connector.
 
 If immutable containers are your thing, then check out https://hub.docker.com/r/debezium/[Debezium's Container images] for Zookeeper, Kafka and Kafka Connect with the Db2 connector already pre-installed and ready to go.
 You can even link:/docs/openshift/[run Debezium on OpenShift].

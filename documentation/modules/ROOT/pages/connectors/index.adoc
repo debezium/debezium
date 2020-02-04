@@ -9,6 +9,7 @@ We currently have the following connectors:
 * xref:connectors/postgresql.adoc[PostgreSQL]
 * xref:connectors/sqlserver.adoc[SQL Server]
 * xref:connectors/oracle.adoc[Oracle] (Incubating)
+* xref:connectors/oracle.adoc[Db2] (Incubating)
 * xref:connectors/cassandra.adoc[Cassandra] (Incubating)
 
 [NOTE]

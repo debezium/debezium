@@ -21,6 +21,7 @@
 ** xref:connectors/postgresql.adoc[PostgreSQL]
 ** xref:connectors/oracle.adoc[Oracle]
 ** xref:connectors/sqlserver.adoc[SQL Server]
+** xref:connectors/db2.adoc[Db2]
 ** xref:connectors/cassandra.adoc[Cassandra]
 * Integrations
 ** xref:integrations/serdes.adoc[Change Event SerDes]
