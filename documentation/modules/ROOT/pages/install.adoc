@@ -33,6 +33,7 @@ The connector plugins are available from Maven:
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{install-version}/debezium-connector-mongodb-{install-version}-plugin.tar.gz[MongoDB Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{install-version}/debezium-connector-sqlserver-{install-version}-plugin.tar.gz[SQL Server Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{install-version}/debezium-connector-oracle-{install-version}-plugin.tar.gz[Oracle Connector plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{install-version}/debezium-connector-db2-{install-version}-plugin.tar.gz[Db2 Connector plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{install-version}/debezium-connector-cassandra-{install-version}-plugin.tar.gz[Cassandra plugin archive] (incubating)
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[Debezium's container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different Debezium connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about.
@@ -59,7 +60,8 @@ xref:connectors/mysql.adoc#deploying-a-connector[MySQL Connector],
 xref:connectors/postgresql.adoc#deploying-a-connector[Postgres Connector],
 xref:connectors/mongodb.adoc#deploying-a-connector[MongoDB Connector],
 xref:connectors/sqlserver.adoc#deploying-a-connector[SQL Server Connector],
-xref:connectors/oracle.adoc#deploying-a-connector[Oracle Connector]
+xref:connectors/oracle.adoc#deploying-a-connector[Oracle Connector],
+xref:connectors/db2.adoc#deploying-a-connector[Db2 Connector]
 or xref:connectors/cassandra.adoc#deploying-a-connector[Cassandra Connector]
 and use the link:https://docs.confluent.io/{confluent-platform-version}/connect/restapi.html[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
