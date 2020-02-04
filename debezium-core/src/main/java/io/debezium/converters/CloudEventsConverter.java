@@ -170,7 +170,7 @@ public class CloudEventsConverter implements Converter {
         if (schema == null || value == null) {
             return null;
         }
-        if (!schema.name().endsWith(".Envelope")) {
+        if (!Envelope.isEnvelopeSchema(schema)) {
             // TODO Handling of non-data messages like schema change or transaction metadata
             return null;
         }

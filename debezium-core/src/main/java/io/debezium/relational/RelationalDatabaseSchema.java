@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.data.Envelope;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
@@ -136,7 +137,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     }
 
     private String getEnvelopeSchemaName(Table table) {
-        return topicSelector.topicNameFor(table.id()) + ".Envelope";
+        return Envelope.schemaName(topicSelector.topicNameFor(table.id()));
     }
 
     /**

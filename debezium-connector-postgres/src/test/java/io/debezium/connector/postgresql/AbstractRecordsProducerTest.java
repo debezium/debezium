@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.data.Bits;
+import io.debezium.data.Envelope;
 import io.debezium.data.Json;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.SpecialValueDecimal;
@@ -936,7 +937,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             assertNull("Last snapshot marker not expected, but found", lastSnapshotRecord);
         }
         final Struct envelope = (Struct) record.value();
-        if (envelope != null && envelope.schema().name().endsWith(".Envelope")) {
+        if (envelope != null && Envelope.isEnvelopeSchema(envelope.schema())) {
             final Struct source = (Struct) envelope.get("source");
             final SnapshotRecord sourceSnapshot = SnapshotRecord.fromSource(source);
             if (shouldBeSnapshot) {
