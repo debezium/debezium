@@ -1,0 +1,113 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_viewing-change-events.adoc
+// UserStory:
+
+[id="restarting-kafka-connect-service"]
+= Restarting the Kafka Connect service
+
+Now that you have seen how the {prodname} MySQL connector captures _create_, _update_, and _delete_ events,
+you will now see how it can capture change events even when it is not running.
+
+The Kafka Connect service automatically manages tasks for its registered connectors.
+Therefore, if it goes offline, when it restarts, it will start any non-running tasks.
+This means that even if {prodname} is not running,
+it can still report changes in a database.
+
+In this procedure, you will stop Kafka Connect,
+change some data in the database,
+and then restart Kafka Connect to see the change events.
+
+.Procedure
+
+. Open a new terminal and use it to stop the `connect` container that is running the Kafka Connect service:
++
+--
+[source,shell,options="nowrap"]
+----
+$ docker stop connect
+----
+
+The `connect` container is stopped, and the Kafka Connect service gracefully shuts down.
+
+Because you ran the container with the `--rm` option, Docker removes the container once it stops.
+--
+
+. While the service is down, switch to the terminal for the MySQL command line client, and add a few records:
++
+--
+[source,sql,options="nowrap"]
+----
+mysql> INSERT INTO customers VALUES (default, "Sarah", "Thompson", "kitt@acme.com");
+mysql> INSERT INTO customers VALUES (default, "Kenneth", "Anderson", "kander@acme.com");
+----
+
+The records are added to the database.
+However, because Kafka Connect is not running,
+`watch-topic` does not record any updates.
+
+[NOTE]
+====
+In a production system, you would have enough brokers to handle the producers and consumers,
+and to maintain a minimum number of in-sync replicas for each topic.
+Therefore, if enough brokers failed such that there were no longer the minimum number of ISRs,
+Kafka would become unavailable.
+In this scenario, producers (like the {prodname} connectors) and consumers will wait for the Kafka cluster or network to recover.
+This means that, temporarily, your consumers might not see any change events as data is changed in the databases.
+This is because no change events are being produced.
+As soon as the Kafka cluster is restarted or the network recovers,
+{prodname} will resume producing change events, and your consumers will resume consuming events where they left off.
+====
+--
+
+. Open a new terminal, and use it to restart the Kafka Connect service in a container.
++
+--
+This command starts Kafka Connect using the same options you used when you initially started it:
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:{debezium-docker-label}
+----
+
+The Kafka Connect service starts, connects to Kafka, reads the previous service's configuration, and starts the registered connectors that will resume where they last left off.
+
+Here are the last few lines from this restarted service:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-09-21 07:38:48,385 INFO   MySQL|dbserver1|task  Kafka version : 0.11.0.0   [org.apache.kafka.common.utils.AppInfoParser]
+2017-09-21 07:38:48,386 INFO   MySQL|dbserver1|task  Kafka commitId : cb8625948210849f   [org.apache.kafka.common.utils.AppInfoParser]
+2017-09-21 07:38:48,390 INFO   MySQL|dbserver1|task  Discovered coordinator 172.17.0.4:9092 (id: 2147483646 rack: null) for group inventory-connector-dbhistory.   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
+2017-09-21 07:38:48,390 INFO   MySQL|dbserver1|task  Revoking previously assigned partitions [] for group inventory-connector-dbhistory   [org.apache.kafka.clients.consumer.internals.ConsumerCoordinator]
+2017-09-21 07:38:48,391 INFO   MySQL|dbserver1|task  (Re-)joining group inventory-connector-dbhistory   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
+2017-09-21 07:38:48,402 INFO   MySQL|dbserver1|task  Successfully joined group inventory-connector-dbhistory with generation 1   [org.apache.kafka.clients.consumer.internals.AbstractCoordinator]
+2017-09-21 07:38:48,403 INFO   MySQL|dbserver1|task  Setting newly assigned partitions [dbhistory.inventory-0] for group inventory-connector-dbhistory   [org.apache.kafka.clients.consumer.internals.ConsumerCoordinator]
+2017-09-21 07:38:48,888 INFO   MySQL|dbserver1|task  Step 0: Get all known binlogs from MySQL   [io.debezium.connector.mysql.MySqlConnectorTask]
+2017-09-21 07:38:48,903 INFO   MySQL|dbserver1|task  MySQL has the binlog file 'mysql-bin.000003' required by the connector   [io.debezium.connector.mysql.MySqlConnectorTask]
+Sep 21, 2017 7:38:49 AM com.github.shyiko.mysql.binlog.BinaryLogClient connect
+INFO: Connected to mysql:3306 at mysql-bin.000003/154 (sid:184054, cid:10)
+2017-09-21 07:38:49,045 INFO   MySQL|dbserver1|binlog  Connected to MySQL binlog at mysql:3306, starting at binlog file 'mysql-bin.000003', pos=154, skipping 0 events plus 0 rows   [io.debezium.connector.mysql.BinlogReader]
+2017-09-21 07:38:49,046 INFO   ||  Source task WorkerSourceTask{id=inventory-connector-0} finished initialization and start   [org.apache.kafka.connect.runtime.WorkerSourceTask]
+----
+
+These lines show that the service found the offsets previously recorded by the last task before it was shut down,
+connected to the MySQL database,
+started reading the `binlog` from that position,
+and generated events from any changes in the MySQL database since that point in time.
+--
+
+. Switch to the terminal running `watch-topic` to see events for the two new records you created when Kafka Connect was offline:
++
+--
+[source,json,options="nowrap",subs="+attributes"]
+----
+{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"}],"optional":false,"name":"dbserver1.inventory.customers.Key"},"payload":{"id":1005}}	{"schema":{"type":"struct","fields":[{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"dbserver1.inventory.customers.Value","field":"before"},{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"dbserver1.inventory.customers.Value","field":"after"},{"type":"struct","fields":[{"type":"string","optional":true,"field":"version"},{"type":"string","optional":false,"field":"name"},{"type":"int64","optional":false,"field":"server_id"},{"type":"int64","optional":false,"field":"ts_sec"},{"type":"string","optional":true,"field":"gtid"},{"type":"string","optional":false,"field":"file"},{"type":"int64","optional":false,"field":"pos"},{"type":"int32","optional":false,"field":"row"},{"type":"boolean","optional":true,"field":"snapshot"},{"type":"int64","optional":true,"field":"thread"},{"type":"string","optional":true,"field":"db"},{"type":"string","optional":true,"field":"table"}],"optional":false,"name":"io.debezium.connector.mysql.Source","field":"source"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"}],"optional":false,"name":"dbserver1.inventory.customers.Envelope","version":1},"payload":{"before":null,"after":{"id":1005,"first_name":"Sarah","last_name":"Thompson","email":"kitt@acme.com"},"source":{"version":"{debezium-version}","name":"dbserver1","server_id":223344,"ts_sec":1490635153,"gtid":null,"file":"mysql-bin.000003","pos":1046,"row":0,"snapshot":null,"thread":3,"db":"inventory","table":"customers"},"op":"c","ts_ms":1490635181455}}
+{"schema":{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"}],"optional":false,"name":"dbserver1.inventory.customers.Key"},"payload":{"id":1006}}	{"schema":{"type":"struct","fields":[{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"dbserver1.inventory.customers.Value","field":"before"},{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"dbserver1.inventory.customers.Value","field":"after"},{"type":"struct","fields":[{"type":"string","optional":true,"field":"version"},{"type":"string","optional":false,"field":"name"},{"type":"int64","optional":false,"field":"server_id"},{"type":"int64","optional":false,"field":"ts_sec"},{"type":"string","optional":true,"field":"gtid"},{"type":"string","optional":false,"field":"file"},{"type":"int64","optional":false,"field":"pos"},{"type":"int32","optional":false,"field":"row"},{"type":"boolean","optional":true,"field":"snapshot"},{"type":"int64","optional":true,"field":"thread"},{"type":"string","optional":true,"field":"db"},{"type":"string","optional":true,"field":"table"}],"optional":false,"name":"io.debezium.connector.mysql.Source","field":"source"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"}],"optional":false,"name":"dbserver1.inventory.customers.Envelope","version":1},"payload":{"before":null,"after":{"id":1006,"first_name":"Kenneth","last_name":"Anderson","email":"kander@acme.com"},"source":{"version":"{debezium-version}","name":"dbserver1","server_id":223344,"ts_sec":1490635160,"gtid":null,"file":"mysql-bin.000003","pos":1356,"row":0,"snapshot":null,"thread":3,"db":"inventory","table":"customers"},"op":"c","ts_ms":1490635181456}}
+----
+
+These events are _create_ events that are similar to what you saw previously.
+As you see, {prodname} still reports all of the changes in a database even when it is not running
+(as long as it is restarted before the MySQL database purges from its `binlog` the commits that were missed).
+--
