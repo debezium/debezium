@@ -32,12 +32,6 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Db2SnapshotChangeEventSource.class);
 
-    /**
-     * Code 4096 corresponds to SNAPSHOT isolation level, which is not a part of the standard but SQL Server specific.
-     * Need to port this to DB2 (lga-zurich).
-     */
-    private static final int TRANSACTION_SNAPSHOT = 4096;
-
     private final Db2ConnectorConfig connectorConfig;
     private final Db2Connection jdbcConnection;
 
@@ -81,15 +75,6 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     @Override
     protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
         ((Db2SnapshotContext) snapshotContext).isolationLevelBeforeStart = jdbcConnection.connection().getTransactionIsolation();
-
-        if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
-            // Terminate any transaction in progress so we can change the isolation level
-            jdbcConnection.connection().rollback();
-            // With one exception, you can switch from one isolation level to another at any time during a transaction.
-            // The exception occurs when changing from any isolation level to SNAPSHOT isolation.
-            // That is why SNAPSHOT isolation level has to be set at the very beginning of the transaction.
-            jdbcConnection.connection().setTransactionIsolation(TRANSACTION_SNAPSHOT);
-        }
     }
 
     @Override
@@ -103,8 +88,8 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
             LOGGER.info("Schema locking was disabled in connector configuration");
         }
-        else if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.SNAPSHOT) {
-            // Snapshot transaction isolation level has already been set.
+        else if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_COMMITTED) {
+            jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
             LOGGER.info("Schema locking was disabled in connector configuration");
         }
         else if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.EXCLUSIVE
@@ -134,7 +119,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     @Override
     protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
         // Exclusive mode: locks should be kept until the end of transaction.
-        // read_uncommitted mode; snapshot mode: no locks have been acquired.
+        // read_uncommitted mode; read_committed mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
             jdbcConnection.connection().rollback(((Db2SnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
             LOGGER.info("Schema locks released.");

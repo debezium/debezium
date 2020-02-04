@@ -37,7 +37,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 /**
  * The list of configuration options for DB2 connector
  *
- * @author Jiri Pechanec
+ * @author Jiri Pechanec, Luis Garcés-Erice
  */
 public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
 
@@ -118,6 +118,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
 
     /**
      * The set of predefined snapshot isolation mode options.
+     * 
+     * https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052429.html
      */
     public static enum SnapshotIsolationMode implements EnumeratedValue {
 
@@ -129,18 +131,19 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
         EXCLUSIVE("exclusive"),
 
         /**
-         * This mode uses SNAPSHOT isolation level. This way reads and writes are not blocked for the entire duration
-         * of the snapshot.  Snapshot consistency is guaranteed as long as DDL statements are not executed at the time.
-         */
-        SNAPSHOT("snapshot"),
-
-        /**
          * This mode uses REPEATABLE READ isolation level. This mode will avoid taking any table
          * locks during the snapshot process, except schema snapshot phase where exclusive table
          * locks are acquired for a short period.  Since phantom reads can occur, it does not fully
          * guarantee consistency.
          */
         REPEATABLE_READ("repeatable_read"),
+
+        /**
+         * This mode uses READ COMMITTED isolation level. This mode does not take any table locks during
+         * the snapshot process. In addition, it does not take any long-lasting row-level locks, like
+         * in repeatable read isolation level. Snapshot consistency is not guaranteed.
+         */
+        READ_COMMITTED("read_committed"),
 
         /**
          * This mode uses READ UNCOMMITTED isolation level. This mode takes neither table locks nor row-level locks
@@ -226,8 +229,8 @@ public class Db2ConnectorConfig extends HistorizedRelationalDatabaseConnectorCon
                     + "', which means that repeatable read isolation level is used. In addition, exclusive locks are taken only during schema snapshot. "
                     + "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
                     + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all monitored tables during the entire snapshot duration. "
-                    + "When '" + SnapshotIsolationMode.SNAPSHOT.getValue()
-                    + "' is specified, connector runs the initial snapshot in SNAPSHOT isolation level, which guarantees snapshot consistency. In addition, neither table nor row-level locks are held. "
+                    + "In '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
+                    + "' mode no table locks or any *long-lasting* row-level locks are acquired, but connector does not guarantee snapshot consistency."
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 

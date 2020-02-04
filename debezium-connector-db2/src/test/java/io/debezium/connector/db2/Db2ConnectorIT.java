@@ -100,7 +100,7 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
 
         TestHelper.refreshAndWait(connection);
 
-        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+        consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
 
         connection.execute("DELETE FROM tableB");
 
@@ -118,7 +118,6 @@ public class Db2ConnectorIT extends AbstractConnectorTest {
                     new SchemaAndValueField("ID", Schema.INT32_SCHEMA, i + ID_START),
                     new SchemaAndValueField("COLB", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
-            final Struct deleteKey = (Struct) deleteRecord.key();
             final Struct deleteValue = (Struct) deleteRecord.value();
             assertRecord((Struct) deleteValue.get("before"), expectedDeleteRow);
             assertNull(deleteValue.get("after"));
