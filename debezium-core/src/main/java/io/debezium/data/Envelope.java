@@ -124,6 +124,11 @@ public final class Envelope {
     }
 
     /**
+     * A suffix appended to each schema name representing Envelope
+     */
+    public static String SCHEMA_NAME_SUFFIX = ".Envelope";
+
+    /**
      * A builder of an envelope schema.
      */
     public static interface Builder {
@@ -348,5 +353,31 @@ public final class Envelope {
             return Operation.forCode(value.getString(opField.name()));
         }
         return null;
+    }
+
+    /**
+     * Converts an event type name into envelope schema name
+     *
+     * @param type
+     * @return Envelope schema name
+     */
+    public static String schemaName(String type) {
+        return type + SCHEMA_NAME_SUFFIX;
+    }
+
+    /**
+     * @param schemaName
+     * @return true if schema name conforms to Envelope naming
+     */
+    public static boolean isEnvelopeSchema(String schemaName) {
+        return schemaName.endsWith(SCHEMA_NAME_SUFFIX);
+    }
+
+    /**
+     * @param schema
+     * @return true if schema name conforms to Envelope naming
+     */
+    public static boolean isEnvelopeSchema(Schema schema) {
+        return isEnvelopeSchema(schema.name());
     }
 }

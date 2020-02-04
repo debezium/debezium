@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 
 /**
  * A class used by all Debezium supplied SMTs to centralize common logic.
@@ -19,7 +20,6 @@ import io.debezium.config.Configuration;
  */
 public class SmtManager<R extends ConnectRecord<R>> {
 
-    private static final String ENVELOPE_SCHEMA_NAME_SUFFIX = ".Envelope";
     private static final String RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX = ".Key";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SmtManager.class);
@@ -30,7 +30,7 @@ public class SmtManager<R extends ConnectRecord<R>> {
     public boolean isValidEnvelope(final R record) {
         if (record.valueSchema() == null ||
                 record.valueSchema().name() == null ||
-                !record.valueSchema().name().endsWith(ENVELOPE_SCHEMA_NAME_SUFFIX)) {
+                !Envelope.isEnvelopeSchema(record.valueSchema())) {
             LOGGER.warn("Expected Envelope for transformation, passing it unchanged");
             return false;
         }

@@ -29,6 +29,7 @@ import com.mongodb.util.ObjectSerializer;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
+import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.data.Json;
@@ -137,7 +138,7 @@ public class RecordMakers {
                     .field("id", Schema.STRING_SCHEMA)
                     .build();
             this.valueSchema = SchemaBuilder.struct()
-                    .name(adjuster.adjust(topicName + ".Envelope"))
+                    .name(adjuster.adjust(Envelope.schemaName(topicName)))
                     .field(FieldName.AFTER, Json.builder().optional().build())
                     .field("patch", Json.builder().optional().build())
                     .field(FieldName.SOURCE, source.schema())

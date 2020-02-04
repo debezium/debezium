@@ -317,7 +317,7 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> implements Transfo
             }
             envelopeBuilder.field(fieldName, fieldSchema);
         }
-        envelopeBuilder.name(schemaNameAdjuster.adjust(newTopicName + ".Envelope"));
+        envelopeBuilder.name(schemaNameAdjuster.adjust(Envelope.schemaName(newTopicName)));
 
         newEnvelopeSchema = envelopeBuilder.build();
         envelopeSchemaUpdateCache.put(oldEnvelopeSchema, newEnvelopeSchema);

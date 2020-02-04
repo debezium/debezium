@@ -223,7 +223,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
 
         if (valueDocument.size() > 0) {
             String newValueSchemaName = record.valueSchema().name();
-            if (newValueSchemaName.endsWith(".Envelope")) {
+            if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
                 newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
             }
             SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);

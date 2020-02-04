@@ -1451,7 +1451,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // Expecting 1 data change
         Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
             final SourceRecord record = consumeRecord();
-            return record != null && record.valueSchema().name().endsWith(".Envelope");
+            return record != null && Envelope.isEnvelopeSchema(record.valueSchema());
         });
 
         // Expecting one empty DDL change
