@@ -31,8 +31,7 @@ public class SchemaProcessorTest extends EmbeddedCassandraConnectorTestBase {
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("table1") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = false;");
         schemaProcessor.process();
         assertEquals(0, context.getSchemaHolder().getCdcEnabledTableMetadataSet().size());
-        keyValueSchema = context.getSchemaHolder().getOrUpdateKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE, "table1"));
-        assertNull(keyValueSchema);
+        assertNull(context.getSchemaHolder().getOrUpdateKeyValueSchema(new KeyspaceTable(TEST_KEYSPACE, "table1")));
 
         context.getCassandraClient().execute("ALTER TABLE " + keyspaceTable("table1") + " WITH cdc = true;");
         schemaProcessor.process();
