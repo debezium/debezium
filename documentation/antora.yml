@@ -15,3 +15,6 @@ asciidoc:
     modules: '../../modules'
     mysql-version: '8.0'
     strimzi-version: '0.13.0'
+    link-prefix: 'xref'
+    link-mysql-connector: 'connectors/mysql.adoc' 
+    link-deploy-mysql-connector: 'assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc'
