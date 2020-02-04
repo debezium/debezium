@@ -55,7 +55,7 @@ INCUBATOR_CONNECTORS_PER_VERSION = [
     '0.9': ['oracle'],
     '0.10': ['oracle'],
     '1.0': ['oracle','cassandra'],
-    '1.1': ['oracle','cassandra']
+    '1.1': ['oracle','cassandra','db2']
 ]
 
 CORE_CONNECTORS = CORE_CONNECTORS_PER_VERSION[VERSION_MAJOR_MINOR]
