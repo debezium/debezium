@@ -5,6 +5,7 @@ Adrian Kreuziger
 Akshath Patkar
 Alex Mansell
 Alexander Kovryga
+Alexander Schwartz
 Amit Sela
 Andrea Cosentino
 Andreas Bergmeier
@@ -109,6 +110,7 @@ Olavi Mustanoja
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
+Paul Mellor
 Peng Lyu
 Peter Goransson
 Philip Sanetra
@@ -132,6 +134,7 @@ Sanne Grinovero
 Satyajit Vegesna
 Saulius Valatka
 Scofield Xu
+Sean Rooney
 Sherafudheen PM
 Shubham Rawat
 Stanley Shyiko
