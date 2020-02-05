@@ -60,6 +60,7 @@ Hans-Peter Grahsl
 Henryk Konsek
 Horia Chiorean
 Ian Axelrod
+Igor Gabaydulin
 Ilia Bogdanov
 Ivan Kovbas
 Ivan Lorenz
