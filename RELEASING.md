@@ -30,6 +30,21 @@ It currently exists in two versions, one in the main code repo and one on the we
 JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
 Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the implications and required steps for upgrading in the changelog on the website.
 
+## Update antora.yml
+
+The `antora.yml` file in the `master` branch always used the version _master_.
+During the release process, this file's `version` attribute should be changed to reference the correct major/minor version number.
+There are other Asciidoc variables defined here that should be reviewed and modified as needed.
+
+As an example, when releasing version `2.1`, the `antora.yml` file should change from:
+```
+version: 'master'
+```
+to
+```
+version: '2.1'
+```
+
 ## Start with the correct branch
 
 Make sure that you are on the correct branch that is to be released, and that your local Git repository has all of the most recent commits. For example, to release from the `master` branch on the remote repository named `upstream`:
@@ -228,11 +243,14 @@ project=DBZ AND fixVersion=<VERSION> AND status='Resolved'
 ```
 Then mark release in Jira as *Released* using `Release` action.
 
+## Documentation post-release changes
+
+After the release, the `antora.yml` file should be changed so that the `version` attribute references `master` once more.
+
 ## Update the documentation and blog
 
 Update the documentation on the [Debezium website](http://debezium.io) by following the [instructions for changing the website](http://debezium.io/docs/contribute/#website).
 This typically involves updating the documentation (look for pending pull requests tagged as "Merge after next release") and writing a blog post to announce the release.
-Also update the `debezium-version` and `debezium-docker-label` attributes in _\_config/site.yml_.
 Then, create a pull request with your changes and wait for a committer to approve and merge your changes.
 
 When the blog post is available, use the [Debezium Twitter account](https://twitter.com/debezium) to announce the release by linking to the blog post.
