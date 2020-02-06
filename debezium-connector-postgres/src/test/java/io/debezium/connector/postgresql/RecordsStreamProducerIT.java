@@ -22,8 +22,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -1106,6 +1108,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         String statement = "CREATE SCHEMA s1;" +
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
+                "INSERT INTO s1.a (aa) VALUES (22);" +
                 "INSERT INTO s1.b (bb) VALUES (22);";
 
         TestHelper.execute(statement);
