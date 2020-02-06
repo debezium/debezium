@@ -112,19 +112,22 @@ public class ExtractNewRecordStateConfigDefinition {
             .withDescription("Adds each field listed from the 'source' element of the payload, prefixed with source__ "
                     + "Example: 'version,connector' would add source__version and source__connector fields");
 
-    public static final Field ADD_OPERATION_FIELD = Field.create("add.operation.field")
-            .withDisplayName("Adds the operation ('op') field from the payload.")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
+    public static final Field ADD_FIELDS = Field.create("add.fields")
+            .withDisplayName("Adds the specified fields to the message if they exist.")
+            .withType(ConfigDef.Type.LIST)
+            .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("Adds the operation ('op') field of the payload, prefixed with __ ");
+            .withDefault("")
+            .withDescription("Adds each field listed, prefixed with __ (or __source__ if the struct is specified) "
+                    + "Example: 'version,connector,source.ts_ms' would add __version, __connector and __source__ts_ms fields");
 
-    public static final Field ADD_TIMESTAMP_FIELD = Field.create("add.timestamp.field")
-            .withDisplayName("Adds the timestamp ('ts_ms') field from the payload.")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
+    public static final Field ADD_HEADERS = Field.create("add.headers")
+            .withDisplayName("Adds the specified fields to the header if they exist.")
+            .withType(ConfigDef.Type.LIST)
+            .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("Adds the timestamp ('ts_ms') field of the payload, prefixed with __ ");
+            .withDefault("")
+            .withDescription("Adds each field listed to the header,  __ (or __source__ if the struct is specified) "
+                    + "Example: 'version,connector,source.ts_ms' would add __version, __connector and __source__ts_ms fields");
+
 }
