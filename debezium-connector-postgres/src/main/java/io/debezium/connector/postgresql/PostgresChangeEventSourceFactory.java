@@ -9,7 +9,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.Snapshotter;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
@@ -23,7 +22,6 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
 
     private final PostgresConnectorConfig configuration;
     private final PostgresConnection jdbcConnection;
-    private final ErrorHandler errorHandler;
     private final EventDispatcher<TableId> dispatcher;
     private final Clock clock;
     private final PostgresSchema schema;
@@ -33,12 +31,11 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final SlotCreationResult slotCreatedInfo;
 
     public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter, PostgresConnection jdbcConnection,
-                                            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
+                                            EventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext,
                                             ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo) {
         this.configuration = configuration;
         this.jdbcConnection = jdbcConnection;
-        this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
@@ -70,7 +67,6 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 (PostgresOffsetContext) offsetContext,
                 jdbcConnection,
                 dispatcher,
-                errorHandler,
                 clock,
                 schema,
                 taskContext,

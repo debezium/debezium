@@ -22,7 +22,6 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
@@ -49,7 +48,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     private final PostgresConnection connection;
     private final EventDispatcher<TableId> dispatcher;
-    private final ErrorHandler errorHandler;
     private final Clock clock;
     private final PostgresSchema schema;
     private final PostgresOffsetContext offsetContext;
@@ -68,12 +66,11 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private Long lastCompletelyProcessedLsn;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, Snapshotter snapshotter, PostgresOffsetContext offsetContext,
-                                              PostgresConnection connection, EventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
+                                              PostgresConnection connection, EventDispatcher<TableId> dispatcher, Clock clock,
                                               PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
         this.connectorConfig = connectorConfig;
         this.connection = connection;
         this.dispatcher = dispatcher;
-        this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = (offsetContext != null) ? offsetContext : PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
@@ -84,7 +81,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
-    public void execute(ChangeEventSourceContext context) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context) throws InterruptedException, SQLException {
         if (!snapshotter.shouldStream()) {
             LOGGER.info("Streaming is not enabled in correct configuration");
             return;
@@ -161,9 +158,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     noMessageIterations = 0;
                 }
             }
-        }
-        catch (Throwable e) {
-            errorHandler.setProducerThrowable(e);
         }
         finally {
             if (replicationConnection != null) {
