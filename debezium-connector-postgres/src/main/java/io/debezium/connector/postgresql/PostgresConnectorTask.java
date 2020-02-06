@@ -214,8 +214,16 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
     @Override
     public void commit() throws InterruptedException {
-        if (coordinator != null) {
+        if (coordinator != null && lastOffset != null) {
             coordinator.commitOffset(lastOffset);
+        }
+    }
+
+    @Override
+    public void commitRecord(SourceRecord record) throws InterruptedException {
+        Map<String, ?> currentOffset = record.sourceOffset();
+        if (currentOffset != null) {
+            this.lastOffset = currentOffset;
         }
     }
 
@@ -226,10 +234,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
         final List<SourceRecord> sourceRecords = records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
-
-        if (!sourceRecords.isEmpty()) {
-            this.lastOffset = sourceRecords.get(sourceRecords.size() - 1).sourceOffset();
-        }
 
         return sourceRecords;
     }
