@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import java.sql.SQLException;
 import java.util.Map;
 
 /**
@@ -25,7 +26,7 @@ public interface StreamingChangeEventSource extends ChangeEventSource {
      * @throws InterruptedException
      *             in case the snapshot was aborted before completion
      */
-    void execute(ChangeEventSourceContext context) throws InterruptedException;
+    void execute(ChangeEventSourceContext context) throws InterruptedException, SQLException;
 
     /**
      * Commits the given offset with the source database. Used by some connectors

@@ -107,7 +107,7 @@ public class ChangeEventSourceCoordinator {
                 LOGGER.warn("Change event source executor was interrupted", e);
             }
             catch (Throwable e) {
-                errorHandler.setProducerThrowable(e);
+                errorHandler.handleThrowable(e);
             }
             finally {
                 streamingMetrics.connected(false);
