@@ -43,10 +43,9 @@ public class PostgresConnectorTaskIT {
     @Test(expected = ConnectException.class)
     @FixFor("DBZ-1426")
     public void retryOnFailureToCreateConnection() throws Exception {
-        PostgresConnectorTask postgresConnectorTask = new PostgresConnectorTask();
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         long startTime = System.currentTimeMillis();
-        postgresConnectorTask.createReplicationConnection(new FakeContext(config, new PostgresSchema(
+        PostgresChangeEventSourceFacade.createReplicationConnection(new FakeContext(config, new PostgresSchema(
                 config,
                 null,
                 Charset.forName("UTF-8"),
