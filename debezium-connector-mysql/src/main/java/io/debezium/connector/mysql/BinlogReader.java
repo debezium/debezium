@@ -791,7 +791,7 @@ public class BinlogReader extends AbstractReader {
                         eventHeader.getPosition(),
                         eventHeader.getNextPosition(),
                         source.binlogFilename());
-                throw new ConnectException("Encountered change event for table " + tableId + "whose schema isn't known to this connector");
+                throw new ConnectException("Encountered change event for table " + tableId + " whose schema isn't known to this connector");
             }
             else if (inconsistentSchemaHandlingMode == EventProcessingFailureHandlingMode.WARN) {
                 logger.warn(
