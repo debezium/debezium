@@ -217,6 +217,7 @@
                                     <descriptorRefs>
                                         <descriptorRef>${assembly.descriptor}</descriptorRef>
                                     </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
                             </execution>
                         </executions>
