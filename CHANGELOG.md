@@ -2,6 +2,45 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.1.Final
+February 7th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344644)
+
+### New features since 1.0.0.Final
+
+None
+
+
+### Breaking changes since 1.0.0.Final
+
+* Rename Serdes to DebeziumSerdes [DBZ-1670](https://issues.jboss.org/browse/DBZ-1670)
+* MySQL Connector should use  "snapshot.lock.timeout.ms" [DBZ-1671](https://issues.jboss.org/browse/DBZ-1671)
+
+
+### Fixes since 1.0.0.Final
+
+* Make slot creation in PostgreSQL more resilient [DBZ-1684](https://issues.jboss.org/browse/DBZ-1684)
+* Support boolean as default for INT(1) column in MySQL [DBZ-1689](https://issues.jboss.org/browse/DBZ-1689)
+* SIGNAL statement is not recognized by DDL parser [DBZ-1691](https://issues.jboss.org/browse/DBZ-1691)
+* When using in embedded mode MYSQL connector fails [DBZ-1693](https://issues.jboss.org/browse/DBZ-1693)
+* Connector error after adding a new not null column to table in Postgres [DBZ-1698](https://issues.jboss.org/browse/DBZ-1698)
+* MySQL connector fails to parse trigger DDL [DBZ-1699](https://issues.jboss.org/browse/DBZ-1699)
+* MySQL connector doesn't use default value of connector.port [DBZ-1712](https://issues.jboss.org/browse/DBZ-1712)
+* ANTLR parser cannot parse MariaDB Table DDL with TRANSACTIONAL attribute [DBZ-1733](https://issues.jboss.org/browse/DBZ-1733)
+* Postgres connector does not support proxied connections [DBZ-1738](https://issues.jboss.org/browse/DBZ-1738)
+* GET DIAGNOSTICS statement not parseable [DBZ-1740](https://issues.jboss.org/browse/DBZ-1740)
+* MySql password logged out in debug log level [DBZ-1748](https://issues.jboss.org/browse/DBZ-1748)
+
+
+### Other changes since 1.0.0.Final
+
+* Add tests for using fallback values with default REPLICA IDENTITY [DBZ-1158](https://issues.jboss.org/browse/DBZ-1158)
+* Migrate all attribute name/value pairs to Antora component descriptors [DBZ-1687](https://issues.jboss.org/browse/DBZ-1687)
+* Remove overlap of different documentation config files [DBZ-1729](https://issues.jboss.org/browse/DBZ-1729)
+* Don't fail upon receiving unkown operation events [DBZ-1747](https://issues.jboss.org/browse/DBZ-1747)
+* Upgrade to Mongo Java Driver version 3.12.1 [DBZ-1761](https://issues.jboss.org/browse/DBZ-1761)
+
+
+
 ## 1.0.0.Final
 December 18th, 2019 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12343667)
 

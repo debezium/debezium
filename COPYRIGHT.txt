@@ -3,8 +3,11 @@ Aaron Rosenberg
 Addison Higham
 Adrian Kreuziger
 Akshath Patkar
+Alex Mansell
 Alexander Kovryga
+Alexander Schwartz
 Amit Sela
+Andrea Cosentino
 Andreas Bergmeier
 Andras Istvan Nagy
 Andrew Garrett
@@ -46,6 +49,7 @@ Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
 Felix Eckhardt
+Fintan Bolton
 Gagan Agrawal
 Grant Cooksey
 Guillaume Rosauro
@@ -56,6 +60,7 @@ Hans-Peter Grahsl
 Henryk Konsek
 Horia Chiorean
 Ian Axelrod
+Igor Gabaydulin
 Ilia Bogdanov
 Ivan Kovbas
 Ivan Lorenz
@@ -63,6 +68,7 @@ Ivan Luzyanin
 Ivan San Jose
 Ivan Vucina
 Jakub Cechacek
+Jan Uyttenhove
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
@@ -72,9 +78,11 @@ John Martin
 Jon Casstevens
 Jordan Bragg
 Jork Zijlstra
+Jos Huiting
 Josh Arenberg
 Josh Stanfield
 Joy Gao
+Jun Du
 Jure Kajzer
 Keith Barber
 Kevin Pullin
@@ -83,6 +91,7 @@ Leo Mei
 Lev Zemlyanov
 Listman Gamboa
 Liu Hanlin
+Liu Lang Wa
 Luis Garcés-Erice
 Maciej Bryński
 MaoXiang Pan
@@ -102,6 +111,7 @@ Olavi Mustanoja
 Omar Al-Safi
 Ori Popowski
 Orr Ganani
+Paul Mellor
 Peng Lyu
 Peter Goransson
 Philip Sanetra
@@ -125,6 +135,7 @@ Sanne Grinovero
 Satyajit Vegesna
 Saulius Valatka
 Scofield Xu
+Sean Rooney
 Sherafudheen PM
 Shubham Rawat
 Stanley Shyiko
