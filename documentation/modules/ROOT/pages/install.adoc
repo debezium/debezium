@@ -9,7 +9,6 @@ include::_attributes.adoc[]
 :install-dev-version: {debezium-dev-version}
 
 There are several ways to install and use Debezium connectors, so we've documented a few of the most common ways to do this.
-The latest development version of Debezium is {install-version}.
 
 == Installing a Debezium Connector
 
