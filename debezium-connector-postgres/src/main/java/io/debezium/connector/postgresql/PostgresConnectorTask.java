@@ -10,8 +10,6 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -48,28 +46,15 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorTask.class);
     private static final String CONTEXT_NAME = "postgres-connector-task";
 
-    private static enum State {
-        RUNNING,
-        STOPPED;
-    }
-
-    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
-
     private volatile PostgresTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
     private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile PostgresSchema schema;
-    private volatile Map<String, ?> lastOffset;
 
     @Override
-    public void start(Configuration config) {
-        if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
-            LOGGER.info("Connector has already been started");
-            return;
-        }
-
+    public ChangeEventSourceCoordinator start(Configuration config) {
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
@@ -175,6 +160,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     schema);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
+
+            return coordinator;
         }
         finally {
             previousContext.restore();
@@ -210,21 +197,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
         }
         return replicationConnection;
-    }
-
-    @Override
-    public void commit() throws InterruptedException {
-        if (coordinator != null && lastOffset != null) {
-            coordinator.commitOffset(lastOffset);
-        }
-    }
-
-    @Override
-    public void commitRecord(SourceRecord record) throws InterruptedException {
-        Map<String, ?> currentOffset = record.sourceOffset();
-        if (currentOffset != null) {
-            this.lastOffset = currentOffset;
-        }
     }
 
     @Override

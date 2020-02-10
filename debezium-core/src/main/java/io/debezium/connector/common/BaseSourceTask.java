@@ -7,8 +7,10 @@ package io.debezium.connector.common;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.spi.OffsetContext;
 
 /**
@@ -28,11 +31,37 @@ public abstract class BaseSourceTask extends SourceTask {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
 
+    protected static enum State {
+        RUNNING,
+        STOPPED;
+    }
+
+    protected final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+
+    /**
+     * The change event source coordinator for those connectors adhering to the new
+     * framework structure, {@code null} for legacy-style connectors.
+     */
+    private ChangeEventSourceCoordinator coordinator;
+
+    /**
+     * The latest offset that has been acknowledged by the Kafka producer. Will be
+     * acknowledged with the source database in {@link BaseSourceTask#commit()}
+     * (which may be a no-op depending on the connector).
+     */
+    private volatile Map<String, ?> lastOffset;
+
     @Override
     public final void start(Map<String, String> props) {
         if (context == null) {
             throw new ConnectException("Unexpected null context");
         }
+
+        if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
+            LOGGER.info("Connector has already been started");
+            return;
+        }
+
 
         Configuration config = Configuration.from(props);
         if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
@@ -46,7 +75,7 @@ public abstract class BaseSourceTask extends SourceTask {
             });
         }
 
-        start(config);
+        this.coordinator = start(config);
     }
 
     /**
@@ -56,7 +85,22 @@ public abstract class BaseSourceTask extends SourceTask {
      *            the task configuration; implementations should wrap it in a dedicated implementation of
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
-    protected abstract void start(Configuration config);
+    protected abstract ChangeEventSourceCoordinator start(Configuration config);
+
+    @Override
+    public void commitRecord(SourceRecord record) throws InterruptedException {
+        Map<String, ?> currentOffset = record.sourceOffset();
+        if (currentOffset != null) {
+            this.lastOffset = currentOffset;
+        }
+    }
+
+    @Override
+    public void commit() throws InterruptedException {
+        if (coordinator != null && lastOffset != null) {
+            coordinator.commitOffset(lastOffset);
+        }
+    }
 
     /**
      * Returns all configuration {@link Field} supported by this source task.
