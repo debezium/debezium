@@ -400,7 +400,7 @@ Indexes:
 Replica Identity: FULL
 ----
 
-Here is the output of `wal2json` plug-in on `DELETE` event and `REPLICA IDENTITY` set to `FULL`.
+Here is the output of `wal2json` plug-in on `UPDATE` event and `REPLICA IDENTITY` set to `FULL`.
 Compare with the link:#update-table-change-event[respective output] when `REPLICA IDENTITY` is set to `DEFAULT`.
 
 ._Output for `UPDATE`_
