@@ -25,9 +25,6 @@ For more information about support scope, see link:https://access.redhat.com/sup
 endif::cdc-product[]
 
 {prodname}'s SQL Server Connector can monitor and record the row-level changes in the schemas of a SQL Server database.
-ifndef::cdc-product[]
-This connector was added in Debezium 0.9.0.
-endif::cdc-product[]
 
 The first time it connects to a SQL Server database/cluster, it reads a consistent snapshot of all of the schemas.
 When that snapshot is complete, the connector continuously streams the changes that were committed to SQL Server and generates corresponding insert, update and delete events.
