@@ -27,5 +27,11 @@ public interface StreamingChangeEventSource extends ChangeEventSource {
      */
     void execute(ChangeEventSourceContext context) throws InterruptedException;
 
-    void commitOffset(Map<String, ?> offset);
+    /**
+     * Commits the given offset with the source database. Used by some connectors
+     * like Postgres and Oracle to indicate how far the source TX log can be
+     * discarded.
+     */
+    default void commitOffset(Map<String, ?> offset) {
+    }
 }

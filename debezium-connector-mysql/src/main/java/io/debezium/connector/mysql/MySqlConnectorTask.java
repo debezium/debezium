@@ -27,6 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
@@ -61,7 +62,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public synchronized void start(Configuration config) {
+    public synchronized ChangeEventSourceCoordinator start(Configuration config) {
         final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
         PreviousContext prevLoggingContext = LoggingContext.forConnector(Module.contextName(), serverName, "task");
 
@@ -290,6 +291,8 @@ public final class MySqlConnectorTask extends BaseSourceTask {
         finally {
             prevLoggingContext.restore();
         }
+
+        return null;
     }
 
     public class ServerIdGenerator {
