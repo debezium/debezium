@@ -120,8 +120,7 @@ asciidoc:
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-connector-plugin-download: 'https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/1.1.0.Final/debezium-connector-mysql-1.1.0.Final-plugin.tar.gz'
-    mysql-version: '8.0'
-    confluent-platform-version: '5.3.1'
+    mysql-version: '8.0'    
     strimzi-version: '0.13.0'
 ```
 
