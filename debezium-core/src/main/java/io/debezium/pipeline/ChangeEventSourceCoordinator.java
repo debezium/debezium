@@ -50,7 +50,6 @@ public class ChangeEventSourceCoordinator {
     private final ExecutorService executor;
     private final EventDispatcher<?> eventDispatcher;
     private final RelationalDatabaseSchema schema;
-    private final CommonConnectorConfig connectorConfig;
 
     private volatile boolean running;
     private volatile StreamingChangeEventSource streamingSource;
@@ -63,7 +62,6 @@ public class ChangeEventSourceCoordinator {
                                         ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, RelationalDatabaseSchema schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
-        this.connectorConfig = connectorConfig;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.eventDispatcher = eventDispatcher;

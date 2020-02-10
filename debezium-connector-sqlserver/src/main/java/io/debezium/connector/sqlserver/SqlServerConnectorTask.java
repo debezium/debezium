@@ -7,8 +7,6 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -44,13 +42,6 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorTask.class);
     private static final String CONTEXT_NAME = "sql-server-connector-task";
 
-    private static enum State {
-        RUNNING,
-        STOPPED;
-    }
-
-    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
-
     private volatile SqlServerTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile SqlServerConnection dataConnection;
@@ -58,7 +49,6 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile SqlServerDatabaseSchema schema;
-    private volatile Map<String, ?> lastOffset;
 
     @Override
     public String version() {
@@ -66,12 +56,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public void start(Configuration config) {
-        if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
-            LOGGER.info("Connector has already been started");
-            return;
-        }
-
+    public ChangeEventSourceCoordinator start(Configuration config) {
         final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = SqlServerTopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
@@ -136,6 +121,8 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 schema);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
+
+        return coordinator;
     }
 
     @Override
@@ -146,18 +133,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
-        if (!sourceRecords.isEmpty()) {
-            this.lastOffset = sourceRecords.get(sourceRecords.size() - 1).sourceOffset();
-        }
-
         return sourceRecords;
-    }
-
-    @Override
-    public void commit() throws InterruptedException {
-        if (coordinator != null) {
-            coordinator.commitOffset(lastOffset);
-        }
     }
 
     @Override

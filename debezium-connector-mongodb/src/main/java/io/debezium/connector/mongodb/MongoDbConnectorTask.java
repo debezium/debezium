@@ -27,6 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
@@ -66,10 +67,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public void start(Configuration config) {
+    public ChangeEventSourceCoordinator start(Configuration config) {
         if (!this.running.compareAndSet(false, true)) {
             // Already running ...
-            return;
+            return null;
         }
 
         // Read the configuration and set up the replication context ...
@@ -149,6 +150,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
         finally {
             previousLogContext.restore();
         }
+
+        return null;
     }
 
     @Override
