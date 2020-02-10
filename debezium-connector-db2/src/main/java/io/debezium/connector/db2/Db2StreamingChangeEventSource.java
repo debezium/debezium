@@ -336,10 +336,6 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
         return tables.toArray(new ChangeTable[tables.size()]);
     }
 
-    @Override
-    public void commitOffset(Map<String, ?> offset) {
-    }
-
     /**
      * The logical representation of a position for the change in the transaction log.
      * During each sourcing cycle it is necessary to query all change tables and then

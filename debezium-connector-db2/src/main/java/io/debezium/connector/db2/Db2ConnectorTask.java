@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -45,13 +44,6 @@ public class Db2ConnectorTask extends BaseSourceTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(Db2ConnectorTask.class);
     private static final String CONTEXT_NAME = "db2-server-connector-task";
 
-    private static enum State {
-        RUNNING,
-        STOPPED;
-    }
-
-    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
-
     private volatile Db2TaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile Db2Connection dataConnection;
@@ -59,7 +51,6 @@ public class Db2ConnectorTask extends BaseSourceTask {
     private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile Db2DatabaseSchema schema;
-    private volatile Map<String, ?> lastOffset;
 
     @Override
     public String version() {
@@ -67,12 +58,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public void start(Configuration config) {
-        if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
-            LOGGER.info("Connector has already been started");
-            return;
-        }
-
+    public ChangeEventSourceCoordinator start(Configuration config) {
         final Db2ConnectorConfig connectorConfig = new Db2ConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = Db2TopicSelector.defaultSelector(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(LOGGER);
@@ -137,6 +123,8 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 schema);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
+
+        return coordinator;
     }
 
     /**
@@ -168,18 +156,8 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
-        if (!sourceRecords.isEmpty()) {
-            this.lastOffset = sourceRecords.get(sourceRecords.size() - 1).sourceOffset();
-        }
 
         return sourceRecords;
-    }
-
-    @Override
-    public void commit() throws InterruptedException {
-        if (coordinator != null) {
-            coordinator.commitOffset(lastOffset);
-        }
     }
 
     @Override
