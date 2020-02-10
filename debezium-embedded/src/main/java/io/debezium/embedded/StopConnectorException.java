@@ -7,7 +7,7 @@ package io.debezium.embedded;
 
 import java.util.function.Consumer;
 
-import org.apache.kafka.connect.errors.ConnectException;
+import io.debezium.errors.DebeziumException;
 
 /**
  * An exception that is used to tell the connector to process the last source record and to then stop. When raised by
@@ -16,7 +16,7 @@ import org.apache.kafka.connect.errors.ConnectException;
  *
  * @author Randall Hauch
  */
-public class StopConnectorException extends ConnectException {
+public class StopConnectorException extends DebeziumException {
 
     private static final long serialVersionUID = 1L;
 

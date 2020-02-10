@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -44,7 +45,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.embedded.spi.OffsetCommitPolicy;
+import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.errors.StopEngineException;
 import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
 
@@ -66,7 +69,7 @@ import io.debezium.util.VariableLatch;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class EmbeddedEngine implements Runnable {
+public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
 
     /**
      * A required field for an embedded connector that specifies the unique name for the connector instance.
@@ -160,7 +163,7 @@ public final class EmbeddedEngine implements Runnable {
             .withDescription("The fully-qualified class name of the commit policy type. This class must implement the interface "
                     + OffsetCommitPolicy.class.getName()
                     + ". The default is a periodic commit policy based upon time intervals.")
-            .withDefault(OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
+            .withDefault(io.debezium.embedded.spi.OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class.getName())
             .withValidation(Field::isClassName);
 
     protected static final Field INTERNAL_KEY_CONVERTER_CLASS = Field.create("internal.key.converter")
@@ -186,57 +189,116 @@ public final class EmbeddedEngine implements Runnable {
     private static final Duration WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_DEFAULT = Duration.ofSeconds(2);
     private static final String WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_PROP = "debezium.embedded.shutdown.pause.before.interrupt.ms";
 
+    public static final class BuilderImpl implements Builder {
+        private Configuration config;
+        private DebeziumEngine.ChangeConsumer<SourceRecord> handler;
+        private ClassLoader classLoader;
+        private Clock clock;
+        private DebeziumEngine.CompletionCallback completionCallback;
+        private DebeziumEngine.ConnectorCallback connectorCallback;
+        private OffsetCommitPolicy offsetCommitPolicy = null;
+
+        @Override
+        public Builder using(Configuration config) {
+            this.config = config;
+            return this;
+        }
+
+        @Override
+        public Builder using(Properties config) {
+            this.config = Configuration.from(config);
+            return this;
+        }
+
+        @Override
+        public Builder using(ClassLoader classLoader) {
+            this.classLoader = classLoader;
+            return this;
+        }
+
+        @Override
+        public Builder using(Clock clock) {
+            this.clock = clock;
+            return this;
+        }
+
+        @Override
+        public Builder using(DebeziumEngine.CompletionCallback completionCallback) {
+            this.completionCallback = completionCallback;
+            return this;
+        }
+
+        @Override
+        public Builder using(DebeziumEngine.ConnectorCallback connectorCallback) {
+            this.connectorCallback = connectorCallback;
+            return this;
+        }
+
+        @Override
+        public Builder using(OffsetCommitPolicy offsetCommitPolicy) {
+            this.offsetCommitPolicy = offsetCommitPolicy;
+            return this;
+        }
+
+        @Override
+        public Builder notifying(Consumer<SourceRecord> consumer) {
+            this.handler = buildDefaultChangeConsumer(consumer);
+            return this;
+        }
+
+        @Override
+        public Builder notifying(DebeziumEngine.ChangeConsumer<SourceRecord> handler) {
+            this.handler = handler;
+            return this;
+        }
+
+        @Override
+        public Builder using(java.time.Clock clock) {
+            return using(new Clock() {
+
+                @Override
+                public long currentTimeInMillis() {
+                    return clock.millis();
+                }
+            });
+        }
+
+        @Override
+        public EmbeddedEngine build() {
+            if (classLoader == null) {
+                classLoader = getClass().getClassLoader();
+            }
+            if (clock == null) {
+                clock = Clock.system();
+            }
+            Objects.requireNonNull(config, "A connector configuration must be specified.");
+            Objects.requireNonNull(handler, "A connector consumer or changeHandler must be specified.");
+            return new EmbeddedEngine(config, classLoader, clock,
+                    handler, completionCallback, connectorCallback, offsetCommitPolicy);
+        }
+
+        // backward compatibility methods
+        @Override
+        public Builder using(CompletionCallback completionCallback) {
+            return using((DebeziumEngine.CompletionCallback) completionCallback);
+        }
+
+        @Override
+        public Builder using(ConnectorCallback connectorCallback) {
+            return using((DebeziumEngine.ConnectorCallback) connectorCallback);
+        }
+    }
+
     /**
      * A callback function to be notified when the connector completes.
      */
-    public interface CompletionCallback {
-        /**
-         * Handle the completion of the embedded connector engine.
-         *
-         * @param success {@code true} if the connector completed normally, or {@code false} if the connector produced an error
-         *            that prevented startup or premature termination.
-         * @param message the completion message; never null
-         * @param error the error, or null if there was no exception
-         */
-        void handle(boolean success, String message, Throwable error);
+    public interface CompletionCallback extends DebeziumEngine.CompletionCallback {
     }
 
     /**
      * Callback function which informs users about the various stages a connector goes through during startup
      */
-    public interface ConnectorCallback {
-
-        /**
-         * Called after a connector has been successfully started by the engine; i.e. {@link SourceConnector#start(Map)} has
-         * completed successfully
-         */
-        default void connectorStarted() {
-            // nothing by default
-        }
-
-        /**
-         * Called after a connector has been successfully stopped by the engine; i.e. {@link SourceConnector#stop()} has
-         * completed successfully
-         */
-        default void connectorStopped() {
-            // nothing by default
-        }
-
-        /**
-         * Called after a connector task has been successfully started by the engine; i.e. {@link SourceTask#start(Map)} has
-         * completed successfully
-         */
-        default void taskStarted() {
-            // nothing by default
-        }
-
-        /**
-         * Called after a connector task has been successfully stopped by the engine; i.e. {@link SourceTask#stop()} has
-         * completed successfully
-         */
-        default void taskStopped() {
-            // nothing by default
-        }
+    public interface ConnectorCallback extends DebeziumEngine.ConnectorCallback {
     }
 
     /**
@@ -350,38 +412,14 @@ public final class EmbeddedEngine implements Runnable {
      * and to signal that offsets may be flushed eventually.
      */
     @ThreadSafe
-    public static interface RecordCommitter {
-
-        /**
-         * Marks a single record as processed, must be called for each
-         * record.
-         *
-         * @param record the record to commit
-         */
-        void markProcessed(SourceRecord record) throws InterruptedException;
-
-        /**
-         * Marks a batch as finished, this may result in committing offsets/flushing
-         * data.
-         * <p>
-         * Should be called when a batch of records is finished being processed.
-         */
-        void markBatchFinished();
+    public static interface RecordCommitter extends DebeziumEngine.RecordCommitter<SourceRecord> {
     }
 
     /**
      * A contract invoked by the embedded engine when it has received a batch of change records to be processed. Allows
      * to process multiple records in one go, acknowledging their processing once that's done.
      */
-    public static interface ChangeConsumer {
-
-        /**
-         * Handles a batch of records, calling the {@link RecordCommitter#markProcessed(SourceRecord)}
-         * for each record and {@link RecordCommitter#markBatchFinished()} when this batch is finished.
-         * @param records the records to be processed
-         * @param committer the committer that indicates to the system that we are finished
-         */
-        void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException;
+    public static interface ChangeConsumer extends DebeziumEngine.ChangeConsumer<SourceRecord> {
     }
 
     private static ChangeConsumer buildDefaultChangeConsumer(Consumer<SourceRecord> consumer) {
@@ -399,14 +437,14 @@ public final class EmbeddedEngine implements Runnable {
              * @throws Exception
              */
             @Override
-            public void handleBatch(List<SourceRecord> records, RecordCommitter committer) throws InterruptedException {
+            public void handleBatch(List<SourceRecord> records, DebeziumEngine.RecordCommitter<SourceRecord> committer) throws InterruptedException {
                 try {
                     for (SourceRecord record : records) {
                         try {
                             consumer.accept(record);
                             committer.markProcessed(record);
                         }
-                        catch (StopConnectorException ex) {
+                        catch (StopConnectorException | StopEngineException ex) {
                             // ensure that we mark the record as finished
                             // in this case
                             committer.markProcessed(record);
@@ -424,25 +462,7 @@ public final class EmbeddedEngine implements Runnable {
     /**
      * A builder to set up and create {@link EmbeddedEngine} instances.
      */
-    public static interface Builder {
-
-        /**
-         * Call the specified function for every {@link SourceRecord data change event} read from the source database.
-         * This method must be called with a non-null consumer.
-         *
-         * @param consumer the consumer function
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder notifying(Consumer<SourceRecord> consumer);
-
-        /**
-         * Pass a custom ChangeConsumer override the default implementation,
-         * this allows for more complex handling of records for batch and async handling
-         *
-         * @param handler the consumer function
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder notifying(ChangeConsumer handler);
+    public static interface Builder extends DebeziumEngine.Builder<SourceRecord> {
 
         /**
          * Use the specified configuration for the connector. The configuration is assumed to already be valid.
@@ -453,15 +473,6 @@ public final class EmbeddedEngine implements Runnable {
         Builder using(Configuration config);
 
         /**
-         * Use the specified class loader to find all necessary classes. Passing <code>null</code> or not calling this method
-         * results in the connector using this class's class loader.
-         *
-         * @param classLoader the class loader
-         * @return this builder object so methods can be chained together; never null
-         */
-        Builder using(ClassLoader classLoader);
-
-        /**
          * Use the specified clock when needing to determine the current time. Passing <code>null</code> or not calling this
          * method results in the connector using the {@link Clock#system() system clock}.
          *
@@ -470,38 +481,19 @@ public final class EmbeddedEngine implements Runnable {
          */
         Builder using(Clock clock);
 
-        /**
-         * When the engine's {@link EmbeddedEngine#run()} method completes, call the supplied function with the results.
-         *
-         * @param completionCallback the callback function; may be null if errors should be written to the log
-         * @return this builder object so methods can be chained together; never null
-         */
+        // backward compatibility methods
+        Builder notifying(Consumer<SourceRecord> consumer);
+
+        Builder notifying(DebeziumEngine.ChangeConsumer<SourceRecord> handler);
+
+        Builder using(ClassLoader classLoader);
+
         Builder using(CompletionCallback completionCallback);
 
-        /**
-         * During the engine's {@link EmbeddedEngine#run()} method, call the supplied the supplied function at different
-         * stages according to the completion state of each component running within the engine (connectors, tasks etc)
-         *
-         * @param connectorCallback the callback function; may be null
-         * @return this builder object so methods can be chained together; never null
-         */
         Builder using(ConnectorCallback connectorCallback);
 
-        /**
-         * During the engine's {@link EmbeddedEngine#run()} method, decide when the offsets
-         * should be committed into the {@link OffsetBackingStore}.
-         * @param policy
-         * @return this builder object so methods can be chained together; never null
-         */
         Builder using(OffsetCommitPolicy policy);
 
-        /**
-         * Build a new connector with the information previously supplied to this builder.
-         *
-         * @return the embedded connector; never null
-         * @throws IllegalArgumentException if a {@link #using(Configuration) configuration} or {@link #notifying(Consumer)
-         *             consumer function} were not supplied before this method is called
-         */
         EmbeddedEngine build();
     }
 
@@ -511,87 +503,16 @@ public final class EmbeddedEngine implements Runnable {
      * @return the new builder; never null
      */
     public static Builder create() {
-        return new Builder() {
-            private Configuration config;
-            private ChangeConsumer handler;
-            private ClassLoader classLoader;
-            private Clock clock;
-            private CompletionCallback completionCallback;
-            private ConnectorCallback connectorCallback;
-            private OffsetCommitPolicy offsetCommitPolicy = null;
-
-            @Override
-            public Builder using(Configuration config) {
-                this.config = config;
-                return this;
-            }
-
-            @Override
-            public Builder using(ClassLoader classLoader) {
-                this.classLoader = classLoader;
-                return this;
-            }
-
-            @Override
-            public Builder using(Clock clock) {
-                this.clock = clock;
-                return this;
-            }
-
-            @Override
-            public Builder using(CompletionCallback completionCallback) {
-                this.completionCallback = completionCallback;
-                return this;
-            }
-
-            @Override
-            public Builder using(ConnectorCallback connectorCallback) {
-                this.connectorCallback = connectorCallback;
-                return this;
-            }
-
-            @Override
-            public Builder using(OffsetCommitPolicy offsetCommitPolicy) {
-                this.offsetCommitPolicy = offsetCommitPolicy;
-                return this;
-            }
-
-            @Override
-            public Builder notifying(Consumer<SourceRecord> consumer) {
-                this.handler = buildDefaultChangeConsumer(consumer);
-                return this;
-            }
-
-            @Override
-            public Builder notifying(ChangeConsumer handler) {
-                this.handler = handler;
-                return this;
-            }
-
-            @Override
-            public EmbeddedEngine build() {
-                if (classLoader == null) {
-                    classLoader = getClass().getClassLoader();
-                }
-                if (clock == null) {
-                    clock = Clock.system();
-                }
-                Objects.requireNonNull(config, "A connector configuration must be specified.");
-                Objects.requireNonNull(handler, "A connector consumer or changeHandler must be specified.");
-                return new EmbeddedEngine(config, classLoader, clock,
-                        handler, completionCallback, connectorCallback, offsetCommitPolicy);
-            }
-
-        };
+        return new BuilderImpl();
     }
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Configuration config;
     private final Clock clock;
     private final ClassLoader classLoader;
-    private final ChangeConsumer handler;
-    private final CompletionCallback completionCallback;
-    private final ConnectorCallback connectorCallback;
+    private final DebeziumEngine.ChangeConsumer<SourceRecord> handler;
+    private final DebeziumEngine.CompletionCallback completionCallback;
+    private final DebeziumEngine.ConnectorCallback connectorCallback;
     private final AtomicReference<Thread> runningThread = new AtomicReference<>();
     private final VariableLatch latch = new VariableLatch(0);
     private final Converter keyConverter;
@@ -604,8 +525,8 @@ public final class EmbeddedEngine implements Runnable {
 
     private SourceTask task;
 
-    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, ChangeConsumer handler,
-                           CompletionCallback completionCallback, ConnectorCallback connectorCallback,
+    private EmbeddedEngine(Configuration config, ClassLoader classLoader, Clock clock, DebeziumEngine.ChangeConsumer<SourceRecord> handler,
+                           DebeziumEngine.CompletionCallback completionCallback, DebeziumEngine.ConnectorCallback connectorCallback,
                            OffsetCommitPolicy offsetCommitPolicy) {
         this.config = config;
         this.handler = handler;
@@ -693,7 +614,7 @@ public final class EmbeddedEngine implements Runnable {
 
             final String engineName = config.getString(ENGINE_NAME);
             final String connectorClassName = config.getString(CONNECTOR_CLASS);
-            final Optional<ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
+            final Optional<DebeziumEngine.ConnectorCallback> connectorCallback = Optional.ofNullable(this.connectorCallback);
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
             try {
@@ -766,7 +687,7 @@ public final class EmbeddedEngine implements Runnable {
                 try {
                     // Start the connector with the given properties and get the task configurations ...
                     connector.start(config.asMap());
-                    connectorCallback.ifPresent(ConnectorCallback::connectorStarted);
+                    connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStarted);
                     List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     Class<? extends Task> taskClass = connector.taskClass();
                     task = null;
@@ -791,7 +712,7 @@ public final class EmbeddedEngine implements Runnable {
                         };
                         task.initialize(taskContext);
                         task.start(taskConfigs.get(0));
-                        connectorCallback.ifPresent(ConnectorCallback::taskStarted);
+                        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStarted);
                     }
                     catch (Throwable t) {
                         // Mask the passwords ...
@@ -857,7 +778,7 @@ public final class EmbeddedEngine implements Runnable {
                             // First stop the task ...
                             logger.debug("Stopping the task and engine");
                             task.stop();
-                            connectorCallback.ifPresent(ConnectorCallback::taskStopped);
+                            connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
                             // Always commit offsets that were captured from the source records we actually processed ...
                             commitOffsets(offsetWriter, commitTimeout, task);
                             if (handlerError == null) {
@@ -884,7 +805,7 @@ public final class EmbeddedEngine implements Runnable {
                     finally {
                         try {
                             connector.stop();
-                            connectorCallback.ifPresent(ConnectorCallback::connectorStopped);
+                            connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::connectorStopped);
                         }
                         catch (Throwable t) {
                             fail("Error while trying to stop connector class '" + connectorClassName + "'", t);
