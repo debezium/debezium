@@ -1038,7 +1038,7 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 
 ifndef::cdc-product[]
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's SQL Server` connector is easy.
-Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/0.9.0.Alpha1/debezium-connector-sqlserver-0.9.0.Alpha1-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to http://docs.confluent.io/{confluent-platform-version}/connect/userguide.html#installing-plugins[Kafka Connect's classpath].
+Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/0.9.0.Alpha1/debezium-connector-sqlserver-0.9.0.Alpha1-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to http://kafka.apache.org/documentation/#connectconfigs[Kafka Connect's plugin.path].
 Restart your Kafka Connect process to pick up the new JARs.
 endif::cdc-product[]
 

@@ -14,5 +14,4 @@ asciidoc:
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-version: '8.0'
-    confluent-platform-version: '5.3.1'
     strimzi-version: '0.13.0'
