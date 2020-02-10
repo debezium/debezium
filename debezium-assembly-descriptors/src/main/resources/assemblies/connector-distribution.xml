@@ -20,6 +20,7 @@
               <exclude>com.fasterxml.jackson.core:jackson-databind:*</exclude>
               <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
               <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
+              <exclude>com.ibm.db2:jcc:*</exclude>
           </excludes>
       </dependencySet>
       <dependencySet>
