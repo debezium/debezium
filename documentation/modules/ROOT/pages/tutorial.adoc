@@ -21,7 +21,7 @@ Try link:#docker-compose[the fast track] using Docker Compose, including example
 
 Debezium is a distributed platform that turns your existing databases into event streams, so applications can see and respond immediately to each row-level change in the databases. Debezium is built on top of http://kafka.apache.org[Apache Kafka] and provides http://kafka.apache.org/documentation.html#connect[Kafka Connect] compatible connectors that monitor specific database management systems. Debezium records the history of data changes in Kafka logs, from where your application consumes them. This makes it possible for your application to easily consume all of the events correctly and completely. Even if your application stops (or crashes), upon restart it will start consuming the events where it left off so it misses nothing.
 
-Debezium {debezium-version} includes support for monitoring MySQL database servers with its xref:connectors/mysql.adoc[MySQL connector], and this is what we'll use in this demonstration. Support for other DBMSes will be added in future releases.
+Debezium includes multiple xref:connectors/overview.adoc[connectors].  In this tutorial, we will use the xref:connectors/mysql.adoc[MySQL connector].
 
 == Running Debezium with Docker
 

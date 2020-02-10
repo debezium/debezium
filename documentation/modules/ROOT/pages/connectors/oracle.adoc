@@ -21,7 +21,7 @@ It is supported though to capture tables newly added while the connector is runn
 [[overview]]
 == Overview
 
-As of Debezium 0.8, change events from Oracle are ingested using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
+Debezium ingests change events from Oracle using the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
 In order to use this API and hence this connector, you need to have a license for the GoldenGate product
 (though it's not required that GoldenGate itself is installed).
 We are currently exploring alternatives to using XStream for a future Debezium release, e.g. based on LogMiner and/or alternative solutions.
