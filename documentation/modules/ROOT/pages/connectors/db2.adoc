@@ -15,8 +15,7 @@ This connector is currently in incubating state, i.e. exact semantics, configura
 ====
 
 Debezium's Db2 Connector can monitor and record the row-level changes in the tables of a Db2 database.
-This connector was added in release Debezium 1.1.x.
-It is strongly inspired by the Debezium implementation of  SQL server, using a
+This connector is strongly inspired by the Debezium implementation of SQL server, using a
 SQL based polling model of tables put into "capture mode". This uses the ASN libraries that come as a standard part of Db2 LUW and can be added (with an additional license) to Db2 zOS.
 
 The first time it connects to a Db2 database, it reads a consistent snapshot of all of the tables that are whitelisted (or not blacklisted depending on the mode of operation).
