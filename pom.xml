@@ -155,6 +155,7 @@
     <modules>
         <module>support/checkstyle</module>
         <module>support/ide-configs</module>
+        <module>debezium-api</module>
         <module>debezium-ddl-parser</module>
         <module>debezium-assembly-descriptors</module>
         <module>debezium-core</module>
@@ -408,6 +409,11 @@
             </dependency>
 
             <!-- Debezium artifacts -->
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-core</artifactId>

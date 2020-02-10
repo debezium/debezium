@@ -3,22 +3,22 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.embedded.spi;
+package io.debezium.engine.spi;
 
 import java.time.Duration;
+import java.util.Properties;
 
-import org.apache.kafka.connect.storage.OffsetBackingStore;
-
-import io.debezium.config.Configuration;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.annotation.Incubating;
+import io.debezium.engine.DebeziumEngine;
 
 /**
- * The policy that defines when the offsets should be committed to {@link OffsetBackingStore offset storage}.
+ * The policy that defines when the offsets should be committed to offset storage.
  *
  * @author Randall Hauch
  */
+@Incubating
 @FunctionalInterface
-public interface OffsetCommitPolicy extends io.debezium.engine.spi.OffsetCommitPolicy {
+public interface OffsetCommitPolicy {
 
     /**
      * An {@link OffsetCommitPolicy} that will commit offsets as frequently as possible. This may result in reduced
@@ -35,14 +35,14 @@ public interface OffsetCommitPolicy extends io.debezium.engine.spi.OffsetCommitP
     /**
      * An {@link OffsetCommitPolicy} that will commit offsets no more than the specified time period. If the specified
      * time is less than {@code 0} then the policy will behave as {@link AlwaysCommitOffsetPolicy}.
-     * @see io.debezium.embedded.EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS
+     * @see io.debezium.engine.DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS
      */
     public static class PeriodicCommitOffsetPolicy implements OffsetCommitPolicy {
 
         private final Duration minimumTime;
 
-        public PeriodicCommitOffsetPolicy(Configuration config) {
-            minimumTime = Duration.ofMillis(config.getLong(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS));
+        public PeriodicCommitOffsetPolicy(Properties config) {
+            minimumTime = Duration.ofMillis(Long.valueOf(config.getProperty(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP)));
         }
 
         @Override
@@ -55,9 +55,19 @@ public interface OffsetCommitPolicy extends io.debezium.engine.spi.OffsetCommitP
         return new AlwaysCommitOffsetPolicy();
     }
 
-    static OffsetCommitPolicy periodic(Configuration config) {
+    static OffsetCommitPolicy periodic(Properties config) {
         return new PeriodicCommitOffsetPolicy(config);
     }
+
+    /**
+     * Determine if a commit of the offsets should be performed.
+     *
+     * @param numberOfMessagesSinceLastCommit the number of messages that have been received from the connector since last
+     *            the offsets were last committed; never negative
+     * @param timeSinceLastCommit the time that has elapsed since the offsets were last committed; never negative
+     * @return {@code true} if the offsets should be committed, or {@code false} otherwise
+     */
+    boolean performCommit(long numberOfMessagesSinceLastCommit, Duration timeSinceLastCommit);
 
     /**
      * Obtain a new {@link OffsetCommitPolicy} that will commit offsets if this policy OR the other requests it.
