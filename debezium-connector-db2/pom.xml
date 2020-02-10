@@ -37,6 +37,7 @@
             <groupId>com.ibm.db2</groupId>
             <artifactId>jcc</artifactId>
             <version>${version.db2.driver}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
