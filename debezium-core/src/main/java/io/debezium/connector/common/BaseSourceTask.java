@@ -62,7 +62,6 @@ public abstract class BaseSourceTask extends SourceTask {
             return;
         }
 
-
         Configuration config = Configuration.from(props);
         if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
