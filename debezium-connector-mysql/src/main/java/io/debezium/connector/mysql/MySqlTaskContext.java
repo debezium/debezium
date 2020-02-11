@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,8 +91,12 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
         this.recordProcessor = new RecordMakers(dbSchema, source, topicSelector, connectorConfig.isEmitTombstoneOnDelete(), restartOffset);
 
         // Set up the DDL filter
-        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
-        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
+        StringBuilder ddlFilter = new StringBuilder(config.getString(DatabaseHistory.DDL_FILTER));
+        // Todo
+        ddlFilter.append(",")
+                .append(loadReplicationIgnoreTables());
+        LOGGER.debug("Final DDL Filter is - {}", ddlFilter.toString());
+        this.ddlFilter = Predicates.includes(ddlFilter.toString());
     }
 
     public Configuration config() {
@@ -146,6 +152,21 @@ public final class MySqlTaskContext extends CdcSourceTaskContext {
 
         // And write them into the database history ...
         dbSchema.applyDdl(source, "", ddlStatement, null);
+    }
+
+    public String loadReplicationIgnoreTables() {
+        LOGGER.debug("Loading Replication Ignore Tables from MySQL Slave (Applicable for AWS RDS InnoDB Backed MySQL)");
+        String replicateIgnoreTables = connectionContext.readMySqlReplicationIgnoreTableVariable();
+        String ignoreList = "";
+
+        LOGGER.debug("Tables to be ignored for replication - {}", replicateIgnoreTables);
+        if (null != replicateIgnoreTables && !replicateIgnoreTables.trim().equals("")) {
+            String[] ignoreTableList = replicateIgnoreTables.split(",");
+            ignoreList = Arrays.stream(ignoreTableList)
+                    .map(table -> new String("(INSERT|DELETE|UPDATE)(.*)" + table + "(.*)"))
+                    .collect(Collectors.joining(","));
+        }
+        return ignoreList;
     }
 
     /**

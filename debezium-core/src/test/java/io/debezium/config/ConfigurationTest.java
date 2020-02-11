@@ -146,15 +146,6 @@ public class ConfigurationTest {
     }
 
     @Test
-    @FixFor("DBZ-1492")
-    public void defaultDdlFilterShouldFilterOutRdsSysinfoStatements() {
-        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
-        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
-        assertThat(ddlFilter.test("DELETE FROM mysql.rds_sysinfo where name = 'innodb_txn_key'")).isTrue();
-        assertThat(ddlFilter.test("INSERT INTO mysql.rds_sysinfo(name, value) values ('innodb_txn_key','Thu Sep 19 19:38:23 UTC 2019')")).isTrue();
-    }
-
-    @Test
     @FixFor("DBZ-1015")
     public void testMsgKeyColumnsField() {
         // null : ok
