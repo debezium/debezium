@@ -92,7 +92,9 @@
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>3.1.6</version.awaitility>
-        <version.testcontainers>1.12.3</version.testcontainers>
+        <version.testcontainers>1.12.5</version.testcontainers>
+        <version.jsonpath>2.4.0</version.jsonpath>
+        <version.okhttp>4.2.2</version.okhttp>
 
         <!-- Maven Plugins -->
         <version.compiler.plugin>3.8.1</version.compiler.plugin>
@@ -213,14 +215,14 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-		<version>${version.jackson}</version>
-		<optional>true</optional>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
                 <version>${version.jackson}</version>
-		<optional>true</optional>
+                <optional>true</optional>
             </dependency>
 
             <!-- Kafka Connect -->
@@ -254,6 +256,11 @@
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka_${version.kafka.scala}</artifactId>
+                <version>${version.kafka}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
                 <version>${version.kafka}</version>
             </dependency>
             <dependency>
@@ -350,29 +357,15 @@
             <!-- Testing utilities -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers</artifactId>
+                <artifactId>testcontainers-bom</artifactId>
                 <version>${version.testcontainers}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>kafka</artifactId>
-                <version>${version.testcontainers}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>jdbc</artifactId>
-                <version>${version.testcontainers}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
                 <version>${version.okhttp}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>postgresql</artifactId>
-                <version>${version.testcontainers}</version>
-                <scope>test</scope>
             </dependency>
 
             <!-- Test dependencies -->
@@ -405,6 +398,11 @@
                 <groupId>org.awaitility</groupId>
                 <artifactId>awaitility</artifactId>
                 <version>${version.awaitility}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jayway.jsonpath</groupId>
+                <artifactId>json-path</artifactId>
+                <version>${version.jsonpath}</version>
             </dependency>
 
             <!-- Debezium artifacts -->

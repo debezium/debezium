@@ -22,11 +22,11 @@ public class Connector {
     private static final String CONFIGURATION = "config";
 
     private String name;
-    private Configuration configuration;
+    private ConnectorConfiguration configuration;
 
     private final static ObjectMapper mapper = new ObjectMapper();
 
-    private Connector(final String name, final Configuration configuration) {
+    private Connector(final String name, final ConnectorConfiguration configuration) {
         this.name = name;
         this.configuration = configuration;
     }
@@ -40,7 +40,7 @@ public class Connector {
         try {
             final ObjectNode connectorConfiguration = mapper.readValue(inputStream, ObjectNode.class);
             final String name = connectorConfiguration.get("name").asText();
-            final Configuration config = Configuration.from(connectorConfiguration.get("config"));
+            final ConnectorConfiguration config = ConnectorConfiguration.from(connectorConfiguration.get("config"));
 
             return new Connector(name, config);
         }
@@ -49,11 +49,11 @@ public class Connector {
         }
     }
 
-    public static Connector from(String name, Configuration configuration) {
+    public static Connector from(String name, ConnectorConfiguration configuration) {
         return new Connector(name, configuration);
     }
 
-    public void appendOrOverrideConfiguration(Configuration newConfiguration) {
+    public void appendOrOverrideConfiguration(ConnectorConfiguration newConfiguration) {
         final ObjectNode configurationNode = this.configuration.getConfiguration();
         final ObjectNode newConfigurationNode = newConfiguration.getConfiguration();
 
@@ -79,5 +79,4 @@ public class Connector {
     public String getName() {
         return this.name;
     }
-
 }

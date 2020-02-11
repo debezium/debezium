@@ -28,8 +28,7 @@ public class ConnectorConfigurationTest {
 
     @Test
     public void shouldSerializeConnectorConfiguration() throws IOException {
-
-        final Configuration configuration = Configuration.create();
+        final ConnectorConfiguration configuration = ConnectorConfiguration.create();
         configuration.with("connector.class", "foo");
         configuration.with("database.hostname", "bar");
         final Connector connector = Connector.from("myconnector", configuration);
@@ -42,7 +41,6 @@ public class ConnectorConfigurationTest {
         final JsonNode configNode = connectionNode.get("config");
         assertThat(configNode.get("connector.class").asText()).isEqualTo("foo");
         assertThat(configNode.get("database.hostname").asText()).isEqualTo("bar");
-
     }
 
     @Test
@@ -62,7 +60,6 @@ public class ConnectorConfigurationTest {
 
     @Test
     public void shouldOverrideConfigurationFromJdbcContainer() throws IOException {
-
         final ContainerConfig containerConfig = mock(ContainerConfig.class);
         when(containerConfig.getHostName()).thenReturn("localhost");
 
@@ -80,7 +77,7 @@ public class ConnectorConfigurationTest {
         final InputStream configFile = ConnectorConfigurationTest.class.getClassLoader().getResourceAsStream("config.json");
         final Connector connector = Connector.fromJson(configFile);
 
-        connector.appendOrOverrideConfiguration(JdbcConfiguration.fromJdbcContainer(jdbcDatabaseContainer));
+        connector.appendOrOverrideConfiguration(ConnectorConfiguration.forJdbcContainer(jdbcDatabaseContainer));
 
         final String json = connector.toJson();
 
@@ -91,7 +88,5 @@ public class ConnectorConfigurationTest {
         assertThat(configNode.get("connector.class").asText()).isEqualTo("io.debezium.connector.postgresql.PostgresConnector");
         assertThat(configNode.get("database.hostname").asText()).isEqualTo("localhost");
         assertThat(configNode.get("database.dbname").asText()).isEqualTo("db");
-
     }
-
 }

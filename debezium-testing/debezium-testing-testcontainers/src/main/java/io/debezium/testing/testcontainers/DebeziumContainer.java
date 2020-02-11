@@ -25,6 +25,7 @@ import okhttp3.Response;
  */
 public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
+    private static final int KAFKA_CONNECT_PORT = 8083;
     private final OkHttpClient client = new OkHttpClient();
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
@@ -33,7 +34,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
         setWaitStrategy(
                 Wait.forHttp("/connectors")
-                        .forPort(8083)
+                        .forPort(KAFKA_CONNECT_PORT)
                         .forStatusCode(200));
 
         withEnv("GROUP_ID", "1");
@@ -61,19 +62,16 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         return self();
     }
 
-    public void registerConnector(final Connector connector) throws IOException {
-        this.registerConnector(connector.getName(), connector.toJson());
-    }
+    public void registerConnector(String name, ConnectorConfiguration configuration) throws IOException {
+        Connector connector = Connector.from(name, configuration);
 
-    public void registerConnector(final String connectorName, final String payload) throws IOException {
-        final String fullUrl = "http://" + getTarget() + "/connectors/";
+        registerConnectorToDebezium(connector.toJson(), getConnectors());
 
-        registerConnectorToDebezium(payload, fullUrl);
         // To avoid a 409 error code meanwhile connector is being configured.
         // This is just a guard, probably in most of use cases you won't need that as preparation time of the test might be enough to configure connector.
         Awaitility.await()
-                .atMost(5, TimeUnit.SECONDS)
-                .until(() -> isConnectorConfigured(connectorName));
+                .atMost(10, TimeUnit.SECONDS)
+                .until(() -> isConnectorConfigured(connector.getName()));
     }
 
     private void registerConnectorToDebezium(final String payload, final String fullUrl) throws IOException {
@@ -81,14 +79,15 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         final Request request = new Request.Builder().url(fullUrl).post(body).build();
 
         try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful())
+            if (!response.isSuccessful()) {
                 throw new IOException("Unexpected code " + response + "Message: " + response.body().string());
+            }
         }
     }
 
     private boolean isConnectorConfigured(String connectorName) throws IOException {
         final Request request = new Request.Builder()
-                .url("http://" + getConnectorTarget(connectorName))
+                .url(getConnector(connectorName))
                 .build();
 
         try (Response response = client.newCall(request).execute()) {
@@ -96,16 +95,28 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         }
     }
 
+    /**
+     * Returns the "/connectors" endpoint.
+     */
     public String getConnectors() {
         return getTarget() + "/connectors/";
     }
 
-    public String getConnectorTarget(String connectorName) {
+    /**
+     * Returns the "/connectors/<connector>" endpoint.
+     */
+    public String getConnector(String connectorName) {
         return getConnectors() + connectorName;
     }
 
-    public String getTarget() {
-        return getContainerIpAddress() + ":" + getMappedPort(8083);
+    /**
+     * Returns the "/connectors/<connector>/status" endpoint.
+     */
+    public String getConnectorStatus(String connectorName) {
+        return getConnectors() + connectorName + "/status";
     }
 
+    public String getTarget() {
+        return "http://" + getContainerIpAddress() + ":" + getMappedPort(8083);
+    }
 }
