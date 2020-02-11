@@ -19,6 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <version.jar.plugin>3.0.2</version.jar.plugin>
+        <version.compiler.plugin>3.8.1</version.compiler.plugin>
     </properties>
  
     <build>
