@@ -124,8 +124,9 @@ public void canRegisterPostgreSqlConnector() throws Exception {
         statement.execute("insert into todo.Todo values (2, " +
                 "'Learn Debezium')");
 
-        ConnectorConfiguration connector = ConnectorConfiguration.forJdbcContainer(postgresContainer)
-            .with("database.server.name", "dbserver1");
+        ConnectorConfiguration connector = ConnectorConfiguration
+                .forJdbcContainer(postgresContainer)
+                .with("database.server.name", "dbserver1");
 
         debeziumContainer.registerConnector("my-connector",
                 connector); // <2>
