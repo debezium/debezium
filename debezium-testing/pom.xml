@@ -11,6 +11,6 @@
   <name>Debezium Testing</name>
   <packaging>pom</packaging>
   <modules>
-    <module>debezium-testcontainers-testing</module>
+    <module>debezium-testing-testcontainers</module>
   </modules>
 </project>
