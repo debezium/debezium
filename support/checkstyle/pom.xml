@@ -1,19 +1,18 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-   <parent>
-      <groupId>org.jboss</groupId>
-      <artifactId>jboss-parent</artifactId>
-      <version>35</version>
-      <!-- same as parent POM -->
-   </parent>
+    <parent>
+        <groupId>org.jboss</groupId>
+        <artifactId>jboss-parent</artifactId>
+        <version>35</version>
+        <!-- same as parent POM -->
+    </parent>
 
-   <modelVersion>4.0.0</modelVersion>
-   <groupId>io.debezium</groupId>
-   <artifactId>debezium-checkstyle</artifactId>
-   <version>1.1.0-SNAPSHOT</version>
-   <name>Debezium Checkstyle Rules</name>
-   <description>Contains the definitions for the Debezium commons code style and conventions</description>
-
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.debezium</groupId>
+    <artifactId>debezium-checkstyle</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
+    <name>Debezium Checkstyle Rules</name>
+    <description>Contains the definitions for the Debezium commons code style and conventions</description>
 
     <properties>
         <!-- Instruct the build to use only UTF-8 encoding for source code -->
@@ -23,13 +22,15 @@
         <version.jar.plugin>3.0.2</version.jar.plugin>
         <version.source.plugin>3.1.0</version.source.plugin>
         <version.checkstyle.plugin>3.0.0</version.checkstyle.plugin>
+        <version.compiler.plugin>3.8.1</version.compiler.plugin>
     </properties>
-   <!--
-   This module is referenced by Debezium's parent POM, so it needs to be built before the parent
-   or any other module. Therefore, this module cannot reference the parent, and needs to define enough
-   to build and deploy the "debezium-checkstyle" module.
-   -->
-   <build>
+
+    <!--
+    This module is referenced by Debezium's parent POM, so it needs to be built before the parent
+    or any other module. Therefore, this module cannot reference the parent, and needs to define enough
+    to build and deploy the "debezium-checkstyle" module.
+    -->
+    <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
