@@ -26,6 +26,7 @@
 ** xref:configuration/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
 ** xref:configuration/cloudevents.adoc[CloudEvents]
+** xref:integrations/testcontainers.adoc[Integration Testing with TestContainers]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
