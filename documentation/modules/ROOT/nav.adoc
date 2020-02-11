@@ -25,6 +25,7 @@
 ** xref:connectors/cassandra.adoc[Cassandra]
 * Integrations
 ** xref:integrations/serdes.adoc[Change Event SerDes]
+** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
