@@ -163,7 +163,6 @@
         <module>debezium-connector-sqlserver</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-quarkus-outbox</module>
-        <module>debezium-quarkus-outbox-integration-tests</module>
         <module>debezium-testing</module>
     </modules>
 
