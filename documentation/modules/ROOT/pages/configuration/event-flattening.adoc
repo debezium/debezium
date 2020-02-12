@@ -15,7 +15,7 @@ See xref:configuration/mongodb-event-flattening.adoc[here] for the MongoDB equiv
 ====
 
 Debezium generates data change events in a form of a complex message structure.
-Each events consists of three parts:
+Each event consists of three parts:
 
 * metadata, comprising the type of operation, information on the event source, a timestamp, and optionally transaction information
 * the row data before change
