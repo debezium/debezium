@@ -70,7 +70,7 @@ cdc_free_space_check_interval_ms: 250
 ----
 
 * `cdc_enabled` enables or disables CDC operations node-wide
-* `cdc_free_space_in_mb` determines the destination for commit log segments to be moved after all corresponding memtables are flushed
+* `cdc_raw_directory` determines the destination for commit log segments to be moved after all corresponding memtables are flushed
 * `cdc_free_space_in_mb` is the maximum capacity allocated to store commit log segments, and defaults to the minimum of 4096 MB and 1/8 of volume space.
 * `cdc_free_space_check_interval_ms` is frequency with which we re-calculate the space taken up by `cdc_raw_directory` to prevent burning CPU cycles unnecessarily when at capacity.
 
