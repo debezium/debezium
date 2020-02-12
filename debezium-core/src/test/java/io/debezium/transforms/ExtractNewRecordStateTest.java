@@ -125,6 +125,20 @@ public class ExtractNewRecordStateTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
+    private SourceRecord createUpdateRecord() {
+        final Struct before = new Struct(recordSchema);
+        final Struct after = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "myRecord");
+        after.put("id", (byte) 1);
+        after.put("name", "updatedRecord");
+        source.put("lsn", 1234);
+        final Struct payload = envelope.update(before, after, source, Instant.now());
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
+    }
+
     private SourceRecord createComplexCreateRecord() {
         final Schema recordSchema = SchemaBuilder.struct().field("id", SchemaBuilder.int8()).build();
         final Schema sourceSchema = SchemaBuilder.struct()
@@ -170,7 +184,9 @@ public class ExtractNewRecordStateTest {
             return null;
         }
 
-        return operationHeader.next().value().toString();
+        Object value = operationHeader.next().value();
+
+        return value != null ? value.toString() : null;
     }
 
     @Test
@@ -312,6 +328,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -325,7 +342,23 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFields() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_FIELDS, "op,lsn");
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1452")
+    public void testAddFieldsForMissingOptionalField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op,lsn");
@@ -339,20 +372,22 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStruct() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS, "op,source.lsn");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
-            assertThat(((Struct) unwrapped.value()).get("__source__lsn")).isEqualTo(1234);
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get("__source_lsn")).isEqualTo(1234);
         }
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddHeader() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -368,7 +403,26 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddHeaders() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_HEADERS, "op,lsn");
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(unwrapped.headers()).hasSize(2);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.UPDATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1452")
+    public void testAddHeadersForMissingOptionalField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op,lsn");
@@ -385,18 +439,19 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddHeadersSpecifyStruct() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_HEADERS, "op,source.lsn");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
             assertThat(unwrapped.headers()).hasSize(2);
             String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
-            assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
-            headerValue = getSourceRecordHeaderByKey(unwrapped, "__source__lsn");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.UPDATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__source_lsn");
             assertThat(headerValue).isEqualTo(String.valueOf(1234));
         }
     }
@@ -463,6 +518,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -478,6 +534,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldsHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -494,6 +551,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStructHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -505,7 +563,7 @@ public class ExtractNewRecordStateTest {
             final SourceRecord unwrapped = transform.apply(deleteRecord);
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
             assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
-            assertThat(((Struct) unwrapped.value()).get("__source__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("__source_lsn")).isEqualTo(1234);
         }
     }
 
