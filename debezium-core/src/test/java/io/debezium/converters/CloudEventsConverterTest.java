@@ -175,7 +175,7 @@ public class CloudEventsConverterTest {
             assertThat(valueJson.get(CloudEventsMaker.FieldName.ID)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SOURCE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.SPECVERSION)).isNotNull();
-            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("avro/binary");
+            assertThat(valueJson.get(CloudEventsMaker.FieldName.DATACONTENTTYPE).asText()).isEqualTo("application/avro");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.DATASCHEMA).asText()).startsWith("http://fake-url/schemas/ids/");
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TYPE)).isNotNull();
             assertThat(valueJson.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
@@ -265,7 +265,7 @@ public class CloudEventsConverterTest {
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.SOURCE)).isEqualTo("/debezium/" + connectorName + "/" + serverName);
             assertThat(avroValue.get(CloudEventsMaker.FieldName.SPECVERSION)).isEqualTo("1.0");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TYPE)).isEqualTo("io.debezium." + connectorName + ".datachangeevent");
-            assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isEqualTo("avro/binary");
+            assertThat(avroValue.get(CloudEventsMaker.FieldName.DATACONTENTTYPE)).isEqualTo("application/avro");
             assertThat(avroValue.getString(CloudEventsMaker.FieldName.DATASCHEMA)).startsWith("http://fake-url/schemas/ids/");
             assertThat(avroValue.get(CloudEventsMaker.FieldName.TIME)).isNotNull();
             assertThat(avroValue.get(CloudEventsMaker.FieldName.DATA)).isNotNull();

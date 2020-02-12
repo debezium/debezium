@@ -87,7 +87,7 @@ Alternatively, Avro can be used as content type for the `data` attribute:
   "specversion" : "1.0",
   "type" : "io.debezium.postgresql.datachangeevent",
   "time" : "2020-01-13T14:04:18.597Z",
-  "datacontenttype" : "avro/binary",                 <1>
+  "datacontenttype" : "application/avro",            <1>
   "dataschema" : "http://my-registry/schemas/ids/1", <2>
   "iodebeziumop" : "r",
   "iodebeziumversion" : "1.1.0-SNAPSHOT",
