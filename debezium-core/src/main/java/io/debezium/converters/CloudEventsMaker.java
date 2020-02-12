@@ -70,7 +70,7 @@ public abstract class CloudEventsMaker {
 
     static final Map<SerializerType, String> CONTENT_TYPE_NAME_MAP = Collect.hashMapOf(
             SerializerType.JSON, "application/json",
-            SerializerType.AVRO, "avro/binary");
+            SerializerType.AVRO, "application/avro");
 
     /**
      * Create a concrete CloudEvents maker using the outputs of a record parser. Also need to specify the data content
