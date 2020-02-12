@@ -138,12 +138,14 @@ The table name to be used when creating the outbox table.
 
 
 |`quarkus.debezium-outbox.id.name`::
-The column name for the event id column.
+The column name for the event id column. +
+e.g. `uuid`
 |string
 |`id`
 
 |`quarkus.debezium-outbox.id.column-definition`::
-The database-specific column definition for the event id column.
+The database-specific column definition for the event id column. +
+e.g. `uuid not null`
 |string
 |
 
@@ -153,12 +155,14 @@ The column name for the event key column.
 |`aggregateid`
 
 |`quarkus.debezium-outbox.aggregate-id.column-definition`::
-The database-specific column definition for the aggregate id.
+The database-specific column definition for the aggregate id. +
+e.g. `varchar(50) not null`
 |string
 |
 
 |`quarkus.debezium-outbox.aggregate-id.converter`::
-The JPA AttributeConverter for the event key column.
+The JPA AttributeConverter for the event key column. +
+e.g. `com.company.TheAttributeConverter`
 |string
 |
 
@@ -168,12 +172,14 @@ The column name for the event aggregate type column.
 |`aggregatetype`
 
 |`quarkus.debezium-outbox.aggregate-type.column-definition`::
-The database-specific column definition for the aggregate type.
+The database-specific column definition for the aggregate type. +
+e.g. `varchar(15) not null`
 |string
 |
 
 |`quarkus.debezium-outbox.aggregate-type.converter`::
-The JPA AttributeConverter for the event aggregate type column.
+The JPA AttributeConverter for the event aggregate type column. +
+e.g. `com.company.TheAttributeConverter`
 |string
 |
 
@@ -183,12 +189,14 @@ The column name for the event type column.
 |`type`
 
 |`quarkus.debezium-outbox.type.column-definition`::
-The database-specific column definition for the event type.
+The database-specific column definition for the event type. +
+e.g. `varchar(50) not null`
 |string
 |
 
 |`quarkus.debezium-outbox.type.converter`::
-The JPA AttributeConverter for the event type column.
+The JPA AttributeConverter for the event type column. +
+e.g. `com.company.TheAttributeConverter`
 |string
 |
 
@@ -198,12 +206,14 @@ The column name for the event timestamp column.
 |`timestamp`
 
 |`quarkus.debezium-outbox.timestamp.column-definition`::
-The database-specific column definition for the event timestamp.
+The database-specific column definition for the event timestamp. +
+e.g. `timestamp not null`
 |string
 |
 
 |`quarkus.debezium-outbox.timestamp.converter`::
-The JPA AttributeConverter for the event timestamp column.
+The JPA AttributeConverter for the event timestamp column. +
+e.g. `com.company.TheAttributeConverter`
 |string
 |
 
@@ -213,12 +223,14 @@ The column name for the event payload column.
 |`payload`
 
 |`quarkus.debezium-outbox.payload.column-definition`::
-The database-specific column definition for the event payload.
+The database-specific column definition for the event payload. +
+e.g. `text not null`
 |string
 |
 
 |`quarkus.debezium-outbox.payload.converter`::
-The JPA AttributeConverter for the event payload column.
+The JPA AttributeConverter for the event payload column. +
+e.g. `com.company.TheAttributeConverter`
 |string
 |
 
