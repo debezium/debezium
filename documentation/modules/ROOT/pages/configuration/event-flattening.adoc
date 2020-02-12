@@ -14,10 +14,10 @@ This SMT is supported only for the SQL database connectors, it does not work wit
 See xref:configuration/mongodb-event-flattening.adoc[here] for the MongoDB equivalent to this SMT.
 ====
 
-Debezium generates a data change in a form of a complex message structure.
-The message consists of three parts:
+Debezium generates data change events in a form of a complex message structure.
+Each events consists of three parts:
 
-* metadata, comprising the type of operation, information on the event source and a timestamp
+* metadata, comprising the type of operation, information on the event source, a timestamp, and optionally transaction information
 * the row data before change
 * the row data after change
 
@@ -62,7 +62,7 @@ It
 
 * extracts the `after` field from change events and replaces the original event just with this part
 * optionally filters delete and tombstone records, as per the capabilities and requirements of downstream consumers
-* optionally adds metadata fields from the change event
+* optionally adds metadata fields from the change event to the outgoing flattened record
 * optionally add metadata fields to the header
 
 The SMT can be applied either to a source connector (Debezium) or a sink connector.
@@ -102,7 +102,7 @@ The SMT by default filters out *both* delete records as widely used sink connect
 
 The SMT can optionally add metadata fields from the original change event to the final flattened record. This functionality can be used to add things like the operation or the table from the change event, or connector-specific fields like the Postgres LSN field. For more information on what's available see xref:connectors/index.adoc[the documentation for each connector].
 
-In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>__", depending on the specification of the struct. Please use a comma separated list without spaces.
+In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>_", depending on the specification of the struct. Please use a comma separated list without spaces.
 
 For example, the configuration
 
@@ -115,7 +115,7 @@ transforms.unwrap.add.fields=op,table,lsn,source.ts_ms
 will add
 
 ----
-{ "__op" : "c", __table": "MY_TABLE", "__lsn": "123456789", "__source__ts_ms" : "123456789", ...}
+{ "__op" : "c", __table": "MY_TABLE", "__lsn": "123456789", "__source_ts_ms" : "123456789", ...}
 ----
 
 to the final flattened record.
@@ -126,7 +126,7 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 
 The SMT can optionally add metadata fields from the original change event to the header of the final flattened record. This functionality can be used to add things like the operation or the table from the change event, or connector-specific fields like the Postgres LSN field. For more information on what's available see xref:connectors/index.adoc[the documentation for each connector].
 
-In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>__", depending on the specification of the struct. Please use a comma separated list without spaces.
+In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>_", depending on the specification of the struct. Please use a comma separated list without spaces.
 
 For example, the configuration
 
@@ -136,7 +136,7 @@ transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 transforms.unwrap.add.headers=op,table,lsn,source.ts_ms
 ----
 
-
+will add headers `__op`, `__table`, `__lsn` and `__source_ts_ms` to the outgoing record.
 
 === Determine original operation  [DEPRECATED]
 
