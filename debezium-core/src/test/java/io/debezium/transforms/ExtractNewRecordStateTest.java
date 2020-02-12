@@ -22,6 +22,7 @@ import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 
 /**
  * @author Jiri Pechanec
@@ -124,13 +125,18 @@ public class ExtractNewRecordStateTest {
         final Struct before = new Struct(recordSchema);
         final Struct after = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
+        final Struct transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
 
         before.put("id", (byte) 1);
         before.put("name", "myRecord");
         after.put("id", (byte) 1);
         after.put("name", "updatedRecord");
         source.put("lsn", 1234);
+        transaction.put("id", "571");
+        transaction.put("total_order", 42L);
+        transaction.put("data_collection_order", 42L);
         final Struct payload = envelope.update(before, after, source, Instant.now());
+        payload.put("transaction", transaction);
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
@@ -179,7 +185,9 @@ public class ExtractNewRecordStateTest {
             return null;
         }
 
-        return operationHeader.next().value().toString();
+        Object value = operationHeader.next().value();
+
+        return value != null ? value.toString() : null;
     }
 
     @Test
@@ -321,6 +329,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -334,34 +343,56 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFields() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_FIELDS, "op,lsn");
+            props.put(ADD_FIELDS, "op,lsn,id");
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("__id")).isEqualTo("571");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1452")
+    public void testAddFieldsForMissingOptionalField() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_FIELDS, "op,lsn,id");
             transform.configure(props);
 
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
             assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
             assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("__id")).isEqualTo(null);
         }
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStruct() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_FIELDS, "op,source.lsn");
+            props.put(ADD_FIELDS, "op,source.lsn,transaction.id,transaction.total_order");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.CREATE.code());
-            assertThat(((Struct) unwrapped.value()).get("__source__lsn")).isEqualTo(1234);
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.UPDATE.code());
+            assertThat(((Struct) unwrapped.value()).get("__source_lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("__transaction_id")).isEqualTo("571");
+            assertThat(((Struct) unwrapped.value()).get("__transaction_total_order")).isEqualTo(42L);
         }
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddHeader() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -377,36 +408,64 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddHeaders() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_HEADERS, "op,lsn");
+            props.put(ADD_HEADERS, "op,lsn,id");
             transform.configure(props);
 
-            final SourceRecord createRecord = createCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(unwrapped.headers()).hasSize(2);
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(unwrapped.headers()).hasSize(3);
             String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
-            assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
+            assertThat(headerValue).isEqualTo(Envelope.Operation.UPDATE.code());
             headerValue = getSourceRecordHeaderByKey(unwrapped, "__lsn");
             assertThat(headerValue).isEqualTo(String.valueOf(1234));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__id");
+            assertThat(headerValue).isEqualTo(String.valueOf(571L));
         }
     }
 
     @Test
-    public void testAddHeadersSpecifyStruct() {
+    @FixFor("DBZ-1452")
+    public void testAddHeadersForMissingOptionalField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_HEADERS, "op,source.lsn");
+            props.put(ADD_HEADERS, "op,lsn,id");
             transform.configure(props);
 
             final SourceRecord createRecord = createCreateRecord();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(unwrapped.headers()).hasSize(2);
+            assertThat(unwrapped.headers()).hasSize(3);
             String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
             assertThat(headerValue).isEqualTo(Envelope.Operation.CREATE.code());
-            headerValue = getSourceRecordHeaderByKey(unwrapped, "__source__lsn");
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__lsn");
             assertThat(headerValue).isEqualTo(String.valueOf(1234));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__id");
+            assertThat(headerValue).isNull();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1452")
+    public void testAddHeadersSpecifyStruct() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_HEADERS, "op,source.lsn,transaction.id,transaction.total_order");
+            transform.configure(props);
+
+            final SourceRecord updateRecord = createUpdateRecord();
+            final SourceRecord unwrapped = transform.apply(updateRecord);
+            assertThat(unwrapped.headers()).hasSize(4);
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.UPDATE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__source_lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__transaction_id");
+            assertThat(headerValue).isEqualTo(String.valueOf(571L));
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__transaction_total_order");
+            assertThat(headerValue).isEqualTo(String.valueOf(42L));
         }
     }
 
@@ -512,6 +571,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -527,6 +587,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldsHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -543,6 +604,7 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1452")
     public void testAddFieldsSpecifyStructHandleDeleteRewrite() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -554,7 +616,7 @@ public class ExtractNewRecordStateTest {
             final SourceRecord unwrapped = transform.apply(deleteRecord);
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
             assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
-            assertThat(((Struct) unwrapped.value()).get("__source__lsn")).isEqualTo(1234);
+            assertThat(((Struct) unwrapped.value()).get("__source_lsn")).isEqualTo(1234);
         }
     }
 

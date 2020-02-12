@@ -7,9 +7,14 @@ package io.debezium.transforms;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -30,8 +35,10 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.Strings;
 
 /**
  * Debezium generates CDC (<code>Envelope</code>) records that are struct of values containing values
@@ -45,30 +52,27 @@ import io.debezium.util.BoundedConcurrentHashMap;
  * <p>
  * The SMT by default drops the tombstone message created by Debezium and converts the delete message into
  * a tombstone message that can be dropped, too, if required.
- * * <p>
- * The SMT also has the option to insert fields from the original record's 'source' struct into the new
- * unwrapped record prefixed with "__" (for example __lsn in Postgres, or __file in MySQL)
+ * <p>
+ * The SMT also has the option to insert fields from the original record (e.g. 'op' or 'source.ts_ms' into the
+ * unwrapped record or ad them as header attributes.
  *
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
  */
 public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
+
     private static final String PURPOSE = "source field insertion";
     private static final int SCHEMA_CACHE_SIZE = 64;
-    private static final String OPERATION_FIELD_NAME = "op";
-    private static final String TIMESTAMP_FIELD_NAME = "ts_ms";
-    private static final String SOURCE_STRUCT_NAME = "source";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewRecordState.class);
+    private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
 
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
     private boolean addOperationHeader;
     private String[] addSourceFields;
-    private String[] addFields;
-    private String[] addHeaders;
-    private Map<String, String[]> fieldStructMap;
+    private List<FieldReference> additionalHeaders;
+    private List<FieldReference> additionalFields;
     private String routeByField;
     private final ExtractField<R> afterDelegate = new ExtractField.Value<R>();
     private final ExtractField<R> beforeDelegate = new ExtractField.Value<R>();
@@ -95,13 +99,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ? null
                 : config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
 
-        addFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS).isEmpty() ? null
-                : config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS).split(",");
-
-        addHeaders = config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS).isEmpty() ? null
-                : config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS).split(",");
-
-        fieldStructMap = new HashMap<>();
+        additionalFields = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
+        additionalHeaders = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
 
         String routeFieldConfig = config.getString(ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD);
         routeByField = routeFieldConfig.isEmpty() ? null : routeFieldConfig;
@@ -135,13 +134,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
                 return null;
             }
-            if (addHeaders != null) {
-                fieldStructMap = makeFieldMap(addHeaders);
-                Headers headersToAdd = makeHeaders(fieldStructMap, (Struct) record.value());
-
-                for (String header : addHeaders) {
-                    record.headers().add(headersToAdd.lastWithName(makeFieldName(fieldStructMap.get(header))));
-                }
+            if (!additionalHeaders.isEmpty()) {
+                Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
+                headersToAdd.forEach(h -> record.headers().add(h));
             }
             else if (addOperationHeader) {
                 operation = Envelope.Operation.DELETE;
@@ -155,13 +150,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
             return record;
         }
 
-        if (addHeaders != null) {
-            fieldStructMap = makeFieldMap(addHeaders);
-            Headers headersToAdd = makeHeaders(fieldStructMap, (Struct) record.value());
-
-            for (String header : addHeaders) {
-                record.headers().add(headersToAdd.lastWithName(makeFieldName(fieldStructMap.get(header))));
-            }
+        if (!additionalHeaders.isEmpty()) {
+            Headers headersToAdd = makeHeaders(additionalHeaders, (Struct) record.value());
+            headersToAdd.forEach(h -> record.headers().add(h));
         }
         else if (addOperationHeader) {
             LOGGER.warn("operation.header has been deprecated and is scheduled for removal. Use add.headers instead.");
@@ -192,7 +183,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 case REWRITE:
                     LOGGER.trace("Delete message {} requested to be rewritten", record.key());
                     R oldRecord = beforeDelegate.apply(record);
-                    oldRecord = addFields != null ? addFields(addFields, record, oldRecord) : addSourceFields(addSourceFields, record, oldRecord);
+                    oldRecord = !additionalFields.isEmpty() ? addFields(additionalFields, record, oldRecord) : addSourceFields(addSourceFields, record, oldRecord);
 
                     return removedDelegate.apply(oldRecord);
                 default:
@@ -207,7 +198,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 newRecord = setTopic(newTopicName, newRecord);
             }
 
-            newRecord = addFields != null ? addFields(addFields, record, newRecord) : addSourceFields(addSourceFields, record, newRecord);
+            newRecord = !additionalFields.isEmpty() ? addFields(additionalFields, record, newRecord) : addSourceFields(addSourceFields, record, newRecord);
 
             // Handling insert and update records
             switch (handleDeletes) {
@@ -233,44 +224,26 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 record.timestamp());
     }
 
-    private Headers makeHeaders(Map<String, String[]> fieldStructMap, Struct originalRecordValue) {
-        // Create an Headers object which contains the headers to be added
+    /**
+     * Create an Headers object which contains the headers to be added.
+     */
+    private Headers makeHeaders(List<FieldReference> additionalHeaders, Struct originalRecordValue) {
         Headers headers = new ConnectHeaders();
-        String[] fieldNameParts;
-        String fieldName;
 
-        for (String field : fieldStructMap.keySet()) {
-            fieldNameParts = fieldStructMap.get(field);
-            fieldName = getFieldName(fieldNameParts);
-
-            if (field.equals(OPERATION_FIELD_NAME) || field.equals(TIMESTAMP_FIELD_NAME)) {
-                headers.add(makeFieldName(fieldNameParts), originalRecordValue.get(fieldName), originalRecordValue.schema().field(fieldName).schema());
-            }
-            else {
-                Struct struct = originalRecordValue.getStruct(SOURCE_STRUCT_NAME);
-                if (struct.schema().field(fieldName) == null) {
-                    throw new ConfigException("Field specified in 'add.headers' does not exist: " + field);
-                }
-                headers.add(makeFieldName(fieldNameParts), struct.get(fieldName), struct.schema().field(fieldName).schema());
-            }
+        for (FieldReference fieldReference : additionalHeaders) {
+            headers.add(fieldReference.getNewFieldName(), fieldReference.getValue(originalRecordValue),
+                    fieldReference.getSchema(originalRecordValue.schema()));
         }
 
         return headers;
     }
 
-    private R addFields(String[] addFields, R originalRecord, R unwrappedRecord) {
-        // Return if no fields to add
-        if (addFields == null) {
-            return unwrappedRecord;
-        }
-
-        Map<String, String[]> fieldStructMap = makeFieldMap(addFields);
-
+    private R addFields(List<FieldReference> additionalFields, R originalRecord, R unwrappedRecord) {
         final Struct value = requireStruct(unwrappedRecord.value(), PURPOSE);
         Struct originalRecordValue = (Struct) originalRecord.value();
 
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(),
-                s -> makeUpdatedSchema(fieldStructMap, value.schema(), originalRecordValue));
+                s -> makeUpdatedSchema(additionalFields, value.schema(), originalRecordValue));
 
         // Update the value with the new fields
         Struct updatedValue = new Struct(updatedSchema);
@@ -279,14 +252,8 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         }
 
-        for (String field : addFields) {
-
-            if (field.equals(OPERATION_FIELD_NAME) || field.equals(TIMESTAMP_FIELD_NAME)) {
-                updatedValue = updateValue(fieldStructMap.get(field), updatedValue, originalRecordValue);
-            }
-            else {
-                updatedValue = updateValue(fieldStructMap.get(field), updatedValue, originalRecordValue.getStruct(SOURCE_STRUCT_NAME));
-            }
+        for (FieldReference fieldReference : additionalFields) {
+            updatedValue = updateValue(fieldReference, updatedValue, originalRecordValue);
         }
 
         return unwrappedRecord.newRecord(
@@ -299,7 +266,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 unwrappedRecord.timestamp());
     }
 
-    private Schema makeUpdatedSchema(Map<String, String[]> fieldStructMap, Schema schema, Struct originalRecordValue) {
+    private Schema makeUpdatedSchema(List<FieldReference> additionalFields, Schema schema, Struct originalRecordValue) {
         // Get fields from original schema
         SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
@@ -307,61 +274,19 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         }
 
         // Update the schema with the new fields
-        for (String field : fieldStructMap.keySet()) {
-
-            if (field.equals(OPERATION_FIELD_NAME) || field.equals(TIMESTAMP_FIELD_NAME)) {
-                builder = updateSchema(fieldStructMap.get(field), field, builder, originalRecordValue.schema());
-            }
-            else {
-                builder = updateSchema(fieldStructMap.get(field), field, builder, originalRecordValue.getStruct(SOURCE_STRUCT_NAME).schema());
-            }
+        for (FieldReference fieldReference : additionalFields) {
+            builder = updateSchema(fieldReference, builder, originalRecordValue.schema());
         }
 
         return builder.build();
     }
 
-    private SchemaBuilder updateSchema(String[] fieldNameParts, String field, SchemaBuilder builder, Schema structSchema) {
-        String fieldName = getFieldName(fieldNameParts);
-
-        if (structSchema.field(fieldName) == null) {
-            throw new ConfigException("Field specified in 'add.fields' does not exist: " + field);
-        }
-        builder.field(
-                makeFieldName(fieldNameParts), structSchema.field(fieldName).schema());
-
-        return builder;
+    private SchemaBuilder updateSchema(FieldReference fieldReference, SchemaBuilder builder, Schema originalRecordSchema) {
+        return builder.field(fieldReference.getNewFieldName(), fieldReference.getSchema(originalRecordSchema));
     }
 
-    private Struct updateValue(String[] fieldNameParts, Struct updatedValue, Struct struct) {
-        String fieldName = getFieldName(fieldNameParts);
-
-        return updatedValue.put(makeFieldName(fieldNameParts), struct.get(fieldName));
-    }
-
-    private Map<String, String[]> makeFieldMap(String[] fields) {
-        // Convert the provided fields into a Map with the provided value as key and an the struct and field as value (in an array)
-        Map<String, String[]> fieldMap = new LinkedHashMap<>();
-
-        for (String field : fields) {
-            fieldMap.computeIfAbsent(field, s -> field.split("\\."));
-        }
-        return fieldMap;
-    }
-
-    private String getFieldName(String[] fieldNameParts) {
-        // Returns the field name without an (optional) struct specification
-        return fieldNameParts[fieldNameParts.length - 1];
-    }
-
-    private String makeFieldName(String[] fieldNameParts) {
-        // Makes a name for the field in the unwrapped record
-        if (fieldNameParts.length > 1) {
-            return ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + fieldNameParts[0] +
-                    ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + fieldNameParts[1];
-        }
-        else {
-            return ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + fieldNameParts[0];
-        }
+    private Struct updateValue(FieldReference fieldReference, Struct updatedValue, Struct struct) {
+        return updatedValue.put(fieldReference.getNewFieldName(), fieldReference.getValue(struct));
     }
 
     private R addSourceFields(String[] addSourceFields, R originalRecord, R unwrappedRecord) {
@@ -431,4 +356,100 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         updatedDelegate.close();
     }
 
+    /**
+     * Represents a field that should be added to the outgoing record as a header
+     * attribute or struct field.
+     */
+    private static class FieldReference {
+
+        /**
+         * The struct ("source", "transaction") hosting the given field, or {@code null} for "op" and "ts_ms".
+         */
+        private final String struct;
+
+        /**
+         * The simple field name.
+         */
+        private final String field;
+
+        /**
+         * The name for the outgoing attribute/field, e.g. "__op" or "__source_ts_ms".
+         */
+        private final String newFieldName;
+
+        private FieldReference(String field) {
+            String[] parts = FIELD_SEPARATOR.split(field);
+
+            if (parts.length == 1) {
+                this.struct = determineStruct(parts[0]);
+                this.field = parts[0];
+                this.newFieldName = ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + field;
+            }
+            else if (parts.length == 2) {
+                this.struct = parts[0];
+
+                if (!(this.struct.equals(Envelope.FieldName.SOURCE) || this.struct.equals(Envelope.FieldName.TRANSACTION))) {
+                    throw new IllegalArgumentException("Unexpected field name: " + field);
+                }
+
+                this.field = parts[1];
+                this.newFieldName = ExtractNewRecordStateConfigDefinition.METADATA_FIELD_PREFIX + this.struct + "_" + this.field;
+            }
+            else {
+                throw new IllegalArgumentException("Unexpected field name: " + field);
+            }
+        }
+
+        /**
+         * Determines the struct hosting the given unqualified field.
+         */
+        private static String determineStruct(String simpleFieldName) {
+            if (simpleFieldName.equals(Envelope.FieldName.OPERATION) || simpleFieldName.equals(Envelope.FieldName.TIMESTAMP)) {
+                return null;
+            }
+            else if (simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY) ||
+                    simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY) ||
+                    simpleFieldName.equals(TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY)) {
+                return Envelope.FieldName.TRANSACTION;
+            }
+            else {
+                return Envelope.FieldName.SOURCE;
+            }
+        }
+
+        static List<FieldReference> fromConfiguration(String addHeadersConfig) {
+            if (Strings.isNullOrEmpty(addHeadersConfig)) {
+                return Collections.emptyList();
+            }
+            else {
+                return Arrays.stream(addHeadersConfig.split(","))
+                        .map(String::trim)
+                        .map(FieldReference::new)
+                        .collect(Collectors.toList());
+            }
+        }
+
+        String getNewFieldName() {
+            return newFieldName;
+        }
+
+        Object getValue(Struct originalRecordValue) {
+            Struct parentStruct = struct != null ? (Struct) originalRecordValue.get(struct) : originalRecordValue;
+
+            // transaction is optional; e.g. not present during snapshotting atm.
+            return parentStruct != null ? parentStruct.get(field) : null;
+        }
+
+        Schema getSchema(Schema originalRecordSchema) {
+            Schema parentSchema = struct != null ? originalRecordSchema.field(struct).schema() : originalRecordSchema;
+
+            org.apache.kafka.connect.data.Field schemaField = parentSchema.field(field);
+
+            if (schemaField == null) {
+                throw new IllegalArgumentException("Unexpected field name: " + field);
+            }
+
+            return SchemaUtil.copySchemaBasics(schemaField.schema()).optional().build();
+        }
+    }
 }
