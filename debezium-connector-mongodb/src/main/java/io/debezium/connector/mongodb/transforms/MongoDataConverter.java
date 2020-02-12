@@ -22,6 +22,8 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.FieldNameSelector.FieldNamer;
 
 /**
  * MongoDataConverter handles translating MongoDB strings to Kafka Connect schemas and row data to Kafka
@@ -34,9 +36,15 @@ public class MongoDataConverter {
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
 
     private final ArrayEncoding arrayEncoding;
+    private final FieldNamer<String> fieldNamer;
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer) {
+        this.arrayEncoding = arrayEncoding;
+        this.fieldNamer = fieldNamer;
+    }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
-        this.arrayEncoding = arrayEncoding;
+        this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(false));
     }
 
     public Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {
@@ -46,7 +54,7 @@ public class MongoDataConverter {
 
     public void convertFieldValue(Entry<String, BsonValue> keyvalueforStruct, Struct struct, Schema schema) {
         Object colValue = null;
-        String key = keyvalueforStruct.getKey();
+        String key = fieldNamer.fieldNameFor(keyvalueforStruct.getKey());
         BsonType type = keyvalueforStruct.getValue().getBsonType();
 
         switch (type) {
@@ -237,7 +245,7 @@ public class MongoDataConverter {
     }
 
     public void addFieldSchema(Entry<String, BsonValue> keyValuesforSchema, SchemaBuilder builder) {
-        String key = keyValuesforSchema.getKey();
+        String key = fieldNamer.fieldNameFor(keyValuesforSchema.getKey());
         BsonType type = keyValuesforSchema.getValue().getBsonType();
 
         switch (type) {
