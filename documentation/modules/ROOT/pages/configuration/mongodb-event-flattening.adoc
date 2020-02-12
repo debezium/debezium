@@ -283,7 +283,7 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`sanitize.field.names`
 |`false`
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:https://debezium.io/documentation/reference/1.0/configuration/avro.html#names[Avro naming] for more details.
+See xref:configuration/avro.adoc#names[Avro naming] for more details.
 |=======================
 
 == Known limitations
