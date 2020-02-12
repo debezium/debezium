@@ -69,7 +69,7 @@ public class DebeziumContainerTest {
 
     @Test
     public void canRegisterConnector() throws Exception {
-        debeziumContainer.registerConnector("my-connector-1", getConfiguration());
+        debeziumContainer.registerConnector("my-connector-1", getConfiguration(1));
 
         String status = executeHttpRequest(debeziumContainer.getConnectorStatus("my-connector-1"));
 
@@ -90,9 +90,9 @@ public class DebeziumContainerTest {
             statement.execute("insert into todo.Todo values (1, 'Be Awesome')");
             statement.execute("insert into todo.Todo values (2, 'Learn Quarkus')");
 
-            debeziumContainer.registerConnector("my-connector", getConfiguration());
+            debeziumContainer.registerConnector("my-connector", getConfiguration(2));
 
-            consumer.subscribe(Arrays.asList("dbserver1.todo.todo"));
+            consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
 
             List<ConsumerRecord<String, String>> changeEvents = drain(consumer, 2);
 
@@ -146,10 +146,11 @@ public class DebeziumContainerTest {
         return allRecords;
     }
 
-    private ConnectorConfiguration getConfiguration() {
+    private ConnectorConfiguration getConfiguration(int id) {
         // host, database, user etc. are obtained from the container
         return ConnectorConfiguration.forJdbcContainer(postgresContainer)
-                .with("database.server.name", "dbserver1");
+                .with("database.server.name", "dbserver" + id)
+                .with("slot.name", "debezium_" + id);
     }
 
     private String executeHttpRequest(String url) throws IOException {
@@ -160,5 +161,4 @@ public class DebeziumContainerTest {
             return response.body().string();
         }
     }
-
 }
