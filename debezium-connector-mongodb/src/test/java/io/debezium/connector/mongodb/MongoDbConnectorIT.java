@@ -410,6 +410,74 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1767")
+    public void shouldSupportDbRef() throws InterruptedException, IOException {
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("dbit", "spec", "spec_objects.json");
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("mongo.dbit.spec").size()).isEqualTo(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        AtomicBoolean foundLast = new AtomicBoolean(false);
+        records.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyFromInitialSync(record, foundLast);
+            verifyReadOperation(record);
+        });
+        assertThat(foundLast.get()).isTrue();
+
+        // At this point, the connector has performed the initial sync and awaits changes ...
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Store another document while the connector is still running
+        // ---------------------------------------------------------------------------------------------------------------
+        primary().execute("insert", client -> {
+            client.getDatabase("dbit").getCollection("spec")
+                    .insertOne(Document.parse("{ '_id' : 2, 'data' : { '$ref' : 'a2', '$id' : 4, '$db' : 'b2' } }"));
+        });
+
+        SourceRecords records2 = consumeRecordsByTopic(1);
+        assertThat(records2.recordsForTopic("mongo.dbit.spec").size()).isEqualTo(1);
+        assertThat(records2.topics().size()).isEqualTo(1);
+        records2.forEach(record -> {
+            // Check that all records are valid, and can be serialized and deserialized ...
+            validate(record);
+            verifyNotFromInitialSync(record);
+            verifyCreateOperation(record);
+            verifyNotFromTransaction(record);
+        });
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Stop the connector
+        // ---------------------------------------------------------------------------------------------------------------
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-865 and DBZ-1242")
     public void shouldConsumeEventsFromCollectionWithReplacedTopicName() throws InterruptedException, IOException {
         // This captures all logged messages, allowing us to verify log message was written.

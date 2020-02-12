@@ -20,6 +20,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
+import org.fest.assertions.Assertions;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
@@ -225,5 +226,31 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // Assert deletion preserves key
         assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
         assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
+    }
+
+    @Test
+    @FixFor("DBZ-1767")
+    public void shouldSupportDbRef() throws InterruptedException, IOException {
+        final Map<String, String> transformationConfig = new HashMap<>();
+        transformationConfig.put("array.encoding", "array");
+        transformationConfig.put("operation.header", "true");
+        transformationConfig.put("sanitize.field.names", "true");
+        transformation.configure(transformationConfig);
+
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{ '_id' : 2, 'data' : { '$ref' : 'a2', '$id' : 4, '$db' : 'b2' } }"));
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+        validate(transformed);
+        final Struct value = ((Struct) transformed.value()).getStruct("data");
+
+        Assertions.assertThat(value.getString("_ref")).isEqualTo("a2");
+        Assertions.assertThat(value.getInt32("_id")).isEqualTo(4);
+        Assertions.assertThat(value.getString("_db")).isEqualTo("b2");
     }
 }

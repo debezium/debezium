@@ -11,6 +11,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.common.config.ConfigDef.Type;
+import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
@@ -31,6 +34,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.schema.FieldNameSelector;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 import io.debezium.transforms.SmtManager;
@@ -124,6 +128,14 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
             .withDefault("_")
             .withDescription("Delimiter to concat between field names from the input record when generating field names for the"
                     + "output record.");
+
+    public static final Field SANITIZE_FIELD_NAMES = Field.create("sanitize.field.names")
+            .withDisplayName("Sanitize field names to adhere to Avro naming conventions")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Whether field names will be sanitized to Avro naming conventions")
+            .withDefault(Boolean.FALSE);
 
     private final ExtractField<R> afterExtractor = new ExtractField.Value<>();
     private final ExtractField<R> patchExtractor = new ExtractField.Value<>();
@@ -351,7 +363,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, ARRAY_ENCODING);
+        Field.group(config, null,
+                ARRAY_ENCODING,
+                FLATTEN_STRUCT,
+                DELIMITER,
+                SANITIZE_FIELD_NAMES);
         return config;
     }
 
@@ -367,13 +383,16 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> implements Tran
         final Field.Set configFields = Field.setOf(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER,
                 ExtractNewRecordStateConfigDefinition.OPERATION_HEADER,
                 ExtractNewRecordStateConfigDefinition.HANDLE_DELETES,
-                ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES);
+                ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES,
+                SANITIZE_FIELD_NAMES);
 
         if (!config.validateAndRecord(configFields, LOGGER::error)) {
             throw new ConnectException("Unable to validate config.");
         }
 
-        converter = new MongoDataConverter(ArrayEncoding.parse(config.getString(ARRAY_ENCODING)));
+        converter = new MongoDataConverter(
+                ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
+                FieldNameSelector.defaultNonRelationalSelector(config.getBoolean(SANITIZE_FIELD_NAMES)));
 
         addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
 

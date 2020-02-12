@@ -19,35 +19,39 @@ import io.debezium.util.BoundedConcurrentHashMap.Eviction;
  */
 public class FieldNameSelector {
 
-    public static FieldNamer defaultSelector(boolean sanitizeFieldNames) {
-        return sanitizeFieldNames ? new FieldNameCache(new FieldNameSanitizer(Column::name)) : Column::name;
+    public static FieldNamer<Column> defaultSelector(boolean sanitizeFieldNames) {
+        return sanitizeFieldNames ? new FieldNameCache<>(new FieldNameSanitizer<>(Column::name)) : Column::name;
+    }
+
+    public static FieldNamer<String> defaultNonRelationalSelector(boolean sanitizeFieldNames) {
+        return sanitizeFieldNames ? new FieldNameCache<>(new FieldNameSanitizer<>((x) -> x)) : (x) -> x;
     }
 
     /**
      * Implementations determine the field name corresponding to a given column.
      */
     @FunctionalInterface
-    public interface FieldNamer {
-        String fieldNameFor(Column column);
+    public interface FieldNamer<T> {
+        String fieldNameFor(T field);
     }
 
     /**
      * A field namer that replaces any characters invalid in a field with {@code _}.
      */
-    private static class FieldNameSanitizer implements FieldNamer {
+    private static class FieldNameSanitizer<T> implements FieldNamer<T> {
 
         private static final Logger LOGGER = LoggerFactory.getLogger(FieldNameSanitizer.class);
         private static final String REPLACEMENT_CHAR = "_";
         private static final String NUMBER_PREFIX = "_";
 
-        private final FieldNamer delegate;
+        private final FieldNamer<T> delegate;
 
-        public FieldNameSanitizer(FieldNamer delegate) {
+        public FieldNameSanitizer(FieldNamer<T> delegate) {
             this.delegate = delegate;
         }
 
         @Override
-        public String fieldNameFor(Column column) {
+        public String fieldNameFor(T column) {
             String fieldName = delegate.fieldNameFor(column);
             return sanitizeColumnName(fieldName);
         }
@@ -92,18 +96,18 @@ public class FieldNameSelector {
     /**
      * A field namer that caches names it has obtained from a delegate
      */
-    private static class FieldNameCache implements FieldNamer {
+    private static class FieldNameCache<T> implements FieldNamer<T> {
 
-        private final BoundedConcurrentHashMap<Column, String> fieldNames;
-        private final FieldNamer delegate;
+        private final BoundedConcurrentHashMap<T, String> fieldNames;
+        private final FieldNamer<T> delegate;
 
-        public FieldNameCache(FieldNamer delegate) {
+        public FieldNameCache(FieldNamer<T> delegate) {
             this.fieldNames = new BoundedConcurrentHashMap<>(10_000, 10, Eviction.LRU);
             this.delegate = delegate;
         }
 
         @Override
-        public String fieldNameFor(Column column) {
+        public String fieldNameFor(T column) {
             return fieldNames.computeIfAbsent(column, delegate::fieldNameFor);
         }
     }

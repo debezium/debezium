@@ -279,6 +279,11 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |`add.source.fields`
 |
 |Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record
+
+|`sanitize.field.names`
+|`false`
+|Whether field names will be sanitized to adhere to Avro naming requirements.
+See xref:https://debezium.io/documentation/reference/1.0/configuration/avro.html#names[Avro naming] for more details.
 |=======================
 
 == Known limitations
