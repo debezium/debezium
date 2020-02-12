@@ -101,15 +101,15 @@ public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
 
         Testing.Print.enable();
         TestHelper.enableTableCdc(connection, "t1");
-        waitForEnabledCdc(connection, "t1");
-        connection.execute("INSERT INTO t1 VALUES (1,10);");
-
         TestHelper.enableTableCdc(connection, "t2");
-        waitForEnabledCdc(connection, "t2");
-        connection.execute("INSERT INTO t2 VALUES (2,20);");
-
         TestHelper.enableTableCdc(connection, "t3");
+
+        waitForEnabledCdc(connection, "t1");
+        waitForEnabledCdc(connection, "t2");
         waitForEnabledCdc(connection, "t3");
+
+        connection.execute("INSERT INTO t1 VALUES (1,10);");
+        connection.execute("INSERT INTO t2 VALUES (2,20);");
         connection.execute("INSERT INTO t3 VALUES (3,30);");
 
         final int expectedRecordsCount = 1 + 1 + 1;
