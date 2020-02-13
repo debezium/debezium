@@ -71,8 +71,6 @@ public class Db2StreamingChangeEventSource implements StreamingChangeEventSource
     /**
      * A separate connection for retrieving timestamps; without it, adaptive
      * buffering will not work.
-     *
-     * @see https://docs.microsoft.com/en-us/sql/connect/jdbc/using-adaptive-buffering?view=sql-server-2017#guidelines-for-using-adaptive-buffering
      */
     private final Db2Connection metadataConnection;
 

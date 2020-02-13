@@ -33,7 +33,7 @@ import io.debezium.relational.TableId;
 import io.debezium.util.BoundedConcurrentHashMap;
 
 /**
- * {@link JdbcConnection} extension to be used with Microsoft DB2
+ * {@link JdbcConnection} extension to be used with IBM Db2
  *
  * @author Horia Chiorean (hchiorea@redhat.com), Jiri Pechanec, Peter Urbanetz
  *
