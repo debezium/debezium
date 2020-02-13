@@ -6,7 +6,7 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '1.1.0.Alpha1'
+    debezium-version: '1.1.0.Beta2'
     debezium-dev-version: '1.1'
     debezium-kafka-version: '2.4.0'
     debezium-docker-label: '1.0'
