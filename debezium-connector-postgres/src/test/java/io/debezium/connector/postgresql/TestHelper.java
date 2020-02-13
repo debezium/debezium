@@ -249,6 +249,16 @@ public final class TestHelper {
         return TestHelper.TEST_SERVER + "." + suffix;
     }
 
+    protected static boolean getAutoCommit() {
+        try {
+            return create().connection().getAutoCommit();
+        }
+        catch (SQLException e) {
+            // ignored
+        }
+        return false;
+    }
+
     protected static boolean shouldSSLConnectionFail() {
         return Boolean.parseBoolean(System.getProperty(TEST_PROPERTY_PREFIX + "ssl.failonconnect", "true"));
     }

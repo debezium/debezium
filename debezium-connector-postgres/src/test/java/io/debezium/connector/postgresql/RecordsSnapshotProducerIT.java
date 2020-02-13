@@ -12,6 +12,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -199,6 +200,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         // then insert some more data and check that we get it back
         waitForStreamingToStart();
+        // ensure AutoCommit gets turned back on
+        assertTrue(TestHelper.getAutoCommit());
         TestHelper.execute(insertStmt);
         consumer.expects(2);
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
