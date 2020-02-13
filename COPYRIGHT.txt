@@ -19,6 +19,7 @@ Arkoprabho Chakraborti
 artiship
 Ashhar Hasan
 Attila Szucs
+Aykut Farsak
 Barry LaFond
 Bartosz Miedlar
 Ben Williams
@@ -77,6 +78,7 @@ Jeremy Finzel
 Jiri Pechanec
 Johan Venant
 John Martin
+John Psoroulas
 Jon Casstevens
 Jordan Bragg
 Jork Zijlstra
