@@ -160,6 +160,11 @@ public class SnapshotReader extends AbstractReader {
         else if (actualColumn.jdbcType() == Types.TIMESTAMP) {
             return readTimestampField(rs, fieldNo, actualColumn, actualTable);
         }
+        // JDBC's rs.GetObject() will return a Boolean for all TINYINT(1) columns.
+        // TINYINT columns are reprtoed as SMALLINT by JDBC driver
+        else if (actualColumn.jdbcType() == Types.TINYINT || actualColumn.jdbcType() == Types.SMALLINT) {
+            return rs.wasNull() ? null : rs.getInt(fieldNo);
+        }
         else {
             return rs.getObject(fieldNo);
         }
