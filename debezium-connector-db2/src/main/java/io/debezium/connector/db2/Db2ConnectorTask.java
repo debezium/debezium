@@ -156,7 +156,6 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
 
-
         return sourceRecords;
     }
 
