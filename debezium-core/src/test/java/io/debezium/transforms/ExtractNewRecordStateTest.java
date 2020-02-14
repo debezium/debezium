@@ -347,7 +347,7 @@ public class ExtractNewRecordStateTest {
     public void testAddFields() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_FIELDS, "op,lsn,id");
+            props.put(ADD_FIELDS, "op , lsn,id");
             transform.configure(props);
 
             final SourceRecord updateRecord = createUpdateRecord();
@@ -412,7 +412,7 @@ public class ExtractNewRecordStateTest {
     public void testAddHeaders() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_HEADERS, "op,lsn,id");
+            props.put(ADD_HEADERS, "op , lsn,id");
             transform.configure(props);
 
             final SourceRecord updateRecord = createUpdateRecord();
@@ -513,7 +513,7 @@ public class ExtractNewRecordStateTest {
     public void testAddSourceFields() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(ADD_SOURCE_FIELDS, "lsn,version");
+            props.put(ADD_SOURCE_FIELDS, "lsn , version");
             transform.configure(props);
 
             final SourceRecord createRecord = createComplexCreateRecord();

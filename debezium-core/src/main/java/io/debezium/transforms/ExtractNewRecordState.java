@@ -70,7 +70,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
     private boolean dropTombstones;
     private DeleteHandling handleDeletes;
     private boolean addOperationHeader;
-    private String[] addSourceFields;
+    private List<String> addSourceFields;
     private List<FieldReference> additionalHeaders;
     private List<FieldReference> additionalFields;
     private String routeByField;
@@ -96,8 +96,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
 
         addOperationHeader = config.getBoolean(ExtractNewRecordStateConfigDefinition.OPERATION_HEADER);
 
-        addSourceFields = config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).isEmpty() ? null
-                : config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS).split(",");
+        addSourceFields = determineAdditionalSourceField(config.getString(ExtractNewRecordStateConfigDefinition.ADD_SOURCE_FIELDS));
 
         additionalFields = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_FIELDS));
         additionalHeaders = FieldReference.fromConfiguration(config.getString(ExtractNewRecordStateConfigDefinition.ADD_HEADERS));
@@ -124,6 +123,17 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         updatedDelegate.configure(delegateConfig);
 
         schemaUpdateCache = new BoundedConcurrentHashMap<>(SCHEMA_CACHE_SIZE);
+    }
+
+    private static List<String> determineAdditionalSourceField(String addSourceFieldsConfig) {
+        if (Strings.isNullOrEmpty(addSourceFieldsConfig)) {
+            return Collections.emptyList();
+        }
+        else {
+            return Arrays.stream(addSourceFieldsConfig.split(","))
+                    .map(String::trim)
+                    .collect(Collectors.toList());
+        }
     }
 
     @Override
@@ -289,9 +299,9 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         return updatedValue.put(fieldReference.getNewFieldName(), fieldReference.getValue(struct));
     }
 
-    private R addSourceFields(String[] addSourceFields, R originalRecord, R unwrappedRecord) {
+    private R addSourceFields(List<String> addSourceFields, R originalRecord, R unwrappedRecord) {
         // Return if no source fields to add
-        if (addSourceFields == null) {
+        if (addSourceFields.isEmpty()) {
             return unwrappedRecord;
         }
 
@@ -322,7 +332,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
                 unwrappedRecord.timestamp());
     }
 
-    private Schema makeUpdatedSchema(Schema schema, Schema sourceSchema, String[] addSourceFields) {
+    private Schema makeUpdatedSchema(Schema schema, Schema sourceSchema, List<String> addSourceFields) {
         final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
         // Get fields from original schema
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
