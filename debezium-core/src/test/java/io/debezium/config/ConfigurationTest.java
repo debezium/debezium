@@ -155,6 +155,14 @@ public class ConfigurationTest {
     }
 
     @Test
+    @FixFor("DBZ-1775")
+    public void defaultDdlFilterShouldFilterOutRdsMonitorStatements() {
+        String defaultDdlFilter = Configuration.create().build().getString(DatabaseHistory.DDL_FILTER);
+        Predicate<String> ddlFilter = Predicates.includes(defaultDdlFilter);
+        assertThat(ddlFilter.test("DELETE FROM mysql.rds_monitor")).isTrue();
+    }
+
+    @Test
     @FixFor("DBZ-1015")
     public void testMsgKeyColumnsField() {
         // null : ok
