@@ -16,8 +16,6 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -51,8 +49,6 @@ import io.debezium.util.Strings;
  * @author Horia Chiorean
  */
 public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnectorConfig.class);
 
     /**
      * The set of predefined HStoreHandlingMode options or aliases
@@ -794,8 +790,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("Specify how HSTORE columns should be represented in change events, including:"
-                    + "'json' represents values as json string"
-                    + "'map' (default) represents values using java.util.Map");
+                    + "'json' represents values as string-ified JSON (default)"
+                    + "'map' represents values as a key/value map");
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
             .withDisplayName("Interval Handling")

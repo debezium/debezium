@@ -1389,23 +1389,7 @@ PostgreSQL supports `NaN` (not a number) special value to be stored in the `DECI
 [[hstore-values]]
 ===== HStore Values
 
-When `hstore.handling.mode` configuration property is set to `map`, then the connector will use the `java.util.Map<String,String>` logical type, `MAP` schema type for all `HSTORE` columns. This is the default mode.
-
-[cols="15%a,15%a,35%a,35%a",options="header"]
-|=======================
-|PostgreSQL Data Type
-|Literal type (schema type)
-|Semantic type (schema name)
-|Notes
-
-|`HSTORE`
-|`MAP`
-|
-|
-
-|=======================
-
-However, when `hstore.handling.mode` configuration property is set to `json`, then the connector will represent all `HSTORE` values as JSON String values and encodes them as follows:
+When `hstore.handling.mode` configuration property is set to `json` (the default), the connector will represent all `HSTORE` values as string-ified JSON values and encode them as follows:
 
 [cols="15%a,15%a,35%a,35%a",options="header"]
 |=======================
@@ -1417,7 +1401,23 @@ However, when `hstore.handling.mode` configuration property is set to `json`, th
 |`HSTORE`
 |`STRING`
 |`io.debezium.data.Json`
-| Example: Output representation is "{"key":"val"}"
+| Example: output representation using the JSON converter is `{\"key\" : \"val\"}`
+
+|=======================
+
+When `hstore.handling.mode` configuration property is set to `map`, then the connector will use the `MAP` schema type for all `HSTORE` columns.
+
+[cols="15%a,15%a,35%a,35%a",options="header"]
+|=======================
+|PostgreSQL Data Type
+|Literal type (schema type)
+|Semantic type (schema name)
+|Notes
+
+|`HSTORE`
+|`MAP`
+|
+| Example: output representation  using the JSON converter is `{"key" : "val"}`
 
 |=======================
 
