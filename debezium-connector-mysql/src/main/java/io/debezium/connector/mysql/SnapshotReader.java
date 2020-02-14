@@ -163,7 +163,10 @@ public class SnapshotReader extends AbstractReader {
         // JDBC's rs.GetObject() will return a Boolean for all TINYINT(1) columns.
         // TINYINT columns are reprtoed as SMALLINT by JDBC driver
         else if (actualColumn.jdbcType() == Types.TINYINT || actualColumn.jdbcType() == Types.SMALLINT) {
-            return rs.wasNull() ? null : rs.getInt(fieldNo);
+            // It seems that rs.wasNull() returns false when default value is set and NULL is inserted
+            // We thus need to use getObject() to identify if the value was provided and if yes then
+            // read it again to get correct scale
+            return rs.getObject(fieldNo) == null ? null : rs.getInt(fieldNo);
         }
         else {
             return rs.getObject(fieldNo);
