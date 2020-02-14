@@ -89,6 +89,6 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
 
         Assertions.assertThat(change.getInt16("ti")).isEqualTo((short) 100);
         Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
-        Assertions.assertThat(change.getInt16("ti2")).isEqualTo((byte) 50);
+        Assertions.assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
     }
 }
