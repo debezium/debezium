@@ -1358,6 +1358,7 @@ The following configuration properties are _required_ unless a default value is 
 |`database.server.name`
 |
 |Logical name that identifies and provides a namespace for the particular SQL Server database server being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names emanating from this connector.
+Only alphanumeric characters and underscores should be used.
 
 |`database.history.kafka.topic`
 |
