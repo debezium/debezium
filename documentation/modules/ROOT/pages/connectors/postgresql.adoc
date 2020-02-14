@@ -1696,6 +1696,7 @@ If the publication already exists (either for all tables or configured with a su
 |`database.server.name`
 |
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server/cluster being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names coming from this connector.
+Only alphanumeric characters and underscores should be used.
 
 |`schema.whitelist`
 |

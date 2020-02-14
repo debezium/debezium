@@ -620,6 +620,7 @@ The following configuration properties are _required_ unless a default value is 
 |`mongodb.name`
 |
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors. Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
+Only alphanumeric characters and underscores should be used.
 
 |`mongodb.user`
 |
