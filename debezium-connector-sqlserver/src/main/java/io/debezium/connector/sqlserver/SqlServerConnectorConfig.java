@@ -341,7 +341,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             CommonConnectorConfig.TOMBSTONES_ON_DELETE,
             CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
             Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
@@ -360,7 +361,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA);
+                CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
+                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,

@@ -1172,6 +1172,13 @@ Only alphanumeric characters and underscores should be used.
 |`precise`
 | Specifies how the connector should handle floating point values for `NUMBER`, `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
 
+|`event.processing{zwsp}.failure.handling.mode`
+|`fail`
+| Specifies how the connector should react to exceptions during processing of events.
+`fail` will propagate the exception (indicating the problematic event and its offset), causing the connector to stop. +
+`warn` will cause the problematic event to be skipped and the problematic event and its offset to be logged. +
+`ignore` will cause problematic event will be skipped.
+
 |`max.queue.size`
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.

@@ -79,6 +79,60 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined modes for dealing with failures during event processing.
+     */
+    public static enum EventProcessingFailureHandlingMode implements EnumeratedValue {
+
+        /**
+         * Problematic events will be skipped.
+         */
+        IGNORE("ignore"),
+
+        /**
+         * Problematic event and will be logged and the events will be skipped.
+         */
+        WARN("warn"),
+
+        /**
+         * An exception indicating the problematic events and their position is raised, causing the connector to be stopped.
+         */
+        FAIL("fail");
+
+        private final String value;
+
+        private EventProcessingFailureHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static EventProcessingFailureHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+
+            value = value.trim();
+
+            for (EventProcessingFailureHandlingMode option : EventProcessingFailureHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+    }
+
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
@@ -166,6 +220,16 @@ public abstract class CommonConnectorConfig {
             .withDescription("Enables transaction metadata extraction together with event counting")
             .withDefault(Boolean.FALSE);
 
+    public static final Field EVENT_PROCESSING_FAILURE_HANDLING_MODE = Field.create("event.processing.failure.handling.mode")
+            .withDisplayName("Event deserialization failure handling")
+            .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specify how failures during processing of events (i.e. when encountering a corrupted event) should be handled, including:"
+                    + "'fail' (the default) an exception indicating the problematic event and its position is raised, causing the connector to be stopped; "
+                    + "'warn' the problematic event and its position will be logged and the event will be skipped;"
+                    + "'ignore' the problematic event will be skipped.");
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -178,6 +242,7 @@ public abstract class CommonConnectorConfig {
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
     private final boolean sanitizeFieldNames;
     private final boolean shouldProvideTransactionMetadata;
+    private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -192,6 +257,7 @@ public abstract class CommonConnectorConfig {
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.parse(config.getString(SOURCE_STRUCT_MAKER_VERSION)));
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
+        this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
     }
 
     /**
@@ -238,6 +304,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean shouldProvideTransactionMetadata() {
         return shouldProvideTransactionMetadata;
+    }
+
+    public EventProcessingFailureHandlingMode getEventProcessingFailureHandlingMode() {
+        return eventProcessingFailureHandlingMode;
     }
 
     @SuppressWarnings("unchecked")

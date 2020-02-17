@@ -1448,6 +1448,13 @@ twice - once in initial snapshot and once in streaming phase. Nonetheless, that 
 data mirroring.
 For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
+|`event.processing{zwsp}.failure.handling.mode`
+|`fail`
+| Specifies how the connector should react to exceptions during processing of events.
+`fail` will propagate the exception (indicating the problematic event and its offset), causing the connector to stop. +
+`warn` will cause the problematic event to be skipped and the problematic event and its offset to be logged. +
+`ignore` will cause problematic event will be skipped.
+
 |`poll.interval.ms`
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
