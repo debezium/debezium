@@ -903,7 +903,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
             CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-            XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+            XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
@@ -1053,7 +1054,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 COLUMN_BLACKLIST, MSG_KEY_COLUMNS, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, Heartbeat.HEARTBEAT_INTERVAL,
                 Heartbeat.HEARTBEAT_TOPICS_PREFIX, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                TOASTED_VALUE_PLACEHOLDER);
+                TOASTED_VALUE_PLACEHOLDER, CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
                 SNAPSHOT_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
