@@ -40,6 +40,7 @@ public class TestHelper {
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
 
@@ -259,5 +260,9 @@ public class TestHelper {
             }
             metronome.pause();
         }
+    }
+
+    public static int waitTimeForRecords() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "5"));
     }
 }
