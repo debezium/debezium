@@ -113,7 +113,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             Heartbeat.HEARTBEAT_INTERVAL,
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             TABLENAME_CASE_INSENSITIVE,
-            ORACLE_VERSION);
+            ORACLE_VERSION,
+            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     private final String databaseName;
     private final String pdbName;
@@ -147,7 +148,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                 CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
                 CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS);
 
