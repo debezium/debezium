@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 
 /**

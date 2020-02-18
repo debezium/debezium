@@ -7,7 +7,7 @@ package io.debezium.serde;
 
 import org.apache.kafka.common.serialization.Serde;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.serde.json.JsonSerde;
 
 /**
