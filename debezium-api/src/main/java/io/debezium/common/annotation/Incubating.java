@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.annotation;
+package io.debezium.common.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;

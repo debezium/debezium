@@ -7,7 +7,7 @@ package io.debezium.connector.postgresql.spi;
 
 import java.time.Instant;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * A simple data container that represents the last seen offset

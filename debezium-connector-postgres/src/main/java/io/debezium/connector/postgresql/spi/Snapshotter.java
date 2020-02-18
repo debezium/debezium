@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.relational.TableId;
 

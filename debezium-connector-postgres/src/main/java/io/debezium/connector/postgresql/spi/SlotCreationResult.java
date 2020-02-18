@@ -7,7 +7,7 @@ package io.debezium.connector.postgresql.spi;
 
 import org.postgresql.replication.LogSequenceNumber;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * A simple data container representing the creation of a newly created replication slot.

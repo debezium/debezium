@@ -8,7 +8,7 @@ package io.debezium.engine.spi;
 import java.time.Duration;
 import java.util.Properties;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.DebeziumEngine;
 
 /**

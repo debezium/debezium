@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.postgresql.spi;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * A simple data container that holds the state of the current slot
