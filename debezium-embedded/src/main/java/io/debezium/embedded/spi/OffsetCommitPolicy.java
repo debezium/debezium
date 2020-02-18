@@ -17,6 +17,7 @@ import io.debezium.embedded.EmbeddedEngine;
  *
  * @author Randall Hauch
  */
+@Deprecated
 @FunctionalInterface
 public interface OffsetCommitPolicy extends io.debezium.engine.spi.OffsetCommitPolicy {
 

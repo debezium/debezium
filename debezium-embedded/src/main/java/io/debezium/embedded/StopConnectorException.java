@@ -16,6 +16,7 @@ import io.debezium.DebeziumException;
  *
  * @author Randall Hauch
  */
+@Deprecated
 public class StopConnectorException extends DebeziumException {
 
     private static final long serialVersionUID = 1L;

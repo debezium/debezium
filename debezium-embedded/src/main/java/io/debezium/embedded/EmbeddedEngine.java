@@ -292,12 +292,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * A callback function to be notified when the connector completes.
      */
+    @Deprecated
     public interface CompletionCallback extends DebeziumEngine.CompletionCallback {
     }
 
     /**
      * Callback function which informs users about the various stages a connector goes through during startup
      */
+    @Deprecated
     public interface ConnectorCallback extends DebeziumEngine.ConnectorCallback {
     }
 
@@ -412,6 +414,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * and to signal that offsets may be flushed eventually.
      */
     @ThreadSafe
+    @Deprecated
     public static interface RecordCommitter extends DebeziumEngine.RecordCommitter<SourceRecord> {
     }
 
@@ -419,6 +422,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * A contract invoked by the embedded engine when it has received a batch of change records to be processed. Allows
      * to process multiple records in one go, acknowledging their processing once that's done.
      */
+    @Deprecated
     public static interface ChangeConsumer extends DebeziumEngine.ChangeConsumer<SourceRecord> {
     }
 
@@ -462,6 +466,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     /**
      * A builder to set up and create {@link EmbeddedEngine} instances.
      */
+    @Deprecated
     public static interface Builder extends DebeziumEngine.Builder<SourceRecord> {
 
         /**
@@ -502,6 +507,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      *
      * @return the new builder; never null
      */
+    @Deprecated
     public static Builder create() {
         return new BuilderImpl();
     }
