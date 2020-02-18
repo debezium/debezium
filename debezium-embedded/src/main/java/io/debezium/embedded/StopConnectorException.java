@@ -7,7 +7,7 @@ package io.debezium.embedded;
 
 import java.util.function.Consumer;
 
-import io.debezium.errors.DebeziumException;
+import io.debezium.DebeziumException;
 
 /**
  * An exception that is used to tell the connector to process the last source record and to then stop. When raised by
