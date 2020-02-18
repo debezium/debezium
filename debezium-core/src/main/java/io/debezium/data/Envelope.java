@@ -216,18 +216,18 @@ public final class Envelope {
                 builder.field(FieldName.OPERATION, OPERATION_REQUIRED ? Schema.STRING_SCHEMA : Schema.OPTIONAL_STRING_SCHEMA);
                 builder.field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA);
                 builder.field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA);
-                checkFieldIsDefined(FieldName.OPERATION, OPERATION_REQUIRED);
-                checkFieldIsDefined(FieldName.BEFORE, false);
-                checkFieldIsDefined(FieldName.AFTER, false);
-                checkFieldIsDefined(FieldName.SOURCE, false);
-                checkFieldIsDefined(FieldName.TRANSACTION, false);
+                checkFieldIsDefined(FieldName.OPERATION);
+                checkFieldIsDefined(FieldName.BEFORE);
+                checkFieldIsDefined(FieldName.AFTER);
+                checkFieldIsDefined(FieldName.SOURCE);
+                checkFieldIsDefined(FieldName.TRANSACTION);
                 if (!missingFields.isEmpty()) {
                     throw new IllegalStateException("The envelope schema is missing field(s) " + String.join(", ", missingFields));
                 }
                 return new Envelope(builder.build());
             }
 
-            private void checkFieldIsDefined(String fieldName, boolean required) {
+            private void checkFieldIsDefined(String fieldName) {
                 if (builder.field(fieldName) == null) {
                     missingFields.add(fieldName);
                 }
