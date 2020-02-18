@@ -7,17 +7,23 @@ package io.debezium.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.spi.CustomConverter;
+import io.debezium.util.Strings;
 
 /**
  * Configuration options common to all Debezium connectors.
@@ -149,6 +155,7 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = "database.";
+    private static final String CONVERTER_TYPE_SUFFIX = ".type";
 
     public static final Field TOMBSTONES_ON_DELETE = Field.create("tombstones.on.delete")
             .withDisplayName("Change the behaviour of Debezium with regards to delete operations")
@@ -242,6 +249,14 @@ public abstract class CommonConnectorConfig {
                     + "'warn' the problematic event and its position will be logged and the event will be skipped;"
                     + "'ignore' the problematic event will be skipped.");
 
+    public static final Field CUSTOM_CONVERTERS = Field.create("converters")
+            .withDisplayName("List of prefixes defining custom values converters.")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Optional list of custom converters that would be used instead of default ones. "
+                    + "The converters are defined using '<converter.prefix>.type' config option and configured using options '<converter.prefix>.<option>'");
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -255,6 +270,7 @@ public abstract class CommonConnectorConfig {
     private final boolean sanitizeFieldNames;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
+    private final CustomConverterRegistry customConverterRegistry;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -270,6 +286,7 @@ public abstract class CommonConnectorConfig {
         this.sanitizeFieldNames = config.getBoolean(SANITIZE_FIELD_NAMES) || isUsingAvroConverter(config);
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
+        this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
     }
 
     /**
@@ -320,6 +337,24 @@ public abstract class CommonConnectorConfig {
 
     public EventProcessingFailureHandlingMode getEventProcessingFailureHandlingMode() {
         return eventProcessingFailureHandlingMode;
+    }
+
+    public CustomConverterRegistry customConverterRegistry() {
+        return customConverterRegistry;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<CustomConverter<SchemaBuilder>> getCustomConverters() {
+        final List<CustomConverter<SchemaBuilder>> converters = new ArrayList<>();
+        final String converterNameList = config.getString(CUSTOM_CONVERTERS);
+        final List<String> converterNames = Strings.listOf(converterNameList, x -> x.split(","), String::trim);
+
+        for (String name : converterNames) {
+            final CustomConverter<SchemaBuilder> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
+            converter.configure(config.subset(name, true).asProperties());
+            converters.add(converter);
+        }
+        return converters;
     }
 
     @SuppressWarnings("unchecked")

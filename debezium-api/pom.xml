@@ -41,6 +41,11 @@
         <!-- Used for unit testing with Kafka -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_${version.kafka.scala}</artifactId>
             <scope>test</scope>
         </dependency>

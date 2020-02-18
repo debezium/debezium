@@ -34,6 +34,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
                 new TableSchemaBuilder(
                         new SqlServerValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode()),
                         schemaNameAdjuster,
+                        connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
                 false, connectorConfig.getKeyMapper());
