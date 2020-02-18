@@ -17,9 +17,9 @@ import java.util.function.Consumer;
 
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Incubating;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.errors.DebeziumException;
 
 /**
  * A mechanism for running a single Kafka Connect {@link SourceConnector} within an application's process. The engine

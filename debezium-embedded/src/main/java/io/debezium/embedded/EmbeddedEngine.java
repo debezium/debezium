@@ -46,8 +46,8 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.errors.StopEngineException;
 import io.debezium.util.Clock;
 import io.debezium.util.VariableLatch;
 
