@@ -7,6 +7,7 @@ package io.debezium.relational;
 
 import java.sql.Types;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -56,7 +57,8 @@ public class TableSchemaBuilder {
     private final SchemaNameAdjuster schemaNameAdjuster;
     private final ValueConverterProvider valueConverterProvider;
     private final Schema sourceInfoSchema;
-    private final FieldNamer fieldNamer;
+    private final FieldNamer<Column> fieldNamer;
+    private final CustomConverterRegistry customConverterRegistry;
 
     /**
      * Create a new instance of the builder.
@@ -65,11 +67,13 @@ public class TableSchemaBuilder {
      *            null
      * @param schemaNameAdjuster the adjuster for schema names; may not be null
      */
-    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, Schema sourceInfoSchema, boolean sanitizeFieldNames) {
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider, SchemaNameAdjuster schemaNameAdjuster, CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema, boolean sanitizeFieldNames) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.sourceInfoSchema = sourceInfoSchema;
         this.fieldNamer = FieldNameSelector.defaultSelector(sanitizeFieldNames);
+        this.customConverterRegistry = customConverterRegistry;
     }
 
     /**
@@ -105,7 +109,7 @@ public class TableSchemaBuilder {
 
         Key tableKey = new Key.Builder(table).customKeyMapper(keysMapper).build();
         tableKey.keyColumns().forEach(column -> {
-            addField(keySchemaBuilder, column, null);
+            addField(keySchemaBuilder, table, column, null);
             hasPrimaryKey.set(true);
         });
 
@@ -114,7 +118,7 @@ public class TableSchemaBuilder {
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .forEach(column -> {
                     ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
-                    addField(valSchemaBuilder, column, mapper);
+                    addField(valSchemaBuilder, table, column, mapper);
                 });
 
         Schema valSchema = valSchemaBuilder.optional().build();
@@ -316,7 +320,7 @@ public class TableSchemaBuilder {
         for (int i = 0; i < columns.size(); i++) {
             Column column = columns.get(i);
 
-            ValueConverter converter = createValueConverterFor(column, schema.field(column.name()));
+            ValueConverter converter = createValueConverterFor(tableId, column, schema.field(column.name()));
             converter = wrapInMappingConverterIfNeeded(mappers, tableId, column, converter);
 
             if (converter == null) {
@@ -355,11 +359,14 @@ public class TableSchemaBuilder {
      * Add to the supplied {@link SchemaBuilder} a field for the column with the given information.
      *
      * @param builder the schema builder; never null
+     * @param table the table definition; never null
      * @param column the column definition
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
-    protected void addField(SchemaBuilder builder, Column column, ColumnMapper mapper) {
-        SchemaBuilder fieldBuilder = valueConverterProvider.schemaBuilder(column);
+    protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
+        final Optional<SchemaBuilder> customSchema = customConverterRegistry.registerConverterFor(table.id(), column);
+
+        SchemaBuilder fieldBuilder = customSchema.isPresent() ? customSchema.get() : valueConverterProvider.schemaBuilder(column);
         if (fieldBuilder != null) {
             if (mapper != null) {
                 // Let the mapper add properties to the schema ...
@@ -390,12 +397,13 @@ public class TableSchemaBuilder {
      * Create a {@link ValueConverter} that can be used to convert row values for the given column into the Kafka Connect value
      * object described by the {@link Field field definition}. This uses the supplied {@link ValueConverterProvider} object.
      *
+     * @param tableId the id of the table containing the column; never null
      * @param column the column describing the input values; never null
      * @param fieldDefn the definition for the field in a Kafka Connect {@link Schema} describing the output of the function;
      *            never null
      * @return the value conversion function; may not be null
      */
-    protected ValueConverter createValueConverterFor(Column column, Field fieldDefn) {
-        return valueConverterProvider.converter(column, fieldDefn);
+    protected ValueConverter createValueConverterFor(TableId tableId, Column column, Field fieldDefn) {
+        return customConverterRegistry.getValueConverter(tableId, column).orElse(valueConverterProvider.converter(column, fieldDefn));
     }
 }

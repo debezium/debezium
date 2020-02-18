@@ -779,7 +779,15 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("i", Schema.BYTES_SCHEMA, ByteBuffer.wrap("0-393-04002-X".getBytes())),
                 new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
                 new SchemaAndValueField("lt_array", ltreeArraySchema, Arrays.asList("Ship.Frigate", "Ship.Destroyer")));
+    }
 
+    protected List<SchemaAndValueField> schemasAndValuesForCustomConverterTypes() {
+        final Schema ltreeSchema = Ltree.builder().optional().build();
+        final Schema ltreeArraySchema = SchemaBuilder.array(ltreeSchema).optional().build();
+        return Arrays.asList(new SchemaAndValueField("lt", ltreeSchema, "Top.Collections.Pictures.Astronomy.Galaxies"),
+                new SchemaAndValueField("i", SchemaBuilder.string().name("io.debezium.postgresql.type.Isbn").build(), "0-393-04002-X"),
+                new SchemaAndValueField("n", Schema.OPTIONAL_STRING_SCHEMA, null),
+                new SchemaAndValueField("lt_array", ltreeArraySchema, Arrays.asList("Ship.Frigate", "Ship.Destroyer")));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDomainAliasTypes(boolean streaming) {

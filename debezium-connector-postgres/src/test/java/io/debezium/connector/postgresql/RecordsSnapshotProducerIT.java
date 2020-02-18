@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,6 +52,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
+import io.debezium.spi.CustomConverter;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -93,6 +96,69 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertRecordOffsetAndSnapshotSource(record, true, consumer.isEmpty());
             assertSourceInfo(record);
         }
+    }
+
+    public static class CustomDatatypeConverter implements CustomConverter<SchemaBuilder> {
+
+        private SchemaBuilder isbnSchema;
+
+        @Override
+        public void configure(Properties props) {
+            isbnSchema = SchemaBuilder.string().name(props.getProperty("schema.name"));
+        }
+
+        @Override
+        public Optional<ConverterDefinition<SchemaBuilder>> converterFor(String fieldType, String fieldName,
+                                                                         String dataCollectionName) {
+            if ("isbn".equals(fieldType)) {
+                return Optional.of(new ConverterDefinition<>(isbnSchema, x -> x.toString()));
+            }
+            return Optional.empty();
+        }
+    }
+
+    protected List<SchemaAndValueField> schemasAndValuesForCustomConverterTypes() {
+        return Arrays.asList(new SchemaAndValueField("i",
+                SchemaBuilder.string().name("io.debezium.postgresql.type.Isbn").build(), "0-393-04002-X"));
+    }
+
+    @Test
+    @FixFor("DBZ-1134")
+    public void shouldUseCustomConverter() throws Exception {
+        TestHelper.execute(INSERT_CUSTOM_TYPES_STMT);
+
+        // then start the producer and validate all records are there
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with("converters", "first")
+                .with("first.type", CustomDatatypeConverter.class.getName())
+                .with("first.schema.name", "io.debezium.postgresql.type.Isbn"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName = Collect.hashMapOf("public.custom_table", schemasAndValuesForCustomConverterTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName));
+
+        waitForSnapshotToBeCompleted();
+
+        TestHelper.execute("CREATE TABLE conv_table (pk serial, i isbn NOT NULL, PRIMARY KEY(pk))");
+        TestHelper.execute("INSERT INTO conv_table VALUES (default, '978-0-393-04002-9')");
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName2 = Collect.hashMapOf("public.conv_table",
+                Arrays.asList(new SchemaAndValueField("i",
+                        SchemaBuilder.string().name("io.debezium.postgresql.type.Isbn").build(), "0-393-04002-X")));
+        consumer.clear();
+        consumer.expects(1);
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName2));
+
+        TestHelper.execute("ALTER TABLE conv_table ALTER COLUMN i TYPE varchar(32)");
+        TestHelper.execute("INSERT INTO conv_table VALUES (default, '978-0-393-04002-9')");
+        final Map<String, List<SchemaAndValueField>> expectedValuesByTopicName3 = Collect.hashMapOf("public.conv_table",
+                Arrays.asList(new SchemaAndValueField("i",
+                        Schema.STRING_SCHEMA, "0-393-04002-X")));
+        consumer.clear();
+        consumer.expects(1);
+        consumer.process(record -> assertReadRecord(record, expectedValuesByTopicName3));
     }
 
     @Test
