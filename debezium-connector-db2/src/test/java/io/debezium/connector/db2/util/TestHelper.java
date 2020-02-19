@@ -42,7 +42,7 @@ public class TestHelper {
 
     public static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
     public static final String TEST_DATABASE = "testdb";
-    public static final int WAIT_FOR_CDC = 60 * 1000;
+    public static final int WAIT_FOR_CDC = 3 * 1000;
 
     private static final String STATEMENTS_PLACEHOLDER = "#";
 
