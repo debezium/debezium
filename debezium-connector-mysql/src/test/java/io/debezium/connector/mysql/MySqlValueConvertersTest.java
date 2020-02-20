@@ -15,6 +15,7 @@ import java.time.temporal.TemporalAdjuster;
 import org.apache.kafka.connect.data.Field;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -75,7 +76,8 @@ public class MySqlValueConvertersTest {
 
         MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
-                JdbcValueConverters.BigIntUnsignedMode.LONG);
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.RAW);
 
         DdlParser parser = new MySqlAntlrDdlParser();
         Tables tables = new Tables();

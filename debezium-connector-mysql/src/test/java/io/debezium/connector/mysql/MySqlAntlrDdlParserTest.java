@@ -25,6 +25,7 @@ import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -2513,7 +2514,8 @@ public class MySqlAntlrDdlParserTest {
                     new MySqlValueConverters(
                             JdbcValueConverters.DecimalMode.DOUBLE,
                             TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
-                            JdbcValueConverters.BigIntUnsignedMode.PRECISE),
+                            JdbcValueConverters.BigIntUnsignedMode.PRECISE,
+                            BinaryHandlingMode.RAW),
                     tableFilter);
             this.ddlChanges = changesListener;
         }
