@@ -226,7 +226,10 @@ public class MySqlTaskContextTest {
 
         config = simpleConfig().with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES,
                 "036d85a9-64e5-11e6-9b48-42010af0000c")
+                .with(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION, GtidNewChannelPosition.LATEST)
                 .build();
+        config.validateAndRecord(MySqlConnectorConfig.ALL_FIELDS, msg -> {
+        });
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
         context.start();
         context.source().setCompletedGtidSet(gtidStr);
@@ -258,7 +261,6 @@ public class MySqlTaskContextTest {
 
         config = simpleConfig()
                 .with(MySqlConnectorConfig.GTID_SOURCE_INCLUDES, "036d85a9-64e5-11e6-9b48-42010af0000c")
-                .with(MySqlConnectorConfig.GTID_NEW_CHANNEL_POSITION, GtidNewChannelPosition.EARLIEST)
                 .build();
 
         context = new MySqlTaskContext(config, new Filters.Builder(config).build(), false, null);
