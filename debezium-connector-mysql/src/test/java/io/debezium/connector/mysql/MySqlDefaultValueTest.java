@@ -19,6 +19,7 @@ import java.util.Date;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -42,7 +43,8 @@ public class MySqlDefaultValueTest {
     public void beforeEach() {
         converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
-                JdbcValueConverters.BigIntUnsignedMode.LONG);
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.RAW);
         parser = new MySqlAntlrDdlParser(converters);
         tables = new Tables();
     }
@@ -175,7 +177,8 @@ public class MySqlDefaultValueTest {
     public void parseUnsignedBigIntDefaultValueToBigDecimal() {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.DOUBLE,
                 TemporalPrecisionMode.CONNECT,
-                JdbcValueConverters.BigIntUnsignedMode.PRECISE);
+                JdbcValueConverters.BigIntUnsignedMode.PRECISE,
+                BinaryHandlingMode.RAW);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         String sql = "CREATE TABLE UNSIGNED_BIGINT_TABLE (\n" +
                 "  A BIGINT UNSIGNED NULL DEFAULT 0,\n" +
@@ -325,7 +328,8 @@ public class MySqlDefaultValueTest {
     public void parseNumericAndDecimalToDecimalDefaultValue() {
         final MySqlValueConverters converters = new MySqlValueConverters(JdbcValueConverters.DecimalMode.PRECISE,
                 TemporalPrecisionMode.CONNECT,
-                JdbcValueConverters.BigIntUnsignedMode.LONG);
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.RAW);
         final AbstractDdlParser parser = new MySqlAntlrDdlParser(converters);
         String sql = "CREATE TABLE NUMERIC_DECIMAL_TABLE (\n" +
                 "  A NUMERIC NOT NULL DEFAULT 1.23,\n" +
