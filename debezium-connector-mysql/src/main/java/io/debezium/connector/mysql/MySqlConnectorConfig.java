@@ -13,6 +13,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -32,6 +34,8 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
  * The configuration properties.
  */
 public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorConfig.class);
 
     /**
      * The set of predefined BigIntUnsignedHandlingMode options or aliases.
@@ -784,11 +788,12 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
      */
     public static final Field GTID_NEW_CHANNEL_POSITION = Field.create("gtid.new.channel.position")
             .withDisplayName("GTID start position")
-            .withEnum(GtidNewChannelPosition.class, GtidNewChannelPosition.LATEST)
+            .withEnum(GtidNewChannelPosition.class, GtidNewChannelPosition.EARLIEST)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
+            .withValidation(MySqlConnectorConfig::validateGtidNewChannelPositionNotSet)
             .withDescription(
-                    "If set to 'latest', when connector sees new GTID, it will start consuming gtid channel from the server latest executed gtid position. If 'earliest' connector starts reading channel from first available (not purged) gtid position on the server.");
+                    "If set to 'latest', when connector sees new GTID, it will start consuming gtid channel from the server latest executed gtid position. If 'earliest' (the default) connector starts reading channel from first available (not purged) gtid position on the server.");
 
     public static final Field CONNECTION_TIMEOUT_MS = Field.create("connect.timeout.ms")
             .withDisplayName("Connection Timeout (ms)")
@@ -1104,6 +1109,13 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                 SNAPSHOT_MODE, SNAPSHOT_LOCKING_MODE, SNAPSHOT_NEW_TABLES, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE,
                 BIGINT_UNSIGNED_HANDLING_MODE, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, ENABLE_TIME_ADJUSTER);
         return config;
+    }
+
+    private static int validateGtidNewChannelPositionNotSet(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getString(GTID_NEW_CHANNEL_POSITION.name()) != null) {
+            LOGGER.warn("Configuration option '{}' is deprecated and scheduled for removal", GTID_NEW_CHANNEL_POSITION.name());
+        }
+        return 0;
     }
 
     private static int validateDatabaseBlacklist(Configuration config, Field field, ValidationOutput problems) {
