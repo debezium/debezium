@@ -157,6 +157,72 @@ public abstract class CommonConnectorConfig {
         }
     }
 
+    /**
+     * The set of predefined BinaryHandlingMode options or aliases
+     */
+    public enum BinaryHandlingMode implements EnumeratedValue {
+
+        /**
+         * Represents Binary value as java
+         */
+        RAW("raw"),
+
+        /**
+         * Represents Binary value as base64
+         */
+        BASE64("base64"),
+
+        /**
+         * Represents Binary value as hex (base16)
+         */
+        HEX("hex");
+
+        private final String value;
+
+        BinaryHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @return the matching option, or null if the match is not found
+         */
+        public static BinaryHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (BinaryHandlingMode option : BinaryHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied values is one of the predefined options
+         *
+         * @param value the configuration property value ; may not be null
+         * @param defaultValue the default value ; may be null
+         * @return the matching option or null if the match is not found and non-null default is invalid
+         */
+        public static BinaryHandlingMode parse(String value, String defaultValue) {
+            BinaryHandlingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
@@ -272,6 +338,16 @@ public abstract class CommonConnectorConfig {
             .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'i' for inserts; 'u' for updates; 'd' for deletes. "
                     + "By default, no operations will be skipped.");
 
+    public static final Field BINARY_HANDLING_MODE = Field.create("binary.handling.mode")
+            .withDisplayName("Binary Handling")
+            .withEnum(BinaryHandlingMode.class, BinaryHandlingMode.RAW)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how binary (blob, binary, etc.) columns should be represented in change events, including:"
+                    + "'raw' represents binary data as native Java binary type (default)"
+                    + "'base64' represents binary data as base64-encoded"
+                    + "'hex' represents binary data as hex-encoded (base16)");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -305,6 +381,7 @@ public abstract class CommonConnectorConfig {
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
+    private final BinaryHandlingMode binaryHandlingMode;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -321,6 +398,7 @@ public abstract class CommonConnectorConfig {
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
+        this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
     }
 
     /**
@@ -485,4 +563,8 @@ public abstract class CommonConnectorConfig {
      * Returns the connector-specific {@link SourceInfoStructMaker} based on the given configuration.
      */
     protected abstract SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version);
+
+    public BinaryHandlingMode binaryHandlingMode() {
+        return binaryHandlingMode;
+    }
 }

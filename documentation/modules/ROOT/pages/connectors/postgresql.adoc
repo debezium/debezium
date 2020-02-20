@@ -1904,6 +1904,9 @@ that the configured user has access. If the publication already exists, it will 
 _filtered_ - If no publication exists, the connector will create a new publication for all those tables matching the
 current filter configuration (see table/database whitelist/blacklist properties). If the publication already exists,
 it will be used. i.e `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, etc>`
+|[[connector-property-binary-handling-mode]]<<connector-property-binary-handling-mode, `binary.handling.mode`>>
+|raw
+|Specifies how binary (`bytea`) columns should be represented in change events, including: `raw` represents binary data as native Java binary type (default), `base64` represents binary data as base64-encoded, `hex` represents binary data as hex-encoded (base16)
 
 |===
 

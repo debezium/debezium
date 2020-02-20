@@ -12,6 +12,7 @@ import static io.debezium.util.NumberConversions.SHORT_FALSE;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
@@ -21,6 +22,8 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
+import java.util.Base64;
+import java.util.Base64.Encoder;
 import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
 
@@ -30,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.data.Bits;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.Xml;
@@ -45,6 +49,7 @@ import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.HexConverter;
 import io.debezium.util.NumberConversions;
 
 /**
@@ -92,6 +97,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
+    protected final BinaryHandlingMode binaryMode;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -99,7 +105,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * columns.
      */
     public JdbcValueConverters() {
-        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null);
+        this(null, TemporalPrecisionMode.ADAPTIVE, ZoneOffset.UTC, null, null, null);
     }
 
     /**
@@ -116,15 +122,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      *            adjustment is necessary
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link BigIntUnsignedMode#PRECISE} is to be used
+     * @param binaryMode TODO
      */
     public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
-                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode) {
+                               TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
         this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
+        this.binaryMode = binaryMode != null ? binaryMode : BinaryHandlingMode.RAW;
 
         this.fallbackTimestampWithTimeZone = ZonedTimestamp.toIsoString(
                 OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset),
@@ -274,7 +282,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.BINARY:
             case Types.VARBINARY:
             case Types.LONGVARBINARY:
-                return (data) -> convertBinary(column, fieldDefn, data);
+                return (data) -> convertBinary(column, fieldDefn, data, binaryMode);
 
             // Numeric integers
             case Types.TINYINT:
@@ -714,6 +722,81 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             if (dataMut instanceof byte[]) {
                 r.deliver(convertByteArray(column, (byte[]) dataMut));
+            }
+            else {
+                // An unexpected value
+                r.deliver(unexpectedBinary(dataMut, fieldDefn));
+            }
+        });
+    }
+
+    protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
+        switch (mode) {
+            case BASE64:
+                return convertBinaryToBase64(column, fieldDefn, data);
+            case HEX:
+                return convertBinaryToHex(column, fieldDefn, data);
+            case RAW:
+            default:
+                return convertBinary(column, fieldDefn, data);
+        }
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BLOB}, {@link Types#BINARY},
+     * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
+     *
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, BYTE_ZERO, (r) -> {
+            Object dataMut = data;
+            Encoder base64Encoder = Base64.getEncoder();
+            if (dataMut instanceof char[]) {
+                dataMut = base64Encoder.encode(String.valueOf((char[]) dataMut).getBytes(StandardCharsets.UTF_8));
+            }
+            if (dataMut instanceof String) {
+                // This was encoded as a hexadecimal string, but we receive it as a normal string ...
+                String normalString = (String) dataMut;
+                dataMut = base64Encoder.encode(normalString.getBytes(StandardCharsets.UTF_8));
+            }
+            if (dataMut instanceof byte[]) {
+                r.deliver(convertByteArray(column, base64Encoder.encode((byte[]) dataMut)));
+            }
+            else {
+                // An unexpected value
+                r.deliver(unexpectedBinary(dataMut, fieldDefn));
+            }
+        });
+    }
+
+    /**
+     * Converts a value object for an expected JDBC type of {@link Types#BLOB}, {@link Types#BINARY},
+     * {@link Types#VARBINARY}, {@link Types#LONGVARBINARY}.
+     *
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a {@link Date Kafka Connect date} type; never null
+     * @return the converted value, or null if the conversion could not be made and the column allows nulls
+     * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
+     */
+    protected Object convertBinaryToHex(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, BYTE_ZERO, (r) -> {
+            Object dataMut = data;
+            if (dataMut instanceof char[]) {
+                dataMut = HexConverter.convertToHexString(String.valueOf((char[]) dataMut).getBytes(StandardCharsets.UTF_8));
+            }
+            if (dataMut instanceof String) {
+                // This was encoded as a hexadecimal string, but we receive it as a normal string ...
+                String normalString = (String) dataMut;
+                dataMut = HexConverter.convertToHexString(normalString.getBytes(StandardCharsets.UTF_8));
+            }
+            if (dataMut instanceof byte[]) {
+                r.deliver(convertByteArray(column, HexConverter.convertToHexString((byte[]) dataMut).getBytes()));
             }
             else {
                 // An unexpected value
