@@ -52,7 +52,8 @@ import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
-import io.debezium.spi.CustomConverter;
+import io.debezium.spi.converter.CustomConverter;
+import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -98,7 +99,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
-    public static class CustomDatatypeConverter implements CustomConverter<SchemaBuilder> {
+    public static class CustomDatatypeConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
 
         private SchemaBuilder isbnSchema;
 
@@ -108,9 +109,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         }
 
         @Override
-        public Optional<ConverterDefinition<SchemaBuilder>> converterFor(String fieldType, String fieldName,
-                                                                         String dataCollectionName) {
-            if ("isbn".equals(fieldType)) {
+        public Optional<ConverterDefinition<SchemaBuilder>> converterFor(RelationalColumn column) {
+            if ("isbn".equals(column.typeName())) {
                 return Optional.of(new ConverterDefinition<>(isbnSchema, x -> x.toString()));
             }
             return Optional.empty();

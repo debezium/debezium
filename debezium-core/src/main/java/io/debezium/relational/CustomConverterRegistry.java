@@ -13,8 +13,10 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-import io.debezium.spi.CustomConverter;
-import io.debezium.spi.CustomConverter.ConverterDefinition;
+import io.debezium.spi.converter.ConvertedField;
+import io.debezium.spi.converter.CustomConverter;
+import io.debezium.spi.converter.CustomConverter.ConverterDefinition;
+import io.debezium.spi.converter.RelationalColumn;
 
 /**
  * The registry of all converters that were provided by the connector configuration.
@@ -24,10 +26,10 @@ import io.debezium.spi.CustomConverter.ConverterDefinition;
  */
 public class CustomConverterRegistry {
 
-    private final List<CustomConverter<SchemaBuilder>> converters;
+    private final List<CustomConverter<SchemaBuilder, ConvertedField>> converters;
     private final Map<String, ConverterDefinition<SchemaBuilder>> conversionFunctionMap = new HashMap<>();
 
-    public CustomConverterRegistry(List<CustomConverter<SchemaBuilder>> converters) {
+    public CustomConverterRegistry(List<CustomConverter<SchemaBuilder, ConvertedField>> converters) {
         if (converters == null) {
             this.converters = Collections.emptyList();
         }
@@ -46,8 +48,64 @@ public class CustomConverterRegistry {
     public Optional<SchemaBuilder> registerConverterFor(TableId table, Column column) {
         final String fullColumnName = fullColumnName(table, column);
 
-        for (CustomConverter<SchemaBuilder> converter : converters) {
-            final Optional<ConverterDefinition<SchemaBuilder>> definition = converter.converterFor(column.typeExpression(), column.name(), table.toString());
+        for (CustomConverter<SchemaBuilder, ConvertedField> converter : converters) {
+            final Optional<ConverterDefinition<SchemaBuilder>> definition = converter.converterFor(new RelationalColumn() {
+
+                @Override
+                public String name() {
+                    return column.name();
+                }
+
+                @Override
+                public String dataCollection() {
+                    return table.toString();
+                }
+
+                @Override
+                public String typeName() {
+                    return column.typeName();
+                }
+
+                @Override
+                public String typeExpression() {
+                    return column.typeExpression();
+                }
+
+                @Override
+                public Optional<Integer> scale() {
+                    return column.scale();
+                }
+
+                @Override
+                public int nativeType() {
+                    return column.nativeType();
+                }
+
+                @Override
+                public int length() {
+                    return column.length();
+                }
+
+                @Override
+                public int jdbcType() {
+                    return column.jdbcType();
+                }
+
+                @Override
+                public boolean isOptional() {
+                    return column.isOptional();
+                }
+
+                @Override
+                public boolean hasDefaultValue() {
+                    return column.hasDefaultValue();
+                }
+
+                @Override
+                public Object defaultValue() {
+                    return column.defaultValue();
+                }
+            });
             if (definition.isPresent()) {
                 conversionFunctionMap.put(fullColumnName, definition.get());
                 return Optional.of(definition.get().fieldSchema);

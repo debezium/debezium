@@ -22,7 +22,8 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.history.KafkaDatabaseHistory;
-import io.debezium.spi.CustomConverter;
+import io.debezium.spi.converter.ConvertedField;
+import io.debezium.spi.converter.CustomConverter;
 import io.debezium.util.Strings;
 
 /**
@@ -344,13 +345,13 @@ public abstract class CommonConnectorConfig {
     }
 
     @SuppressWarnings("unchecked")
-    private List<CustomConverter<SchemaBuilder>> getCustomConverters() {
-        final List<CustomConverter<SchemaBuilder>> converters = new ArrayList<>();
+    private List<CustomConverter<SchemaBuilder, ConvertedField>> getCustomConverters() {
+        final List<CustomConverter<SchemaBuilder, ConvertedField>> converters = new ArrayList<>();
         final String converterNameList = config.getString(CUSTOM_CONVERTERS);
         final List<String> converterNames = Strings.listOf(converterNameList, x -> x.split(","), String::trim);
 
         for (String name : converterNames) {
-            final CustomConverter<SchemaBuilder> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
+            final CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
             converter.configure(config.subset(name, true).asProperties());
             converters.add(converter);
         }

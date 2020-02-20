@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.spi;
+package io.debezium.spi.converter;
 
 import java.util.Optional;
 import java.util.Properties;
@@ -16,7 +16,7 @@ import io.debezium.annotation.Incubating;
  * @author Jiri Pechanec
  */
 @Incubating
-public interface CustomConverter<S> {
+public interface CustomConverter<S, F extends ConvertedField> {
 
     /**
      * An Actual conversion converting data from one type to another.
@@ -48,10 +48,8 @@ public interface CustomConverter<S> {
     /**
      * A custom converter injected by the Debezium user.
      *
-     * @param fieldType - full description of the field type, same as {@link }
-     * @param fieldName - name of the field
-     * @param dataCollectionName - fully qualified name of the data collection
+     * @param field - converted field metadata
      * @return empty if the converter is not applicable for this field
      */
-    Optional<ConverterDefinition<S>> converterFor(String fieldType, String fieldName, String dataCollectionName);
+    Optional<ConverterDefinition<S>> converterFor(F field);
 }
