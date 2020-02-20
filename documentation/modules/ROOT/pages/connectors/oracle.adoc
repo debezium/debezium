@@ -643,19 +643,21 @@ An example of messages looks like
 {
   "status": "END",
   "id": "5.6.641",
-  "event_count": "2",
+  "event_count": 2,
   "data_collections": [
     {
       "data_collection": "ORCLPDB1.DEBEZIUM.CUSTOMER",
-      "event_count": "1"
+      "event_count": 1
     },
     {
       "data_collection": "ORCLPDB1.DEBEZIUM.ORDER",
-      "event_count": "1"
+      "event_count": 1
     }
   ]
 }
 ----
+
+The transaction events are written to the topic named `<database.server.name>.transaction`.
 
 ==== Data events enrichment
 When transaction metadata are enabled then data message `Envelope` is enriched with a new field `transaction`.

@@ -966,19 +966,21 @@ An example of messages looks like
 {
   "status": "END",
   "id": "571",
-  "event_count": "2",
+  "event_count": 2,
   "data_collections": [
     {
       "data_collection": "s1.a",
-      "event_count": "1"
+      "event_count": 1
     },
     {
       "data_collection": "s2.a",
-      "event_count": "1"
+      "event_count": 1
     }
   ]
 }
 ----
+
+The transaction events are written to the topic named `<database.server.name>.transaction`.
 
 ==== Data events enrichment
 When transaction metadata are enabled then data message `Envelope` is enriched with a new field `transaction`.
