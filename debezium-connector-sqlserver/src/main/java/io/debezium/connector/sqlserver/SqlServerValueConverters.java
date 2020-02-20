@@ -48,7 +48,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
      *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
      */
     public SqlServerValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null);
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null);
     }
 
     @Override

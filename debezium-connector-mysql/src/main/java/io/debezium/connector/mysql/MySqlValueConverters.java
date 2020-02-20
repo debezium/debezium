@@ -41,6 +41,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 import com.mysql.cj.CharsetMapping;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.data.Json;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -110,7 +111,7 @@ public class MySqlValueConverters extends JdbcValueConverters {
     }
 
     /**
-     * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
+     * Create a new instance that always uses UTC for the default time zone when_needed converting values without timezone information
      * to values that require timezones.
      * <p>
      *
@@ -119,9 +120,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param temporalPrecisionMode temporal precision mode based on {@link io.debezium.jdbc.TemporalPrecisionMode}
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
+     * @param binaryMode TODO
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, x -> x);
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode,
+                                BinaryHandlingMode binaryMode) {
+        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, x -> x, binaryMode);
     }
 
     /**
@@ -137,10 +140,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
+     * @param binaryMode TODO
      */
     public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset, BigIntUnsignedMode bigIntUnsignedMode,
-                                TemporalAdjuster adjuster) {
-        super(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode);
+                                TemporalAdjuster adjuster, BinaryHandlingMode binaryMode) {
+        super(decimalMode, temporalPrecisionMode, defaultOffset, adjuster, bigIntUnsignedMode, binaryMode);
     }
 
     /**
@@ -154,9 +158,11 @@ public class MySqlValueConverters extends JdbcValueConverters {
      * @param bigIntUnsignedMode how {@code BIGINT UNSIGNED} values should be treated; may be null if
      *            {@link io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode#PRECISE} is to be used
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
+     * @param binaryMode TODO
      */
-    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster) {
-        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, adjuster);
+    public MySqlValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BigIntUnsignedMode bigIntUnsignedMode, TemporalAdjuster adjuster,
+                                BinaryHandlingMode binaryMode) {
+        this(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, bigIntUnsignedMode, adjuster, binaryMode);
     }
 
     @Override

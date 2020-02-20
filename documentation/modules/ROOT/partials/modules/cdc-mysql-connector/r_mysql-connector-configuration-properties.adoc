@@ -201,6 +201,10 @@ Emitting the tombstone event (the default behavior) allows Kafka to completely d
 Each item (regular expression) must match the `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
 Fully-qualified tables could be defined as _databaseName_._tableName_.
 
+|[[connector-property-binary-handling-mode]]<<connector-property-binary-handling-mode, `binary.handling.mode`>>
+|raw
+|Specifies how binary (`blob`, `binary`, `varbinary`, etc.) columns should be represented in change events, including: `raw` represents binary data as native Java binary type (default), `base64` represents binary data as base64-encoded, `hex` represents binary data as hex-encoded (base16)
+
 |===
 
 [[advanced-mysql-connector-properties]]
