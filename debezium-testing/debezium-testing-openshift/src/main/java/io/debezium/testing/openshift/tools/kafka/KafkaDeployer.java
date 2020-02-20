@@ -7,6 +7,7 @@ package io.debezium.testing.openshift.tools.kafka;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,15 @@ public class KafkaDeployer {
     }
 
     /**
+     * Accessor for operator controller.
+     * @return {@link OperatorController} instance for cluster operator in {@link #project}
+     */
+    public OperatorController getOperator() {
+        Deployment operator = ocp.apps().deployments().inNamespace(project).withName("strimzi-cluster-operator").get();
+        return new OperatorController(operator, ocp);
+    }
+
+    /**
      * Deploys Kafka Cluster
      * @param yamlPath path to CR descriptor (must be available on class path)
      * @return {@link KafkaController} instance for deployed cluster
@@ -74,7 +84,7 @@ public class KafkaDeployer {
      * @return {@link KafkaController} instance for deployed cluster
      */
     public KafkaConnectController deployKafkaConnectCluster(String yamlPath, String loggingYamlPath, boolean useConnectorResources) throws InterruptedException {
-        LOGGER.info("Deploying KafkaConnect from" + yamlPath);
+        LOGGER.info("Deploying KafkaConnect from " + yamlPath);
 
         ocp.configMaps().inNamespace(project).createOrReplace(YAML.fromResource(loggingYamlPath, ConfigMap.class));
 
@@ -111,9 +121,8 @@ public class KafkaDeployer {
      * @return deployed pull secret
      */
     public Secret deployPullSecret(String yamlPath) {
-        Secret pullSecret = ocp.secrets().createOrReplace(YAML.from(yamlPath, Secret.class));
-        ocpUtils.linkPullSecret(project, "default", pullSecret.getMetadata().getName());
-        return pullSecret;
+        LOGGER.info("Deploying Secret from " + yamlPath);
+        return ocp.secrets().inNamespace(project).createOrReplace(YAML.from(yamlPath, Secret.class));
     }
 
     private NonNamespaceOperation<Kafka, KafkaList, DoneableKafka, Resource<Kafka, DoneableKafka>> kafkaOperation() {

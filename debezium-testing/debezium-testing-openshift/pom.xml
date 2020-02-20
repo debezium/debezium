@@ -19,7 +19,9 @@
     <version.junit5.pioneer>0.5.1</version.junit5.pioneer>
     <version.assertj>3.11.1</version.assertj>
 
-    <image.fullname>quay.io/debezium/kafka:${project.version}-latest-kafka-${version.kafka}</image.fullname>
+    <image.registry>quay.io</image.registry>
+    <image.name>debezium/testing-openshift-connect:kafka-${version.kafka}-${project.version}</image.name>
+    <image.fullname>${image.registry}/${image.name}</image.fullname>
 
     <!--OCP configuration-->
     <ocp.project.debezium>debezium</ocp.project.debezium>
@@ -159,11 +161,7 @@
 
       <properties>
         <image.push.skip>true</image.push.skip>
-        <image.push.registry>quay.io</image.push.registry>
-        <image.registry>${image.push.registry}</image.registry>
         <image.version.strimzi>latest</image.version.strimzi>
-        <image.name>debezium/kafka:${project.version}-${image.version.strimzi}-kafka-${version.kafka}</image.name>
-        <image.fullname>${image.push.registry}/${image.name}</image.fullname>
         <image.base.name>strimzi/kafka:${image.version.strimzi}-kafka-${version.kafka}</image.base.name>
       </properties>
 
@@ -210,11 +208,11 @@
             <artifactId>docker-maven-plugin</artifactId>
             <configuration>
               <imagePullPolicy>IfNotPresent</imagePullPolicy>
-              <pushRegistry>${image.push.registry}</pushRegistry>
+              <pushRegistry>${image.registry}</pushRegistry>
               <skipPush>${image.push.skip}</skipPush>
               <images>
                 <image>
-                  <name>${image.name}</name>
+                  <name>${image.fullname}</name>
                   <build>
                     <from>${image.base.name}</from>
                     <assembly>
@@ -268,7 +266,7 @@
                 <test.ocp.url>${ocp.url}</test.ocp.url>
                 <test.ocp.username>${ocp.username}</test.ocp.username>
                 <test.ocp.password>${ocp.password}</test.ocp.password>
-                <test.ocp.secret.rhio.path>${ocp.rhio.secret.path}</test.ocp.secret.rhio.path>
+                <test.ocp.pull.secret.paths>${ocp.pull.secret.paths}</test.ocp.pull.secret.paths>
                 <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
                 <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
                 <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>

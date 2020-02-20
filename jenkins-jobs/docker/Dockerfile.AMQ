@@ -1,0 +1,9 @@
+ARG FROM_IMAGE
+FROM ${FROM_IMAGE}
+
+USER root:root
+ADD ./plugins/ /opt/kafka/plugins/
+
+RUN cd /opt/kafka/plugins && unzip \*.zip && rm *.zip
+USER 1001
+

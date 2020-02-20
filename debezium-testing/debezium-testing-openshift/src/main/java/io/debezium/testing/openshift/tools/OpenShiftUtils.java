@@ -7,12 +7,18 @@ package io.debezium.testing.openshift.tools;
 
 import static org.awaitility.Awaitility.await;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.LocalObjectReference;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,12 +107,49 @@ public class OpenShiftUtils {
      * @return {@link} Service account object to which this secret was linked
      */
     public ServiceAccount linkPullSecret(String project, String sa, String secret) {
-        return client.serviceAccounts()
-                .inNamespace(project)
-                .withName(sa)
-                .edit()
-                .addNewImagePullSecret(secret)
-                .done();
+        ServiceAccount serviceAccount = client.serviceAccounts().inNamespace(project).withName(sa).get();
+        boolean linked = serviceAccount.getImagePullSecrets().stream().anyMatch(r -> r.getName().equals(secret));
+        if (!linked) {
+            return client.serviceAccounts().inNamespace(project).withName(sa).edit()
+                    .addNewImagePullSecret().withName(secret).endImagePullSecret()
+                    .addNewSecret().withName(secret).endSecret()
+                    .done();
+        }
+        return serviceAccount;
+    }
+
+    /**
+     * Ensures each container of given deployment has a environment variable
+     * @param deployment deployment
+     * @param envVar environment variable
+     */
+    public void ensureHasEnv(Deployment deployment, EnvVar envVar) {
+        deployment.getSpec().getTemplate().getSpec().getContainers().forEach(c -> this.ensureHasEnv(c, envVar));
+    }
+
+    /**
+     * Ensures container has a environment variable
+     * @param container container
+     * @param envVar environment variable
+     */
+    public void ensureHasEnv(Container container, EnvVar envVar) {
+        List<EnvVar> env = container.getEnv();
+        if (env == null) {
+            env = new ArrayList<>();
+            container.setEnv(env);
+        }
+        env.removeIf(var -> Objects.equals(var.getName(), envVar.getName()));
+        env.add(envVar);
+    }
+
+    public void ensureHasPullSecret(Deployment deployment, String secret) {
+        List<LocalObjectReference> secrets = deployment.getSpec().getTemplate().getSpec().getImagePullSecrets();
+        if (secrets == null) {
+            secrets = new ArrayList<>();
+            deployment.getSpec().getTemplate().getSpec().setImagePullSecrets(secrets);
+        }
+        secrets.removeIf(s -> Objects.equals(secret, s.getName()));
+        secrets.add(new LocalObjectReference(secret));
     }
 
     /**
