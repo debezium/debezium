@@ -23,7 +23,7 @@ public class ConfigProperties {
     public static final String OCP_PROJECT_DBZ = stringProperty("test.ocp.project.debezium");
     public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", "debezium-mysql");
     public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", "debezium-postgresql");
-    public static final Optional<String> OCP_SECRET_RHIO_PATH = stringOptionalProperty("test.ocp.secret.rhio.path");
+    public static final Optional<String> OCP_PULL_SECRET_PATHS = stringOptionalProperty("test.ocp.pull.secret.paths");
 
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors");
 

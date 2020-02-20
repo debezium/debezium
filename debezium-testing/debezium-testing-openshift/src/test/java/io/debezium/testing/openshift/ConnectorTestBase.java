@@ -10,11 +10,15 @@ import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import io.debezium.testing.openshift.tools.kafka.OperatorController;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -49,6 +53,7 @@ public abstract class ConnectorTestBase {
     protected static KafkaDeployer kafkaDeployer;
     protected static KafkaController kafkaController;
     protected static KafkaConnectController kafkaConnectController;
+    protected static OperatorController operatorController;
 
     @BeforeAll
     public static void setup() throws InterruptedException {
@@ -62,7 +67,22 @@ public abstract class ConnectorTestBase {
         testUtils = new TestUtils();
 
         kafkaDeployer = new KafkaDeployer(ConfigProperties.OCP_PROJECT_DBZ, ocp);
-        ConfigProperties.OCP_SECRET_RHIO_PATH.ifPresent(kafkaDeployer::deployPullSecret);
+        operatorController = kafkaDeployer.getOperator();
+
+        if (ConfigProperties.OCP_PULL_SECRET_PATHS.isPresent()) {
+            String paths = ConfigProperties.OCP_PULL_SECRET_PATHS.get();
+            LOGGER.info("Processing pull secrets: " + paths);
+
+            List<String> secrets = Arrays.stream(paths.split(","))
+                    .map(kafkaDeployer::deployPullSecret)
+                    .map(s -> s.getMetadata().getName())
+                    .collect(Collectors.toList());
+
+            secrets.forEach(operatorController::setImagePullSecret);
+            operatorController.setOperandImagePullSecrets(String.join(",", secrets));
+            operatorController.setAlwaysPullPolicy();
+            operatorController.updateOperator();
+        }
 
         kafkaController = kafkaDeployer.deployKafkaCluster(KAFKA);
         kafkaConnectController = kafkaDeployer.deployKafkaConnectCluster(KAFKA_CONNECT_S2I, KAFKA_CONNECT_S2I_LOGGING, ConfigProperties.STRIMZI_OPERATOR_CONNECTORS);
