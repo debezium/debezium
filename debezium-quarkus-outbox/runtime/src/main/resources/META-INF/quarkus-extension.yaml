@@ -10,3 +10,4 @@ metadata:
   categories:
   - "integration"
   - "cdc"
+  status: "experimental"
