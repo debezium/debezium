@@ -29,7 +29,7 @@ import io.fabric8.openshift.client.OpenShiftClient;
  * @author Jakub Cechacek
  */
 public class OpenShiftUtils {
-    private static  final Logger LOGGER = LoggerFactory.getLogger(OpenShiftUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenShiftUtils.class);
 
     private OpenShiftClient client;
 
