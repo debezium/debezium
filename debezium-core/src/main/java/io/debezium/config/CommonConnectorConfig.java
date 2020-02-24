@@ -87,10 +87,10 @@ public abstract class CommonConnectorConfig {
         /**
          * Problematic events will be skipped.
          */
-        IGNORE("ignore"),
+        SKIP("skip"),
 
         /**
-         * Problematic event and will be logged and the events will be skipped.
+         * The position of problematic events will be logged and events will be skipped.
          */
         WARN("warn"),
 
