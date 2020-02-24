@@ -26,6 +26,8 @@ import io.debezium.util.Testing;
 
 /**
  * Integration test for the Debezium SQL Server connector.
+ * The test will execute steps to desynchronize in-memory schema representation
+ * with actual database schema which will cause an error in processing of events.
  *
  * @author Jiri Pechanec
  */
@@ -90,7 +92,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.IGNORE)
+                .with(SqlServerConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, EventProcessingFailureHandlingMode.SKIP)
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -133,7 +135,7 @@ public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
 
         SourceRecords records = consumeRecordsByTopic(1);
         Assertions.assertThat(records.recordsForTopic("server1.dbo.tablea")).hasSize(1);
-        assertThat(logInterceptor.containsErrorMessage("Error while processing event at offset {")).isTrue();
+        assertThat(logInterceptor.containsStacktraceElement("Error while processing event at offset {")).isTrue();
         Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
             return !engine.isRunning();
         });
