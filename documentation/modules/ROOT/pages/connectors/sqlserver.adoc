@@ -1443,9 +1443,9 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 |`event.processing{zwsp}.failure.handling.mode`
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
-`fail` will propagate the exception (indicating the problematic event and its offset), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the problematic event and its offset to be logged. +
-`ignore` will cause problematic event will be skipped.
+`fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
+`warn` will cause the problematic event to be skipped and the offset of the problematic event to be logged. +
+`skip` will cause the problematic event to be skipped.
 
 |`poll.interval.ms`
 |`1000`

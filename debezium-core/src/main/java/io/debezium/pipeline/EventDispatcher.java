@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,16 +175,13 @@ public class EventDispatcher<T extends DataCollectionId> {
         catch (Exception e) {
             switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
                 case FAIL:
-                    LOGGER.error(
-                            "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset());
-                    throw e;
+                    throw new ConnectException("Error while processing event at offset " + changeRecordEmitter.getOffset().getOffset(), e);
                 case WARN:
                     LOGGER.warn(
                             "Error while processing event at offset {}",
                             changeRecordEmitter.getOffset().getOffset());
                     break;
-                case IGNORE:
+                case SKIP:
                     LOGGER.debug(
                             "Error while processing event at offset {}",
                             changeRecordEmitter.getOffset().getOffset());
