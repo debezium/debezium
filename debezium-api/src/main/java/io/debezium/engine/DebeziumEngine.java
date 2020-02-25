@@ -209,6 +209,13 @@ public interface DebeziumEngine<R> extends Runnable {
         Builder<R> using(OffsetCommitPolicy policy);
 
         /**
+         * Called when the consumer wants to receive the message in a serialized format.
+         * @param serializer implementation like JSON or Avro
+         * @return this builder object so methods can be chained together; never null
+         */
+        Builder<R> using(Class<Serializer<R, ?>> serializer);
+
+        /**
          * Build a new connector with the information previously supplied to this builder.
          *
          * @return the embedded connector; never null
