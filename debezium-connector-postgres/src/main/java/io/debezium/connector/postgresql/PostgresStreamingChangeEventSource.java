@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.Heartbeat;
@@ -93,7 +94,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         try {
             if (offsetContext.hasLastKnownPosition()) {
                 // start streaming from the last recorded position in the offset
-                final Long lsn = offsetContext.lsn();
+                final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("retrieved latest position from stored offset '{}'", ReplicationConnection.format(lsn));
                 }
@@ -123,20 +124,25 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         lastCompletelyProcessedLsn = lsn;
                     }
 
-                    final TableId tableId = PostgresSchema.parse(message.getTable());
-                    Objects.requireNonNull(tableId);
+                    TableId tableId = null;
+                    if (message.getOperation() != Operation.NOOP) {
+                        tableId = PostgresSchema.parse(message.getTable());
+                        Objects.requireNonNull(tableId);
+                    }
 
                     offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
                             taskContext.getSlotXmin(connection));
-                    boolean dispatched = dispatcher.dispatchDataChangeEvent(
-                            tableId,
-                            new PostgresChangeRecordEmitter(
-                                    offsetContext,
-                                    clock,
-                                    connectorConfig,
-                                    schema,
-                                    connection,
-                                    message));
+
+                    boolean dispatched = (message.getOperation() == Operation.NOOP) ? false
+                            : dispatcher.dispatchDataChangeEvent(
+                                    tableId,
+                                    new PostgresChangeRecordEmitter(
+                                            offsetContext,
+                                            clock,
+                                            connectorConfig,
+                                            schema,
+                                            connection,
+                                            message));
 
                     maybeWarnAboutGrowingWalBacklog(dispatched);
                 });
