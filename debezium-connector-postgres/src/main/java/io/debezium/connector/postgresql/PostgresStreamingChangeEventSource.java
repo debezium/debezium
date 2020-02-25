@@ -94,7 +94,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         try {
             if (offsetContext.hasLastKnownPosition()) {
                 // start streaming from the last recorded position in the offset
-                final Long lsn = offsetContext.lsn();
+                final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("retrieved latest position from stored offset '{}'", ReplicationConnection.format(lsn));
                 }
@@ -126,10 +126,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     }
 
                     // Tx BEGIN/END event
-                    if (message.isTransactionalMessage() || message.getOperation() == Operation.NOOP) {
+                    if (message.isTransactionalMessage()) {
                         if (!connectorConfig.shouldProvideTransactionMetadata()) {
                             LOGGER.trace("Received transactional message {}", message);
-                            skipMessage(lsn);
+                            // Don't skip on BEGIN message as it would flush LSN for the whole transaction
+                            // too early
+                            if (message.getOperation() == Operation.COMMIT) {
+                                skipMessage(lsn);
+                            }
                             return;
                         }
 
@@ -146,21 +150,25 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     }
                     // DML event
                     else {
-                        final TableId tableId = PostgresSchema.parse(message.getTable());
-                        Objects.requireNonNull(tableId);
+                        TableId tableId = null;
+                        if (message.getOperation() != Operation.NOOP) {
+                            tableId = PostgresSchema.parse(message.getTable());
+                            Objects.requireNonNull(tableId);
+                        }
 
                         offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
                                 taskContext.getSlotXmin(connection));
 
-                        boolean dispatched = dispatcher.dispatchDataChangeEvent(
-                                tableId,
-                                new PostgresChangeRecordEmitter(
-                                        offsetContext,
-                                        clock,
-                                        connectorConfig,
-                                        schema,
-                                        connection,
-                                        message));
+                        boolean dispatched = (message.getOperation() == Operation.NOOP) ? false
+                                : dispatcher.dispatchDataChangeEvent(
+                                        tableId,
+                                        new PostgresChangeRecordEmitter(
+                                                offsetContext,
+                                                clock,
+                                                connectorConfig,
+                                                schema,
+                                                connection,
+                                                message));
 
                         maybeWarnAboutGrowingWalBacklog(dispatched);
                     }

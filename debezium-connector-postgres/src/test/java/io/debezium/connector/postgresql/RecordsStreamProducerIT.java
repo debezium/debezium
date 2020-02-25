@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -118,12 +119,13 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         Testing.Print.enable();
     }
 
-    private void startConnector(Function<Configuration.Builder, Configuration.Builder> customConfig, boolean waitForSnapshot) throws InterruptedException {
+    private void startConnector(Function<Configuration.Builder, Configuration.Builder> customConfig, boolean waitForSnapshot, Predicate<SourceRecord> isStopRecord)
+            throws InterruptedException {
         start(PostgresConnector.class, new PostgresConnectorConfig(customConfig.apply(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                 .with(PostgresConnectorConfig.SCHEMA_BLACKLIST, "postgis")
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, waitForSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NEVER))
-                .build()).getConfig());
+                .build()).getConfig(), isStopRecord);
         assertConnectorIsRunning();
         waitForStreamingToStart();
 
@@ -133,6 +135,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
             consumer.remove();
         }
+    }
+
+    private void startConnector(Function<Configuration.Builder, Configuration.Builder> customConfig, boolean waitForSnapshot) throws InterruptedException {
+        startConnector(customConfig, waitForSnapshot, (x) -> false);
     }
 
     private void startConnector(Function<Configuration.Builder, Configuration.Builder> customConfig) throws InterruptedException {
@@ -1167,8 +1173,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 IntStream.range(0, filteredCount)
                         .mapToObj(x -> "INSERT INTO s1.a (pk) VALUES (default);")
                         .collect(Collectors.joining()));
-        Awaitility.await().alias("WAL growing log message").pollInterval(1, TimeUnit.SECONDS).atMost(10, TimeUnit.SECONDS).until(() -> logInterceptor.containsWarnMessage(
-                "Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation."));
+        Awaitility.await().alias("WAL growing log message").pollInterval(1, TimeUnit.SECONDS).atMost(5 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsWarnMessage(
+                        "Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation."));
     }
 
     @Test
@@ -1553,6 +1560,108 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             VerifyRecord.isValidInsert(record, PK_FIELD, i + 1002);
         }
         logger.info("Many tx duration = {} ms", stopwatch.durations().statistics().getTotal().toMillis());
+    }
+
+    @Test
+    @FixFor("DBZ-1824")
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.WAL2JSON, reason = "wal2json cannot resume transaction in the middle of processing")
+    public void stopInTheMiddleOfTxAndResume() throws Exception {
+        Testing.Print.enable();
+        final int numberOfEvents = 50;
+        final int STOP_ID = 20;
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), true, record -> {
+            if (!"test_server.public.test_table.Envelope".equals(record.valueSchema().name())) {
+                return false;
+            }
+            final Struct envelope = (Struct) record.value();
+            final Struct after = envelope.getStruct("after");
+            final Integer pk = after.getInt32("pk");
+            return pk == STOP_ID;
+        });
+        waitForStreamingToStart();
+
+        final String topicPrefix = "public.test_table";
+        final String topicName = topicName(topicPrefix);
+
+        final int expectFirstRun = STOP_ID - 2;
+        final int expectSecondRun = numberOfEvents - STOP_ID;
+        consumer = testConsumer(expectFirstRun);
+        executeAndWait(IntStream.rangeClosed(2, numberOfEvents + 1)
+                .boxed()
+                .map(x -> "INSERT INTO test_table (text) VALUES ('insert" + x + "')")
+                .collect(Collectors.joining(";")));
+
+        // 2..19, 1 is from snapshot
+        for (int i = 0; i < expectFirstRun; i++) {
+            SourceRecord record = consumer.remove();
+            assertEquals(topicName, record.topic());
+            VerifyRecord.isValidInsert(record, PK_FIELD, i + 2);
+        }
+
+        stopConnector();
+
+        startConnector(Function.identity(), false);
+        consumer.expects(expectSecondRun);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // 20..51
+        for (int i = 0; i < expectSecondRun; i++) {
+            SourceRecord record = consumer.remove();
+            assertEquals(topicName, record.topic());
+            VerifyRecord.isValidInsert(record, PK_FIELD, STOP_ID + i);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1824")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason = "wal2json cannot resume transaction in the middle of processing")
+    public void stopInTheMiddleOfTxAndRestart() throws Exception {
+        Testing.Print.enable();
+        final int numberOfEvents = 50;
+        final int STOP_ID = 20;
+
+        startConnector(config -> config.with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false), true, record -> {
+            if (!"test_server.public.test_table.Envelope".equals(record.valueSchema().name())) {
+                return false;
+            }
+            final Struct envelope = (Struct) record.value();
+            final Struct after = envelope.getStruct("after");
+            final Integer pk = after.getInt32("pk");
+            return pk == STOP_ID;
+        });
+        waitForStreamingToStart();
+
+        final String topicPrefix = "public.test_table";
+        final String topicName = topicName(topicPrefix);
+
+        final int expectFirstRun = STOP_ID - 2;
+        final int expectSecondRun = numberOfEvents;
+        consumer = testConsumer(expectFirstRun);
+        executeAndWait(IntStream.rangeClosed(2, numberOfEvents + 1)
+                .boxed()
+                .map(x -> "INSERT INTO test_table (text) VALUES ('insert" + x + "')")
+                .collect(Collectors.joining(";")));
+
+        // 2..19, 1 is from snapshot
+        for (int i = 0; i < expectFirstRun; i++) {
+            SourceRecord record = consumer.remove();
+            assertEquals(topicName, record.topic());
+            VerifyRecord.isValidInsert(record, PK_FIELD, i + 2);
+        }
+
+        stopConnector();
+
+        startConnector(Function.identity(), false);
+        consumer.expects(expectSecondRun);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // 2..51
+        for (int i = 0; i < expectSecondRun; i++) {
+            SourceRecord record = consumer.remove();
+            assertEquals(topicName, record.topic());
+            VerifyRecord.isValidInsert(record, PK_FIELD, i + 2);
+        }
     }
 
     @Test
