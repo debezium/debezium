@@ -168,7 +168,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(SourceRecord.class)
+        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);

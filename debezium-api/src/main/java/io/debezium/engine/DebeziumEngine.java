@@ -224,7 +224,7 @@ public interface DebeziumEngine<R> extends Runnable {
      * @return the new builder; never null
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static <T> Builder<T> create(Class<T> recordClass) {
+    public static <T> Builder<T> create(Class<? extends ChangeEventFormat<T>> eventFormat) {
         final ServiceLoader<Builder> loader = ServiceLoader.load(Builder.class);
         final Iterator<Builder> iterator = loader.iterator();
         if (!iterator.hasNext()) {
