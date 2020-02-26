@@ -6,7 +6,7 @@
 package io.debezium.spi.converter;
 
 import java.sql.Types;
-import java.util.Optional;
+import java.util.OptionalInt;
 
 import io.debezium.common.annotation.Incubating;
 
@@ -53,14 +53,14 @@ public interface RelationalColumn extends ConvertedField {
      *
      * @return the length of the column
      */
-    int length();
+    OptionalInt length();
 
     /**
      * Get the scale of the column.
      *
      * @return the scale if it applies to this type
      */
-    Optional<Integer> scale();
+    OptionalInt scale();
 
     /**
      * Determine whether this column is optional.

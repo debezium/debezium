@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -72,8 +73,8 @@ public class CustomConverterRegistry {
                 }
 
                 @Override
-                public Optional<Integer> scale() {
-                    return column.scale();
+                public OptionalInt scale() {
+                    return column.scale().isPresent() ? OptionalInt.of(column.scale().get()) : OptionalInt.empty();
                 }
 
                 @Override
@@ -82,8 +83,8 @@ public class CustomConverterRegistry {
                 }
 
                 @Override
-                public int length() {
-                    return column.length();
+                public OptionalInt length() {
+                    return column.length() == Column.UNSET_INT_VALUE ? OptionalInt.empty() : OptionalInt.of(column.length());
                 }
 
                 @Override
