@@ -118,13 +118,14 @@ public class Key {
             Predicate<ColumnId> delegate = Predicates.includes(regexes, ColumnId::toString);
 
             return (table) -> {
-                return table.columns()
+                List<Column> candidates = table.columns()
                         .stream()
                         .filter(c -> {
                             final TableId tableId = table.id();
                             return delegate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()));
                         })
                         .collect(Collectors.toList());
+                return candidates.isEmpty() ? table.primaryKeyColumns() : candidates;
             };
         }
     }

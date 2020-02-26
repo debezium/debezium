@@ -1224,20 +1224,25 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     @FixFor("DBZ-1015")
     public void shouldRewriteIdentityKey() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
-        TestHelper.execute(INSERT_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1")
+                .with(PostgresConnectorConfig.SCHEMA_WHITELIST, "s1,s2")
                 // rewrite key from table 'a': from {pk} to {pk, aa}
-                .with(PostgresConnectorConfig.MSG_KEY_COLUMNS, "(.*).a:pk,aa");
+                .with(PostgresConnectorConfig.MSG_KEY_COLUMNS, "(.*)1.a:pk,aa");
 
         start(PostgresConnector.class, configBuilder.build());
         waitForSnapshotToBeCompleted();
-        SourceRecords records = consumeRecordsByTopic(1);
+        SourceRecords records = consumeRecordsByTopic(2);
         records.recordsForTopic("test_server.s1.a").forEach(record -> {
             Struct key = (Struct) record.key();
             Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
             Assertions.assertThat(key.get("aa")).isNotNull();
+        });
+        records.recordsForTopic("test_server.s2.a").forEach(record -> {
+            Struct key = (Struct) record.key();
+            Assertions.assertThat(key.get(PK_FIELD)).isNotNull();
+            Assertions.assertThat(key.get("pk")).isNotNull();
+            Assertions.assertThat(key.schema().field("aa")).isNull();
         });
 
         stopConnector();
