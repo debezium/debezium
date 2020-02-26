@@ -8,7 +8,7 @@ package io.debezium.spi.converter;
 import java.sql.Types;
 import java.util.Optional;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * A definition of a converted relational column.

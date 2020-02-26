@@ -5,7 +5,7 @@
  */
 package io.debezium.spi.converter;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * An the base interface for a converted field that provides naming characteristics.

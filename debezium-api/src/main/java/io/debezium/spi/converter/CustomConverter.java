@@ -8,7 +8,7 @@ package io.debezium.spi.converter;
 import java.util.Optional;
 import java.util.Properties;
 
-import io.debezium.annotation.Incubating;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * An interface that allows the user to customize how a value will be converted for a given field.
