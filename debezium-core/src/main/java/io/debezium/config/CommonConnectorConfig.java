@@ -97,7 +97,14 @@ public abstract class CommonConnectorConfig {
         /**
          * An exception indicating the problematic events and their position is raised, causing the connector to be stopped.
          */
-        FAIL("fail");
+        FAIL("fail"),
+
+        /**
+         * Problematic events will be skipped - for transitional period only, scheduled to be removed.
+         */
+        IGNORE("ignore");
+
+        public static final String OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING = "ignore";
 
         private final String value;
 
@@ -122,6 +129,11 @@ public abstract class CommonConnectorConfig {
             }
 
             value = value.trim();
+
+            // backward compatibility, will be removed in 1.2
+            if (OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING.equals(value)) {
+                return SKIP;
+            }
 
             for (EventProcessingFailureHandlingMode option : EventProcessingFailureHandlingMode.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
