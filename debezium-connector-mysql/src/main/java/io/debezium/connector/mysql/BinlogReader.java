@@ -63,7 +63,7 @@ import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
-import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
 import io.debezium.function.BlockingConsumer;
@@ -192,7 +192,7 @@ public class BinlogReader extends AbstractReader {
         recordMakers = context.makeRecord();
         recordSchemaChangesInSourceRecords = context.includeSchemaChangeRecords();
         clock = context.getClock();
-        eventDeserializationFailureHandlingMode = connectionContext.eventDeserializationFailureHandlingMode();
+        eventDeserializationFailureHandlingMode = connectionContext.eventProcessingFailureHandlingMode();
         inconsistentSchemaHandlingMode = connectionContext.inconsistentSchemaHandlingMode();
 
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...

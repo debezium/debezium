@@ -18,10 +18,11 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
-import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
@@ -119,8 +120,11 @@ public class MySqlJdbcContext implements AutoCloseable {
         return sslMode() != SecureConnectionMode.DISABLED;
     }
 
-    public EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode() {
-        String mode = config.getString(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+    public EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode() {
+        String mode = config.getString(CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
+        if (mode == null) {
+            mode = config.getString(MySqlConnectorConfig.EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+        }
         return EventProcessingFailureHandlingMode.parse(mode);
     }
 
