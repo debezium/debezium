@@ -1736,13 +1736,13 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from the snapshot process. +
 WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
 
-|`event.deserialization{zwsp}.failure.handling.mode`
+|`event.processing{zwsp}.failure.handling.mode`
 |`fail`
 | Specifies how the connector should react to exceptions during deserialization of binlog events.
 `fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
 (make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
-`ignore` will cause problematic event will be skipped.
+`skip` will cause problematic event will be skipped.
 
 |`inconsistent.schema.handling.mode`
 |`fail`
@@ -1750,7 +1750,7 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 `fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
 (make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
-`ignore` will cause the problematic event to be skipped.
+`skip` will cause the problematic event to be skipped.
 
 |`max.queue.size`
 |`8192`

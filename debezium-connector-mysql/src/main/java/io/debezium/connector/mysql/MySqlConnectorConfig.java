@@ -476,60 +476,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     /**
-     * The set of predefined modes for dealing with failures during binlog event processing.
-     */
-    public static enum EventProcessingFailureHandlingMode implements EnumeratedValue {
-
-        /**
-         * Problematic events will be skipped.
-         */
-        IGNORE("ignore"),
-
-        /**
-         * Problematic event and their binlog position will be logged and the events will be skipped.
-         */
-        WARN("warn"),
-
-        /**
-         * An exception indicating the problematic events and their binlog position is raised, causing the connector to be stopped.
-         */
-        FAIL("fail");
-
-        private final String value;
-
-        private EventProcessingFailureHandlingMode(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static EventProcessingFailureHandlingMode parse(String value) {
-            if (value == null) {
-                return null;
-            }
-
-            value = value.trim();
-
-            for (EventProcessingFailureHandlingMode option : EventProcessingFailureHandlingMode.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-
-            return null;
-        }
-    }
-
-    /**
      * {@link Integer#MIN_VALUE Minimum value} used for fetch size hint.
      * See <a href="https://issues.jboss.org/browse/DBZ-94">DBZ-94</a> for details.
      */
@@ -943,6 +889,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE = Field.create("event.deserialization.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
+            .withValidation(MySqlConnectorConfig::validateEventDeserializationFailureHandlingModeNotSet)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specify how failures during deserialization of binlog events (i.e. when encountering a corrupted event) should be handled, including:"
@@ -953,13 +900,14 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field INCONSISTENT_SCHEMA_HANDLING_MODE = Field.create("inconsistent.schema.handling.mode")
             .withDisplayName("Inconsistent schema failure handling")
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
+            .withValidation(MySqlConnectorConfig::validateInconsistentSchemaHandlingModeNotIgnore)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription(
                     "Specify how binlog events that belong to a table missing from internal schema representation (i.e. internal representation is not consistent with database) should be handled, including:"
                             + "'fail' (the default) an exception indicating the problematic event and its binlog position is raised, causing the connector to be stopped; "
                             + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
-                            + "'ignore' the problematic event will be skipped.");
+                            + "'skip' the problematic event will be skipped.");
 
     /**
      * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
@@ -1031,6 +979,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER,
             BIGINT_UNSIGNED_HANDLING_MODE,
             EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
+            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE,
             INCONSISTENT_SCHEMA_HANDLING_MODE,
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
@@ -1102,7 +1051,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                 COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST, MSG_KEY_COLUMNS,
                 RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, GTID_NEW_CHANNEL_POSITION, BUFFER_SIZE_FOR_BINLOG_READER,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
+                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
+                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE, INCONSISTENT_SCHEMA_HANDLING_MODE,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
         Field.group(config, "Connector", CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
@@ -1114,6 +1064,31 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     private static int validateGtidNewChannelPositionNotSet(Configuration config, Field field, ValidationOutput problems) {
         if (config.getString(GTID_NEW_CHANNEL_POSITION.name()) != null) {
             LOGGER.warn("Configuration option '{}' is deprecated and scheduled for removal", GTID_NEW_CHANNEL_POSITION.name());
+        }
+        return 0;
+    }
+
+    private static int validateEventDeserializationFailureHandlingModeNotSet(Configuration config, Field field, ValidationOutput problems) {
+        final String modeName = config.getString(EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+        if (modeName != null) {
+            LOGGER.warn("Configuration option '{}' is renamed to '{}'", EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name(), EVENT_PROCESSING_FAILURE_HANDLING_MODE.name());
+            if (EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING.equals(modeName)) {
+                LOGGER.warn("Value '{}' of configuration option '{}' is deprecated and should be replaced with '{}'",
+                        EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING,
+                        EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name(),
+                        EventProcessingFailureHandlingMode.SKIP.getValue());
+            }
+        }
+        return 0;
+    }
+
+    private static int validateInconsistentSchemaHandlingModeNotIgnore(Configuration config, Field field, ValidationOutput problems) {
+        final String modeName = config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE);
+        if (EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING.equals(modeName)) {
+            LOGGER.warn("Value '{}' of configuration option '{}' is deprecated and should be replaced with '{}'",
+                    EventProcessingFailureHandlingMode.OBSOLETE_NAME_FOR_SKIP_FAILURE_HANDLING,
+                    INCONSISTENT_SCHEMA_HANDLING_MODE.name(),
+                    EventProcessingFailureHandlingMode.SKIP.getValue());
         }
         return 0;
     }

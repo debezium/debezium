@@ -30,9 +30,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.AbstractReader.AcceptAllPredicate;
-import io.debezium.connector.mysql.MySqlConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
@@ -455,7 +455,7 @@ public class BinlogReaderIT {
 
     @Test
     public void shouldIgnoreOnSchemaInconsistency() throws Exception {
-        inconsistentSchema(EventProcessingFailureHandlingMode.IGNORE);
+        inconsistentSchema(EventProcessingFailureHandlingMode.SKIP);
         int consumed = consumeAtLeast(2, 2, TimeUnit.SECONDS);
         assertThat(consumed).isZero();
     }
