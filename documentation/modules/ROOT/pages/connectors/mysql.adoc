@@ -895,7 +895,7 @@ The following table describes how the connector maps each of the MySQL data type
 |The `length` schema parameter contains an integer representing the number of bits. The resulting `byte[]` will contain the bits in little-endian form and will be sized to contain at least the specified number of bits (e.g., `numBytes = n/8 + (n%8== 0 ? 0 : 1)` where `n` is the number of bits).
 
 |`TINYINT`
-|`INT8`
+|`INT16`
 |n/a
 |
 
