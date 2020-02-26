@@ -1069,7 +1069,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     private static int validateEventDeserializationFailureHandlingModeNotSet(Configuration config, Field field, ValidationOutput problems) {
-        final String modeName = config.getString(EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE);
+        final String modeName = config.asMap().get(EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name());
         if (modeName != null) {
             LOGGER.warn("Configuration option '{}' is renamed to '{}'", EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE.name(),
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE.name());
