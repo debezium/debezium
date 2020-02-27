@@ -14,15 +14,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -109,11 +105,10 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         }
 
         @Override
-        public Optional<ConverterDefinition<SchemaBuilder>> converterFor(RelationalColumn column) {
+        public void converterFor(RelationalColumn column, ConverterRegistration<SchemaBuilder> registration) {
             if ("isbn".equals(column.typeName())) {
-                return Optional.of(new ConverterDefinition<>(isbnSchema, x -> x.toString()));
+                registration.register(isbnSchema, x -> x.toString());
             }
-            return Optional.empty();
         }
     }
 
@@ -844,10 +839,5 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
-    }
-
-    private long asEpochMicros(String timestamp) {
-        Instant instant = LocalDateTime.parse(timestamp).atOffset(ZoneOffset.UTC).toInstant();
-        return instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
     }
 }

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
 
@@ -19,7 +20,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
-import io.debezium.spi.converter.CustomConverter.ConverterDefinition;
+import io.debezium.spi.converter.CustomConverter.Converter;
 import io.debezium.spi.converter.RelationalColumn;
 
 /**
@@ -57,7 +58,8 @@ public class CustomConverterRegistry {
         final String fullColumnName = fullColumnName(table, column);
 
         for (CustomConverter<SchemaBuilder, ConvertedField> converter : converters) {
-            final Optional<ConverterDefinition<SchemaBuilder>> definition = converter.converterFor(new RelationalColumn() {
+            AtomicReference<ConverterDefinition<SchemaBuilder>> definition = new AtomicReference<>();
+            converter.converterFor(new RelationalColumn() {
 
                 @Override
                 public String name() {
@@ -113,8 +115,16 @@ public class CustomConverterRegistry {
                 public Object defaultValue() {
                     return column.defaultValue();
                 }
+            },
+            new CustomConverter.ConverterRegistration<SchemaBuilder>() {
+
+                @Override
+                public void register(SchemaBuilder fieldSchema, Converter converter) {
+                    definition.set(new ConverterDefinition<SchemaBuilder>(fieldSchema, converter));
+                }
             });
-            if (definition.isPresent()) {
+
+            if (definition.get() != null) {
                 conversionFunctionMap.put(fullColumnName, definition.get());
                 return Optional.of(definition.get().fieldSchema);
             }
@@ -142,5 +152,20 @@ public class CustomConverterRegistry {
 
     private String fullColumnName(TableId table, Column column) {
         return table + "." + column.name();
+    }
+
+    /**
+     * Class binding together the schema of the conversion result and the converter code.
+     *
+     * @param <S> schema describing the output type, usually {@link org.apache.kafka.connect.data.SchemaBuilder}
+     */
+    public class ConverterDefinition<S> {
+        public final S fieldSchema;
+        public final CustomConverter.Converter converter;
+
+        public ConverterDefinition(S fieldSchema, CustomConverter.Converter converter) {
+            this.fieldSchema = fieldSchema;
+            this.converter = converter;
+        }
     }
 }
