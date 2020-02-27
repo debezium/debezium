@@ -4,6 +4,7 @@ Addison Higham
 Adrian Kreuziger
 Akshath Patkar
 Alex Mansell
+Alex Soto
 Alexander Kovryga
 Alexander Schwartz
 Amit Sela
@@ -57,6 +58,7 @@ Gunnar Morling
 Gurnaaz Randhawa
 Grzegorz Kołakowski
 Hans-Peter Grahsl
+hatmarch
 Henryk Konsek
 Horia Chiorean
 Ian Axelrod
@@ -75,6 +77,7 @@ Jeremy Finzel
 Jiri Pechanec
 Johan Venant
 John Martin
+John Psoroulas
 Jon Casstevens
 Jordan Bragg
 Jork Zijlstra
