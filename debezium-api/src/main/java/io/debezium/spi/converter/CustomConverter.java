@@ -5,7 +5,6 @@
  */
 package io.debezium.spi.converter;
 
-import java.util.Optional;
 import java.util.Properties;
 
 import io.debezium.common.annotation.Incubating;
@@ -27,20 +26,8 @@ public interface CustomConverter<S, F extends ConvertedField> {
         Object convert(Object input);
     }
 
-    /**
-     * Class binding together the schema of the conversion result and the converter code.
-     *
-     * @param <S> schema describing the output type, usually {@link org.apache.kafka.connect.data.SchemaBuilder}
-     */
-    public class ConverterDefinition<S> {
-        public final S fieldSchema;
-        public final Converter converter;
-
-        public ConverterDefinition(S fieldSchema, Converter converter) {
-            super();
-            this.fieldSchema = fieldSchema;
-            this.converter = converter;
-        }
+    public interface ConverterRegistration<S> {
+        void register(S fieldSchema, Converter converter);
     }
 
     void configure(Properties props);
@@ -51,5 +38,5 @@ public interface CustomConverter<S, F extends ConvertedField> {
      * @param field - converted field metadata
      * @return empty if the converter is not applicable for this field
      */
-    Optional<ConverterDefinition<S>> converterFor(F field);
+    void converterFor(F field, ConverterRegistration<S> registration);
 }
