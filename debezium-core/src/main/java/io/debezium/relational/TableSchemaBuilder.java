@@ -364,9 +364,9 @@ public class TableSchemaBuilder {
      * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
      */
     protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
-        final Optional<SchemaBuilder> customSchema = customConverterRegistry.registerConverterFor(table.id(), column);
+        SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column)
+                .orElse(valueConverterProvider.schemaBuilder(column));
 
-        SchemaBuilder fieldBuilder = customSchema.isPresent() ? customSchema.get() : valueConverterProvider.schemaBuilder(column);
         if (fieldBuilder != null) {
             if (mapper != null) {
                 // Let the mapper add properties to the schema ...
