@@ -2,6 +2,34 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.2.Final
+February 27th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344726)
+
+### New features since 1.0.1.Final
+
+* Add option to skip unprocesseable event [DBZ-1760](https://issues.jboss.org/browse/DBZ-1760)
+
+
+### Breaking changes since 1.0.1.Final
+
+* Default `gtid.new.channel.position` to earliest [DBZ-1705](https://issues.jboss.org/browse/DBZ-1705)
+* MySQL: Rename event.deserialization.failure.handling.mode to event.processing.failure.handling.mode [DBZ-1826](https://issues.jboss.org/browse/DBZ-1826)
+
+### Fixes since 1.0.1.Final
+
+* Postgres Connector losing data on restart due to commit() being called before events produced to Kafka [DBZ-1766](https://issues.jboss.org/browse/DBZ-1766)
+* TINYINT(1) value range restricted on snapshot. [DBZ-1773](https://issues.jboss.org/browse/DBZ-1773)
+* MySQL source connector fails while parsing new AWS RDS internal event [DBZ-1775](https://issues.jboss.org/browse/DBZ-1775)
+* Incosistency in MySQL TINYINT mapping definition [DBZ-1800](https://issues.jboss.org/browse/DBZ-1800)
+* Supply of message.key.columns disables primary keys. [DBZ-1825](https://issues.jboss.org/browse/DBZ-1825)
+
+
+### Other changes since 1.0.1.Final
+
+* Backport debezium-testing module to 1.0.x  [DBZ-1819](https://issues.jboss.org/browse/DBZ-1819)
+
+
+
 ## 1.0.1.Final
 February 7th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344644)
 
