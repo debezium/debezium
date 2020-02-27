@@ -215,8 +215,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                 continue;
                             }
                             LOGGER.trace("Processing change {}", tableWithSmallestLsn);
+                            LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
                             if (!schemaChangeCheckpoints.isEmpty()) {
-                                if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStopLsn()) >= 0) {
+                                if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
                                     migrateTable(schemaChangeCheckpoints);
                                 }
                             }
