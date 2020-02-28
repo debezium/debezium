@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.nio.file.Path;
@@ -35,6 +36,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.history.DatabaseHistory;
@@ -222,6 +224,54 @@ public class SnapshotReaderIT {
         else {
             fail("failed to complete the snapshot within 10 seconds");
         }
+    }
+
+    @Test
+    public void snapshotWithBackupLocksShouldNotWaitForReads() throws Exception {
+        final Builder builder = simpleConfig();
+        builder
+                .with(MySqlConnectorConfig.USER, "cloud")
+                .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA);
+
+        config = builder.build();
+        context = new MySqlTaskContext(config, new Filters.Builder(config).build());
+        context.start();
+
+        reader = new SnapshotReader("snapshot", context, true);
+        reader.generateInsertEvents();
+
+        if (!MySQLConnection.isPerconaServer()) {
+            return; // Skip these tests for non-Percona flavours of MySQL
+        }
+
+        MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());
+        Thread t = new Thread() {
+            public void run() {
+                try {
+                    JdbcConnection connection = db.connect();
+                    connection.executeWithoutCommitting("SELECT *, SLEEP(20) FROM products_on_hand");
+                }
+                catch (Exception e) {
+                    // Do nothing.
+                }
+            }
+        };
+        t.start();
+
+        // Start the snapshot ...
+        boolean connectException = false;
+        reader.start();
+
+        List<SourceRecord> records = null;
+        try {
+            reader.poll();
+        }
+        catch (org.apache.kafka.connect.errors.ConnectException e) {
+            connectException = true;
+        }
+        t.join();
+        assertFalse(connectException);
     }
 
     @Test

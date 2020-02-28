@@ -287,6 +287,15 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
         MINIMAL("minimal"),
 
         /**
+         * The connector holds a (Percona-specific) backup lock for just the initial portion of the snapshot while the connector
+         * reads the database schemas and other metadata. This lock will only block DDL and DML on non-transactional tables
+         * (MyISAM etc.). The remaining work in a snapshot involves selecting all rows from each table, and this can be done in a
+         * consistent fashion using the REPEATABLE READ transaction even when the global read lock is no longer held and while other
+         * MySQL clients are updating the database.
+         */
+        MINIMAL_PERCONA("minimal_percona"),
+
+        /**
          * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
          * set to schema_only or schema_only_recovery.
          */
