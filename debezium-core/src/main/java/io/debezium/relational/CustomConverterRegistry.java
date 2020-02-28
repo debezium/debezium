@@ -116,13 +116,13 @@ public class CustomConverterRegistry {
                     return column.defaultValue();
                 }
             },
-            new CustomConverter.ConverterRegistration<SchemaBuilder>() {
+                    new CustomConverter.ConverterRegistration<SchemaBuilder>() {
 
-                @Override
-                public void register(SchemaBuilder fieldSchema, Converter converter) {
-                    definition.set(new ConverterDefinition<SchemaBuilder>(fieldSchema, converter));
-                }
-            });
+                        @Override
+                        public void register(SchemaBuilder fieldSchema, Converter converter) {
+                            definition.set(new ConverterDefinition<SchemaBuilder>(fieldSchema, converter));
+                        }
+                    });
 
             if (definition.get() != null) {
                 conversionFunctionMap.put(fullColumnName, definition.get());
