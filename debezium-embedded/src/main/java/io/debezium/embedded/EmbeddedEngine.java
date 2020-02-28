@@ -5,6 +5,7 @@
  */
 package io.debezium.embedded;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -948,6 +949,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         return false;
     }
 
+    @Override
+    public void close() throws IOException {
+        stop();
+    }
+
     /**
      * Wait for the connector to complete processing. If the processor is not running, this method returns immediately; however,
      * if the processor is {@link #stop() stopped} and restarted before this method is called, this method will return only
@@ -988,5 +994,4 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             super(CONFIG, props);
         }
     }
-
 }
