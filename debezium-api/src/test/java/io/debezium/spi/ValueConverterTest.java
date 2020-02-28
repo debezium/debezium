@@ -5,16 +5,17 @@
  */
 package io.debezium.spi;
 
-import java.util.Optional;
 import java.util.Properties;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.fest.assertions.Assertions;
+import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
-import io.debezium.spi.converter.CustomConverter.ConverterDefinition;
+import io.debezium.spi.converter.CustomConverter.Converter;
+import io.debezium.spi.converter.CustomConverter.ConverterRegistration;
 
 /**
  * @author Jiri Pechanec
@@ -57,31 +58,49 @@ public class ValueConverterTest {
         }
 
         @Override
-        public Optional<ConverterDefinition<SchemaBuilder>> converterFor(BasicField field) {
+        public void converterFor(BasicField field, ConverterRegistration<SchemaBuilder> registration) {
             if (convertedField.equals(field.name())) {
-                return Optional.of(new ConverterDefinition<>(SchemaBuilder.string().name("CUSTOM_STRING").optional(), (x) -> {
+                registration.register(SchemaBuilder.string().name("CUSTOM_STRING").optional(), (x) -> {
                     if (x instanceof Integer) {
                         return Integer.toString((Integer) x);
                     }
                     return x.toString();
-                }));
+                });
             }
-            return Optional.empty();
         }
     };
+
+    private static class TestRegistration implements ConverterRegistration<SchemaBuilder> {
+        public SchemaBuilder fieldSchema;
+        public Converter converter;
+
+        @Override
+        public void register(SchemaBuilder fieldSchema, Converter converter) {
+            this.fieldSchema = fieldSchema;
+            this.converter = converter;
+        }
+    }
+
+    private TestRegistration testRegistration;
+
+    @Before
+    public void before() {
+        testRegistration = new TestRegistration();
+    }
 
     @Test
     public void matchingField() {
         testConverter.configure(new Properties());
-        final ConverterDefinition<SchemaBuilder> definition = testConverter.converterFor(new BasicField("myfield", "db1.table1", "VARCHAR2(30)")).get();
-        Assertions.assertThat(definition.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
-        Assertions.assertThat(definition.converter.convert(34)).isEqualTo("34");
+        testConverter.converterFor(new BasicField("myfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
+        Assertions.assertThat(testRegistration.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
+        Assertions.assertThat(testRegistration.converter.convert(34)).isEqualTo("34");
     }
 
     @Test
     public void nonMatchingField() {
         testConverter.configure(new Properties());
-        Assertions.assertThat(testConverter.converterFor(new BasicField("wrongfield", "db1.table1", "VARCHAR2(30)")).isPresent()).isFalse();
+        testConverter.converterFor(new BasicField("wrongfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
+        Assertions.assertThat(testRegistration.fieldSchema).isNull();
     }
 
     @Test
@@ -89,10 +108,11 @@ public class ValueConverterTest {
         final Properties props = new Properties();
         props.setProperty("field", "otherfield");
         testConverter.configure(props);
-        Assertions.assertThat(testConverter.converterFor(new BasicField("myfield", "db1.table1", "VARCHAR2(30)")).isPresent()).isFalse();
+        testConverter.converterFor(new BasicField("myfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
+        Assertions.assertThat(testRegistration.fieldSchema).isNull();
 
-        final ConverterDefinition<SchemaBuilder> definition = testConverter.converterFor(new BasicField("otherfield", "db1.table1", "VARCHAR2(30)")).get();
-        Assertions.assertThat(definition.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
-        Assertions.assertThat(definition.converter.convert(34)).isEqualTo("34");
+        testConverter.converterFor(new BasicField("otherfield", "db1.table1", "VARCHAR2(30)"), testRegistration);
+        Assertions.assertThat(testRegistration.fieldSchema.name()).isEqualTo("CUSTOM_STRING");
+        Assertions.assertThat(testRegistration.converter.convert(34)).isEqualTo("34");
     }
 }

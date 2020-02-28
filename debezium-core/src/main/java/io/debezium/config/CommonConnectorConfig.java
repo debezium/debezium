@@ -7,7 +7,6 @@ package io.debezium.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -351,12 +350,12 @@ public abstract class CommonConnectorConfig {
         final List<String> converterNames = Strings.listOf(converterNameList, x -> x.split(","), String::trim);
 
         return converterNames.stream()
-            .map(name -> {
-                CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
-                converter.configure(config.subset(name, true).asProperties());
-                return converter;
-            })
-            .collect(Collectors.toList());
+                .map(name -> {
+                    CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
+                    converter.configure(config.subset(name, true).asProperties());
+                    return converter;
+                })
+                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
