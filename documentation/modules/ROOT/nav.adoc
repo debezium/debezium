@@ -23,6 +23,8 @@
 ** xref:connectors/sqlserver.adoc[SQL Server]
 ** xref:connectors/db2.adoc[Db2]
 ** xref:connectors/cassandra.adoc[Cassandra]
+* Development API
+** xref:development/engine.adoc[Debezium Engine]
 * Integrations
 ** xref:integrations/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
