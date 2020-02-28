@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.TableMetadata;
 
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorSchemaException;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
@@ -47,21 +48,21 @@ import io.debezium.time.Conversions;
  *
  * This handler implementation processes each {@link Mutation} and invokes one of the registered partition handler
  * for each {@link PartitionUpdate} in the {@link Mutation} (a mutation could have multiple partitions if it is a batch update),
- * which in turn makes one or more record via the {@link RecordMaker} and enqueue the record into the {@link BlockingEventQueue}.
+ * which in turn makes one or more record via the {@link RecordMaker} and enqueue the record into the {@link ChangeEventQueue}.
  */
 public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommitLogReadHandlerImpl.class);
 
     private static final boolean MARK_OFFSET = true;
 
-    private final BlockingEventQueue<Event> queue;
+    private final ChangeEventQueue<Event> queue;
     private final RecordMaker recordMaker;
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final CommitLogProcessorMetrics metrics;
 
     CommitLogReadHandlerImpl(SchemaHolder schemaHolder,
-                             BlockingEventQueue<Event> queue,
+                             ChangeEventQueue<Event> queue,
                              OffsetWriter offsetWriter,
                              RecordMaker recordMaker,
                              CommitLogProcessorMetrics metrics) {
@@ -253,7 +254,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     /**
      * Method which processes a partition update if it's valid (either a single-row partition-level
      * deletion or a row-level modification) or throw an exception if it isn't. The valid partition
-     * update is then converted into a {@link Record} and enqueued to the {@link BlockingEventQueue}.
+     * update is then converted into a {@link Record} and enqueued to the {@link ChangeEventQueue}.
      */
     private void process(PartitionUpdate pu, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         PartitionType partitionType = PartitionType.getPartitionType(pu);
@@ -290,7 +291,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
 
     /**
      * Handle a valid deletion event resulted from a partition-level deletion by converting Cassandra representation
-     * of this event into a {@link Record} object and queue the record to {@link BlockingEventQueue}. A valid deletion
+     * of this event into a {@link Record} object and queue the record to {@link ChangeEventQueue}. A valid deletion
      * event means a partition only has a single row, this implies there are no clustering keys.
      *
      * The steps are:
@@ -341,7 +342,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
 
     /**
      * Handle a valid event resulted from a row-level modification by converting Cassandra representation of
-     * this event into a {@link Record} object and queue the record to {@link BlockingEventQueue}. A valid event
+     * this event into a {@link Record} object and queue the record to {@link ChangeEventQueue}. A valid event
      * implies this must be an insert, update, or delete.
      *
      * The steps are:

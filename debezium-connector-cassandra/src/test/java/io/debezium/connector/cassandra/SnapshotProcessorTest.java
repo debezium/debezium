@@ -22,6 +22,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import io.debezium.connector.base.ChangeEventQueue;
+
 public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
     @Test
     public void testSnapshotTable() throws Exception {
@@ -37,10 +39,10 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
             context.getCassandraClient().execute("INSERT INTO " + keyspaceTable("cdc_table") + "(a, b) VALUES (?, ?)", i, String.valueOf(i));
         }
 
-        BlockingEventQueue<Event> queue = context.getQueue();
-        assertTrue(queue.isEmpty());
+        ChangeEventQueue<Event> queue = context.getQueue();
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
         snapshotProcessor.process();
-        assertEquals(tableSize, queue.size());
+        assertEquals(tableSize, queue.totalCapacity() - queue.remainingCapacity());
         for (Event event : queue.poll()) {
             ChangeRecord record = (ChangeRecord) event;
             Assert.assertEquals(record.getEventType(), Event.EventType.CHANGE_EVENT);
@@ -69,10 +71,10 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
             context.getCassandraClient().execute("INSERT INTO " + keyspaceTable("non_cdc_table") + "(a, b) VALUES (?, ?)", i, String.valueOf(i));
         }
 
-        BlockingEventQueue<Event> queue = context.getQueue();
-        assertTrue(queue.isEmpty());
+        ChangeEventQueue<Event> queue = context.getQueue();
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
         snapshotProcessor.process();
-        assertTrue(queue.isEmpty());
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
 
         deleteTestKeyspaceTables();
         deleteTestOffsets(context);
@@ -89,17 +91,17 @@ public class SnapshotProcessorTest extends EmbeddedCassandraConnectorTestBase {
         context.getCassandraClient().execute("CREATE TABLE IF NOT EXISTS " + keyspaceTable("cdc_table") + " (a int, b text, PRIMARY KEY(a)) WITH cdc = true;");
         context.getSchemaHolder().refreshSchemas();
 
-        BlockingEventQueue<Event> queue = context.getQueue();
-        assertTrue(queue.isEmpty());
+        ChangeEventQueue<Event> queue = context.getQueue();
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
         snapshotProcessor.process(); // records empty table to snapshot.offset, so it won't be snapshotted again
-        assertTrue(queue.isEmpty());
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
 
         int tableSize = 5;
         for (int i = 0; i < tableSize; i++) {
             context.getCassandraClient().execute("INSERT INTO " + keyspaceTable("cdc_table") + "(a, b) VALUES (?, ?)", i, String.valueOf(i));
         }
         snapshotProcessor.process();
-        assertTrue(queue.isEmpty()); // newly inserted records should be processed by commit log processor instead
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity()); // newly inserted records should be processed by commit log processor instead
 
         deleteTestKeyspaceTables();
         deleteTestOffsets(context);

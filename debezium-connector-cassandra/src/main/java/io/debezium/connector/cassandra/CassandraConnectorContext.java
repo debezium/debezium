@@ -7,22 +7,29 @@ package io.debezium.connector.cassandra;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.Schema;
+
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.CdcSourceTaskContext;
 
 /**
  * Contains contextual information and objects scoped to the lifecycle
  * of {@link CassandraConnectorTask} implementation.
  */
-public class CassandraConnectorContext {
+public class CassandraConnectorContext extends CdcSourceTaskContext {
     private final CassandraConnectorConfig config;
     private final CassandraClient cassandraClient;
-    private final BlockingEventQueue<Event> queue;
+    private final ChangeEventQueue<Event> queue;
     private final SchemaHolder schemaHolder;
     private final OffsetWriter offsetWriter;
 
     public CassandraConnectorContext(CassandraConnectorConfig config) throws GeneralSecurityException, IOException {
+
+        super(config.getContextName(), config.getLogicalName(), Collections::emptySet);
+
         this.config = config;
 
         // Loading up DDL schemas from disk
@@ -32,7 +39,12 @@ public class CassandraConnectorContext {
         this.cassandraClient = new CassandraClient(this.config);
 
         // Setting up record queue ...
-        this.queue = new BlockingEventQueue<>(this.config.pollIntervalMs(), this.config.maxQueueSize(), this.config.maxBatchSize());
+        this.queue = new ChangeEventQueue.Builder<Event>()
+                .pollInterval(this.config.pollIntervalMs())
+                .maxBatchSize(this.config.maxBatchSize())
+                .maxQueueSize(this.config.maxQueueSize())
+                .loggingContextSupplier(() -> this.configureLoggingContext(this.config.getContextName()))
+                .build();
 
         // Setting up schema holder ...
         this.schemaHolder = new SchemaHolder(this.cassandraClient, this.config.kafkaTopicPrefix(), this.config.getSourceInfoStructMaker());
@@ -67,7 +79,7 @@ public class CassandraConnectorContext {
         return cassandraClient;
     }
 
-    public BlockingEventQueue<Event> getQueue() {
+    public ChangeEventQueue<Event> getQueue() {
         return queue;
     }
 

@@ -24,6 +24,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.connector.base.ChangeEventQueue;
+
 public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
     private CassandraConnectorContext context;
     private CommitLogProcessor commitLogProcessor;
@@ -61,8 +63,8 @@ public class CommitLogProcessorTest extends EmbeddedCassandraConnectorTestBase {
         CommitLog.instance.sync(true);
 
         // check to make sure there are no records in the queue to begin with
-        BlockingEventQueue<Event> queue = context.getQueue();
-        assertTrue(queue.isEmpty());
+        ChangeEventQueue<Event> queue = context.getQueue();
+        assertEquals(queue.totalCapacity(), queue.remainingCapacity());
 
         // process the logs in commit log directory
         File cdcLoc = new File(DatabaseDescriptor.getCommitLogLocation());

@@ -29,6 +29,7 @@ import com.datastax.driver.core.querybuilder.BuiltStatement;
 import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.driver.core.querybuilder.Select;
 
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.connector.cassandra.transforms.CassandraTypeDeserializer;
 import io.debezium.time.Conversions;
@@ -36,7 +37,7 @@ import io.debezium.time.Conversions;
 /**
  * This reader is responsible for initial bootstrapping of a table,
  * which entails converting each row into a change event and enqueueing
- * that event to the {@link BlockingEventQueue}.
+ * that event to the {@link ChangeEventQueue}.
  *
  * IMPORTANT: Currently, only when a snapshot is completed will the OffsetWriter
  * record the table in the offset.properties file (with filename "" and position
@@ -51,7 +52,7 @@ public class SnapshotProcessor extends AbstractProcessor {
     private static final String EXECUTION_TIME_ALIAS = "execution_time";
 
     private final CassandraClient cassandraClient;
-    private final BlockingEventQueue<Event> queue;
+    private final ChangeEventQueue<Event> queue;
     private final OffsetWriter offsetWriter;
     private final SchemaHolder schemaHolder;
     private final RecordMaker recordMaker;
@@ -184,7 +185,7 @@ public class SnapshotProcessor extends AbstractProcessor {
 
     /**
      * Process the result set from the query. Each row is converted into a {@link ChangeRecord}
-     * and enqueued to the {@link BlockingEventQueue}.
+     * and enqueued to the {@link ChangeEventQueue}.
      */
     private void processResultSet(TableMetadata tableMetadata, ResultSet resultSet) throws IOException {
         String tableName = tableName(tableMetadata);
