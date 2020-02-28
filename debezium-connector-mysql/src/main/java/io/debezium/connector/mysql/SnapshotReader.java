@@ -310,7 +310,12 @@ public class SnapshotReader extends AbstractReader {
                 if (!snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.NONE) && useGlobalLock) {
                     try {
                         logger.info("Step 1: flush and obtain global read lock to prevent writes to database");
-                        sql.set("FLUSH TABLES WITH READ LOCK");
+                        if (snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA)) {
+                            sql.set("LOCK TABLES FOR BACKUP");
+                        }
+                        else {
+                            sql.set("FLUSH TABLES WITH READ LOCK");
+                        }
                         mysql.executeWithoutCommitting(sql.get());
                         lockAcquired = clock.currentTimeInMillis();
                         metrics.globalLockAcquired();
@@ -541,7 +546,8 @@ public class SnapshotReader extends AbstractReader {
                 // ------
                 // STEP 7
                 // ------
-                if (snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL) && isLocked) {
+                if ((snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL) ||
+                        snapshotLockingMode.equals(MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA)) && isLocked) {
                     if (tableLocks) {
                         // We could not acquire a global read lock and instead had to obtain individual table-level read locks
                         // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'
