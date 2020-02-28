@@ -5,6 +5,7 @@
  */
 package io.debezium.engine;
 
+import java.io.Closeable;
 import java.time.Clock;
 import java.util.Iterator;
 import java.util.List;
@@ -39,7 +40,7 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
  * @author Randall Hauch
  */
 @Incubating
-public interface DebeziumEngine<R> extends Runnable {
+public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     public static final String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
 
