@@ -1159,7 +1159,7 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 
 |`ChangesApplied`
 |`long`
-|The total number of schema changes applie during recovery and runtime.
+|The total number of schema changes applied during recovery and runtime.
 
 |`MilliSecondsSinceLastRecoveredChange`
 |`long`
