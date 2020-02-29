@@ -332,7 +332,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
             SNAPSHOT_MODE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+            CommonConnectorConfig.SKIPPED_OPERATIONS);
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -349,7 +350,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
                 CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
-                SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES);
+                SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES, CommonConnectorConfig.SKIPPED_OPERATIONS);
         Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE,
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);

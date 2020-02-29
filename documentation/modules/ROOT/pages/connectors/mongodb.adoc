@@ -919,6 +919,12 @@ The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.n
 ifndef::cdc-product[]
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 endif::cdc-product[]
+
+|`skipped.operations`
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `i` for inserts, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 |=======================
 
 [[fault-tolerance]]

@@ -360,6 +360,69 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldConsumeAllEventsFromDatabaseWithSkippedOperations() throws InterruptedException, IOException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.SKIPPED_OPERATIONS, "u")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Create and then update a document
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        AtomicReference<String> id = new AtomicReference<>();
+        primary().execute("create", mongo -> {
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("arbitrary");
+            coll.drop();
+
+            // Insert the document with a generated ID ...
+            Document doc = Document.parse("{\"a\": 1, \"b\": 2}");
+            InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            coll.insertOne(doc, insertOptions);
+
+            // Find the document to get the generated ID ...
+            doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+            id.set(doc.getObjectId("_id").toString());
+            Testing.debug("Document ID: " + id.get());
+        });
+
+        primary().execute("update", mongo -> {
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("arbitrary");
+
+            // Find the document ...
+            Document doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+            Document filter = Document.parse("{\"a\": 1}");
+            Document operation = Document.parse("{ \"$set\": { \"b\": 10 } }");
+            coll.updateOne(filter, operation);
+
+            doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+        });
+
+        // Wait until we can consume the only 1 insert
+        SourceRecords insertAndUpdate = consumeRecordsByTopic(1);
+        assertThat(insertAndUpdate.recordsForTopic("mongo.dbit.arbitrary").size()).isEqualTo(1);
+        assertThat(insertAndUpdate.topics().size()).isEqualTo(1);
+
+    }
+
+    @Test
     @FixFor("DBZ-1168")
     public void shouldConsumeAllEventsFromDatabaseWithCustomAuthSource() throws InterruptedException, IOException {
 
@@ -912,7 +975,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
     protected List<Document> loadTestDocuments(String pathOnClasspath) {
         List<Document> results = new ArrayList<>();
-        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath);) {
+        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
             assertThat(stream).isNotNull();
             IoUtil.readLines(stream, line -> {
                 Document doc = Document.parse(line);
