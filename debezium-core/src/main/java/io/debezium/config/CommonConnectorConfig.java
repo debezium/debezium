@@ -258,6 +258,20 @@ public abstract class CommonConnectorConfig {
             .withDescription("Optional list of custom converters that would be used instead of default ones. "
                     + "The converters are defined using '<converter.prefix>.type' config option and configured using options '<converter.prefix>.<option>'");
 
+    /** The comma-separated list of operations that  reader will skip reading them
+    valid operations list:
+        1. i: insert
+        2. u: update
+        3. d: delete
+     *  */
+    public static final Field SKIPPED_OPERATIONS = Field.create("skipped.operations")
+            .withDisplayName("skipped Operations")
+            .withType(Type.LIST)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(CommonConnectorConfig::validateSkippedOperation)
+            .withDescription("The comma-separated list of operations  to skip it");
+
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
     private final int maxQueueSize;
@@ -380,6 +394,28 @@ public abstract class CommonConnectorConfig {
             ++count;
         }
         return count;
+    }
+
+    private static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
+        String operations = config.getString(field);
+
+        if (operations == null) {
+            return 0;
+        }
+
+        for (String operation : operations.trim().split(",")) {
+            switch (operation.trim()) {
+                case "i":
+                case "u":
+                case "d":
+                    continue;
+                default:
+                    problems.accept(field, operation, "Invalid operation");
+                    return 1;
+            }
+        }
+
+        return 0;
     }
 
     private static boolean isUsingAvroConverter(Configuration config) {

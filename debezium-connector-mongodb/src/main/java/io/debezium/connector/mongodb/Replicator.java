@@ -502,6 +502,28 @@ public class Replicator {
             incompleteEventTimestamp = oplogStart;
             incompleteTxOrder = txOrder.getAsLong();
         }
+
+        Bson operationFilter = null;
+        String operations = context.getConnectionContext().config.getString(MongoDbConnectorConfig.SKIPPED_OPERATIONS);
+        if (operations != null) {
+            for (String operation : operations.trim().split(",")) {
+                operation = operation.trim();
+
+                if (operationFilter == null) {
+                    operationFilter = Filters.ne("op", operation);
+                }
+                operationFilter = Filters.or(
+                        operationFilter,
+                        Filters.ne("op", operation));
+            }
+        }
+
+        if (operationFilter != null) {
+            filter = Filters.and(
+                    filter,
+                    operationFilter);
+        }
+
         FindIterable<Document> results = oplog.find(filter)
                 .sort(new Document("$natural", 1)) // force forwards collection scan
                 .oplogReplay(true) // tells Mongo to not rely on indexes

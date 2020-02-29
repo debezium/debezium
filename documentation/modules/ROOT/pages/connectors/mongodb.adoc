@@ -778,6 +778,10 @@ The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.n
 ifndef::cdc-product[]
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 endif::cdc-product[]
+
+|`skipped.operations`
+|
+| comma-separated list of operations  that reader will skip reading them i.e "i,u,d"
 |=======================
 
 [[fault-tolerance]]
