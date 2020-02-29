@@ -167,6 +167,23 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
         }
 
+        Bson operationFilter = null;
+        String operations = connectionContext.config.getString(MongoDbConnectorConfig.SKIPPED_OPERATIONS);
+        if (operations != null) {
+            for (String operation : operations.trim().split(",")) {
+                operation = operation.trim();
+
+                if (operationFilter == null) {
+                    operationFilter = Filters.ne("op", operation);
+                }
+                operationFilter = Filters.or(operationFilter, Filters.ne("op", operation));
+            }
+        }
+
+        if (operationFilter != null) {
+            filter = Filters.and(filter, operationFilter);
+        }
+
         final FindIterable<Document> results = oplog.find(filter)
                 .sort(new Document("$natural", 1))
                 .oplogReplay(true)
