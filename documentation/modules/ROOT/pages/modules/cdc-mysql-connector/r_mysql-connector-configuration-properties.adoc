@@ -92,6 +92,13 @@ The schema parameters `pass:[_]pass:[_]{prodname}.source.column.type`, `pass:[_]
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
+|`datatype.propagate.source.type`
+|_n/a_
+|An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
+The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
+Useful to properly size corresponding columns in sink databases.
+See xref:data-types[] for the list of MySQL-specific data type names.
+
 |`time.precision.mode`
 |`adaptive_time{zwsp}_microseconds`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; `adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
