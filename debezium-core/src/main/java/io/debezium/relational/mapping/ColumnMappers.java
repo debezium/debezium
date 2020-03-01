@@ -8,6 +8,7 @@ package io.debezium.relational.mapping;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -50,6 +51,7 @@ public class ColumnMappers {
         config.forEachMatchingFieldNameWithInteger("column\\.truncate\\.to\\.(\\d+)\\.chars", builder::truncateStrings);
         config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", builder::maskStrings);
         config.forEachMatchingFieldName("column\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameter);
+        config.forEachMatchingFieldName("datatype\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameterByDatatype);
 
         return builder.build();
     }
@@ -73,7 +75,18 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder map(String fullyQualifiedColumnNames, ColumnMapper mapper) {
-            Predicate<ColumnId> columnMatcher = Predicates.includes(fullyQualifiedColumnNames, ColumnId::toString);
+            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(fullyQualifiedColumnNames, (tableId, column) -> fullyQualifiedColumnName(tableId, column));
+            rules.add(new MapperRule(columnMatcher, mapper));
+            return this;
+        }
+
+        public static String fullyQualifiedColumnName(TableId tableId, Column column) {
+            ColumnId id = new ColumnId(tableId, column.name());
+            return id.toString();
+        }
+
+        public Builder mapByDatatype(String columnDatatypes, ColumnMapper mapper) {
+            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(columnDatatypes, (tableId, column) -> column.typeName());
             rules.add(new MapperRule(columnMatcher, mapper));
             return this;
         }
@@ -156,6 +169,10 @@ public class ColumnMappers {
 
         public Builder propagateSourceTypeToSchemaParameter(String fullyQualifiedColumnNames, String value) {
             return map(value, new PropagateSourceTypeToSchemaParameter());
+        }
+
+        public Builder propagateSourceTypeToSchemaParameterByDatatype(String columnDatatypes, String value) {
+            return mapByDatatype(value, new PropagateSourceTypeToSchemaParameter());
         }
 
         /**
@@ -250,8 +267,7 @@ public class ColumnMappers {
      * @return the mapping function, or null if there is no mapping function
      */
     public ColumnMapper mapperFor(TableId tableId, Column column) {
-        ColumnId id = new ColumnId(tableId, column.name());
-        Optional<MapperRule> matchingRule = rules.stream().filter(rule -> rule.matches(id)).findFirst();
+        Optional<MapperRule> matchingRule = rules.stream().filter(rule -> rule.matches(tableId, column)).findFirst();
         if (matchingRule.isPresent()) {
             return matchingRule.get().mapper;
         }
@@ -260,16 +276,16 @@ public class ColumnMappers {
 
     @Immutable
     protected static final class MapperRule {
-        protected final Predicate<ColumnId> predicate;
+        protected final BiPredicate<TableId, Column> predicate;
         protected final ColumnMapper mapper;
 
-        protected MapperRule(Predicate<ColumnId> predicate, ColumnMapper mapper) {
+        protected MapperRule(BiPredicate<TableId, Column> predicate, ColumnMapper mapper) {
             this.predicate = predicate;
             this.mapper = mapper;
         }
 
-        protected boolean matches(ColumnId id) {
-            return predicate.test(id);
+        protected boolean matches(TableId tableId, Column column) {
+            return predicate.test(tableId, column);
         }
     }
 

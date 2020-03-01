@@ -12,6 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -199,8 +201,17 @@ public class Predicates {
         return includedInPatterns(patterns, conversion);
     }
 
+    public static <T, U> BiPredicate<T, U> includes(String regexPatterns, BiFunction<T, U, String> conversion) {
+        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
+        return includedInPatterns(patterns, conversion);
+    }
+
     protected static <T> Predicate<T> includedInPatterns(Collection<Pattern> patterns, Function<T, String> conversion) {
         return (t) -> matchedByPattern(patterns, conversion).apply(t).isPresent();
+    }
+
+    protected static <T, U> BiPredicate<T, U> includedInPatterns(Collection<Pattern> patterns, BiFunction<T, U, String> conversion) {
+        return (t, u) -> matchedByPattern(patterns, conversion).apply(t, u).isPresent();
     }
 
     /**
@@ -219,6 +230,20 @@ public class Predicates {
     protected static <T> Function<T, Optional<Pattern>> matchedByPattern(Collection<Pattern> patterns, Function<T, String> conversion) {
         return (t) -> {
             String str = conversion.apply(t);
+            if (str != null) {
+                for (Pattern p : patterns) {
+                    if (p.matcher(str).matches()) {
+                        return Optional.of(p);
+                    }
+                }
+            }
+            return Optional.empty();
+        };
+    }
+
+    protected static <T, U> BiFunction<T, U, Optional<Pattern>> matchedByPattern(Collection<Pattern> patterns, BiFunction<T, U, String> conversion) {
+        return (t, u) -> {
+            String str = conversion.apply(t, u);
             if (str != null) {
                 for (Pattern p : patterns) {
                     if (p.matcher(str).matches()) {

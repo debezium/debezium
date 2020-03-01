@@ -156,4 +156,100 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
         assertThat(f2SchemaParameters).includes(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "8"), entry(TYPE_SCALE_PARAMETER_KEY, "4"));
     }
+
+    @Test
+    @FixFor("DBZ-1830")
+    public void shouldPropagateSourceTypeByDatatype() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with("datatype.propagate.source.type", "FLOAT,VARCHAR")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        // Testing.Debug.enable();
+        int numCreateDatabase = 1;
+        int numCreateTables = 1;
+        int numInserts = 1;
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numInserts);
+        stopConnector();
+        assertThat(records).isNotNull();
+        records.forEach(this::validate);
+
+        List<SourceRecord> dmls = records.recordsForTopic(DATABASE.topicForTable("dbz_644_source_type_mapped_as_schema_parameter_test"));
+        assertThat(dmls).hasSize(1);
+
+        SourceRecord insert = dmls.get(0);
+        Field before = insert.valueSchema().field("before");
+
+        // no type info requested as per given datatypes
+        Map<String, String> idSchemaParameters = before
+                .schema()
+                .field("id")
+                .schema()
+                .parameters();
+
+        assertThat(idSchemaParameters).isNull();
+
+        // no type info requested as per given datatypes
+        Map<String, String> c1SchemaParameters = before
+                .schema()
+                .field("c1")
+                .schema()
+                .parameters();
+
+        assertThat(c1SchemaParameters).isNull();
+
+        // no type info requested as per given datatypes
+        Map<String, String> c2SchemaParameters = before
+                .schema()
+                .field("c2")
+                .schema()
+                .parameters();
+
+        assertThat(c2SchemaParameters).isNull();
+
+        // no type info requested as per given datatypes
+        Map<String, String> c3aSchemaParameters = before
+                .schema()
+                .field("c3a")
+                .schema()
+                .parameters();
+
+        assertThat(c3aSchemaParameters).excludes(entry(TYPE_NAME_PARAMETER_KEY, "NUMERIC"));
+
+        // variable width, name and length info
+        Map<String, String> c3bSchemaParameters = before
+                .schema()
+                .field("c3b")
+                .schema()
+                .parameters();
+
+        assertThat(c3bSchemaParameters).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"), entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
+
+        // float info
+        Map<String, String> f1SchemaParameters = before
+                .schema()
+                .field("f1")
+                .schema()
+                .parameters();
+
+        assertThat(f1SchemaParameters).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "10"));
+
+        Map<String, String> f2SchemaParameters = before
+                .schema()
+                .field("f2")
+                .schema()
+                .parameters();
+
+        assertThat(f2SchemaParameters).includes(
+                entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "8"), entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+    }
 }
