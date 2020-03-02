@@ -219,7 +219,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         String tableName = null;
         final char EMPTY = '\0';
         char lastQuote = EMPTY;
-        for (char c : fullTableName) {
+        for (int i = 0; i < fullTableName.length; i++) {
+            char c = fullTableName[i];
             if (isQuote(c)) {
                 // Opening quote
                 if (lastQuote == EMPTY) {
@@ -227,7 +228,14 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 }
                 // Closing quote
                 else if (lastQuote == c) {
-                    lastQuote = EMPTY;
+                    // escape of quote by doubling
+                    if (i < fullTableName.length - 1 && fullTableName[i + 1] == c) {
+                        component.append(c);
+                        i++;
+                    }
+                    else {
+                        lastQuote = EMPTY;
+                    }
                 }
                 // Quote that is part of name
                 else {
