@@ -10,8 +10,8 @@ toc::[]
 
 [IMPORTANT]
 ====
-This page describes an internal API that is subject to changes and might be removed without a further notice.
-Please use the new supported xref:development/engine.adoc[Debezium Engine API].
+This page describes an internal API that is subject to backwards-incompatible changes in future releases.
+Please use the new supported public xref:development/engine.adoc[Debezium Engine API].
 ====
 
 Debezium connectors are normally operated by deploying them to a Kafka Connect service, and configuring one or more connectors to monitor upstream databases and produce data change events for all changes that they see in the upstream databases. Those data change events are written to Kafka, where they can be independently consumed by many different applications. Kafka Connect provides excellent fault tolerance and scalability, since it runs as a distributed service and ensures that all registered and configured connectors are always running. For example, even if one of the Kafka Connect endpoints in a cluster goes down, the remaining Kafka Connect endpoints will restart any connectors that were previously running on the now-terminated endpoint, minimizing downtime and eliminating administrative activities.
