@@ -141,6 +141,7 @@ public class RecordMakers {
                     .name(adjuster.adjust(Envelope.schemaName(topicName)))
                     .field(FieldName.AFTER, Json.builder().optional().build())
                     .field("patch", Json.builder().optional().build())
+                    .field("filter", Json.builder().optional().build())
                     .field(FieldName.SOURCE, source.schema())
                     .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                     .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
@@ -175,7 +176,7 @@ public class RecordMakers {
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             String objId = idObjToJson(object);
             assert objId != null;
-            return createRecords(sourceValue, offset, Operation.READ, objId, object, timestamp);
+            return createRecords(sourceValue, offset, Operation.READ, objId, object, null, timestamp);
         }
 
         /**
@@ -195,11 +196,11 @@ public class RecordMakers {
             final Map<String, ?> offset = source.lastOffset(replicaSetName);
             Document patchObj = oplogEvent.get("o", Document.class);
             // Updates have an 'o2' field, since the updated object in 'o' might not have the ObjectID ...
-            Object o2 = oplogEvent.get("o2");
-            String objId = o2 != null ? idObjToJson(o2) : idObjToJson(patchObj);
+            Document queryObj = oplogEvent.get("o2", Document.class);
+            String objId = queryObj != null ? idObjToJson(queryObj) : idObjToJson(patchObj);
             assert objId != null;
             Operation operation = OPERATION_LITERALS.get(oplogEvent.getString("op"));
-            return createRecords(sourceValue, offset, operation, objId, patchObj, timestamp);
+            return createRecords(sourceValue, offset, operation, objId, patchObj, queryObj, timestamp);
         }
 
         /**
@@ -215,7 +216,7 @@ public class RecordMakers {
             return recordEvent(oplogEvent, oplogEvent, timestamp, 0);
         }
 
-        protected int createRecords(Struct source, Map<String, ?> offset, Operation operation, String objId, Document objectValue,
+        protected int createRecords(Struct source, Map<String, ?> offset, Operation operation, String objId, Document objectValue, Document filterValue,
                                     Instant timestamp)
                 throws InterruptedException {
             Integer partition = null;
@@ -229,13 +230,16 @@ public class RecordMakers {
                     value.put(FieldName.AFTER, jsonStr);
                     break;
                 case UPDATE:
-                    // The object is the idempotent patch document ...
+                    // The object is the idempotent patch document and the filter is needed as well ...
                     String patchStr = valueTransformer.apply(fieldFilter.apply(objectValue));
                     value.put("patch", patchStr);
+                    String filterStr = valueTransformer.apply(fieldFilter.apply(filterValue));
+                    value.put("filter", filterStr);
                     break;
                 case DELETE:
-                    // The delete event has nothing of any use, other than the _id which we already have in our key.
-                    // So put nothing in the 'after' or 'patch' fields ...
+                    // The object is the filter ...
+                    String delFilterStr = valueTransformer.apply(fieldFilter.apply(objectValue));
+                    value.put("filter", delFilterStr);
                     break;
             }
             value.put(FieldName.SOURCE, source);

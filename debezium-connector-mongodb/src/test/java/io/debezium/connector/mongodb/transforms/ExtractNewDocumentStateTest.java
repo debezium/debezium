@@ -104,7 +104,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", 12345678L)
@@ -142,7 +142,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", 12345678L)
@@ -442,7 +442,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
@@ -495,7 +495,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
@@ -530,7 +530,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
@@ -721,7 +721,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
@@ -799,7 +799,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
@@ -984,7 +984,7 @@ public class ExtractNewDocumentStateTest {
 
         // given
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))

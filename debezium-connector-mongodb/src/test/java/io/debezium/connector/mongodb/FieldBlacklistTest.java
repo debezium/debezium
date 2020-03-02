@@ -1246,7 +1246,7 @@ public class FieldBlacklistTest {
         BsonTimestamp ts = new BsonTimestamp(1000, 1);
         return new Document()
                 .append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", 12345678L)

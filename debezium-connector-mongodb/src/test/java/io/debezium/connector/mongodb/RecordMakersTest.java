@@ -109,7 +109,7 @@ public class RecordMakersTest {
         ObjectId objId = new ObjectId();
         Document obj = new Document().append("$set", new Document("name", "Sally"));
         Document event = new Document().append("o", obj)
-                .append("o2", objId)
+                .append("o2", new Document("_id", objId))
                 .append("ns", "dbA.c1")
                 .append("ts", ts)
                 .append("h", Long.valueOf(12345678))
@@ -126,6 +126,41 @@ public class RecordMakersTest {
         // assertThat(value.getString(FieldName.BEFORE)).isNull();
         assertThat(value.getString(FieldName.AFTER)).isNull();
         assertThat(value.getString("patch")).isEqualTo(obj.toJson(WRITER_SETTINGS));
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
+        assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
+        Struct actualSource = value.getStruct(FieldName.SOURCE);
+        source.collectionEvent("rs0", collectionId);
+        assertThat(actualSource).isEqualTo(source.struct());
+    }
+
+    @Test
+    public void shouldGenerateRecordForUpdateEventWithShardKey() throws InterruptedException {
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("$set", new Document("name", "Sally"));
+        Document event = new Document().append("o", obj)
+                .append("o2", new Document().append("_id", "foo").append("dc", "west"))
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "u");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
+        assertThat(produced.size()).isEqualTo(1);
+        SourceRecord record = produced.get(0);
+        Struct key = (Struct) record.key();
+        Struct value = (Struct) record.value();
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo("\"foo\"");
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+        // assertThat(value.getString(FieldName.BEFORE)).isNull();
+        assertThat(value.getString(FieldName.AFTER)).isNull();
+        assertThat(value.getString("patch")).isEqualTo(obj.toJson(WRITER_SETTINGS));
+        assertThat(value.getString("filter")).isEqualTo("{"
+                + "\"_id\": \"foo\","
+                + "\"dc\": \"west\""
+                + "}");
         assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
         assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
         Struct actualSource = value.getStruct(FieldName.SOURCE);
@@ -166,6 +201,46 @@ public class RecordMakersTest {
         Struct key2 = (Struct) tombstone.key();
         assertThat(key2.schema()).isSameAs(tombstone.keySchema());
         assertThat(key2.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(tombstone.value()).isNull();
+        assertThat(tombstone.valueSchema()).isNull();
+    }
+
+    @Test
+    public void shouldGenerateRecordForDeleteEventWithShardKey() throws InterruptedException {
+        BsonTimestamp ts = new BsonTimestamp(1000, 1);
+        CollectionId collectionId = new CollectionId("rs0", "dbA", "c1");
+        Document obj = new Document("_id", "foo").append("dc", "west");
+        Document event = new Document().append("o", obj)
+                .append("ns", "dbA.c1")
+                .append("ts", ts)
+                .append("h", Long.valueOf(12345678))
+                .append("op", "d");
+        RecordsForCollection records = recordMakers.forCollection(collectionId);
+        records.recordEvent(event, Instant.ofEpochMilli(1002));
+        assertThat(produced.size()).isEqualTo(2);
+
+        SourceRecord record = produced.get(0);
+        Struct key = (Struct) record.key();
+        Struct value = (Struct) record.value();
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo("\"foo\"");
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+        assertThat(value.getString(FieldName.AFTER)).isNull();
+        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString("filter")).isEqualTo("{"
+                + "\"_id\": \"foo\","
+                + "\"dc\": \"west\""
+                + "}");
+        assertThat(value.getString(FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
+        assertThat(value.getInt64(FieldName.TIMESTAMP)).isEqualTo(1002L);
+        Struct actualSource = value.getStruct(FieldName.SOURCE);
+        source.collectionEvent("rs0", collectionId);
+        assertThat(actualSource).isEqualTo(source.struct());
+
+        SourceRecord tombstone = produced.get(1);
+        Struct key2 = (Struct) tombstone.key();
+        assertThat(key2.schema()).isSameAs(tombstone.keySchema());
+        assertThat(key2.get("id")).isEqualTo("\"foo\"");
         assertThat(tombstone.value()).isNull();
         assertThat(tombstone.valueSchema()).isNull();
     }
