@@ -117,23 +117,22 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             while (context.isRunning()) {
                 int noMessageIterations = 0;
-                if (!stream.readPending(message -> {
+
+                boolean receivedMessage = stream.readPending(message -> {
                     final Long lsn = stream.lastReceivedLsn();
-                    if (message == null) {
-                        LOGGER.trace("Received empty message");
-                        skipMessage(lsn);
-                        return;
-                    }
-                    if (message.isTransactionalMessage() && !connectorConfig.shouldProvideTransactionMetadata()) {
-                        LOGGER.trace("Received transactional message {}", message);
-                        skipMessage(lsn);
-                        return;
-                    }
+
                     if (message.isLastEventForLsn()) {
                         lastCompletelyProcessedLsn = lsn;
                     }
 
+                    // Tx BEGIN/END event
                     if (message.isTransactionalMessage()) {
+                        if (!connectorConfig.shouldProvideTransactionMetadata()) {
+                            LOGGER.trace("Received transactional message {}", message);
+                            skipMessage(lsn);
+                            return;
+                        }
+
                         offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), null,
                                 taskContext.getSlotXmin(connection));
                         if (message.getOperation() == Operation.BEGIN) {
@@ -145,26 +144,32 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         maybeWarnAboutGrowingWalBacklog(true);
                         return;
                     }
+                    // DML event
+                    else {
+                        final TableId tableId = PostgresSchema.parse(message.getTable());
+                        Objects.requireNonNull(tableId);
 
-                    final TableId tableId = PostgresSchema.parse(message.getTable());
-                    Objects.requireNonNull(tableId);
+                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
+                                taskContext.getSlotXmin(connection));
 
-                    offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
-                            taskContext.getSlotXmin(connection));
+                        boolean dispatched = dispatcher.dispatchDataChangeEvent(
+                                tableId,
+                                new PostgresChangeRecordEmitter(
+                                        offsetContext,
+                                        clock,
+                                        connectorConfig,
+                                        schema,
+                                        connection,
+                                        message));
 
-                    boolean dispatched = dispatcher.dispatchDataChangeEvent(
-                            tableId,
-                            new PostgresChangeRecordEmitter(
-                                    offsetContext,
-                                    clock,
-                                    connectorConfig,
-                                    schema,
-                                    connection,
-                                    message));
+                        maybeWarnAboutGrowingWalBacklog(dispatched);
+                    }
+                });
 
-                    maybeWarnAboutGrowingWalBacklog(dispatched);
-
-                })) {
+                if (receivedMessage) {
+                    noMessageIterations = 0;
+                }
+                else {
                     if (offsetContext.hasCompletelyProcessedPosition()) {
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
                     }
@@ -173,9 +178,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         noMessageIterations = 0;
                         pauseNoMessage.pause();
                     }
-                }
-                else {
-                    noMessageIterations = 0;
                 }
             }
         }
