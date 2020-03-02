@@ -274,20 +274,30 @@ public abstract class AbstractDdlParser implements DdlParser {
      * @return string without quotes
      */
     public static String withoutQuotes(String possiblyQuoted) {
+        return isQuoted(possiblyQuoted) ? possiblyQuoted.substring(1, possiblyQuoted.length() - 1) : possiblyQuoted;
+    }
+
+    /**
+     * Check if the string is enclosed in quotes.
+     *
+     * @param possiblyQuoted string with possible quotes
+     * @return true if the string is quoted, false otherwise
+     */
+    public static boolean isQuoted(String possiblyQuoted) {
         if (possiblyQuoted.length() < 2) {
             // Too short to be quoted ...
-            return possiblyQuoted;
+            return false;
         }
         if (possiblyQuoted.startsWith("`") && possiblyQuoted.endsWith("`")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+            return true;
         }
         if (possiblyQuoted.startsWith("'") && possiblyQuoted.endsWith("'")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+            return true;
         }
         if (possiblyQuoted.startsWith("\"") && possiblyQuoted.endsWith("\"")) {
-            return possiblyQuoted.substring(1, possiblyQuoted.length() - 1);
+            return true;
         }
-        return possiblyQuoted;
+        return false;
     }
 
     /**

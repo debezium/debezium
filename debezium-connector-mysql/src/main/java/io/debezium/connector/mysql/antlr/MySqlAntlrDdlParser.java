@@ -215,7 +215,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     public TableId parseQualifiedTableId(MySqlParser.FullIdContext fullIdContext) {
         String fullTableName = fullIdContext.getText();
         int dotIndex;
-        if ((dotIndex = fullTableName.indexOf(".")) > 0) {
+        // The quoted table name that contains dot means that it is just a part of the name of the table
+        if (!isQuoted(fullTableName) && ((dotIndex = fullTableName.indexOf(".")) > 0)) {
             return resolveTableId(withoutQuotes(fullTableName.substring(0, dotIndex)),
                     withoutQuotes(fullTableName.substring(dotIndex + 1, fullTableName.length())));
         }
