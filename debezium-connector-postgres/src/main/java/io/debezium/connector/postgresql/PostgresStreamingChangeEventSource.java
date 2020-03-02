@@ -116,16 +116,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             while (context.isRunning()) {
                 int noMessageIterations = 0;
-                if (!stream.readPending(message -> {
+
+                boolean receivedMessage = stream.readPending(message -> {
                     final Long lsn = stream.lastReceivedLsn();
-                    if (message == null) {
-                        LOGGER.trace("Received empty message");
-                        lastCompletelyProcessedLsn = lsn;
-                        offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, null, null, null, taskContext.getSlotXmin(connection));
-                        maybeWarnAboutGrowingWalBacklog(false);
-                        dispatcher.dispatchHeartbeatEvent(offsetContext);
-                        return;
-                    }
                     if (message.isLastEventForLsn()) {
                         lastCompletelyProcessedLsn = lsn;
                     }
@@ -146,8 +139,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                                     message));
 
                     maybeWarnAboutGrowingWalBacklog(dispatched);
+                });
 
-                })) {
+                if (receivedMessage) {
+                    noMessageIterations = 0;
+                }
+                else {
                     if (offsetContext.hasCompletelyProcessedPosition()) {
                         dispatcher.dispatchHeartbeatEvent(offsetContext);
                     }
@@ -156,9 +153,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         noMessageIterations = 0;
                         pauseNoMessage.pause();
                     }
-                }
-                else {
-                    noMessageIterations = 0;
                 }
             }
         }
