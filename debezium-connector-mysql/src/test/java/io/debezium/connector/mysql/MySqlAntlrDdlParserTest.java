@@ -59,6 +59,33 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1834")
+    public void shouldHandleQuotes() {
+        String ddl = "CREATE TABLE mytable1 (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE `mytable2` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE db.`mytable3` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE `db`.`mytable4` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE `db.mytable5` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE `db`.`myta``ble6` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE `db`.`mytable7``` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE ```db`.`mytable8` (`i.d` INT PRIMARY KEY)"
+                + "CREATE TABLE ```db`.`myta\"\"ble9` (`i.d` INT PRIMARY KEY)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(9);
+
+        Assertions.assertThat(tables.forTable(null, null, "mytable1")).isNotNull();
+        Assertions.assertThat(tables.forTable(null, null, "mytable2")).isNotNull();
+        Assertions.assertThat(tables.forTable("db", null, "mytable3")).isNotNull();
+        Assertions.assertThat(tables.forTable("db", null, "mytable4")).isNotNull();
+        Assertions.assertThat(tables.forTable("db", null, "mytable5")).isNotNull();
+        Assertions.assertThat(tables.forTable("db", null, "myta`ble6")).isNotNull();
+        Assertions.assertThat(tables.forTable("db", null, "mytable7`")).isNotNull();
+        Assertions.assertThat(tables.forTable("`db", null, "mytable8")).isNotNull();
+        Assertions.assertThat(tables.forTable("`db", null, "myta\"\"ble9")).isNotNull();
+    }
+
+    @Test
     @FixFor("DBZ-1645")
     public void shouldUpdateAndRenameTable() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT, val2 INT)";
