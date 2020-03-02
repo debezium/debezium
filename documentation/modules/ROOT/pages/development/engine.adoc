@@ -8,8 +8,6 @@ include::../_attributes.adoc[]
 
 toc::[]
 
-== Debezium Engine
-
 Debezium connectors are normally operated by deploying them to a Kafka Connect service, and configuring one or more connectors to monitor upstream databases and produce data change events for all changes that they see in the upstream databases.
 Those data change events are written to Kafka, where they can be independently consumed by many different applications.
 Kafka Connect provides excellent fault tolerance and scalability, since it runs as a distributed service and ensures that all registered and configured connectors are always running.
@@ -69,7 +67,7 @@ Or for the MongoDB connector:
 The remainder of this document describes embedding the MySQL connector in your application.
 Other connectors are used in a similar manner, except with connector-specific configuration, topics, and events.
 
-== In the code
+== In the Code
 
 Your application needs to set up an embedded engine for each connector instance you want to run.
 The `io.debezium.engine.DebeziumEngine<R>` class serves as an easy-to-use wrapper around any Debezium connector and completely manages the connector's lifecycle.
@@ -193,8 +191,8 @@ Now that we have a configuration, we can create our engine. Here again are the r
             .using(props)
             .notifying(record -> {
                 System.out.println(record);
-            }).build()
-        ) {
+            }).build()) {
+    }
 ----
 
 A fluent-style builder API is used to create an engine that uses our `Properties` object and that sends all data change records to the `handleEvent(SourceRecord)` method, which can be any method that matches the signature of the `java.util.function.Consumer<SourceRecord>` functional interface, where `SourceRecord` is the `org.apache.kafka.connect.source.SourceRecord` class.
@@ -290,7 +288,7 @@ DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
 
 
 [[engine-properties]]
-== Engine properties
+== Engine Properties
 
 The following configuration properties are _required_ unless a default value is available (for the sake of text formatting the package names of Java classes are replaced with `<...>`).
 
@@ -356,7 +354,7 @@ The default is a periodic commity policy based upon time intervals.
 |The Converter class that should be used to serialize and deserialize value data for offsets. The default is JSON converter.
 |=======================
 
-== Handling failures
+== Handling Failures
 
 When the engine executes, its connector is actively recording the source offset inside each source record, and the engine is periodically flushing those offsets to persistent storage.
 When the application and engine shutdown normally or crash, when they are restarted the engine and its connector will resume reading the source information *from the last recorded offset*.
@@ -374,4 +372,3 @@ However, this dramatically increases the overhead and decreases the throughput o
 
 The bottom line is that when using embedded connectors, applications will receive each source record exactly once during normal operation (including restart after a graceful shutdown), but do need to be tolerant of receiving duplicate events immediately following a restart after a crash or improper shutdown.
 If applications need more rigorous exactly-once behavior, then they should use the full Debezium platform that can provide exactly-once guarantees (even after crashes and restarts).
-
