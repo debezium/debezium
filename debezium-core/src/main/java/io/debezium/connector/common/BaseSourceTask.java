@@ -6,6 +6,7 @@
 package io.debezium.connector.common;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -85,6 +86,16 @@ public abstract class BaseSourceTask extends SourceTask {
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
     protected abstract ChangeEventSourceCoordinator start(Configuration config);
+
+    @Override
+    public final List<SourceRecord> poll() throws InterruptedException {
+        return doPoll();
+    }
+
+    /**
+     * Returns the next batch of source records, if any are available.
+     */
+    public abstract List<SourceRecord> doPoll() throws InterruptedException;
 
     @Override
     public void commitRecord(SourceRecord record) throws InterruptedException {

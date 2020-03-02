@@ -126,7 +126,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
         final List<SourceRecord> sourceRecords = records.stream()
