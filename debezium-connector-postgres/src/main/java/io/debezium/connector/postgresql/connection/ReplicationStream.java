@@ -20,6 +20,11 @@ public interface ReplicationStream extends AutoCloseable {
 
     @FunctionalInterface
     public interface ReplicationMessageProcessor {
+
+        /**
+         * Processes the given replication message.
+         * @param message The replication message, never {@code null}.
+         */
         void process(ReplicationMessage message) throws SQLException, InterruptedException;
     }
 

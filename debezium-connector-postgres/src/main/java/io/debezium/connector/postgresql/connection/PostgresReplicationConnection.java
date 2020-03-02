@@ -403,10 +403,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 ByteBuffer read = stream.readPending();
                 final long lastReceiveLsn = stream.getLastReceiveLSN().asLong();
                 LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startingLsn, lastReceiveLsn);
-                if (read != null && messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startingLsn, skipFirstFlushRecord)) {
+
+                if (read == null || messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startingLsn, skipFirstFlushRecord)) {
                     return false;
                 }
+
                 deserializeMessages(read, processor);
+
                 return true;
             }
 
