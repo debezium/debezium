@@ -17,6 +17,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.converters.TinyIntOneToBooleanConverter;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
@@ -72,17 +73,49 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         final int numOthers = 2;
         consumeRecords(numDatabase + numTables + numOthers);
 
-        assertChangeRecord();
+        assertIntChangeRecord();
 
         try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
-            conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50)");
+            conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, true)");
         }
-        assertChangeRecord();
+        assertIntChangeRecord();
 
         stopConnector();
     }
 
-    private void assertChangeRecord() throws InterruptedException {
+    @Test
+    @FixFor("DBZ-1800")
+    public void shouldHandleTinyIntOneAsBoolean() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.CUSTOM_CONVERTERS, "boolean")
+                .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .with("boolean.selector", ".*DBZ1773.b")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        final int numDatabase = 2;
+        final int numTables = 2;
+        final int numOthers = 2;
+        consumeRecords(numDatabase + numTables + numOthers);
+
+        assertBooleanChangeRecord();
+
+        try (final Connection conn = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, true)");
+        }
+        assertBooleanChangeRecord();
+
+        stopConnector();
+    }
+
+    private void assertIntChangeRecord() throws InterruptedException {
         final SourceRecord record = consumeRecord();
         Assertions.assertThat(record).isNotNull();
         final Struct change = ((Struct) record.value()).getStruct("after");
@@ -90,5 +123,17 @@ public class MySqlTinyIntIT extends AbstractConnectorTest {
         Assertions.assertThat(change.getInt16("ti")).isEqualTo((short) 100);
         Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
         Assertions.assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
+        Assertions.assertThat(change.getInt16("b")).isEqualTo((short) 1);
+    }
+
+    private void assertBooleanChangeRecord() throws InterruptedException {
+        final SourceRecord record = consumeRecord();
+        Assertions.assertThat(record).isNotNull();
+        final Struct change = ((Struct) record.value()).getStruct("after");
+
+        Assertions.assertThat(change.getInt16("ti")).isEqualTo((short) 100);
+        Assertions.assertThat(change.getInt16("ti1")).isEqualTo((short) 5);
+        Assertions.assertThat(change.getInt16("ti2")).isEqualTo((short) 50);
+        Assertions.assertThat(change.getBoolean("b")).isEqualTo(true);
     }
 }
