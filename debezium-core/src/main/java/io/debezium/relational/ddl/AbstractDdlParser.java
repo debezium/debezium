@@ -301,6 +301,16 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     /**
+     * Check if the char is quote.
+     *
+     * @param c possible quote char
+     * @return true if the char is quote false otherwise
+     */
+    public static boolean isQuote(char c) {
+        return c == '\'' || c == '"' || c == '`';
+    }
+
+    /**
      * Utility method to accumulate a parsing exception.
      *
      * @param e    the parsing exception

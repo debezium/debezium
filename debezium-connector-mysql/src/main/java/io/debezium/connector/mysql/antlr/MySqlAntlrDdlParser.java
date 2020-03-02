@@ -213,16 +213,39 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return qualified {@link TableId}.
      */
     public TableId parseQualifiedTableId(MySqlParser.FullIdContext fullIdContext) {
-        String fullTableName = fullIdContext.getText();
-        int dotIndex;
-        // The quoted table name that contains dot means that it is just a part of the name of the table
-        if (!isQuoted(fullTableName) && ((dotIndex = fullTableName.indexOf(".")) > 0)) {
-            return resolveTableId(withoutQuotes(fullTableName.substring(0, dotIndex)),
-                    withoutQuotes(fullTableName.substring(dotIndex + 1, fullTableName.length())));
+        final char[] fullTableName = fullIdContext.getText().toCharArray();
+        StringBuilder component = new StringBuilder();
+        String dbName = null;
+        String tableName = null;
+        final char EMPTY = '\0';
+        char lastQuote = EMPTY;
+        for (char c : fullTableName) {
+            if (isQuote(c)) {
+                // Opening quote
+                if (lastQuote == EMPTY) {
+                    lastQuote = c;
+                }
+                // Closing quote
+                else if (lastQuote == c) {
+                    lastQuote = EMPTY;
+                }
+                // Quote that is part of name
+                else {
+                    component.append(c);
+                }
+            }
+            // dot that is not in quotes, so name separator
+            else if (c == '.' && lastQuote == EMPTY) {
+                dbName = component.toString();
+                component = new StringBuilder();
+            }
+            // Any char is part of name including quoted dot
+            else {
+                component.append(c);
+            }
         }
-        else {
-            return resolveTableId(currentSchema(), withoutQuotes(fullTableName));
-        }
+        tableName = component.toString();
+        return resolveTableId(dbName != null ? dbName : currentSchema(), tableName);
     }
 
     /**
