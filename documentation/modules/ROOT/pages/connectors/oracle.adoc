@@ -895,7 +895,7 @@ The following shows an example JSON request for registering an instance of the D
         "database.hostname" : "<oracle ip>",
         "database.port" : "1521",
         "database.user" : "c##xstrm",
-        "database.password" : "xsa",
+        "database.password" : "xs",
         "database.dbname" : "ORCLCDB",
         "database.pdb.name" : "ORCLPDB1",
         "database.out.server.name" : "dbzxout",
