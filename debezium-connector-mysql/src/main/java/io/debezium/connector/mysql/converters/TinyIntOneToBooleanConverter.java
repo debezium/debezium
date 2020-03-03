@@ -19,7 +19,7 @@ import io.debezium.util.Strings;
 
 /**
  * MySQL reports {@code BOOLEAN} values as {@code TINYINT(1)} in snapshot phase even as a result of
- * {@code DESCRIBE CREATE TABEL}.
+ * {@code DESCRIBE CREATE TABLE}.
  * This custom converter allows user to handle all {@code TINYINT(1)} fields as {@code BOOLEAN} or provide
  * a set of regexes to match only subset of tables/columns.
  *
