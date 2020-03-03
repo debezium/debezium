@@ -845,7 +845,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
                 // Wait max 2 seconds for LSN change
                 try {
-                    Awaitility.await().atMost(2, TimeUnit.MINUTES.SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
+                    Awaitility.await().atMost(2, TimeUnit.SECONDS).ignoreExceptions().until(() -> flushLsn.add(getConfirmedFlushLsn(connection)));
                 }
                 catch (ConditionTimeoutException e) {
                     // We do not require all flushes to succeed in time
