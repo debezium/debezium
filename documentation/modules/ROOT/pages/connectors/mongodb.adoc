@@ -320,6 +320,13 @@ Let's look at what a _create_/_read_ event value might look like for our `custom
           "field": "patch"
         },
         {
+          "type": "string",
+          "optional": true,
+          "name": "io.debezium.data.Json",
+          "version": 1,
+          "field": "filter"
+        },
+        {
           "type": "struct",
           "fields": [
             {
@@ -425,7 +432,7 @@ It is possible and even recommended to use the link:/docs/faq/#avro-converter[Av
 endif::cdc-product[]
 ====
 
-The value of an _update_ change event on this collection will actually have the exact same _schema_, and its payload is structured the same but will hold different values. Specifically, an update event will not have an `after` value and will instead have a `patch` string containing the JSON representation of the idempotent update operation. Here's an example:
+The value of an _update_ change event on this collection will actually have the exact same _schema_, and its payload is structured the same but will hold different values. Specifically, an update event will not have an `after` value and will instead have a `patch` string containing the JSON representation of the idempotent update operation and a `filter` string containing the JSON representation of the selection criteria for the update.  The `filter` string can include multiple shard key fields for sharded collections. Here's an example:
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -435,6 +442,7 @@ The value of an _update_ change event on this collection will actually have the 
       "op": "u",
       "ts_ms": 1465491461815,
       "patch": "{\"$set\":{\"first_name\":\"Anne Marie\"}}",
+      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}",
       "source": {
         "version": "{debezium-version}",
         "connector": "mongodb",
@@ -455,6 +463,7 @@ When we compare this to the value in the _insert_ event, we see a couple of diff
 
 * The `op` field value is now `u`, signifying that this document changed because of an update
 * The `patch` field appears and has the stringified JSON representation of the actual MongoDB idempotent change to the document, which in this example involves setting the `first_name` field to a new value
+* The `filter` field appears and has the stringified JSON representation of the MongoDB selection criteria used for the update
 * The `after` field no longer appears
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the oplog
 * The `ts_ms` shows the timestamp that {prodname} processed this event
@@ -484,6 +493,7 @@ In particular, a delete event will not have an `after` value or a `patch` value:
     "payload": {
       "op": "d",
       "ts_ms": 1465495462115,
+      "filter": "{\"_id\" : {\"$numberLong\" : \"1004\"}}",
       "source": {
         "version": "{debezium-version}",
         "connector": "mongodb",
@@ -505,6 +515,7 @@ When we compare this to the value in the other events, we see a couple of differ
 * The `op` field value is now `d`, signifying that this document was deleted
 * The `patch` field does not appear
 * The `after` field does not appear
+* The `filter` field appears and has the stringified JSON representation of the MongoDB selection criteria used for the delete
 * The `source` field structure has the same fields as before, but the values are different since this event is from a different position in the oplog
 * The `ts_ms` shows the timestamp that {prodname} processed this event
 
