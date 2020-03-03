@@ -58,6 +58,24 @@ public class MySqlAntlrDdlParserTest {
         tables = new Tables();
     }
 
+    @FixFor("DBZ-1833")
+    public void shouldNotUpdateExistingTable() {
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        parser.parse("CREATE TABLE IF NOT EXISTS mytable (id INT PRIMARY KEY, val1 INT, val2 INT)", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "mytable");
+        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("val1")).isNotNull();
+        assertThat(table.columnWithName("val2")).isNull();
+    }
+
     @Test
     @FixFor("DBZ-1834")
     public void shouldHandleQuotes() {
