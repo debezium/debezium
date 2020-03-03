@@ -124,9 +124,9 @@ This will produce messages in the log similar to these:
 Notice how each line includes the connector type (e.g., `MySQL`), the name of the connector (e.g., `dbserver1`), and the activity of the thread (e.g., `snapshot`). And here you can see at the end of the line the name of the class that generated the message.
 
 
-== Debezium Docker images
+== Debezium Container Images
 
-The Debezium Docker images for Zookeeper, Kafka, and Kafka Connect all set up their `log4j.properties` file to configure the Debezium-related loggers and to ensure all log messages go to the Docker containers console (and thus the Docker logs) and are written to files under the `/kafka/logs` directory, which you can mount to easily get access to those files.
+The Debezium Container images for Zookeeper, Kafka, and Kafka Connect all set up their `log4j.properties` file to configure the Debezium-related loggers and to ensure all log messages go to the Docker containers console (and thus the Docker logs) and are written to files under the `/kafka/logs` directory, which you can mount to easily get access to those files.
 
 The containers use a `LOG_LEVEL` environment variable to set the log level for the root logger. So, when starting a container simply set this environment variable to one of the log levels (e.g., `-e LOG_LEVEL=DEBUG`), and all of the code within the container will start using that log level.
 
@@ -139,4 +139,3 @@ If you need more control, create a new image that is based on ours, except in yo
 COPY log4j.properties $KAFKA_HOME/config/log4j.properties
 ...
 ----
-
