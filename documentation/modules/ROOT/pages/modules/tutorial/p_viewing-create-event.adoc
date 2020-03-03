@@ -8,6 +8,7 @@ In this case, the _create_ events capture new customers being added to the datab
 
 .Procedure
 
+ifndef::cdc-product[]
 . Open a new terminal, and use it to start the `watch-topic` utility to watch the `dbserver1.inventory.customers` topic from the beginning of the topic.
 +
 --
@@ -52,6 +53,33 @@ Contents of topic dbserver1.inventory.customers:
 This utility keeps watching the topic, so any new events will automatically appear as long as the utility is running.
 ====
 --
+endif::cdc-product[]
+
+ifdef::cdc-product[]
+. Open a new terminal and use `kafka-console-consumer` to consume the `dbserver1.inventory.customers` topic from the beginning of the topic.
++
+--
+This command runs a simple consumer (`kafka-console-consumer.sh`) in the Pod that is running Kafka (`my-cluster-kafka-0`):
+
+[source,shell,options="nowrap"]
+----
+$ oc exec -it my-cluster-kafka-0 -- /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 \
+  --from-beginning \
+  --property print.key=true \
+  --topic dbserver1.inventory.customers
+----
+
+The consumer returns four messages (in JSON format),
+one for each row in the `customers` table.
+Each message contains the event records for the corresponding table row.
+
+There are two JSON documents for each event: a _key_ and a _value_.
+The key corresponds to the row’s primary key,
+and the value shows the details of the row
+(the fields that the row contains, the value of each field, and the type of operation that was performed on the row).
+--
+endif::cdc-product[]
 
 . For the last event, review the details of the _key_.
 +
@@ -61,23 +89,24 @@ Here are the details of the _key_ of the last event (formatted for readability):
 [source,json,options="nowrap"]
 ----
 {
-  "schema": {
-    "type": "struct",
-    "name": "dbserver1.inventory.customers.Key"
-    "optional": false,
-    "fields": [
-      {
-        "field": "id",
-        "type": "int32",
-        "optional": false
-      }
-    ]
+  "schema":{
+    "type":"struct",
+      "fields":[
+        {
+          "type":"int32",
+          "optional":false,
+          "field":"id"
+        }
+      ],
+    "optional":false,
+    "name":"dbserver1.inventory.customers.Key"
   },
-  "payload": {
-    "id": 1004
+  "payload":{
+    "id":1004
   }
 }
 ----
+
 The event has two parts: a `schema` and a `payload`.
 The `schema` contains a Kafka Connect schema describing what is in the payload.
 In this case, the payload is a `struct` named `dbserver1.inventory.customers.Key` that is not optional and has one required field (`id` of type `int32`).
