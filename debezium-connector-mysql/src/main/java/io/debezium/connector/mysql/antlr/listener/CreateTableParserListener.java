@@ -44,8 +44,10 @@ public class CreateTableParserListener extends MySqlParserBaseListener {
     @Override
     public void enterColumnCreateTable(MySqlParser.ColumnCreateTableContext ctx) {
         TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
-        tableEditor = parser.databaseTables().editOrCreateTable(tableId);
-        super.enterColumnCreateTable(ctx);
+        if (parser.databaseTables().forTable(tableId) == null) {
+            tableEditor = parser.databaseTables().editOrCreateTable(tableId);
+            super.enterColumnCreateTable(ctx);
+        }
     }
 
     @Override

@@ -59,6 +59,25 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("DBZ-1833")
+    public void shouldNotUpdateExistingTable() {
+        String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT)";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        parser.parse("CREATE TABLE IF NOT EXISTS mytable (id INT PRIMARY KEY, val1 INT, val2 INT)", tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+
+        Table table = tables.forTable(null, null, "mytable");
+        assertThat(table.columns()).hasSize(2);
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("val1")).isNotNull();
+        assertThat(table.columnWithName("val2")).isNull();
+    }
+
+    @Test
     @FixFor("DBZ-1645")
     public void shouldUpdateAndRenameTable() {
         String ddl = "CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT, val2 INT)";
@@ -2268,7 +2287,8 @@ public class MySqlAntlrDdlParserTest {
         assertThat(tableDef.columnWithName("id").hasDefaultValue()).isEqualTo(true);
         assertThat(tableDef.columnWithName("id").defaultValue()).isEqualTo(0);
 
-        ddl = "CREATE TABLE data(id INT DEFAULT 1, PRIMARY KEY (id))";
+        ddl = "DROP TABLE IF EXISTS data;" +
+                "CREATE TABLE data(id INT DEFAULT 1, PRIMARY KEY (id))";
         parser.parse(ddl, tables);
 
         table = tables.forTable(new TableId(null, null, "data"));
@@ -2290,7 +2310,8 @@ public class MySqlAntlrDdlParserTest {
      * @param expectedValues An array of options expected to have been parsed from the expression.
      */
     private void assertParseEnumAndSetOptions(String typeExpression, String... expectedValues) {
-        String ddl = "CREATE TABLE `enum_set_option_test_table` (`id` int not null auto_increment, `options` " +
+        String ddl = "DROP TABLE IF EXISTS `enum_set_option_test_table`;" +
+                "CREATE TABLE `enum_set_option_test_table` (`id` int not null auto_increment, `options` " +
                 typeExpression + ", primary key(`id`));";
 
         parser.parse(ddl, tables);
