@@ -365,10 +365,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Event: {}, Relation Id: {}, Tuple Type: {}", MessageType.INSERT, relationId, tupleType);
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
-        if (!resolvedTable.isPresent()) {
-            processor.process(null);
-        }
-        else {
+        if (resolvedTable.isPresent()) {
             Table table = resolvedTable.get();
             List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
             processor.process(new PgOutputReplicationMessage(
@@ -394,10 +391,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Event: {}, RelationId: {}", MessageType.UPDATE, relationId);
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
-        if (!resolvedTable.isPresent()) {
-            processor.process(null);
-        }
-        else {
+        if (resolvedTable.isPresent()) {
             Table table = resolvedTable.get();
 
             // When reading the tuple-type, we could get 3 different values, 'O', 'K', or 'N'.
@@ -441,10 +435,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Event: {}, RelationId: {}, Tuple Type: {}", MessageType.DELETE, relationId, tupleType);
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
-        if (!resolvedTable.isPresent()) {
-            processor.process(null);
-        }
-        else {
+        if (resolvedTable.isPresent()) {
             Table table = resolvedTable.get();
             List<Column> columns = resolveColumnsFromStreamTupleData(buffer, typeRegistry, table);
             processor.process(new PgOutputReplicationMessage(
