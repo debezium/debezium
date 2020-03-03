@@ -43,7 +43,7 @@ spec:
             - "-c"
             - "PGPASSWORD=${POSTGRESQL_PASSWORD} /usr/bin/psql -w -U ${POSTGRESQL_USER} -d ${POSTGRESQL_DATABASE} -c 'SELECT 1'"
           initialDelaySeconds: 5
-          timeoutSeconds": 1
+          timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
         image: 'quay.io/debezium/example-postgres-ocp:latest'
