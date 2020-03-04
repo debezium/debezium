@@ -257,15 +257,12 @@ public class RecordMakers {
             return 1;
         }
 
-        protected String idObjToJson(Object idObj) {
+        protected String idObjToJson(Document idObj) {
             if (idObj == null) {
                 return null;
             }
-            if (!(idObj instanceof Document)) {
-                return jsonSerializer.serialize(idObj);
-            }
-            return jsonSerializer.serialize(
-                    ((Document) idObj).get(DBCollection.ID_FIELD_NAME));
+
+            return jsonSerializer.serialize(idObj.get(DBCollection.ID_FIELD_NAME));
         }
 
         protected Struct keyFor(String objId) {
