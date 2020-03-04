@@ -1116,14 +1116,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         try (PostgresConnection postgresConnection = TestHelper.create()) {
 
-            TestHelper.execute(statement);
-
             // check if client's lsn is not flushed yet
             SlotState slotState = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
             long flushLsn = slotState.slotLastFlushedLsn();
             // serverLsn is the latest server lsn and is equal to insert statement lsn
             long serverLsn = postgresConnection.currentXLogLocation();
             assertNotEquals("lsn should not be flushed until heartbeat is produced", serverLsn, flushLsn);
+
+            TestHelper.execute(statement);
 
             // awaiting heartbeats to be produced
             consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
