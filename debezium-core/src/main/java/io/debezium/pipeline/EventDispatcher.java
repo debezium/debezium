@@ -72,13 +72,20 @@ public class EventDispatcher<T extends DataCollectionId> {
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider) {
-        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider);
+        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider, null);
+    }
+
+    public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
+                           DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
+                           Heartbeat heartbeat) {
+        this(connectorConfig, topicSelector, schema, queue, filter, changeEventCreator, null, metadataProvider, heartbeat);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicSelector<T> topicSelector,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider) {
+                           EventMetadataProvider metadataProvider, Heartbeat customHeartbeat) {
         this.connectorConfig = connectorConfig;
         this.topicSelector = topicSelector;
         this.schema = schema;
@@ -93,8 +100,14 @@ public class EventDispatcher<T extends DataCollectionId> {
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
 
         this.transactionMonitor = new TransactionMonitor(connectorConfig, metadataProvider, this::dispatchTransactionMessage);
-        heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
-                connectorConfig.getLogicalName());
+        if (customHeartbeat != null) {
+            heartbeat = customHeartbeat;
+        }
+        else {
+            heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
+                    connectorConfig.getLogicalName());
+        }
+
     }
 
     public void dispatchSnapshotEvent(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter, SnapshotReceiver receiver) throws InterruptedException {

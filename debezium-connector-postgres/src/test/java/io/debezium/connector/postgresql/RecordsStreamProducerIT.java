@@ -67,7 +67,9 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
@@ -2216,6 +2218,45 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     new SchemaAndValueField("id", SchemaBuilder.INT32_SCHEMA, 2),
                     new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 200)), deletedRecord, Envelope.FieldName.BEFORE);
         }
+    }
+
+    @Test()
+    @FixFor("DBZ-1815")
+    public void testHeartbeatActionQueryExecuted() throws Exception {
+        // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
+        startConnector(config -> config
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
+                        "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');"));
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_table;" +
+                        "CREATE TABLE test_table (id SERIAL, text TEXT);" +
+                        "INSERT INTO test_table (text) VALUES ('mydata');");
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_heartbeat_table;" +
+                        "CREATE TABLE test_heartbeat_table (text TEXT);");
+
+        // Expecting 1 data change
+        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+            final SourceRecord record = consumeRecord();
+            return record != null && Envelope.isEnvelopeSchema(record.valueSchema());
+        });
+
+        // Confirm that the heartbeat.action.query was executed with the heartbeat. It is difficult to determine the
+        // exact amount of times the heartbeat will fire because the run time of the test will vary, but if there is
+        // anything in test_heartbeat_table then this test is confirmed.
+        int numOfHeartbeatActions;
+        final String slotQuery = "SELECT COUNT(*) FROM test_heartbeat_table;";
+        final JdbcConnection.ResultSetMapper<Integer> slotQueryMapper = rs -> {
+            rs.next();
+            return rs.getInt(1);
+        };
+        try (PostgresConnection connection = TestHelper.create()) {
+            numOfHeartbeatActions = connection.queryAndMap(slotQuery, slotQueryMapper);
+        }
+        assertTrue(numOfHeartbeatActions > 0);
     }
 
     private void assertHeartBeatRecordInserted() {
