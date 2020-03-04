@@ -15,6 +15,8 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -22,12 +24,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -50,9 +49,12 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.IntervalHandlingMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SchemaRefreshMode;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationConnection.Builder;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
@@ -1107,40 +1109,38 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         String statement = "CREATE SCHEMA s1;" +
                 "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
                 "CREATE TABLE s1.b (pk SERIAL, bb integer, PRIMARY KEY(pk));" +
-                "INSERT INTO s1.a (aa) VALUES (22);" +
-                "INSERT INTO s1.b (bb) VALUES (22);";
+                "INSERT INTO s1.a (aa) VALUES (11);";
 
-        TestHelper.execute(statement);
-        final AtomicInteger heartbeatCount = new AtomicInteger();
+        // only heartbeats records
+        consumer = testConsumer(15);
+        consumer.setIgnoreExtraRecords(true);
 
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
-            final SourceRecord record = consumeRecord();
-            System.out.println(record);
-            if (record != null) {
-                if (record.topic().endsWith("s1.b")) {
-                    assertRecordInserted(record, "s1.b", PK_FIELD, 1);
-                    return true;
-                }
-                else {
-                    assertHeartBeatRecord(record);
-                    heartbeatCount.incrementAndGet();
-                }
+        try (PostgresConnection postgresConnection = TestHelper.create()) {
+
+            // check if client's lsn is not flushed yet
+            SlotState slotState = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
+            long flushLsn = slotState.slotLastFlushedLsn();
+            // serverLsn is the latest server lsn and is equal to insert statement lsn
+            long serverLsn = postgresConnection.currentXLogLocation();
+            assertNotEquals("lsn should not be flushed until heartbeat is produced", serverLsn, flushLsn);
+
+            TestHelper.execute(statement);
+
+            // awaiting heartbeats to be produced
+            consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
+            SourceRecord record = null;
+            while (!consumer.isEmpty()) {
+                record = consumer.remove();
             }
-            return false;
-        });
-        Assertions.assertThat(heartbeatCount.get()).isGreaterThan(0);
+            assertNotNull("heartbeats are not generated", record);
 
-        final Set<Long> lsn = new HashSet<>();
-        TestHelper.execute("INSERT INTO s1.a (aa) VALUES (11);");
-        Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
-            final SourceRecord record = consumeRecord();
-            if (record != null) {
-                lsn.add((Long) record.sourceOffset().get("lsn"));
-                return lsn.size() >= 2;
-            }
-            return false;
-        });
-        Assertions.assertThat(lsn.size()).isGreaterThanOrEqualTo(2);
+            long heartbeatLsn = (Long) record.sourceOffset().get("lsn");
+
+            // check if flushed lsn is equal to or greater than server lsn
+            SlotState slotStateAfterHeartbeat = postgresConnection.getReplicationSlotState(Builder.DEFAULT_SLOT_NAME, TestHelper.decoderPlugin().getPostgresPluginName());
+            long flushedLsn = slotStateAfterHeartbeat.slotLastFlushedLsn();
+            assertTrue("lsn should be flushed when heartbeat is produced", flushedLsn >= serverLsn);
+        }
     }
 
     @Test
