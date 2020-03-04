@@ -20,6 +20,7 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.util.PGmoney;
 
+import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -43,7 +44,8 @@ public interface ReplicationMessage {
         UPDATE,
         DELETE,
         BEGIN,
-        COMMIT
+        COMMIT,
+        NOOP
     }
 
     /**
@@ -195,6 +197,64 @@ public interface ReplicationMessage {
 
         public TransactionMessage(Operation operation, long transactionId, Instant commitTime) {
             this.operation = operation;
+            this.transationId = transactionId;
+            this.commitTime = commitTime;
+        }
+
+        @Override
+        public boolean isLastEventForLsn() {
+            return true;
+        }
+
+        @Override
+        public boolean hasTypeMetadata() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long getTransactionId() {
+            return transationId;
+        }
+
+        @Override
+        public String getTable() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Operation getOperation() {
+            return operation;
+        }
+
+        @Override
+        public List<Column> getOldTupleList() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<Column> getNewTupleList() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Instant getCommitTime() {
+            return commitTime;
+        }
+    };
+
+    /**
+     * A special message type that is used to replace event filtered already at {@link MessageDecoder}.
+     * Enables {@link PostgresStreamingChangeEventSource} to advance LSN forward even in case of such messages.
+     *
+     */
+    public class NoopMessage implements ReplicationMessage {
+
+        private final long transationId;
+        private final Instant commitTime;
+        private final Operation operation;
+
+        public NoopMessage(long transactionId, Instant commitTime) {
+            this.operation = Operation.NOOP;
             this.transationId = transactionId;
             this.commitTime = commitTime;
         }

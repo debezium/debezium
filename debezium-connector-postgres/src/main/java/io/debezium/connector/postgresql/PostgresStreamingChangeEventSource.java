@@ -126,7 +126,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     }
 
                     // Tx BEGIN/END event
-                    if (message.isTransactionalMessage()) {
+                    if (message.isTransactionalMessage() || message.getOperation() == Operation.NOOP) {
                         if (!connectorConfig.shouldProvideTransactionMetadata()) {
                             LOGGER.trace("Received transactional message {}", message);
                             skipMessage(lsn);
