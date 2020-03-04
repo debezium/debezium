@@ -494,11 +494,19 @@ public final class FieldSelector {
 
         @Override
         void modifyField(Document doc, String field) {
+            // if the original field does not exist, make no change
+            if (!doc.containsKey(field)) {
+                return;
+            }
             doc.put(checkFieldExists(doc, newFieldNode), doc.remove(field));
         }
 
         @Override
         void modifyFieldWithDotNotation(Document doc, String field) {
+            // if the original field does not exist, make no change
+            if (!doc.containsKey(field)) {
+                return;
+            }
             doc.put(checkFieldExists(doc, newField), doc.remove(field));
         }
 
