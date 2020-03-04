@@ -17,6 +17,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.jdbc.JdbcConnection;
 
 /**
  * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
@@ -40,7 +41,7 @@ public interface Heartbeat {
     }
 
     public static final Field HEARTBEAT_INTERVAL = Field.create(HEARTBEAT_INTERVAL_PROPERTY_NAME)
-            .withDisplayName("Conector heartbeat interval (milli-seconds)")
+            .withDisplayName("Connector heartbeat interval (milli-seconds)")
             .withType(Type.INT)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -125,11 +126,24 @@ public interface Heartbeat {
     /**
      * Provide an instance of Heartbeat object
      *
-     * @param configuration - connector configuration
-     * @param topicName - topic to which the heartbeat messages will be sent
-     * @return
+     * @param configuration connector configuration
+     * @param topicName topic to which the heartbeat messages will be sent
+     * @param key kafka partition key to use for the heartbeat message
      */
     public static Heartbeat create(Configuration configuration, String topicName, String key) {
         return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ? NULL : new HeartbeatImpl(configuration, topicName, key);
+    }
+
+    /**
+     * Provide an instance of Heartbeat object
+     *
+     * @param configuration connector configuration
+     * @param topicName topic to which the heartbeat messages will be sent
+     * @param key kafka partition key to use for the heartbeat message
+     * @param jdbcConnection a database connection
+     */
+    public static Heartbeat create(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection) {
+        return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ? NULL
+                : new DatabaseHeartbeatImpl(configuration, topicName, key, jdbcConnection);
     }
 }

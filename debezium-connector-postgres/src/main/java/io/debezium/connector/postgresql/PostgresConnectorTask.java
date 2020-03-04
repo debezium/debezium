@@ -26,6 +26,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -129,6 +130,9 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
+            Heartbeat heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
+                    connectorConfig.getLogicalName(), jdbcConnection);
+
             final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
                     topicSelector,
@@ -137,7 +141,8 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     connectorConfig.getTableFilters().dataCollectionFilter(),
                     DataChangeEvent::new,
                     PostgresChangeRecordEmitter::updateSchema,
-                    metadataProvider);
+                    metadataProvider,
+                    heartbeat);
 
             ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                     previousOffset,
