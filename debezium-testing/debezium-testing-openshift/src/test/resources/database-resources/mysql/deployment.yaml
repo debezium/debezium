@@ -43,7 +43,7 @@ spec:
           tcpSocket:
             port: 3306
           timeoutSeconds: 1
-          readinessProbe:
+        readinessProbe:
             exec:
               command:
               - "/bin/sh"
@@ -51,7 +51,7 @@ spec:
               - "-c"
               - "MYSQL_PWD=\"$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u $MYSQL_USER -D inventory -e 'SELECT 1'"
             initialDelaySeconds: 5
-            timeoutSeconds": 1
+            timeoutSeconds: 1
         terminationMessagePolicy: File
         terminationMessagePath: /dev/termination-log
         image: 'debezium/example-mysql:latest'
