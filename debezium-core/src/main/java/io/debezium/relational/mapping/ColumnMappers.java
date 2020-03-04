@@ -86,9 +86,13 @@ public class ColumnMappers {
         }
 
         public Builder mapByDatatype(String columnDatatypes, ColumnMapper mapper) {
-            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(columnDatatypes, (tableId, column) -> column.typeName());
+            BiPredicate<TableId, Column> columnMatcher = Predicates.includes(columnDatatypes, (tableId, column) -> fullyQualifiedColumnDatatype(tableId, column));
             rules.add(new MapperRule(columnMatcher, mapper));
             return this;
+        }
+
+        public static String fullyQualifiedColumnDatatype(TableId tableId, Column column) {
+            return tableId.toString() + "." + column.typeName();
         }
 
         /**

@@ -1408,6 +1408,7 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
+Fully-qualified data type names are of the form _schemaName_._tableName_._typeName_.
 See xref:data-types[] for the list of SQL Server-specific data type names.
 
 |`message.key.columns`

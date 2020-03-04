@@ -163,7 +163,7 @@ public class MySqlSourceTypeInSchemaIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
-                .with("datatype.propagate.source.type", "FLOAT,VARCHAR")
+                .with("datatype.propagate.source.type", ".+\\.FLOAT,.+\\.VARCHAR")
                 .build();
 
         // Start the connector ...
