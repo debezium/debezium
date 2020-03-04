@@ -36,6 +36,7 @@ import io.debezium.connector.postgresql.snapshot.InitialOnlySnapshotter;
 import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -895,6 +896,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
             Heartbeat.HEARTBEAT_INTERVAL,
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+            DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
             SCHEMA_WHITELIST,
             SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS,
             COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
@@ -1053,7 +1055,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
                 COLUMN_BLACKLIST, MSG_KEY_COLUMNS, INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, Heartbeat.HEARTBEAT_INTERVAL,
-                Heartbeat.HEARTBEAT_TOPICS_PREFIX, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+                Heartbeat.HEARTBEAT_TOPICS_PREFIX, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
+                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
                 TOASTED_VALUE_PLACEHOLDER, CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
         Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
                 CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
