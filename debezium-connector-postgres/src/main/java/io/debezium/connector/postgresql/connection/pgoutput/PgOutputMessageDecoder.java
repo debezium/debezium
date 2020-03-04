@@ -461,6 +461,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      *
      * @param relationId The replication message stream's relation identifier
      * @return table resolved from a prior relation message or direct lookup from the schema
+     * or empty when the table is filtered
      */
     private Optional<Table> resolveRelation(int relationId) {
         return Optional.ofNullable(config.getSchema().tableFor(relationId));
