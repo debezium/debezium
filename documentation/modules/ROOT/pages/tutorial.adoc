@@ -237,14 +237,12 @@ which should then display:
     +---------------------+
     | Tables_in_inventory |
     +---------------------+
-    | addresses           |
     | customers           |
-    | geom                |
     | orders              |
     | products            |
     | products_on_hand    |
     +---------------------+
-    6 rows in set (0.00 sec)
+    4 rows in set (0.00 sec)
 ----
 
 Use the MySQL command line client to explore the database and view the pre-loaded data in the database. For example:
