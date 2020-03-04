@@ -366,6 +366,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Event: {}, Relation Id: {}, Tuple Type: {}", MessageType.INSERT, relationId, tupleType);
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
+
+        // non-captured table
         if (!resolvedTable.isPresent()) {
             processor.process(new NoopMessage(transactionId, commitTimestamp));
         }
@@ -395,6 +397,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Event: {}, RelationId: {}", MessageType.UPDATE, relationId);
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
+
+        // non-captured table
         if (!resolvedTable.isPresent()) {
             processor.process(new NoopMessage(transactionId, commitTimestamp));
         }
@@ -442,6 +446,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Event: {}, RelationId: {}, Tuple Type: {}", MessageType.DELETE, relationId, tupleType);
 
         Optional<Table> resolvedTable = resolveRelation(relationId);
+
+        // non-captured table
         if (!resolvedTable.isPresent()) {
             processor.process(new NoopMessage(transactionId, commitTimestamp));
         }
