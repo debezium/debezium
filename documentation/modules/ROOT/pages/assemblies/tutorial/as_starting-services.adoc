@@ -14,7 +14,7 @@ you will set up a single instance of each service using http://docker.com[Docker
 
 To start the services needed for this tutorial, you must:
 
-* xref:starting-zookeper[Start Zookeeper]
+* xref:starting-zookeeper[Start Zookeeper]
 * xref:starting-kafka[Start Kafka]
 * xref:starting-mysql-database[Start a MySQL database]
 * xref:starting-mysql-command-line-client[Start a MySQL command line client]
