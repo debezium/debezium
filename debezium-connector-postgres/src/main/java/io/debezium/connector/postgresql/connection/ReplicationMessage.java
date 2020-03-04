@@ -245,17 +245,16 @@ public interface ReplicationMessage {
     /**
      * A special message type that is used to replace event filtered already at {@link MessageDecoder}.
      * Enables {@link PostgresStreamingChangeEventSource} to advance LSN forward even in case of such messages.
-     *
      */
     public class NoopMessage implements ReplicationMessage {
 
-        private final long transationId;
+        private final long transactionId;
         private final Instant commitTime;
         private final Operation operation;
 
         public NoopMessage(long transactionId, Instant commitTime) {
             this.operation = Operation.NOOP;
-            this.transationId = transactionId;
+            this.transactionId = transactionId;
             this.commitTime = commitTime;
         }
 
@@ -271,7 +270,7 @@ public interface ReplicationMessage {
 
         @Override
         public long getTransactionId() {
-            return transationId;
+            return transactionId;
         }
 
         @Override
@@ -298,5 +297,5 @@ public interface ReplicationMessage {
         public Instant getCommitTime() {
             return commitTime;
         }
-    };
+    }
 }
