@@ -1,0 +1,17 @@
+[id="kafka-jmx-environment-variables"]
+= Kafka JMX environment variables
+
+When running Kafka using a local installation,
+the `kafka-server-start.sh` script recognizes the following environment variables:
+
+`JMX_PORT`::
+Enables JMX and specifies the port number that will be used for JMX.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.port=$JMX_PORT`.
+
+`KAFKA_JMX_OPTS`::
+The JMX options, which are passed directly to the JVM during startup.
+The default options are:
++
+** `-Dcom.sun.management.jmxremote`
+** `-Dcom.sun.management.jmxremote.authenticate=false`
+** `-Dcom.sun.management.jmxremote.ssl=false`

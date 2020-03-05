@@ -1,0 +1,40 @@
+[id="kafka-connect-jmx-environment-variables-docker"]
+= Kafka Connect JMX environment variables in Docker
+
+The `debezium/connect` image recognizes the following JMX-related environment variables:
+
+`JMXPORT` (Required)::
+The port number that will be used for JMX.
+The value is used to specify the following JVM parameters:
++
+** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+
+`JMXHOST` (Required)::
+The IP address or resolvable host name of the Docker host,
+which JMX uses to construct a URL sent to the JMX client.
+A value of `localhost` or `127.0.0.1` will not work.
+The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+.Enabling JMX in a Kafka Connect Docker container
+====
+The following example Docker command starts a container using the `debezium/connect` image with values for the `JMXPORT` and `HOST_NAME` environment variables,
+and maps the Docker host's port 9012 to the container's JMX port:
+
+[source,shell,options="nowrap"]
+----
+$ docker run -it --rm --name connect -p 8083:8083 -p 9012:9012 -e JMXPORT=9012 -e JMXHOST=10.0.1.10 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql debezium/connect:latest
+----
+====

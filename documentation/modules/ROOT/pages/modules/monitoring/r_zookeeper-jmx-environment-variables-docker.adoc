@@ -1,0 +1,46 @@
+[id="zookeeper-jmx-environment-variables-docker"]
+= Zookeeper JMX environment variables in Docker
+
+The `debezium/zookeeper` image recognizes the following JMX-related environment variables:
+
+`JMXPORT` (Required)::
+The port number that will be used for JMX.
+The value is used to specify the following JVM parameters:
++
+** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+
+`JMXHOST` (Required)::
+The IP address or resolvable host name of the Docker host,
+which JMX uses to construct a URL sent to the JMX client.
+A value of `localhost` or `127.0.0.1` will not work.
+The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+`JMXLOG4J`::
+Whether the Log4J JMX MBeans should be disabled.
+Must be either `true` or `false`.
+The default is `true`.
+The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$JMXLOG4J`.
+
+.Enabling JMX in a Zookeeper Docker container
+====
+The following example Docker command starts a container using the `debezium/zookeeper` image with values for the `JMXPORT` and `JMXHOST` environment variables,
+and maps the Docker host's port 9010 to the container's JMX port:
+
+[source,shell,options="nowrap"]
+----
+$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 debezium/zookeeper:latest
+----
+====
