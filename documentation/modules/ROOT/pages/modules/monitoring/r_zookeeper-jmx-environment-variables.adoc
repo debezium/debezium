@@ -1,0 +1,28 @@
+[id="zookeeper-jmx-environment-variables"]
+= Zookeeper JMX environment variables
+
+Zookeeper has built-in support for JMX.
+When running Zookeeper using a local installation,
+the `zkServer.sh` script recognizes the following environment variables:
+
+`JMXPORT`::
+Enables JMX and specifies the port number that will be used for JMX.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.port=$JMXPORT`.
+
+`JMXAUTH`::
+Whether JMX clients must use password authentication when connecting.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
+
+`JMXSSL`::
+Whether JMX clients connect using SSL/TLS.
+Must be either `true` or `false`.
+The default is `false`.
+The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
+
+`JMXLOG4J`::
+Whether the Log4J JMX MBeans should be disabled.
+Must be either `true` (default) or `false`.
+The default is `true`.
+The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$JMXLOG4J`.
