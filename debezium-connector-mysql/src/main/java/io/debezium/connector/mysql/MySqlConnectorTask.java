@@ -62,7 +62,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public synchronized ChangeEventSourceCoordinator start(Configuration config) {
+    public ChangeEventSourceCoordinator start(Configuration config) {
         final String serverName = config.getString(MySqlConnectorConfig.SERVER_NAME);
         PreviousContext prevLoggingContext = LoggingContext.forConnector(Module.contextName(), serverName, "task");
 
@@ -439,7 +439,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public synchronized void stop() {
+    protected void doStop() {
         if (context != null) {
             PreviousContext prevLoggingContext = null;
             if (this.taskContext != null) {

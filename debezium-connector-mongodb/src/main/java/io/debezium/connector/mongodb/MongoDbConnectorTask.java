@@ -86,7 +86,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            errorHandler = new ErrorHandler(MongoDbConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
+            errorHandler = new ErrorHandler(MongoDbConnector.class, connectorConfig.getLogicalName(), queue, this::doStop);
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
@@ -130,17 +130,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public void stop() {
-        cleanupResources();
-    }
-
-    private void cleanupResources() {
+    public void doStop() {
         PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
-            if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
-                logger.info("Connector has already been stopped");
-                return;
-            }
             try {
                 if (coordinator != null) {
                     coordinator.stop();

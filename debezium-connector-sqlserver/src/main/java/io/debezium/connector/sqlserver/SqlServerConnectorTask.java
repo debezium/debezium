@@ -98,7 +98,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
+        errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue, this::doStop);
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
@@ -137,16 +137,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public void stop() {
-        cleanupResources();
-    }
-
-    private void cleanupResources() {
-        if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
-            LOGGER.info("Connector has already been stopped");
-            return;
-        }
-
+    protected void doStop() {
         try {
             if (coordinator != null) {
                 coordinator.stop();
