@@ -35,6 +35,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 new TableSchemaBuilder(
                         new OracleValueConverters(connectorConfig, connection),
                         schemaNameAdjuster,
+                        connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getSanitizeFieldNames()),
                 connectorConfig.getTablenameCaseInsensitive(),
