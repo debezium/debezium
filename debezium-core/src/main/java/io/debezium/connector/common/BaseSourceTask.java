@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -37,7 +38,12 @@ public abstract class BaseSourceTask extends SourceTask {
         STOPPED;
     }
 
-    protected final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+    private final AtomicReference<State> state = new AtomicReference<State>(State.STOPPED);
+
+    /**
+     * Used to ensure that start(), stop() and commitRecord() calls are serialized.
+     */
+    private final ReentrantLock stateLock = new ReentrantLock();
 
     /**
      * The change event source coordinator for those connectors adhering to the new
@@ -54,28 +60,35 @@ public abstract class BaseSourceTask extends SourceTask {
 
     @Override
     public final void start(Map<String, String> props) {
-        if (context == null) {
-            throw new ConnectException("Unexpected null context");
-        }
+        stateLock.lock();
 
-        if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
-            LOGGER.info("Connector has already been started");
-            return;
-        }
+        try {
+            if (context == null) {
+                throw new ConnectException("Unexpected null context");
+            }
 
-        Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
-            throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
-        }
+            if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
+                LOGGER.info("Connector has already been started");
+                return;
+            }
 
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("Starting {} with configuration:", getClass().getSimpleName());
-            config.withMaskedPasswords().forEach((propName, propValue) -> {
-                LOGGER.info("   {} = {}", propName, propValue);
-            });
-        }
+            Configuration config = Configuration.from(props);
+            if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
+                throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
+            }
 
-        this.coordinator = start(config);
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER.info("Starting {} with configuration:", getClass().getSimpleName());
+                config.withMaskedPasswords().forEach((propName, propValue) -> {
+                    LOGGER.info("   {} = {}", propName, propValue);
+                });
+            }
+
+            this.coordinator = start(config);
+        }
+        finally {
+            stateLock.unlock();
+        }
     }
 
     /**
@@ -98,6 +111,25 @@ public abstract class BaseSourceTask extends SourceTask {
     public abstract List<SourceRecord> doPoll() throws InterruptedException;
 
     @Override
+    public final void stop() {
+        stateLock.lock();
+
+        try {
+            if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
+                LOGGER.info("Connector has already been stopped");
+                return;
+            }
+
+            doStop();
+        }
+        finally {
+            stateLock.unlock();
+        }
+    }
+
+    protected abstract void doStop();
+
+    @Override
     public void commitRecord(SourceRecord record) throws InterruptedException {
         Map<String, ?> currentOffset = record.sourceOffset();
         if (currentOffset != null) {
@@ -107,8 +139,20 @@ public abstract class BaseSourceTask extends SourceTask {
 
     @Override
     public void commit() throws InterruptedException {
-        if (coordinator != null && lastOffset != null) {
-            coordinator.commitOffset(lastOffset);
+        boolean locked = stateLock.tryLock();
+
+        if (locked) {
+            try {
+                if (coordinator != null && lastOffset != null) {
+                    coordinator.commitOffset(lastOffset);
+                }
+            }
+            finally {
+                stateLock.unlock();
+            }
+        }
+        else {
+            LOGGER.warn("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
         }
     }
 
