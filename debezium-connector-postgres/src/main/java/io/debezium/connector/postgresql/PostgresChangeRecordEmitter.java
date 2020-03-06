@@ -284,9 +284,12 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                 final int localType = column.nativeType();
                 final int incomingType = message.getType().getOid();
                 if (localType != incomingType) {
-                    logger.info("detected new type for column '{}', old type was {} ({}), new type is {} ({}); refreshing table schema", columnName, localType,
-                            column.typeName(),
-                            incomingType, message.getType().getName());
+                    final int incomingRootType = message.getType().getRootType().getOid();
+                    if (localType != incomingRootType) {
+                        logger.info("detected new type for column '{}', old type was {} ({}), new type is {} ({}); refreshing table schema", columnName, localType,
+                                column.typeName(),
+                                incomingType, message.getType().getName());
+                    }
                     return true;
                 }
                 if (metadataInMessage) {
