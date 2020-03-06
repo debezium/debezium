@@ -900,6 +900,8 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         Assertions.assertThat(flushLsn.size()).isGreaterThanOrEqualTo((recordCount * 3) / 4);
     }
 
+    // Test disabled as empty messages are emitted only since 1.1 as it requires support for TX messages
+    @Ignore
     @Test
     @FixFor("DBZ-892")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.WAL2JSON, reason = "Only wal2json decoder emits empty events and passes them to streaming source")
