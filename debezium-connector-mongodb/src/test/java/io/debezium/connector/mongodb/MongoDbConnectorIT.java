@@ -46,8 +46,8 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 import com.mongodb.util.JSON;
-
 import com.mongodb.util.JSONSerializers;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
@@ -328,7 +328,6 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         String updateId = JSON.parse(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
         assertThat(updateId).isEqualTo(id.get());
-
 
         // ---------------------------------------------------------------------------------------------------------------
         // Delete a document

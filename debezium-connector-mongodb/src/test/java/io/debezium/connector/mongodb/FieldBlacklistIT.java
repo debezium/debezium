@@ -5,6 +5,11 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.connector.mongodb.MongoDbSchema.COMPACT_JSON_SETTINGS;
+import static io.debezium.data.Envelope.FieldName.AFTER;
+import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.Fail.fail;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,15 +26,11 @@ import org.junit.Test;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
-
-import static io.debezium.connector.mongodb.MongoDbSchema.COMPACT_JSON_SETTINGS;
-import static io.debezium.data.Envelope.FieldName.AFTER;
-import static org.fest.assertions.Assertions.assertThat;
-import static org.fest.assertions.Fail.fail;
 
 // todo: extend AbstractMongoConnectorIT?
 public class FieldBlacklistIT extends AbstractConnectorTest {

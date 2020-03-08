@@ -5,13 +5,13 @@
  */
 package io.debezium.connector.mongodb;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import org.junit.After;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.schema.DataCollectionSchema;
-
-import static org.fest.assertions.Assertions.assertThat;
 
 /**
  * @author Chris Cranford
