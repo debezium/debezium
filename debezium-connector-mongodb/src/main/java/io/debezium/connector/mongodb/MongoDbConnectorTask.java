@@ -126,13 +126,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     @Override
     public List<SourceRecord> poll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
-
-        final List<SourceRecord> sourceRecords = records.stream()
-                .map(DataChangeEvent::getRecord)
-                .collect(Collectors.toList());
-
-        //recordSummarizer.accept(sourceRecords);
-        return sourceRecords;
+        return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
     }
 
     @Override

@@ -641,8 +641,8 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         Document updateObj = new Document()
                 .append("$unset", new Document()
-                    .append("name", "")
-                    .append("phone", ""));
+                        .append("name", "")
+                        .append("phone", ""));
 
         // @formatter:off
         String expected = "{"

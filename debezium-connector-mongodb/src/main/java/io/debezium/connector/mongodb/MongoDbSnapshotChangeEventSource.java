@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.pipeline.ErrorHandler;
@@ -132,8 +133,8 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
                         finally {
                             final MongoDbOffsetContext offset = (MongoDbOffsetContext) ctx.offset;
                             // todo: DBZ-1726 - this causes MongoDbConnectorIT#shouldEmitHeartbeatMessages to fail
-                            //          omitted for now since it does not appear we did this in previous connector code.
-                            //dispatcher.alwaysDispatchHeartbeatEvent(offset.getReplicaSetOffsetContext(replicaSet));
+                            // omitted for now since it does not appear we did this in previous connector code.
+                            // dispatcher.alwaysDispatchHeartbeatEvent(offset.getReplicaSetOffsetContext(replicaSet));
                         }
                     }
                     catch (Throwable t) {
@@ -266,7 +267,7 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
         try {
             primaryClient = establishConnectionToPrimary(replicaSet);
             if (primaryClient != null) {
-               createDataEvents(sourceContext, ctx, replicaSet, primaryClient);
+                createDataEvents(sourceContext, ctx, replicaSet, primaryClient);
             }
         }
         finally {
@@ -323,13 +324,13 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
                         // The last recorded timestamp is *before* the first existing oplog event, which means there is
                         // almost certainly some history lost since the oplog was last processed.
                         LOGGER.info("Initial sync is required since the oplog for replica set '{}' starts at {}, which is later than the timestamp of the last offset {}",
-                                    offsetContext.getReplicaSetName(), firstAvailableTs, lastRecordedTs);
+                                offsetContext.getReplicaSetName(), firstAvailableTs, lastRecordedTs);
                         performSnapshot = true;
                     }
                     else {
                         // No initial sync required
                         LOGGER.info("The oplog contains the last entry previously read for '{}', so no initial sync will be performed",
-                                    offsetContext.getReplicaSetName());
+                                offsetContext.getReplicaSetName());
                     }
                 }
             }
@@ -404,13 +405,13 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
 
             final String copyThreadName = "copy-" + (replicaSet.hasReplicaSetName() ? replicaSet.replicaSetName() : "main");
             final ExecutorService copyThreads = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.serverName(),
-                                                                           copyThreadName, connectionContext.maxNumberOfCopyThreads());
+                    copyThreadName, connectionContext.maxNumberOfCopyThreads());
             final CountDownLatch latch = new CountDownLatch(numThreads);
             final AtomicBoolean aborted = new AtomicBoolean(false);
             final AtomicInteger threadCounter = new AtomicInteger(0);
 
             LOGGER.info("Preparing to use {} thread(s) to sync {} collection(s): {}", numThreads, collections.size(),
-                        Strings.join(", ", collections));
+                    Strings.join(", ", collections));
 
             for (int i = 0; i < numThreads; ++i) {
                 copyThreads.submit(() -> {
@@ -432,8 +433,7 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
                                     snapshotReceiver,
                                     replicaSet,
                                     id,
-                                    primaryClient
-                            );
+                                    primaryClient);
                         }
                     }
                     catch (InterruptedException e) {
@@ -478,8 +478,7 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
                         snapshotReceiver,
                         replicaSet,
                         collectionId,
-                        primaryClient
-                );
+                        primaryClient);
             }
         }
 
@@ -526,7 +525,7 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
                 }
 
                 LOGGER.info("\t Finished exporting {} records for collection '{}'; total duration '{}'", docs, collectionId,
-                            Strings.duration(clock.currentTimeInMillis() - exportStart));
+                        Strings.duration(clock.currentTimeInMillis() - exportStart));
                 snapshotProgressListener.dataCollectionSnapshotCompleted(collectionId.toString(), docs);
             }
         });
