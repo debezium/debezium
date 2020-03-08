@@ -22,7 +22,15 @@ public interface SnapshotProgressListener {
 
     void snapshotAborted();
 
-    void tableSnapshotCompleted(TableId tableId, long numRows);
+    /**
+     * @deprecated Since 1.1, use {@link #dataCollectionSnapshotCompleted(String, long)} instead.
+     */
+    @Deprecated
+    default void tableSnapshotCompleted(TableId id, long numRows) {
+        dataCollectionSnapshotCompleted(id.toString(), numRows);
+    }
+
+    void dataCollectionSnapshotCompleted(String dataCollectionId, long numRows);
 
     void rowsScanned(TableId tableId, long numRows);
 
@@ -41,7 +49,7 @@ public interface SnapshotProgressListener {
         }
 
         @Override
-        public void tableSnapshotCompleted(TableId tableId, long numRows) {
+        public void dataCollectionSnapshotCompleted(String dataCollectionId, long numRows) {
         }
 
         @Override

@@ -80,6 +80,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         return tables.subset(tableFilter).tableIds();
     }
 
+    @Override
     public void assureNonEmptySchema() {
         if (tableIds().isEmpty()) {
             LOG.warn("After applying blacklist/whitelist filters there are no tables to monitor, please check your configuration");

@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.data.Envelope.Operation;
+import io.debezium.pipeline.AbstractChangeRecordEmitter;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionSchema;
@@ -22,15 +23,12 @@ import io.debezium.util.Clock;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitter {
+public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecordEmitter<TableSchema> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-    private final OffsetContext offsetContext;
-    private final Clock clock;
 
     public RelationalChangeRecordEmitter(OffsetContext offsetContext, Clock clock) {
-        this.offsetContext = offsetContext;
-        this.clock = clock;
+        super(offsetContext, clock);
     }
 
     @Override
@@ -57,35 +55,33 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
     }
 
     @Override
-    public OffsetContext getOffset() {
-        return offsetContext;
-    }
-
-    private void emitCreateRecord(Receiver receiver, TableSchema tableSchema)
+    protected void emitCreateRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeAsInstant());
+        Struct envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
         if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
-            logger.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, offsetContext.getSourceInfo());
+            logger.warn("no new values found for table '{}' from create message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
-        receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
+        receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset());
     }
 
-    private void emitReadRecord(Receiver receiver, TableSchema tableSchema)
+    @Override
+    protected void emitReadRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] newColumnValues = getNewColumnValues();
         Object newKey = tableSchema.keyFromColumnData(newColumnValues);
         Struct newValue = tableSchema.valueFromColumnData(newColumnValues);
-        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, offsetContext.getSourceInfo(), clock.currentTimeAsInstant());
+        Struct envelope = tableSchema.getEnvelopeSchema().read(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
 
-        receiver.changeRecord(tableSchema, Operation.READ, newKey, envelope, offsetContext);
+        receiver.changeRecord(tableSchema, Operation.READ, newKey, envelope, getOffset());
     }
 
-    private void emitUpdateRecord(Receiver receiver, TableSchema tableSchema)
+    @Override
+    protected void emitUpdateRecord(Receiver receiver, TableSchema tableSchema)
             throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
         Object[] newColumnValues = getNewColumnValues();
@@ -97,37 +93,38 @@ public abstract class RelationalChangeRecordEmitter implements ChangeRecordEmitt
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
         if (skipEmptyMessages() && (newColumnValues == null || newColumnValues.length == 0)) {
-            logger.warn("no new values found for table '{}' from update message at '{}'; skipping record", tableSchema, offsetContext.getSourceInfo());
+            logger.warn("no new values found for table '{}' from update message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
         // some configurations does not provide old values in case of updates
         // in this case we handle all updates as regular ones
         if (oldKey == null || Objects.equals(oldKey, newKey)) {
-            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, offsetContext.getSourceInfo(), clock.currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, offsetContext);
+            Struct envelope = tableSchema.getEnvelopeSchema().update(oldValue, newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            receiver.changeRecord(tableSchema, Operation.UPDATE, newKey, envelope, getOffset());
         }
         // PK update -> emit as delete and re-insert with new key
         else {
-            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
+            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset());
 
-            envelope = tableSchema.getEnvelopeSchema().create(newValue, offsetContext.getSourceInfo(), clock.currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, offsetContext);
+            envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset());
         }
     }
 
-    private void emitDeleteRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
+    @Override
+    protected void emitDeleteRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Object[] oldColumnValues = getOldColumnValues();
         Object oldKey = tableSchema.keyFromColumnData(oldColumnValues);
         Struct oldValue = tableSchema.valueFromColumnData(oldColumnValues);
 
         if (skipEmptyMessages() && (oldColumnValues == null || oldColumnValues.length == 0)) {
-            logger.warn("no old values found for table '{}' from delete message at '{}'; skipping record", tableSchema, offsetContext.getSourceInfo());
+            logger.warn("no old values found for table '{}' from delete message at '{}'; skipping record", tableSchema, getOffset().getSourceInfo());
             return;
         }
 
-        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, offsetContext.getSourceInfo(), clock.currentTimeAsInstant());
-        receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, offsetContext);
+        Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset());
     }
 
     /**

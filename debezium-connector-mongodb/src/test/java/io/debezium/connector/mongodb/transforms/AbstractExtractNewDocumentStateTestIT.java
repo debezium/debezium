@@ -35,6 +35,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConnectorTest {
 
     protected static final String DB_NAME = "transform_operations";
+    protected static final String SERVER_NAME = "mongo";
     private MongoDbTaskContext context;
 
     protected ExtractNewDocumentState<SourceRecord> transformation;
@@ -42,11 +43,22 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConn
     protected abstract String getCollectionName();
 
     protected String topicName() {
-        return String.format("mongo.%s.%s", DB_NAME, this.getCollectionName());
+        return String.format("%s.%s.%s", SERVER_NAME, DB_NAME, this.getCollectionName());
     }
 
     @Before
     public void beforeEach() {
+        // Use the DB configuration to define the connector's configuration ...
+        Configuration config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, DB_NAME + "." + this.getCollectionName())
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .build();
+
+        beforeEach(config);
+    }
+
+    public void beforeEach(Configuration config) {
         Debug.disable();
         Print.disable();
         stopConnector();
@@ -54,13 +66,6 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConn
 
         transformation = new ExtractNewDocumentState<>();
         transformation.configure(Collections.emptyMap());
-
-        // Use the DB configuration to define the connector's configuration ...
-        Configuration config = TestHelper.getConfiguration().edit()
-                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
-                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, DB_NAME + "." + this.getCollectionName())
-                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
-                .build();
 
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
@@ -83,6 +88,21 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractConn
             }
         }
         transformation.close();
+    }
+
+    protected void restartConnectorWithoutEmittingTombstones() {
+        // stop connector
+        afterEach();
+
+        // reconfigure and restart
+        Configuration config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, DB_NAME + "." + this.getCollectionName())
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, SERVER_NAME)
+                .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        beforeEach(config);
     }
 
     SourceRecord getRecordByOperation(Envelope.Operation operation) throws InterruptedException {

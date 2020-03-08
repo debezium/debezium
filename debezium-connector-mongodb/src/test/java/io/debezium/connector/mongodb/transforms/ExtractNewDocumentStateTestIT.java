@@ -11,21 +11,29 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.RawBsonDocument;
+import org.bson.types.ObjectId;
 import org.fest.assertions.Assertions;
 import org.junit.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.doc.FixFor;
+import io.debezium.transforms.ExtractNewRecordStateConfigDefinition;
+import io.debezium.util.Collect;
 
 /**
  * Integration test for {@link ExtractNewDocumentState}. It sends operations into
@@ -36,8 +44,15 @@ import io.debezium.doc.FixFor;
  */
 public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentStateTestIT {
 
+    // todo: Verify that shard logic added in c84a8a28b472b7c169a8b265905a64db0dbb69e3 doesn't apply now.
+
     private static final String CONFIG_DROP_TOMBSTONES = "drop.tombstones";
     private static final String HANDLE_DELETES = "delete.handling.mode";
+    private static final String FLATTEN_STRUCT = "flatten.struct";
+    private static final String DELIMITER = "flatten.struct.delimiter";
+    private static final String OPERATION_HEADER = "operation.header";
+    private static final String DROP_TOMBSTONE = "drop.tombstones";
+    private static final String ADD_SOURCE_FIELDS = "add.source.fields";
 
     @Override
     protected String getCollectionName() {
@@ -252,5 +267,1008 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         Assertions.assertThat(value.getString("_ref")).isEqualTo("a2");
         Assertions.assertThat(value.getInt32("_id")).isEqualTo(4);
         Assertions.assertThat(value.getString("_db")).isEqualTo("b2");
+    }
+
+    @Test
+    @FixFor("DBZ-1442")
+    public void shouldAddSourceFields() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        transformation.configure(props);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{ '_id' : 3, 'name' : 'Tim' }"));
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{'_id' : 3}"),
+                            RawBsonDocument.parse("{'$set': {'name': 'Sally'}}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        // assert source fields' values
+        final Struct value = (Struct) transformed.value();
+        assertThat(value.get("__h")).isEqualTo(source.getInt64("h"));
+        assertThat(value.get("__ts_ms")).isEqualTo(source.getInt64("ts_ms"));
+        assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
+        assertThat(value.get("__db")).isEqualTo(source.getString("db"));
+        assertThat(value.get("__rs")).isEqualTo(source.getString("rs"));
+        assertThat(value.get("__db")).isEqualTo(DB_NAME);
+        assertThat(value.get("__rs")).isEqualTo("rs0");
+    }
+
+    @Test
+    @FixFor("DBZ-1442")
+    public void shouldAddSourceFieldsForRewriteDeleteEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        props.put(HANDLE_DELETES, "rewrite");
+        transformation.configure(props);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{ '_id' : 4, 'name' : 'Sally' }"));
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : 4 }"));
+        });
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        // assert source fields' values
+        final Struct value = (Struct) transformed.value();
+        assertThat(value.get("__h")).isEqualTo(source.getInt64("h"));
+        assertThat(value.get("__ts_ms")).isEqualTo(source.getInt64("ts_ms"));
+        assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
+        assertThat(value.get("__db")).isEqualTo(source.getString("db"));
+        assertThat(value.get("__rs")).isEqualTo(source.getString("rs"));
+        assertThat(value.get("__db")).isEqualTo(DB_NAME);
+        assertThat(value.get("__rs")).isEqualTo("rs0");
+    }
+
+    @Test
+    public void shouldTransformRecordForInsertEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document().append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        // then assert operation header is insert
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
+
+        // acquire key and value Structs
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema().name()).isEqualTo(SERVER_NAME + "." + DB_NAME + "." + getCollectionName());
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("phone")).isEqualTo(123L);
+        assertThat(value.get("active")).isEqualTo(true);
+        assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+        assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build());
+        assertThat(value.schema().fields()).hasSize(5);
+    }
+
+    @Test
+    public void shouldTransformRecordForInsertEventWithComplexIdType() throws InterruptedException {
+        waitForStreamingRunning();
+
+        Document obj = new Document()
+                .append("_id", new Document()
+                        .append("company", 32)
+                        .append("dept", "home improvement"))
+                .append("name", "Sally");
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(key.schema().field("id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(((Struct) key.get("id")).get("company")).isEqualTo(32);
+        assertThat(((Struct) key.get("id")).get("dept")).isEqualTo("home improvement");
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(((Struct) value.get("id")).get("company")).isEqualTo(32);
+        assertThat(((Struct) value.get("id")).get("dept")).isEqualTo("home improvement");
+        assertThat(value.get("name")).isEqualTo("Sally");
+
+        assertThat(value.schema().field("id").schema().field("company").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(value.schema().field("id").schema().field("dept").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(2);
+    }
+
+    @Test
+    public void shouldGenerateRecordForUpdateEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Tim");
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document().append("$set", new Document("name", "Sally"));
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        // then assert operation header is update
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.UPDATE.code());
+
+        // acquire key and value Structs
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(2);
+    }
+
+    @Test
+    @FixFor("DBZ-612")
+    public void shouldGenerateRecordForUpdateEventWithUnset() throws InterruptedException {
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Tim")
+                .append("phone", 123L)
+                .append("active", false);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document()
+                .append("$set", new Document("name", "Sally"))
+                .append("$unset", new Document().append("phone", true).append("active", false));
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        Struct value = (Struct) transformed.value();
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("phone")).isEqualTo(null);
+
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(4);
+    }
+
+    @Test
+    @FixFor("DBZ-612")
+    public void shouldGenerateRecordForUnsetOnlyUpdateEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("active", false);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document()
+                .append("$unset", new Document().append("phone", true).append("active", false));
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        Struct value = (Struct) transformed.value();
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("phone")).isEqualTo(null);
+
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(3);
+    }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws InterruptedException {
+        // todo: we might want to rework how the base class handles connector bootstrap to avoid needing to
+        // stop the connector and restart it with the appropriate configuration here
+        restartConnectorWithoutEmittingTombstones();
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "none");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        assertThat(value).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-1032")
+    public void shouldGenerateRecordHeaderForTombstone() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        props.put(DROP_TOMBSTONE, "false");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
+        });
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(1));
+        validate(transformed);
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // then assert operation header is delete
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
+
+        assertThat(value).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-583")
+    public void shouldDropDeleteMessagesByDefault() throws InterruptedException {
+        restartConnectorWithoutEmittingTombstones();
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        // then assert transformed message is skipped
+        assertThat(transformed).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-583")
+    public void shouldRewriteDeleteMessage() throws InterruptedException {
+        restartConnectorWithoutEmittingTombstones();
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        assertThat(value.schema().field("__deleted").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.get("__deleted")).isEqualTo(true);
+    }
+
+    @Test
+    @FixFor("DBZ-583")
+    public void shouldRewriteMessagesWhichAreNotDeletes() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(HANDLE_DELETES, "rewrite");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Tim");
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document().append("$set", new Document("name", "Sally"));
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct value = (Struct) transformed.value();
+
+        // then assert value and its schema
+        assertThat(value.schema().field("__deleted").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.get("__deleted")).isEqualTo(false);
+    }
+
+    @Test
+    public void shouldGenerateRecordForDeleteEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        props.put(HANDLE_DELETES, "none");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId);
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        primary().execute("delete", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"));
+        });
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        // then assert operation header is delete
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.DELETE.code());
+
+        // acquire key and value Structs
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        assertThat(value).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-971")
+    public void shouldPropagatePreviousRecordHeaders() throws InterruptedException {
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Tim");
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document().append("$set", new Document("name", "Sally"));
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        record.headers().addString("application/debezium-test-header", "shouldPropagatePreviousRecordHeaders");
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+
+        assertThat(transformed.headers()).hasSize(1);
+        Iterator<Header> headers = transformed.headers().allWithName("application/debezium-test-header");
+        assertThat(headers.hasNext()).isTrue();
+        assertThat(headers.next().value().toString()).isEqualTo("shouldPropagatePreviousRecordHeaders");
+    }
+
+    @Test
+    public void shouldNotFlattenTransformRecordForInsertEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("street", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("address")).isEqualTo(new Struct(value.schema().field("address").schema())
+                .put("street", "Morris Park Ave").put("zipcode", "10462"));
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address").schema()).isEqualTo(
+                SchemaBuilder.struct()
+                        .name(SERVER_NAME + "." + DB_NAME + "." + getCollectionName() + ".address")
+                        .optional()
+                        .field("street", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build());
+        assertThat(value.schema().fields()).hasSize(3);
+    }
+
+    @Test
+    public void shouldFlattenTransformRecordForInsertEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(FLATTEN_STRUCT, "true");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("street", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("address_street")).isEqualTo("Morris Park Ave");
+        assertThat(value.get("address_zipcode")).isEqualTo("10462");
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address_street").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address_zipcode").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(4);
+    }
+
+    @Test
+    public void shouldFlattenWithDelimiterTransformRecordForInsertEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(FLATTEN_STRUCT, "true");
+        props.put(DELIMITER, "-");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("street", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("address-street")).isEqualTo("Morris Park Ave");
+        assertThat(value.get("address-zipcode")).isEqualTo("10462");
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-street").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-zipcode").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(4);
+    }
+
+    @Test
+    public void shouldFlattenWithDelimiterTransformRecordForUpdateEvent() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(FLATTEN_STRUCT, "true");
+        props.put(DELIMITER, "-");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("address", new Document()
+                        .append("street", "Morris Park Ave")
+                        .append("zipcode", "10462"));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // update
+        Document updateObj = new Document()
+                .append("$set", new Document(Collect.hashMapOf(
+                        "address.city", "Canberra",
+                        "address.name", "James",
+                        "address.city2.part", 3)));
+
+        // update
+        primary().execute("update", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .updateOne(RawBsonDocument.parse("{ '_id' : { '$oid' : '" + objId + "'}}"), updateObj);
+        });
+
+        records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(records.allRecordsInOrder().get(0));
+
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("address-city")).isEqualTo("Canberra");
+        assertThat(value.get("address-name")).isEqualTo("James");
+        assertThat(value.get("address-city2-part")).isEqualTo(3);
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-city").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+        assertThat(value.schema().fields()).hasSize(4);
+    }
+
+    @Test
+    @FixFor("DBZ-677")
+    public void canUseDeprecatedSmt() throws InterruptedException {
+        waitForStreamingRunning();
+
+        transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
+        transformation.configure(Collections.singletonMap("array.encoding", "array"));
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(OPERATION_HEADER, "true");
+        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
+        transformation.configure(props);
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("phone", 123L)
+                .append("active", true)
+                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
+
+        // insert
+        primary().execute("insert", client -> {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
+        });
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+
+        // then assert operation header is insert
+        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
+        assertThat((operationHeader).hasNext()).isTrue();
+        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
+
+        // acquire key and value Structs
+        Struct key = (Struct) transformed.key();
+        Struct value = (Struct) transformed.value();
+
+        // then assert key and its schema
+        assertThat(key.schema()).isSameAs(transformed.keySchema());
+        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(key.get("id")).isEqualTo(objId.toString());
+
+        // and then assert value and its schema
+        assertThat(value.schema().name()).isEqualTo(SERVER_NAME + "." + DB_NAME + "." + getCollectionName());
+        assertThat(value.schema()).isSameAs(transformed.valueSchema());
+        assertThat(value.get("name")).isEqualTo("Sally");
+        assertThat(value.get("id")).isEqualTo(objId.toString());
+        assertThat(value.get("phone")).isEqualTo(123L);
+        assertThat(value.get("active")).isEqualTo(true);
+        assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
+        assertThat(value.get("__h")).isEqualTo(source.get("h"));
+        assertThat(value.get("__ts_ms")).isEqualTo(source.get("ts_ms"));
+        assertThat(value.get("__ord")).isEqualTo(source.get("ord"));
+        assertThat(value.get("__db")).isEqualTo(source.get("db"));
+        assertThat(value.get("__rs")).isEqualTo(source.get("rs"));
+
+        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+        assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build());
+        assertThat(value.schema().fields()).hasSize(10);
+    }
+
+    private static void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning("mongodb", SERVER_NAME);
     }
 }
