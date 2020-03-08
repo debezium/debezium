@@ -84,7 +84,7 @@ transforms.unwrap.operation.header=true
 === Array encoding
 
 The SMT converts MongoDB arrays into arrays as defined by Apache Connect (or Apache Avro) schema.
-The problem is that such arrays must contains elements of the same time.
+The problem is that such arrays must contain elements of the same type.
 MongoDB allows the user to store elements of heterogeneous types into the same array.
 To bypass this impedance mismatch it is possible to encode the array in two different ways using `array.encoding` configuration option.
 
