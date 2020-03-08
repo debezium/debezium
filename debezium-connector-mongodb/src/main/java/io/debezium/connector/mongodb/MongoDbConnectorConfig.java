@@ -175,7 +175,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDefault(1)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("Maximum number of threads used to perform an intial sync of the collections in a replica set. "
+            .withDescription("Maximum number of threads used to perform an initial sync of the collections in a replica set. "
                     + "Defaults to 1.");
 
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")

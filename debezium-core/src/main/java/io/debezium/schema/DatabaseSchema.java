@@ -26,4 +26,7 @@ public interface DatabaseSchema<I extends DataCollectionId> {
      * @return boolean indicating if table names are present
      */
     boolean tableInformationComplete();
+
+    default void assureNonEmptySchema() {
+    }
 }

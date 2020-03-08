@@ -21,8 +21,8 @@ import org.bson.types.BSONTimestamp;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.util.Collect;
 
 /**
@@ -64,7 +64,7 @@ import io.debezium.util.Collect;
  * @author Randall Hauch
  */
 @NotThreadSafe
-public final class SourceInfo extends AbstractSourceInfo {
+public final class SourceInfo extends BaseSourceInfo {
 
     public static final int SCHEMA_VERSION = 1;
 
@@ -369,6 +369,13 @@ public final class SourceInfo extends AbstractSourceInfo {
      */
     public boolean isInitialSyncOngoing(String replicaSetName) {
         return initialSyncReplicaSets.contains(replicaSetName);
+    }
+
+    /**
+     * Returns whether any replica sets are still running a snapshot.
+     */
+    public boolean isSnapshotRunning() {
+        return !initialSyncReplicaSets.isEmpty();
     }
 
     private static int intOffsetValue(Map<String, ?> values, String key) {

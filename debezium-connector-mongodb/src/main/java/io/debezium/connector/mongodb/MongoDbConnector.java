@@ -178,6 +178,8 @@ public class MongoDbConnector extends SourceConnector {
         try {
             logger.info("Stopping MongoDB connector");
             this.config = null;
+            // Clear interrupt flag so the graceful termination is always attempted.
+            Thread.interrupted();
             if (replicaSetMonitorExecutor != null) {
                 replicaSetMonitorExecutor.shutdownNow();
             }

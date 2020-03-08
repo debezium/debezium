@@ -5,14 +5,20 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.connector.mongodb.MongoDbSchema.COMPACT_JSON_SETTINGS;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,22 +31,30 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.mongodb.DBRef;
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
 import com.mongodb.util.JSON;
 
+import com.mongodb.util.JSONSerializers;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
@@ -314,6 +328,36 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         String updateId = JSON.parse(updateKey.getString("id")).toString();
         assertThat(insertId).isEqualTo(id.get());
         assertThat(updateId).isEqualTo(id.get());
+
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Delete a document
+        // ---------------------------------------------------------------------------------------------------------------
+        primary().execute("delete", mongo -> {
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("arbitrary");
+            Document filter = Document.parse("{\"a\": 1}");
+            coll.deleteOne(filter);
+        });
+
+        // Wait until we can consume the 1 delete ...
+        SourceRecords delete = consumeRecordsByTopic(2);
+        assertThat(delete.recordsForTopic("mongo.dbit.arbitrary").size()).isEqualTo(2);
+        assertThat(delete.topics().size()).isEqualTo(1);
+
+        SourceRecord deleteRecord = delete.allRecordsInOrder().get(0);
+        validate(deleteRecord);
+        verifyNotFromInitialSync(deleteRecord);
+        verifyDeleteOperation(deleteRecord);
+
+        SourceRecord tombStoneRecord = delete.allRecordsInOrder().get(1);
+        validate(tombStoneRecord);
+
+        Testing.debug("Delete event: " + deleteRecord);
+        Testing.debug("Tombstone event: " + tombStoneRecord);
+        Struct deleteKey = (Struct) deleteRecord.key();
+        String deleteId = JSON.parse(deleteKey.getString("id")).toString();
+        assertThat(deleteId).isEqualTo(id.get());
     }
 
     @Test
@@ -1026,5 +1070,566 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         }
 
         stopConnector();
+    }
+
+    @Test
+    public void shouldGenerateRecordForInsertEvent() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        final Instant timestamp = Instant.now();
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        // Consume records, should be 1, the insert
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        final SourceRecord deleteRecord = records.allRecordsInOrder().get(0);
+        final Struct key = (Struct) deleteRecord.key();
+        final Struct value = (Struct) deleteRecord.value();
+
+        assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
+        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+
+        assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
+        // assertThat(value.getString(Envelope.FieldName.BEFORE)).isNull();
+        assertThat(value.getString(Envelope.FieldName.AFTER)).isEqualTo(obj.toJson(COMPACT_JSON_SETTINGS));
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
+        assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+
+        // final Struct actualSource = value.getStruct(Envelope.FieldName.SOURCE);
+        // context.source().collectionEvent("rs0", new CollectionId("rs0", "dbit", "c1"));
+        // assertThat(actualSource).isEqualTo(context.source().struct());
+    }
+
+    @Test
+    public void shouldGenerateRecordForUpdateEvent() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        // Consume the insert
+        consumeRecordsByTopic(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document()
+                .append("$set", new Document()
+                        .append("name", "Sally"));
+
+        final Instant timestamp = Instant.now();
+        final Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
+        updateDocuments("dbit", "c1", filter, updateObj);
+
+        // Consume records, should be 1, the update
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        final SourceRecord deleteRecord = records.allRecordsInOrder().get(0);
+        final Struct key = (Struct) deleteRecord.key();
+        final Struct value = (Struct) deleteRecord.value();
+
+        assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+
+        Document patchObj = Document.parse(value.getString("patch"));
+        patchObj.remove("$v");
+
+        assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
+        assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
+        assertThat(patchObj.toJson(COMPACT_JSON_SETTINGS)).isEqualTo(updateObj.toJson(COMPACT_JSON_SETTINGS));
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
+        assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+
+        // final Struct actualSource = value.getStruct(Envelope.FieldName.SOURCE);
+        // context.source().collectionEvent("rs0", new CollectionId("rs0", "dbit", "c1"));
+        // assertThat(actualSource).isEqualTo(context.source().struct());
+    }
+
+    @Test
+    public void shouldGeneratorRecordForDeleteEvent() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        // Consume the insert
+        consumeRecordsByTopic(1);
+        assertNoRecordsToConsume();
+
+        // Delete record from datbase
+        final Instant timestamp = Instant.now();
+        deleteDocument("dbit", "c1", objId);
+
+        // Consume records, should be 2, delete and tombstone
+        final SourceRecords records = consumeRecordsByTopic(2);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        final SourceRecord deleteRecord = records.allRecordsInOrder().get(0);
+        final Struct key = (Struct) deleteRecord.key();
+        final Struct value = (Struct) deleteRecord.value();
+
+        assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+
+        assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
+        assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
+        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
+        assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+
+        // final Struct actualSource = value.getStruct(Envelope.FieldName.SOURCE);
+        // context.source().collectionEvent("rs0", new CollectionId("rs0", "dbit", "c1"));
+        // assertThat(actualSource).isEqualTo(context.source().struct());
+
+        final SourceRecord tombstoneRecord = records.allRecordsInOrder().get(1);
+        final Struct tombstoneKey = (Struct) tombstoneRecord.key();
+        assertThat(tombstoneKey.schema()).isSameAs(tombstoneRecord.keySchema());
+        assertThat(tombstoneKey.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+        assertThat(tombstoneRecord.value()).isNull();
+        assertThat(tombstoneRecord.valueSchema()).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldGenerateRecordForDeleteEventWithoutTombstone() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId);
+        insertDocuments("dbit", "c1", obj);
+
+        // Consume the insert
+        consumeRecordsByTopic(1);
+        assertNoRecordsToConsume();
+
+        // Delete record from datbase
+        final Instant timestamp = Instant.now();
+        deleteDocument("dbit", "c1", objId);
+
+        // Consume records, should only ever 1
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct key = (Struct) record.key();
+        final Struct value = (Struct) record.value();
+
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+        assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
+        assertThat(value.getString("patch")).isNull();
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.DELETE.code());
+        assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+
+        // final Struct actualSource = value.getStruct(Envelope.FieldName.SOURCE);
+        // context.source().collectionEvent("rs0", new CollectionId("rs0", "dbit", "c1"));
+        // assertThat(actualSource).isEqualTo(context.source().struct());
+    }
+
+    @Test
+    public void shouldGenerateRecordsWithCorrecltySerializedId() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // long
+        Document obj0 = new Document()
+                .append("_id", Long.valueOf(Integer.MAX_VALUE) + 10)
+                .append("name", "Sally");
+        insertDocuments("dbit", "c1", obj0);
+
+        // String
+        Document obj1 = new Document()
+                .append("_id", "123")
+                .append("name", "Sally");
+        insertDocuments("dbit", "c1", obj1);
+
+        // Complex key type
+        Document obj2 = new Document()
+                .append("_id", new Document().append("company", 32).append("dept", "home improvement"))
+                .append("name", "Sally");
+        insertDocuments("dbit", "c1", obj2);
+
+        // Date
+        Calendar cal = Calendar.getInstance();
+        cal.set(2017, 9, 19);
+        Document obj3 = new Document()
+                .append("_id", cal.getTime())
+                .append("name", "Sally");
+        insertDocuments("dbit", "c1", obj3);
+
+        // Decimal128
+        Document obj4 = new Document()
+                .append("_id", new Decimal128(new BigDecimal("123.45678")))
+                .append("name", "Sally");
+        insertDocuments("dbit", "c1", obj4);
+
+        final SourceRecords records = consumeRecordsByTopic(5);
+        final List<SourceRecord> sourceRecords = records.allRecordsInOrder();
+
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(0), "id", "2147483657");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(1), "id", "\"123\"");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(2), "id", "{ \"company\" : 32 , \"dept\" : \"home improvement\"}");
+        // that's actually not what https://docs.mongodb.com/manual/reference/mongodb-extended-json/#date suggests;
+        // seems JsonSerializers is not fully compliant with that description
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(3), "id", "{ \"$date\" : " + cal.getTime().getTime() + "}");
+        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{ \"$numberDecimal\" : \"123.45678\"}");
+    }
+
+    private static void assertSourceRecordKeyFieldIsEqualTo(SourceRecord record, String fieldName, String expected) {
+        final Struct struct = (Struct) record.key();
+        assertThat(struct.get(fieldName)).isEqualTo(expected);
+    }
+
+    @Test
+    public void shouldSupportDbRef2() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        ObjectId objId = new ObjectId();
+        Document obj = new Document()
+                .append("_id", objId)
+                .append("name", "Sally")
+                .append("ref", new DBRef("othercollection", 15));
+
+        final Instant timestamp = Instant.now();
+        insertDocuments("dbit", "c1", obj);
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.topics().size()).isEqualTo(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct key = (Struct) record.key();
+        final Struct value = (Struct) record.value();
+        assertThat(key.schema()).isSameAs(record.keySchema());
+        assertThat(key.get("id")).isEqualTo("{ \"$oid\" : \"" + objId + "\"}");
+
+        assertThat(value.schema()).isSameAs(record.valueSchema());
+
+        // @formatter:off
+        String expected = "{"
+                +     "\"_id\": {\"$oid\": \"" + objId + "\"},"
+                +     "\"name\": \"Sally\","
+                +     "\"ref\": {\"$ref\": \"othercollection\",\"$id\": 15}"
+                + "}";
+        // @formatter:on
+
+        assertThat(value.getString(Envelope.FieldName.AFTER)).isEqualTo(expected);
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
+        assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+
+        // Struct actualSource = value.getStruct(Envelope.FieldName.SOURCE);
+        // context.source().collectionEvent("rs0", new CollectionId("rs0", "dbit", "c1"));
+        // assertThat(actualSource).isEqualTo(context.source().struct());
+    }
+
+    @Test
+    public void shouldReplicateContent() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbA");
+
+        primary().execute("shouldCreateContactsDatabase", mongo -> {
+            // Create database and collection
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(new Document().append("name", "Jon Snow"), options);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(1);
+
+            // Read collection and find document
+            Bson filter = com.mongodb.client.model.Filters.eq("name", "Jon Snow");
+            FindIterable<Document> results = db.getCollection("contacts").find(filter);
+            try (MongoCursor<Document> cursor = results.iterator()) {
+                assertThat(cursor.tryNext().getString("name")).isEqualTo("Jon Snow");
+                assertThat(cursor.tryNext()).isNull();
+            }
+        });
+
+        // Start the connector
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        final Object[] expectedNames = { "Jon Snow", "Sally Hamm" };
+        primary().execute("shouldAddMoreRecordsToContacts", mongo -> {
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(new Document().append("name", "Sally Hamm"), options);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
+
+            // Read collection results
+            FindIterable<Document> results = db.getCollection("contacts").find();
+
+            Set<String> foundNames = new HashSet<>();
+            try (MongoCursor<Document> cursor = results.iterator()) {
+                while (cursor.hasNext()) {
+                    final String name = cursor.next().getString("name");
+                    foundNames.add(name);
+                }
+            }
+
+            assertThat(foundNames).containsOnly(expectedNames);
+        });
+
+        // Consume records
+        List<SourceRecord> records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final Set<String> foundNames = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            foundNames.add(document.getString("name"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation == Operation.READ || operation == Operation.CREATE).isTrue();
+        });
+        assertNoRecordsToConsume();
+        assertThat(foundNames).containsOnly(expectedNames);
+
+        // Stop connector
+        stopConnector();
+
+        // Restart connector
+        start(MongoDbConnector.class, config);
+
+        // Verify there are no records to be consumed
+        waitForStreamingRunning("mongodb", "mongo");
+        assertNoRecordsToConsume();
+
+        // Remove Jon Snow
+        AtomicReference<ObjectId> jonSnowId = new AtomicReference<>();
+        primary().execute("removeJohnSnow", mongo -> {
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+
+            Bson filter = com.mongodb.client.model.Filters.eq("name", "Jon Snow");
+            FindIterable<Document> results = db.getCollection("contacts").find(filter);
+            try (MongoCursor<Document> cursor = results.iterator()) {
+                final Document document = cursor.tryNext();
+                assertThat(document.getString("name")).isEqualTo("Jon Snow");
+                assertThat(cursor.tryNext()).isNull();
+
+                jonSnowId.set(document.getObjectId("_id"));
+                assertThat(jonSnowId.get()).isNotNull();
+            }
+
+            contacts.deleteOne(filter);
+        });
+
+        // Consume records, delete and tombstone
+        records = consumeRecordsByTopic(2).allRecordsInOrder();
+        final Set<ObjectId> foundIds = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct key = (Struct) record.key();
+            final ObjectId id = (ObjectId) (JSON.parse(key.getString("id")));
+            foundIds.add(id);
+            if (record.value() != null) {
+                final Struct value = (Struct) record.value();
+                final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+                assertThat(operation).isEqualTo(Operation.DELETE);
+            }
+        });
+
+        // Stop connector
+        stopConnector();
+
+        // Restart connector and clear offsets
+        initializeConnectorTestFramework();
+        start(MongoDbConnector.class, config);
+
+        waitForSnapshotToBeCompleted("mongodb", "mongo");
+
+        // Consume records, one record in snapshot
+        records = consumeRecordsByTopic(1).allRecordsInOrder();
+        foundNames.clear();
+
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            foundNames.add(document.getString("name"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation).isEqualTo(Operation.READ);
+        });
+
+        final Object[] allExpectedNames = { "Sally Hamm" };
+        assertThat(foundNames).containsOnly(allExpectedNames);
+
+        waitForStreamingRunning("mongodb", "mongo");
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    public void shouldNotReplicateSnapshot() throws Exception {
+        // todo: this configuration causes NPE at MongoDbStreamingChangeEventSource.java:143
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbA.contacts")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NEVER)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbA");
+
+        primary().execute("shouldCreateContactsDatabase", mongo -> {
+            // Create database and collection
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(new Document().append("name", "Jon Snow"), options);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(1);
+        });
+
+        // Start the connector
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        primary().execute("shouldAddMoreRecordsToContacts", mongo -> {
+            MongoDatabase db = mongo.getDatabase("dbA");
+            MongoCollection<Document> contacts = db.getCollection("contacts");
+            InsertOneOptions options = new InsertOneOptions().bypassDocumentValidation(true);
+            contacts.insertOne(new Document().append("name", "Ygritte"), options);
+            assertThat(db.getCollection("contacts").countDocuments()).isEqualTo(2);
+        });
+
+        // Consume records
+        List<SourceRecord> records = consumeRecordsByTopic(1).allRecordsInOrder();
+        final Set<String> foundNames = new HashSet<>();
+        records.forEach(record -> {
+            VerifyRecord.isValid(record);
+
+            final Struct value = (Struct) record.value();
+            final String after = value.getString(Envelope.FieldName.AFTER);
+
+            final Document document = Document.parse(after);
+            foundNames.add(document.getString("name"));
+
+            final Operation operation = Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
+            assertThat(operation).isEqualTo(Operation.CREATE);
+        });
+        assertNoRecordsToConsume();
+        assertThat(foundNames).containsOnly("Ygritte");
+    }
+
+    private void insertDocuments(String dbName, String collectionName, Document... documents) {
+        primary().execute("store documents", mongo -> {
+            Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
+            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoCollection<Document> coll = db.getCollection(collectionName);
+
+            for (Document document : documents) {
+                InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+                assertThat(document).isNotNull();
+                assertThat(document.size()).isGreaterThan(0);
+                coll.insertOne(document, insertOptions);
+            }
+        });
+    }
+
+    private void updateDocuments(String dbName, String collectionName, Document filter, Document document) {
+        primary().execute("update", mongo -> {
+            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoCollection<Document> coll = db.getCollection(collectionName);
+            coll.updateOne(filter, document);
+        });
+    }
+
+    private void deleteDocument(String dbName, String collectionName, ObjectId objectId) {
+        primary().execute("delete", mongo -> {
+            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoCollection<Document> coll = db.getCollection(collectionName);
+            Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objectId + "\"}}");
+            coll.deleteOne(filter);
+        });
     }
 }

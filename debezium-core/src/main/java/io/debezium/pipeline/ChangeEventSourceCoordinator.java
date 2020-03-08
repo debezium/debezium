@@ -29,7 +29,7 @@ import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
-import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Threads;
 
 /**
@@ -49,7 +49,7 @@ public class ChangeEventSourceCoordinator {
     private final ChangeEventSourceFactory changeEventSourceFactory;
     private final ExecutorService executor;
     private final EventDispatcher<?> eventDispatcher;
-    private final RelationalDatabaseSchema schema;
+    private final DatabaseSchema<?> schema;
 
     private volatile boolean running;
     private volatile StreamingChangeEventSource streamingSource;
@@ -59,7 +59,7 @@ public class ChangeEventSourceCoordinator {
 
     public ChangeEventSourceCoordinator(OffsetContext previousOffset, ErrorHandler errorHandler, Class<? extends SourceConnector> connectorType,
                                         CommonConnectorConfig connectorConfig,
-                                        ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, RelationalDatabaseSchema schema) {
+                                        ChangeEventSourceFactory changeEventSourceFactory, EventDispatcher<?> eventDispatcher, DatabaseSchema<?> schema) {
         this.previousOffset = previousOffset;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;

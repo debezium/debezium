@@ -100,9 +100,9 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     }
 
     @Override
-    public void tableSnapshotCompleted(TableId tableId, long numRows) {
-        rowsScanned.put(tableId.toString(), numRows);
-        remainingTables.remove(tableId.toString());
+    public void dataCollectionSnapshotCompleted(String dataCollectionId, long numRows) {
+        rowsScanned.put(dataCollectionId, numRows);
+        remainingTables.remove(dataCollectionId);
     }
 
     @Override

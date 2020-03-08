@@ -12,8 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 import org.bson.Document;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.junit.After;
 import org.junit.Before;
 
@@ -24,6 +22,7 @@ import com.mongodb.client.model.InsertOneOptions;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
 /**
@@ -33,10 +32,9 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
 
-    protected static final JsonWriterSettings WRITER_SETTINGS = new JsonWriterSettings(JsonMode.STRICT, "", ""); // most compact JSON
-
     protected Configuration config;
     protected MongoDbTaskContext context;
+    protected LogInterceptor logInterceptor;
 
     @Before
     public void beforEach() {
@@ -134,6 +132,21 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             MongoDatabase db = mongo.getDatabase(dbName);
             MongoCollection<Document> collection = db.getCollection(collectionName);
             collection.updateOne(filter, document);
+        });
+    }
+
+    /**
+     * Deletes a document in a collection based on a specified filter.
+     *
+     * @param dbName the database name
+     * @param collectionName the collection name
+     * @param filter the document filter
+     */
+    protected void deleteDocuments(String dbName, String collectionName, Document filter) {
+        primary().execute("delete", mongo -> {
+            MongoDatabase db = mongo.getDatabase(dbName);
+            MongoCollection<Document> coll = db.getCollection(collectionName);
+            coll.deleteOne(filter);
         });
     }
 

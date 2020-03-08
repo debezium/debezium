@@ -235,6 +235,10 @@ public final class Envelope {
         };
     }
 
+    public static Envelope fromSchema(Schema schema) {
+        return new Envelope(schema);
+    }
+
     private final Schema schema;
 
     private Envelope(Schema schema) {
