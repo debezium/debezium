@@ -1077,13 +1077,6 @@ The following configuration properties are _required_ unless a default value is 
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _databaseName_._tableName_. May not be used with `table.whitelist`.
 
-|`event.processing{zwsp}.failure.handling.mode`
-|`fail`
-| Specifies how the connector should react to exceptions during processing of events.
-`fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the offset of the problematic event to be logged. +
-`skip` will cause the problematic event to be skipped.
-
 |`max.queue.size`
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the binlog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.

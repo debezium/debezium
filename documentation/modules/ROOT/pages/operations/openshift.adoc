@@ -49,7 +49,7 @@ oc process strimzi-connect-s2i -p CLUSTER_NAME=debezium -p KAFKA_CONNECT_BOOTSTR
 export DEBEZIUM_VERSION={debezium-version}
 mkdir -p plugins && cd plugins && \
 for PLUGIN in {mongodb,mysql,postgres}; do \
-    curl https://repo1.maven.org/maven2/io/debezium/debezium-connector-$PLUGIN/$DEBEZIUM_VERSION/debezium-connector-$PLUGIN-$DEBEZIUM_VERSION-plugin.tar.gz | tar xz; \
+    curl http://central.maven.org/maven2/io/debezium/debezium-connector-$PLUGIN/$DEBEZIUM_VERSION/debezium-connector-$PLUGIN-$DEBEZIUM_VERSION-plugin.tar.gz | tar xz; \
 done && \
 oc start-build debezium-connect --from-dir=. --follow && \
 cd .. && rm -rf plugins

@@ -895,7 +895,7 @@ The following table describes how the connector maps each of the MySQL data type
 |The `length` schema parameter contains an integer representing the number of bits. The resulting `byte[]` will contain the bits in little-endian form and will be sized to contain at least the specified number of bits (e.g., `numBytes = n/8 + (n%8== 0 ? 0 : 1)` where `n` is the number of bits).
 
 |`TINYINT`
-|`INT16`
+|`INT8`
 |n/a
 |
 
@@ -1736,13 +1736,13 @@ Fully-qualified names for columns are of the form _databaseName_._tableName_._co
 Note: This option requires MySQL be configured with the binlog_rows_query_log_events option set to ON. Query will not be present for events generated from the snapshot process. +
 WARNING: Enabling this option may expose tables or fields explicitly blacklisted or masked by including the original SQL statement in the change event. For this reason this option is defaulted to 'false'.
 
-|`event.processing{zwsp}.failure.handling.mode`
+|`event.deserialization{zwsp}.failure.handling.mode`
 |`fail`
 | Specifies how the connector should react to exceptions during deserialization of binlog events.
 `fail` will propagate the exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
 (make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
-`skip` will cause problematic event will be skipped.
+`ignore` will cause problematic event will be skipped.
 
 |`inconsistent.schema.handling.mode`
 |`fail`
@@ -1750,7 +1750,7 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 `fail` will throw an exception (indicating the problematic event and its binlog offset), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the problematic event and its binlog offset to be logged
 (make sure that xref:operations/logging.adoc[the logger] is set to the `WARN` or `ERROR` level). +
-`skip` will cause the problematic event to be skipped.
+`ignore` will cause the problematic event to be skipped.
 
 |`max.queue.size`
 |`8192`
@@ -1776,10 +1776,9 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 |
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used. May not be used with `gtid.source.includes`.
 
-|`gtid.new.channel.position` +
-_deprecated and scheduled for removal_
-|`earliest`
-| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where Debezium is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before Debezium is connected. These writes would be lost when using `latest`.
+|`gtid.new.channel.position`
+|`latest`
+| When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest`, the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where Debezium is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before Debezium is connected. These writes would be lost when using `latest`.
 
 |`tombstones.on.delete`
 |`true`
