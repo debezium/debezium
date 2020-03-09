@@ -164,7 +164,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         else {
             LOGGER.info("The last event processed was transactional, resuming at the oplog event '{}', expecting to skip '{}' events",
                     oplogStart, txOrder.getAsLong());
-            filter = Filters.and(Filters.gt("ts", oplogStart), Filters.exists("fromMigrate", false));
+            filter = Filters.and(Filters.gte("ts", oplogStart), Filters.exists("fromMigrate", false));
             oplogContext.setIncompleteEventTimestamp(oplogStart);
             oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
         }
@@ -186,6 +186,15 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 if (event != null) {
                     if (!handleOplogEvent(primaryAddress, event, event, 0, oplogContext)) {
                         // Something happened and we are supposed to stop reading
+                        return;
+                    }
+
+                    try {
+                        dispatcher.dispatchHeartbeatEvent(oplogContext.getOffset());
+                    }
+                    catch (InterruptedException e) {
+                        LOGGER.info("Replicator thread is interrupted");
+                        Thread.currentThread().interrupt();
                         return;
                     }
                 }
@@ -308,15 +317,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                                     oplogContext.getOffset(),
                                     clock,
                                     event));
-                }
-                catch (Exception e) {
-                    errorHandler.setProducerThrowable(e);
-                    return false;
-                }
-            }
-            else {
-                try {
-                    dispatcher.dispatchHeartbeatEvent(oplogContext.getOffset());
                 }
                 catch (Exception e) {
                     errorHandler.setProducerThrowable(e);
