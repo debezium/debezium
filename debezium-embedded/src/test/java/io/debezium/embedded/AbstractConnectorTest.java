@@ -31,6 +31,7 @@ import java.util.function.Predicate;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
+import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.apache.kafka.common.config.Config;
@@ -815,7 +816,7 @@ public abstract class AbstractConnectorTest implements Testing {
             }
             try {
                 final boolean completed = (boolean) mbeanServer
-                        .getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server), "SnapshotCompleted");
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted");
                 if (completed) {
                     break;
                 }
@@ -845,12 +846,14 @@ public abstract class AbstractConnectorTest implements Testing {
             }
             try {
                 final boolean completed = (boolean) mbeanServer
-                        .getAttribute(new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + contextName + ",server=" + server), "Connected");
+                        .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
                 if (completed) {
                     break;
                 }
+                System.out.println("Not yet completed, waiting...");
             }
             catch (InstanceNotFoundException e) {
+                System.out.println("Not yet started");
                 Testing.print("Metrics has not started yet");
             }
             catch (Exception e) {
@@ -858,5 +861,17 @@ public abstract class AbstractConnectorTest implements Testing {
             }
             metronome.pause();
         }
+    }
+
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server);
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
+        return getStreamingMetricsObjectName(connector, server, "streaming");
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {
+        return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server);
     }
 }
