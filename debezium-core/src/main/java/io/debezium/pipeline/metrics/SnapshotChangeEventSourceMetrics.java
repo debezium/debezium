@@ -20,6 +20,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * Metrics related to the initial snapshot of a connector.
@@ -89,20 +90,20 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     }
 
     @Override
-    public void monitoredTablesDetermined(Iterable<TableId> tableIds) {
-        Iterator<TableId> it = tableIds.iterator();
+    public void monitoredCollectionsDetermined(Iterable<DataCollectionId> dataCollectionIds) {
+        Iterator<DataCollectionId> it = dataCollectionIds.iterator();
         while (it.hasNext()) {
-            TableId tableId = it.next();
+            DataCollectionId dataCollectionId = it.next();
 
-            this.remainingTables.put(tableId.toString(), "");
-            monitoredTables.add(tableId.toString());
+            this.remainingTables.put(dataCollectionId.identifier(), "");
+            monitoredTables.add(dataCollectionId.identifier());
         }
     }
 
     @Override
-    public void dataCollectionSnapshotCompleted(String dataCollectionId, long numRows) {
-        rowsScanned.put(dataCollectionId, numRows);
-        remainingTables.remove(dataCollectionId);
+    public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
+        rowsScanned.put(dataCollectionId.identifier(), numRows);
+        remainingTables.remove(dataCollectionId.identifier());
     }
 
     @Override

@@ -118,6 +118,11 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     @Override
+    public String identifier() {
+        return id;
+    }
+
+    @Override
     public int compareTo(TableId that) {
         if (this == that) {
             return 0;
@@ -147,7 +152,7 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
 
     @Override
     public String toString() {
-        return id;
+        return identifier();
     }
 
     /**

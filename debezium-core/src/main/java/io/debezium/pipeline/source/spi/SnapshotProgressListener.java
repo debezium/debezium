@@ -5,7 +5,11 @@
  */
 package io.debezium.pipeline.source.spi;
 
+import static io.debezium.util.Iterators.toIterable;
+import static io.debezium.util.Iterators.transform;
+
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 
 /**
  * A class invoked by {@link SnapshotChangeEventSource} whenever an important event or change of state happens.
@@ -16,21 +20,29 @@ public interface SnapshotProgressListener {
 
     void snapshotStarted();
 
-    void monitoredTablesDetermined(Iterable<TableId> tableIds);
+    /**
+     * @deprecated Since 1.1, use {@link #monitoredCollectionsDetermined(Iterable)} instead.
+     */
+    @Deprecated
+    default void monitoredTablesDetermined(Iterable<TableId> tableIds) {
+        monitoredCollectionsDetermined(toIterable(transform(tableIds.iterator(), tableId -> tableId)));
+    }
+
+    void monitoredCollectionsDetermined(Iterable<DataCollectionId> dataCollectionIds);
 
     void snapshotCompleted();
 
     void snapshotAborted();
 
     /**
-     * @deprecated Since 1.1, use {@link #dataCollectionSnapshotCompleted(String, long)} instead.
+     * @deprecated Since 1.1, use {@link #dataCollectionSnapshotCompleted(DataCollectionId, long)} instead.
      */
     @Deprecated
     default void tableSnapshotCompleted(TableId id, long numRows) {
-        dataCollectionSnapshotCompleted(id.toString(), numRows);
+        dataCollectionSnapshotCompleted(id, numRows);
     }
 
-    void dataCollectionSnapshotCompleted(String dataCollectionId, long numRows);
+    void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows);
 
     void rowsScanned(TableId tableId, long numRows);
 
@@ -45,11 +57,11 @@ public interface SnapshotProgressListener {
         }
 
         @Override
-        public void monitoredTablesDetermined(Iterable<TableId> tableIds) {
+        public void monitoredCollectionsDetermined(Iterable<DataCollectionId> dataCollectionIds) {
         }
 
         @Override
-        public void dataCollectionSnapshotCompleted(String dataCollectionId, long numRows) {
+        public void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows) {
         }
 
         @Override

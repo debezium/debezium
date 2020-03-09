@@ -331,6 +331,68 @@ public class Iterators {
     }
 
     /**
+     * Get an {@link Iterable} from an {@link Iterator}.
+     *
+     * @param iterator the source iterator
+     * @param <T> the iterator type
+     *
+     * @return the iterable
+     */
+    public static <T> Iterable<T> toIterable(Iterator<T> iterator) {
+        return new Iterable<T>() {
+            @Override
+            public Iterator<T> iterator() {
+                return iterator;
+            }
+        };
+    }
+
+    /**
+     * An iterator that is able to transform its contents to another type.
+     *
+     * @param <F> the source transform type
+     * @param <T> the destination transform type
+     */
+    public static interface TransformedIterator<F, T> extends Iterator<T> {
+        T transform(F from);
+    }
+
+    /**
+     * Transform an iterator from a given type to super types.
+     *
+     * @param fromIterator the source iterator
+     * @param function the function to be applied when performing element transformation
+     *
+     * @param <F> the source transform type
+     * @param <T> the destination transform type
+     *
+     * @return the transformed iterator
+     */
+    public static <F, T> Iterator<T> transform(Iterator<F> fromIterator, Function<? super F, ? extends T> function) {
+        return new TransformedIterator<F, T>() {
+            @Override
+            public boolean hasNext() {
+                return fromIterator.hasNext();
+            }
+
+            @Override
+            public T next() {
+                return transform(fromIterator.next());
+            }
+
+            @Override
+            public void remove() {
+                fromIterator.remove();
+            }
+
+            @Override
+            public T transform(F from) {
+                return function.apply(from);
+            }
+        };
+    }
+
+    /**
      * A read only iterator that is able to preview the next value without consuming it or altering the behavior or semantics
      * of the normal {@link Iterator} methods.
      *
