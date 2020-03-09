@@ -126,7 +126,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            errorHandler = new ErrorHandler(PostgresConnector.class, connectorConfig.getLogicalName(), queue, this::doStop);
+            errorHandler = new ErrorHandler(PostgresConnector.class, connectorConfig.getLogicalName(), queue);
 
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
@@ -218,19 +218,9 @@ public class PostgresConnectorTask extends BaseSourceTask {
             }
         }
         catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Thread.interrupted();
             LOGGER.error("Interrupted while stopping coordinator", e);
             throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
-        try {
-            if (errorHandler != null) {
-                errorHandler.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.error("Interrupted while stopping", e);
         }
 
         if (jdbcConnection != null) {
