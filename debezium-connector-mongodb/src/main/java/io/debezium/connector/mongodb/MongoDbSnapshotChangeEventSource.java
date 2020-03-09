@@ -526,7 +526,7 @@ public class MongoDbSnapshotChangeEventSource implements SnapshotChangeEventSour
 
                 LOGGER.info("\t Finished exporting {} records for collection '{}'; total duration '{}'", docs, collectionId,
                         Strings.duration(clock.currentTimeInMillis() - exportStart));
-                snapshotProgressListener.dataCollectionSnapshotCompleted(collectionId.toString(), docs);
+                snapshotProgressListener.dataCollectionSnapshotCompleted(collectionId, docs);
             }
         });
     }

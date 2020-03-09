@@ -80,6 +80,11 @@ public final class CollectionId implements DataCollectionId {
     }
 
     @Override
+    public String identifier() {
+        return replicaSetName + "." + dbName + "." + name;
+    }
+
+    @Override
     public int hashCode() {
         return name.hashCode();
     }
@@ -109,6 +114,6 @@ public final class CollectionId implements DataCollectionId {
 
     @Override
     public String toString() {
-        return replicaSetName + "." + dbName + "." + name;
+        return identifier();
     }
 }
