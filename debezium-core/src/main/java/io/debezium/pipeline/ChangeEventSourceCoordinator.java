@@ -146,7 +146,6 @@ public class ChangeEventSourceCoordinator {
             snapshotMetrics.unregister(LOGGER);
             streamingMetrics.unregister(LOGGER);
         }
-        Thread.currentThread().interrupt();
     }
 
     private class ChangeEventSourceContextImpl implements ChangeEventSourceContext {

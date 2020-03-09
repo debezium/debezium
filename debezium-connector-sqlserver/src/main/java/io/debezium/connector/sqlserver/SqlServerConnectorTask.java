@@ -98,7 +98,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue, this::doStop);
+        errorHandler = new ErrorHandler(SqlServerConnector.class, connectorConfig.getLogicalName(), queue);
 
         final SqlServerEventMetadataProvider metadataProvider = new SqlServerEventMetadataProvider();
 
@@ -144,19 +144,9 @@ public class SqlServerConnectorTask extends BaseSourceTask {
             }
         }
         catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Thread.interrupted();
             LOGGER.error("Interrupted while stopping coordinator", e);
             throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
-        try {
-            if (errorHandler != null) {
-                errorHandler.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.error("Interrupted while stopping", e);
         }
 
         try {

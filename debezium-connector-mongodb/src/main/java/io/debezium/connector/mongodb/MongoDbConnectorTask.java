@@ -86,7 +86,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
 
-            errorHandler = new ErrorHandler(MongoDbConnector.class, connectorConfig.getLogicalName(), queue, this::doStop);
+            errorHandler = new ErrorHandler(MongoDbConnector.class, connectorConfig.getLogicalName(), queue);
 
             final MongoDbEventMetadataProvider metadataProvider = new MongoDbEventMetadataProvider();
 
@@ -139,19 +139,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                 }
             }
             catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                Thread.interrupted();
                 logger.error("Interrupted while stopping coordinator", e);
                 throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-            }
-
-            try {
-                if (errorHandler != null) {
-                    errorHandler.stop();
-                }
-            }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.error("Interrupted while stopping", e);
             }
 
             if (schema != null) {
