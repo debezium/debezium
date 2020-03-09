@@ -289,8 +289,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter {
                         logger.info("detected new type for column '{}', old type was {} ({}), new type is {} ({}); refreshing table schema", columnName, localType,
                                 column.typeName(),
                                 incomingType, message.getType().getName());
+                        return true;
                     }
-                    return true;
                 }
                 if (metadataInMessage) {
                     final int localLength = column.length();
