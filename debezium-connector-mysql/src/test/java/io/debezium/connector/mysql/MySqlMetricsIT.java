@@ -22,7 +22,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -37,7 +36,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-metrics.txt").toAbsolutePath();
     private static final String SERVER_NAME = "myserver";
-    private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_metrics_test").withDbHistoryPath(DB_HISTORY_PATH);
+    private final UniqueDatabase DATABASE = new UniqueDatabase(SERVER_NAME, "connector_metrics_test").withDbHistoryPath(DB_HISTORY_PATH);
 
     private static final String INSERT1 = "INSERT INTO simple (val) VALUES (25);";
     private static final String INSERT2 = "INSERT INTO simple (val) VALUES (50);";
@@ -65,14 +64,10 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     public void testLifecycle() throws Exception {
         // start connector
         start(MySqlConnector.class,
-                Configuration.create()
+                DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                        .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.USER, "snapper")
-                        .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                        .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                         .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
@@ -117,14 +112,10 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
         // start connector
         start(MySqlConnector.class,
-                Configuration.create()
+                DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
-                        .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.USER, "snapper")
-                        .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                        .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                         .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
@@ -144,14 +135,10 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
 
         // start connector
         start(MySqlConnector.class,
-                Configuration.create()
+                DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                        .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.USER, "snapper")
-                        .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                        .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                         .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
@@ -165,14 +152,10 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
     public void testStreamingOnlyMetrics() throws Exception {
         // start connector
         start(MySqlConnector.class,
-                Configuration.create()
+                DATABASE.defaultConfig()
                         .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                        .with(MySqlConnectorConfig.SERVER_NAME, SERVER_NAME)
                         .with(MySqlConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
                         .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
-                        .with(MySqlConnectorConfig.USER, "snapper")
-                        .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                        .with(MySqlConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
                         .with(MySqlConnectorConfig.TABLE_WHITELIST, DATABASE.qualifiedTableName("simple"))
                         .with(MySqlConnectorConfig.TABLES_IGNORE_BUILTIN, Boolean.TRUE)
                         .with(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL, Boolean.TRUE)
