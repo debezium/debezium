@@ -31,11 +31,19 @@ public class ErrorHandler {
         boolean first = this.producerThrowable.compareAndSet(null, producerThrowable);
 
         if (first) {
-            queue.producerFailure(producerThrowable);
+            queue.producerFailure(producerThrowable, isRetriable(producerThrowable));
         }
     }
 
     public Throwable getProducerThrowable() {
         return producerThrowable.get();
+    }
+
+    /**
+     * Whether the given throwable is retriable (e.g. an exception indicating a
+     * connection loss) or not.
+     */
+    protected boolean isRetriable(Throwable throwable) {
+        return false;
     }
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,7 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
     private final Metronome metronome;
     private final Supplier<PreviousContext> loggingContextSupplier;
 
-    private volatile Throwable producerFailure;
+    private volatile ConnectException producerFailure;
 
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier) {
         this.pollInterval = pollInterval;
@@ -162,13 +163,18 @@ public class ChangeEventQueue<T> implements ChangeEventQueueMetrics {
         }
     }
 
-    public void producerFailure(final Throwable producerFailure) {
-        this.producerFailure = producerFailure;
+    public void producerFailure(final Throwable producerFailure, boolean retriable) {
+        if (retriable) {
+            this.producerFailure = new RetriableException("An exception occurred in the change event producer. This connector will be restarted.", producerFailure);
+        }
+        else {
+            this.producerFailure = new ConnectException("An exception occurred in the change event producer. This connector will be stopped.", producerFailure);
+        }
     }
 
     private void throwProducerFailureIfPresent() {
         if (producerFailure != null) {
-            throw new ConnectException("An exception occurred in the change event producer. This connector will be stopped.", producerFailure);
+            throw producerFailure;
         }
     }
 

@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
@@ -22,6 +23,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -45,6 +48,13 @@ public abstract class BaseSourceTask extends SourceTask {
      */
     private final ReentrantLock stateLock = new ReentrantLock();
 
+    private volatile ElapsedTimeStrategy restartDelay;
+
+    /**
+     * Raw connector properties, kept here so they can be passed again in case of a restart.
+     */
+    private volatile Map<String, String> props;
+
     /**
      * The change event source coordinator for those connectors adhering to the new
      * framework structure, {@code null} for legacy-style connectors.
@@ -60,18 +70,19 @@ public abstract class BaseSourceTask extends SourceTask {
 
     @Override
     public final void start(Map<String, String> props) {
+        if (context == null) {
+            throw new ConnectException("Unexpected null context");
+        }
+
         stateLock.lock();
 
         try {
-            if (context == null) {
-                throw new ConnectException("Unexpected null context");
-            }
-
             if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
                 LOGGER.info("Connector has already been started");
                 return;
             }
 
+            this.props = props;
             Configuration config = Configuration.from(props);
             if (!config.validateAndRecord(getAllConfigurationFields(), LOGGER::error)) {
                 throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
@@ -102,16 +113,58 @@ public abstract class BaseSourceTask extends SourceTask {
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
-        return doPoll();
+        boolean started = startIfNeededAndPossible();
+
+        // in backoff period after a retriable exception
+        if (!started) {
+            return Collections.emptyList();
+        }
+
+        try {
+            return doPoll();
+        }
+        catch (RetriableException e) {
+            stop(true);
+            throw e;
+        }
     }
 
     /**
      * Returns the next batch of source records, if any are available.
      */
-    public abstract List<SourceRecord> doPoll() throws InterruptedException;
+    protected abstract List<SourceRecord> doPoll() throws InterruptedException;
+
+    /**
+     * Starts this connector in case it has been stopped after a retriable error,
+     * and the backoff period has passed.
+     */
+    private boolean startIfNeededAndPossible() {
+        stateLock.lock();
+
+        try {
+            if (state.get() == State.RUNNING) {
+                return true;
+            }
+            else if (restartDelay != null && restartDelay.hasElapsed()) {
+                start(props);
+                return true;
+            }
+            else {
+                LOGGER.info("Awaiting end of restart backoff period after a retriable error");
+                return false;
+            }
+        }
+        finally {
+            stateLock.unlock();
+        }
+    }
 
     @Override
     public final void stop() {
+        stop(false);
+    }
+
+    private void stop(boolean restart) {
         stateLock.lock();
 
         try {
@@ -120,7 +173,18 @@ public abstract class BaseSourceTask extends SourceTask {
                 return;
             }
 
+            if (restart) {
+                LOGGER.warn("Going to restart connector after 10 sec. after a retriable exception");
+            }
+            else {
+                LOGGER.info("Stopping down connector");
+            }
+
             doStop();
+
+            if (restart && restartDelay == null) {
+                restartDelay = ElapsedTimeStrategy.constant(Clock.system(), 10_000);
+            }
         }
         finally {
             stateLock.unlock();
@@ -166,6 +230,12 @@ public abstract class BaseSourceTask extends SourceTask {
      */
     protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
         Map<String, ?> partition = loader.getPartition();
+
+        if (lastOffset != null) {
+            OffsetContext offsetContext = loader.load(lastOffset);
+            LOGGER.info("Found previous offset after restart {}", offsetContext);
+            return offsetContext;
+        }
 
         Map<String, Object> previousOffset = context.offsetStorageReader()
                 .offsets(Collections.singleton(partition))
