@@ -455,7 +455,7 @@ public class TypeRegistry {
             final SqlTypeMapper sqlTypeMapper = new SqlTypeMapper(connection, typeInfo);
 
             try (final PreparedStatement statement = connection.prepareStatement(SQL_NON_ARRAY_TYPE_OID_LOOKUP)) {
-                statement.setLong(1, lookupOid);
+                statement.setInt(1, lookupOid);
                 try (final ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
                         final int oid = (int) rs.getLong("oid");
