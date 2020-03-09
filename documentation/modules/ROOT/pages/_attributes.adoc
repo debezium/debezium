@@ -1,8 +1,14 @@
-// set attributes usually set by Antora
-ifndef::site-gen-antora[]
 :moduledir: ..
 :attachmentsdir: {moduledir}/assets/attachments
 :examplesdir: {moduledir}/examples
 :imagesdir: {moduledir}/assets/images
 :partialsdir: {moduledir}/pages/_partials
-endif::[]
+
+:debezium-version: 1.0.0.Final
+:debezium-dev-version: 1.0
+:debezium-kafka-version: 2.4.0
+:debezium-docker-label: 1.0
+:install-version: 1.0
+:confluent-platform-version: 5.3.1
+:strimzi-version: 0.13.0
+:jira-url: https://issues.redhat.com

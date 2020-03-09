@@ -1159,7 +1159,7 @@ Kafka, Zookeeper, and Kafka Connect all have xref:operations/monitoring.adoc[bui
 
 |`ChangesApplied`
 |`long`
-|The total number of schema changes applied during recovery and runtime.
+|The total number of schema changes applie during recovery and runtime.
 
 |`MilliSecondsSinceLastRecoveredChange`
 |`long`
@@ -1303,13 +1303,6 @@ In case of `repeatable_read` and `read_committed` modes, it might happen that, f
 twice - once in initial snapshot and once in streaming phase. Nonetheless, that consistency level should do for
 data mirroring.
 For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
-
-|`event.processing{zwsp}.failure.handling.mode`
-|`fail`
-| Specifies how the connector should react to exceptions during processing of events.
-`fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
-`warn` will cause the problematic event to be skipped and the offset of the problematic event to be logged. +
-`skip` will cause the problematic event to be skipped.
 
 |`poll.interval.ms`
 |`1000`
