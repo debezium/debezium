@@ -73,17 +73,18 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext snapshotContext) throws Exception {
         ((Db2SnapshotContext) snapshotContext).isolationLevelBeforeStart = jdbcConnection.connection().getTransactionIsolation();
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
         return jdbcConnection.readTableNames(null, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext)
+            throws SQLException, InterruptedException {
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_UNCOMMITTED) {
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
             LOGGER.info("Schema locking was disabled in connector configuration");
@@ -117,7 +118,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws SQLException {
         // Exclusive mode: locks should be kept until the end of transaction.
         // read_uncommitted mode; read_committed mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
@@ -127,7 +128,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
         ctx.offset = new Db2OffsetContext(
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
@@ -136,7 +137,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
@@ -162,7 +163,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws SQLException {
         return new SchemaChangeEvent(snapshotContext.offset.getPartition(), snapshotContext.offset.getOffset(), snapshotContext.catalogName,
                 table.id().schema(), null, table, SchemaChangeEventType.CREATE, true);
     }
@@ -191,7 +192,7 @@ public class Db2SnapshotChangeEventSource extends RelationalSnapshotChangeEventS
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class Db2SnapshotContext extends SnapshotContext {
+    private static class Db2SnapshotContext extends RelationalSnapshotContext {
 
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;

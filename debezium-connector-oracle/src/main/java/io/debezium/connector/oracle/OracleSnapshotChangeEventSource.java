@@ -78,12 +78,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
         return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext)
+            throws SQLException, InterruptedException {
         ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
 
         try (Statement statement = jdbcConnection.connection().createStatement()) {
@@ -100,12 +101,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws SQLException {
         jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
     }
 
     @Override
-    protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
         Optional<Long> latestTableDdlScn = getLatestTableDdlScn(ctx);
         long currentScn;
 
@@ -155,7 +156,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
      * Returns the SCN of the latest DDL change to the captured tables. The result will be empty if there's no table to
      * capture as per the configuration.
      */
-    private Optional<Long> getLatestTableDdlScn(SnapshotContext ctx) throws SQLException {
+    private Optional<Long> getLatestTableDdlScn(RelationalSnapshotContext ctx) throws SQLException {
         if (ctx.capturedTables.isEmpty()) {
             return Optional.empty();
         }
@@ -181,7 +182,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
@@ -205,7 +206,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws SQLException {
         try (Statement statement = jdbcConnection.connection().createStatement();
                 ResultSet rs = statement.executeQuery("select dbms_metadata.get_ddl( 'TABLE', '" + table.id().table() + "', '" + table.id().schema() + "' ) from dual")) {
 
@@ -237,7 +238,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class OracleSnapshotContext extends SnapshotContext {
+    private static class OracleSnapshotContext extends RelationalSnapshotContext {
 
         private Savepoint preSchemaSnapshotSavepoint;
 
