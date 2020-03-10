@@ -1,0 +1,19 @@
+[id="configuring-logging"]
+= Configuring logging
+
+By default, {prodname} connectors write all `INFO`, `WARN`, and `ERROR` messages to the console.
+However, you can change this configuration in the following ways:
+
+* xref:changing-logging-level[Change the logging level]
+* xref:adding-mapped-diagnostic-contexts[Add mapped diagnostic contexts]
+
+[NOTE]
+====
+This section only covers a couple methods you can use to configure {prodname} logging with Log4j.
+For more information about using Log4j,
+search for tutorials to set up and use appenders to send log messages to specific destinations.
+====
+
+include::../../modules/logging/p_changing-logging-level.adoc[leveloffset=+1]
+
+include::../../modules/logging/p_adding-mapped-diagnostic-contexts.adoc[leveloffset=+1]

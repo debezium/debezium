@@ -1,4 +1,4 @@
-= Debezium Logging
+= {prodname} logging
 include::../_attributes.adoc[]
 :linkattrs:
 :icons: font
@@ -8,134 +8,21 @@ include::../_attributes.adoc[]
 
 toc::[]
 
-Debezium has extensive logging built into its connectors, and you can easily change the logging configuration to control which of these log statements appear in the logs and where those logs are sent. Debezium (and Kafka, Kafka Connect, and Zookeeper) use the ubiquitous https://logging.apache.org/log4j/1.2/[Log4J] logging framework for Java.
+{prodname} has extensive logging built into its connectors,
+and you can change the logging configuration to control which of these log statements appear in the logs
+and where those logs are sent.
+{prodname} (as well as Kafka, Kafka Connect, and Zookeeper) use the https://logging.apache.org/log4j/1.2/[Log4j] logging framework for Java.
 
-By default the connectors produce a fair amount of useful information on startup, but then produce very few logs when the connector is simply keeping up with the source databases. This is often sufficient when the connector is operating normally, but likely is not be enough when the connector is behaving unexpectedly. In such cases, you can "turn on debug or trace logging" so that the connector generates much more verbose log messages describing what the connector is doing and what it is not doing.
+By default, the connectors produce a fair amount of useful information when they start up,
+but then produce very few logs when the connector is keeping up with the source databases.
+This is often sufficient when the connector is operating normally,
+but may not be enough when the connector is behaving unexpectedly.
+In such cases, you can change the logging level so that the connector generates much more verbose log messages describing what the connector is doing and what it is not doing.
 
-== Logging concepts
+include::../modules/logging/c_logging-concepts.adoc[leveloffset=+1]
 
-Each log message produced by the application will be sent to a specific _logger_. Every logger has a name such as `io.debezium.connector.mysql`, and the names form a _hierarchy_ of loggers. For example, the logger named `io.debezium.connector.mysql` has a parent logger named `io.debezium.connector`, which has a parent logger named `io.debezium`, all the way to the _root logger_ at the very top of this hierarchy.
+include::../modules/logging/c_understanding-default-logging-configuration.adoc[leveloffset=+1]
 
-Every log message produced by the application will also have a specific log _level_:
+include::../assemblies/logging/as_configuring-logging.adoc[leveloffset=+1]
 
-1. `ERROR` for errors, exceptions, and other significant problems
-2. `WARN` for _potential_ problems and issues
-3. `INFO` - for status and general activity (usually low-volume)
-4. `DEBUG` - more detailed activity that would be useful in diagnosing unexpected behavior
-5. `TRACE` - very verbose and detailed activity (usually very high volume)
-
-Log4J also allows you to define one or more _appenders_, which are essentially destinations where log messages will be written. Each appender controls the format of its log messages, giving you even more control over what the log messages look like.
-
-To configure logging, you specify the desired level for each logger and the appender(s) where those log messages should be written. Since loggers are hierarchical, the configuration for the root logger serves as a default for all of the loggers below it, although you can override any child (or descendant) logger.
-
-== Example logging configuration
-
-If you're running Debezium connectors in a Kafka Connect process, then Kafka Connect will use the Log4J configuration file (e.g., `config/connect-log4j.properties`) in the Kafka installation. The following are snippets from this file:
-
-.log4j.properties
-[source,properties]
-----
-log4j.rootLogger=INFO, stdout <1>
-
-log4j.appender.stdout=org.apache.log4j.ConsoleAppender <2>
-log4j.appender.stdout.layout=org.apache.log4j.PatternLayout <3>
-log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n <4>
-...
-----
-<1> Define the root logger should include `INFO`, `WARN`, and `ERROR` messages that should be written to the `stdout` appender.
-<2> Defines the `stdout` appender as writing to the console (as opposed to a file).
-<3> The `stdout` appender uses a pattern matching algorithm for the formatter
-<4> The pattern for the `stdout` appender (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4J documentation] for details)
-
-Unless you configure other loggers, all of the loggers used by Debezium will inherit the `rootLogger` configuration.
-
-== Debezium loggers
-
-For the most part, the Debezium code sends its log messages to loggers with names that match the fully-qualified name of the Java class that is generating the log message. This normally works well, since we use packages to organize code with similar or related functions.
-
-This means that you can easily control all of the log messages for a specific class or for all of the classes within or under a specific package. For example, to turn on debug logging for the _entire_ MySQL connector (and the database history implementation used by the connector) might be as simple as adding the following line(s) to your `log4j.properties` file:
-
-.log4j.properties
-[listing,properties,indent=0,options="nowrap"]
-----
-...
-log4j.logger.io.debezium.connector.mysql=DEBUG, stdout <1>
-log4j.logger.io.debezium.relational.history=DEBUG, stdout <2>
-
-log4j.additivity.io.debezium.connector.mysql=false <3>
-log4j.additivity.io.debezium.relational.history=false <3>
-...
-----
-<1> Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender
-<2> Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender
-<3> Turns off _additivity_, meaning the messages will not be sent also to appenders of parent loggers (this can prevent seeing duplicate log messages when using multiple appenders)
-
-Configuring logging is a tradeoff: provide too little and it's not clear what is going on; provide too much and it's too difficult to understand what's going on. Our goal is that `INFO` provides enough to see that the connector is healthy (though logging is not a substitute for xref:operations/monitoring.adoc[monitoring]), and that `DEBUG` is provides more detailed information to help you figure out what is going on. But sometimes `DEBUG` is not enough, and that's where `TRACE` comes in. The `TRACE` level is literally every log message produced by or under that named logger, and it can be voluminous.
-
-You can also configure logging for a specific subset of the classes within the connector, simply by adding more lines like those above except for more specific logger names. For example, maybe you're not sure why the MySQL connector is skipping some events when it is processing the binlog. Rather than turn on `DEBUG` or `TRACE` logging for whole connector, you can set the connector's logging to `INFO` and then configure `DEBUG` or `TRACE` on just the class that's reading the binlog. For example:
-
-.log4j.properties
-[listing,properties,indent=0,options="nowrap"]
-----
-...
-log4j.logger.io.debezium.connector.mysql=INFO, stdout <1>
-log4j.logger.io.debezium.connector.mysql.BinlogReader=DEBUG, stdout <1>
-log4j.logger.io.debezium.relational.history=INFO, stdout <2>
-
-log4j.additivity.io.debezium.connector.mysql=false <3>
-log4j.additivity.io.debezium.relational.history=false <3>
-log4j.additivity.io.debezium.connector.mysql.BinlogReader=false <3>
-...
-----
-
-This requires a bit more knowledge about the code, but here's a useful tip. First turn on `DEBUG` or `TRACE` logging for the whole connector (or even the `io.debezium` package), find the messages that are most useful, and look at the end of the log message to see the name of the Java class that produced the message. Then, turn the connector's logging back to `INFO` and _add_ a logger configuration for each of those "interesting" classes or packages. If there are a few classes you don't want to see as detailed log messages, add another logger configuration for those classes and set them to `INFO`.
-
-We've only just touched on the power of Log4J, so if you want even more control look for some tutorials about how to set up and use other appenders to send different log messages to specific destinations.
-
-== Mapped Diagnostic Contexts
-
-Most Debezium connectors use multiple threads to perform different activities, and the Kafka Connect workers also use multiple threads. This can make it challenging to look at a log file and find only those log messages for one of these logical activities. To make this easier, Debezium uses _mapped diagnostic contexts_, or _MDC_ to provide additional information for each thread via several properties that you can embed in your appender patterns:
-
-* `dbz.connectorType` - A short alias for the type of connector. For example, `MySql`, `Mongo`, `Postgres`, etc. All threads associated with the same _type_ of connector use the same value, so you can use this to find all log messages produced by a given type of connector.
-* `dbz.connectorName` - The name of the connector or database server as defined in the connector's configuration. For example `products`, `serverA`, etc. All threads associated with a specific _connector instance_ use the same value, so you can find all the log messages produced by a specific connector instance.
-* `dbz.connectorContext` - A short name for an activity running as a separate thread running within the connector's task. For example, `main`, `binlog`, `snapshot`, etc. In some cases when a connector assigns threads to specific resources (e.g., table or collection), the name of that resource could be used instead. Each thread associated with a connector would use a distinct value, so you can find all the log messages associated with this particular activity.
-
-You can use these properties within the appender's pattern defined in the `log4j.properties` file. For example, the following is a modification of the `stdout` appender's layout to use these MDC properties:
-
-.log4j.properties
-[listing,properties,indent=0,options="nowrap"]
-----
-...
-log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n
-...
-----
-
-This will produce messages in the log similar to these:
-
-[listing,shell,indent=0,options="nowrap"]
-----
-...
-2017-02-07 20:49:37,692 INFO   MySQL|dbserver1|snapshot  Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull with user 'debezium'   [io.debezium.connector.mysql.SnapshotReader]
-2017-02-07 20:49:37,696 INFO   MySQL|dbserver1|snapshot  Snapshot is using user 'debezium' with these MySQL grants:   [io.debezium.connector.mysql.SnapshotReader]
-2017-02-07 20:49:37,697 INFO   MySQL|dbserver1|snapshot  	GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
-...
-----
-
-Notice how each line includes the connector type (e.g., `MySQL`), the name of the connector (e.g., `dbserver1`), and the activity of the thread (e.g., `snapshot`). And here you can see at the end of the line the name of the class that generated the message.
-
-
-== Debezium Container Images
-
-The Debezium Container images for Zookeeper, Kafka, and Kafka Connect all set up their `log4j.properties` file to configure the Debezium-related loggers and to ensure all log messages go to the Docker containers console (and thus the Docker logs) and are written to files under the `/kafka/logs` directory, which you can mount to easily get access to those files.
-
-The containers use a `LOG_LEVEL` environment variable to set the log level for the root logger. So, when starting a container simply set this environment variable to one of the log levels (e.g., `-e LOG_LEVEL=DEBUG`), and all of the code within the container will start using that log level.
-
-If you need more control, create a new image that is based on ours, except in your `Dockerfile` copy your own `log4j.properties` file into the image:
-
-.Dockerfile
-[listing,dockerfile,indent=0,options="nowrap"]
-----
-...
-COPY log4j.properties $KAFKA_HOME/config/log4j.properties
-...
-----
+include::../modules/logging/p_configuring-log-level-docker.adoc[leveloffset=+1]
