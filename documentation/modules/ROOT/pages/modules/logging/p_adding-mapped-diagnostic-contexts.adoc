@@ -1,0 +1,63 @@
+[id="adding-mapped-diagnostic-contexts"]
+= Adding mapped diagnostic contexts
+
+Most {prodname} connectors (and the Kafka Connect workers) use multiple threads to perform different activities.
+This can make it difficult to look at a log file and find only those log messages for a particular logical activity.
+To make the log messages easier to find,
+{prodname} provides several _mapped diagnostic contexts_ (MDC) that provide additional information for each thread.
+
+{prodname} provides the following MDC properties:
+
+`dbz.connectorType`::
+A short alias for the type of connector.
+For example, `MySql`, `Mongo`, `Postgres`, and so on.
+All threads associated with the same _type_ of connector use the same value,
+so you can use this to find all log messages produced by a given type of connector.
+
+`dbz.connectorName`::
+The name of the connector or database server as defined in the connector's configuration.
+For example `products`, `serverA`, and so on.
+All threads associated with a specific _connector instance_ use the same value,
+so you can find all of the log messages produced by a specific connector instance.
+
+`dbz.connectorContext`::
+A short name for an activity running as a separate thread running within the connector's task.
+For example, `main`, `binlog`, `snapshot`, and so on.
+In some cases, when a connector assigns threads to specific resources (such as a table or collection),
+the name of that resource could be used instead.
+Each thread associated with a connector would use a distinct value,
+so you can find all of the log messages associated with this particular activity.
+
+To enable MDC for a connector,
+you configure an appender in the `log4j.properties` file.
+
+.Procedure
+
+. Open the `log4j.properties` file.
+
+. Configure an appender to use any of the supported {prodname} MDC properties.
++
+--
+In this example, the `stdout` appender is configured to use these MDC properties:
+
+.log4j.properties
+[source,properties,options="nowrap"]
+----
+...
+log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n
+...
+----
+
+This will produce log messages similar to these:
+
+[source,shell,options="nowrap"]
+----
+...
+2017-02-07 20:49:37,692 INFO   MySQL|dbserver1|snapshot  Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull with user 'debezium'   [io.debezium.connector.mysql.SnapshotReader]
+2017-02-07 20:49:37,696 INFO   MySQL|dbserver1|snapshot  Snapshot is using user 'debezium' with these MySQL grants:   [io.debezium.connector.mysql.SnapshotReader]
+2017-02-07 20:49:37,697 INFO   MySQL|dbserver1|snapshot  	GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
+...
+----
+
+Each line in the log includes the connector type (for example, `MySQL`), the name of the connector (for example, `dbserver1`), and the activity of the thread (for example, `snapshot`).
+--
