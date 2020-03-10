@@ -422,7 +422,6 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         public final Tables tables;
 
         public Set<TableId> capturedTables;
-        public OffsetContext offset;
         public boolean lastTable;
         public boolean lastRecordInTable;
 
