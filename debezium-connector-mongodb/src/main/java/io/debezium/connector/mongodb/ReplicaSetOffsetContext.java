@@ -101,7 +101,7 @@ public class ReplicaSetOffsetContext implements OffsetContext {
         return replicaSetName;
     }
 
-    public boolean isInitialSyncOngoing() {
+    public boolean isSnapshotOngoing() {
         return sourceInfo.isInitialSyncOngoing(replicaSetName);
     }
 

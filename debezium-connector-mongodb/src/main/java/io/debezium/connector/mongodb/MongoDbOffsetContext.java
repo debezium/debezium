@@ -41,11 +41,11 @@ public class MongoDbOffsetContext implements OffsetContext {
         offsets.forEach((replicaSet, document) -> sourceInfo.opLogEvent(replicaSet.replicaSetName(), document, document, 0));
     }
 
-    void startInitialSync(String replicaSetName) {
+    void startReplicaSetSnapshot(String replicaSetName) {
         sourceInfo.startInitialSync(replicaSetName);
     }
 
-    void stopInitialSync(String replicaSetName) {
+    void stopReplicaSetSnapshot(String replicaSetName) {
         sourceInfo.stopInitialSync(replicaSetName);
     }
 
