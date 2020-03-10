@@ -51,6 +51,7 @@ Eero Koplimets
 Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
+Fabio Cantarini
 Felix Eckhardt
 Fintan Bolton
 Gagan Agrawal
