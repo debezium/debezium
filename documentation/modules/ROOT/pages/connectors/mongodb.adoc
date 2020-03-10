@@ -30,7 +30,7 @@ MongoDB connector captures the changes in a replica set or sharded cluster.
 
 A MongoDB _replica set_ consists of a set of servers that all have copies of the same data, and replication ensures that all changes made by clients to documents on the replica set's _primary_ are correctly applied to the other replica set's servers, called _secondaries_.
 MongoDB replication works by having the primary record the changes in its _oplog_ (or operation log), and then each of the secondaries reads the primary's oplog and applies in order all of the operations to their own documents.
-When a new server is added to a replica set, that server first performs an https://docs.mongodb.com/manual/core/replica-set-sync/[initial sync] of all of the databases and collections on the primary, and then reads the primary's oplog to apply all changes that might have been made since it began the initial sync.
+When a new server is added to a replica set, that server first performs an https://docs.mongodb.com/manual/core/replica-set-sync/[snapshot] of all of the databases and collections on the primary, and then reads the primary's oplog to apply all changes that might have been made since it began the snapshot.
 This new server becomes a secondary (and able to handle queries) when it catches up to the tail of the primary's oplog.
 
 The MongoDB connector uses this same replication mechanism, though it does not actually become a member of the replica set.
@@ -42,7 +42,7 @@ As the MongoDB connector processes the oplog, it periodically records the positi
 When the MongoDB connector stops, it records the last oplog position that it processed, so that upon restart it simply begins reading the oplog from that position.
 In other words, the connector can be stopped, upgraded or maintained, and restarted some time later, and it will pick up exactly where it left off without losing a single event.
 Of course, MongoDB's oplogs are usually capped at a maximum size, which means that the connector should not be stopped for too long, or else some of the operations in the oplog might be purged before the connector has a chance to read them.
-In this case, upon restart the connector will detect the missing oplog operations, perform an initial sync, and then proceed to tail the oplog.
+In this case, upon restart the connector will detect the missing oplog operations, perform a snapshot, and then proceed to tail the oplog.
 
 The MongoDB connector is also quite tolerant of changes in membership and leadership of the replica sets, of additions or removals of shards within a sharded cluster, and network problems that might cause communication failures.
 The connector always uses the replica set's primary node to tail the oplog, so when the replica set undergoes an election and a different node becomes primary, the connector will immediately stop tailing the oplog, connect to the new primary, and start tailing the oplog using the new primary node.
@@ -138,24 +138,24 @@ The connector uses the logical name in a number of ways: as the prefix for all t
 You should give each MongoDB connector a unique logical name that meaningfully describes the source MongoDB system.
 We recommend logical names begin with an alphabetic or underscore character, and remaining characters that are alphanumeric or underscore.
 
-[[initial-sync]]
-=== Initial sync
+[[Snapshot]]
+=== Snapshotting
 
 When a task starts up using a replica set, it uses the connector's logical name and the replica set name to find an _offset_ that describes the position in the replica sets oplog where the connector previously stopped reading.
 If an offset can be found and it is still in the oplog, then the task immediately proceeds with link:#tailing-the-oplog[tailing the oplog], starting at the recorded offset position.
 
-However, if no offset is found or if the oplog no longer contains that position, the task must first obtain the current state of the replica set contents by performing an _initial sync_.
-This process starts by recording the current position of the oplog and recording that as the offset (along with a flag that denotes an initial sync has been started).
+However, if no offset is found or if the oplog no longer contains that position, the task must first obtain the current state of the replica set contents by performing a _snapshot_.
+This process starts by recording the current position of the oplog and recording that as the offset (along with a flag that denotes a snapshot has been started).
 The task will then proceed to copy each collection, spawning as many threads as possible (up to the value of the `initial.sync.max.threads` configuration property) to perform this work in parallel.
 The connector will record a separate _read event_ for each document it sees, and that read event will contain the object's identifier, the complete state of the object, and _source_ information about the MongoDB replica set where the object was found.
-The source information will also include a flag that denotes the event was produced during an initial sync.
+The source information will also include a flag that denotes the event was produced during a snapshot.
 
-This initial sync will continue until it has copied all collections that match the connector's filters.
-If the connector is stopped before the tasks' initial syncs are completed, upon restart the connector begins the initial sync again.
+This snapshot will continue until it has copied all collections that match the connector's filters.
+If the connector is stopped before the tasks' snapshots are completed, upon restart the connector begins the snapshot again.
 
 [NOTE]
 ====
-Try to avoid task reassignment and reconfiguration while the connector is performing an intial sync of any replica sets. The connector does log messages with the progress of the initial sync. For utmost control, run a separate cluster of Kafka Connect for each connector.
+Try to avoid task reassignment and reconfiguration while the connector is performing a snapshot of any replica sets. The connector does log messages with the progress of the snapshot. For utmost control, run a separate cluster of Kafka Connect for each connector.
 ====
 
 [[tailing-the-oplog]]
@@ -290,9 +290,9 @@ The value of the change event message is a bit more complicated.
 Like the key message, it has a _schema_ section and _payload_ section.
 The payload section of every change event value produced by the MongoDB connector has an _envelope_ structure with the following fields:
 
-* `op` is a mandatory field that contains a string value describing the type of operation. Values for the MongoDB connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a initial sync).
+* `op` is a mandatory field that contains a string value describing the type of operation. Values for the MongoDB connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
 * `after` is an optional field that if present contains the state of the document _after_ the event occurred. MongoDB's oplog entries only contain the full state of a document for _create_ events, so these are the only events that contain an _after_ field.
-* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of MongoDB contains several fields: the {prodname} version, the logical name, the replica set's name, the namespace of the collection, the MongoDB timestamp (and ordinal of the event within the timestamp) at which the event occurred, the identifier of the MongoDB operation (e.g., the `h` field in the oplog event), and the initial sync flag if the event resulted during an intial sync.
+* `source` is a mandatory field that contains a structure describing the source metadata for the event, which in the case of MongoDB contains several fields: the {prodname} version, the logical name, the replica set's name, the namespace of the collection, the MongoDB timestamp (and ordinal of the event within the timestamp) at which the event occurred, the identifier of the MongoDB operation (e.g., the `h` field in the oplog event), and the initial sync flag if the event resulted during a snapshot.
 * `ts_ms` is optional and if present contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
@@ -422,7 +422,7 @@ Let's look at what a _create_/_read_ event value might look like for our `custom
 
 If we look at the `schema` portion of this event's _value_, we can see the schema for the _envelope_ is specific to the collection, and the schema for the `source` structure (which is specific to the MongoDB connector and reused across all events). Also note that the `after` value is always a string, and that by convention it will contain a JSON representation of the document.
 
-If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the document was read as part of an initial sync (since `op=r` and `initsync=true`), and that the `after` field value contains the JSON string representation of the document.
+If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the document was read as part of an snapshot (since `op=r` and `initsync=true`), and that the `after` field value contains the JSON string representation of the document.
 
 [NOTE]
 ====
@@ -579,7 +579,7 @@ endif::cdc-product[]
 === Example configuration
 
 To use the connector to produce change events for a particular MongoDB replica set or sharded cluster, create a configuration file in JSON.
-When the connector starts, it will perform an initial sync of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted row.
+When the connector starts, it will perform a snapshot of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted row.
 Optionally filter out collections that are not needed.
 
 Here is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`:
@@ -604,8 +604,149 @@ Here is an example of the configuration for a MongoDB connector that monitors a 
 
 See the link:#mongodb-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
-This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the MongoDB replica set or sharded cluster, assign tasks for each replica set, perform an initial sync if necessary, read the oplog, and record events to Kafka topics.
+This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the MongoDB replica set or sharded cluster, assign tasks for each replica set, perform a snapshot if necessary, read the oplog, and record events to Kafka topics.
 
+[[mongodb-connector-monitoring]]
+=== Monitoring
+
+Kafka, Zookeeper, and Kafka Connect all have built-in support for JMX metrics.
+The MongoDB connector also publishes a number of metrics about the connector's activities that can be monitored through JMX.
+The connector has two types of metrics.
+Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot.
+Streaming metrics help you monitor the progress and activity while the connector reads CDC collection changes.
+
+[[monitoring-snapshots]]
+[[snapshot-metrics]]
+==== Snapshot Metrics
+
+===== *MBean: debezium.mongodb:type=connector-metrics,context=snapshot,server=_<mongodb.name>_*
+
+[cols="30%a,10%a,60%a",options="header"]
+|=======================
+|Attribute Name
+|Type
+|Description
+
+|`LastEvent`
+|`string`
+|The last snapshot event that the connector has read.
+
+|`MilliSecondsSinceLastEvent`
+|`long`
+|The number of milliseconds since the connector has read and processed the most recent event.
+
+|`TotalNumberOfEventsSeen`
+|`long`
+|The total number of events that this connector has seen since last started or reset.
+
+|`NumberOfEventsFiltered`
+|`long`
+|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+
+|`MonitoredTables`
+|`string[]`
+|The list of collections that are monitored by the connector.
+
+|`QueueTotalCapcity`
+|`int`
+|The length of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
+
+|`QueueRemainingCapcity`
+|`int`
+|The free capacity of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
+
+|`TotalTableCount`
+|`int`
+|The total number of collections that are being included in the snapshot.
+
+|`RemainingTableCount`
+|`int`
+|The number of collections that the snapshot has yet to copy.
+
+|`SnapshotRunning`
+|`boolean`
+|Whether the snapshot was started.
+
+|`SnapshotAborted`
+|`boolean`
+|Whether the snapshot was aborted.
+
+|`SnapshotCompleted`
+|`boolean`
+|Whether the snapshot completed.
+
+|`SnapshotDurationInSeconds`
+|`long`
+|The total number of seconds that the snapshot has taken so far, even if not complete.
+
+|`RowsScanned`
+|`Map<String, Long>`
+|Map containing the number of documents exported for each collection in the snapshot. Collections are incrementally added to the Map during processing. Updates every 10,000 documents scanned and upon completing a collection.
+
+|=======================
+
+
+[[monitoring-streaming]]
+[[streaming-metrics]]
+==== Streaming Metrics
+
+===== *MBean: debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_*
+
+[cols="30%a,10%a,60%a",options="header"]
+|=======================
+|Attribute Name
+|Type
+|Description
+
+|`LastEvent`
+|`string`
+|The last streaming event that the connector has read.
+
+|`MilliSecondsSinceLastEvent`
+|`long`
+|The number of milliseconds since the connector has read and processed the most recent event.
+
+|`TotalNumberOfEventsSeen`
+|`long`
+|The total number of events that this connector has seen since last started or reset.
+
+|`NumberOfEventsFiltered`
+|`long`
+|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+
+|`MonitoredTables`
+|`string[]`
+|The list of collections that are monitored by the connector.
+
+|`QueueTotalCapcity`
+|`int`
+|The length of the queue used to pass events between the streamer and the main Kafka Connect loop.
+
+|`QueueRemainingCapcity`
+|`int`
+|The free capacity of the queue used to pass events between the streamer and the main Kafka Connect loop.
+
+|`Connected`
+|`boolean`
+|Flag that denotes whether the connector is currently connected to mongodb.
+
+|`MilliSecondsBehindSource`
+|`long`
+|The number of milliseconds between the last change event's timestamp and the connector processing it. The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
+
+|`NumberOfCommittedTransactions`
+|`long`
+|The number of processed transactions that were committed.
+
+|`SourceEventPosition`
+|`map<string, string>`
+|The coordinates of the last received event.
+
+|`LastTransactionId`
+|`string`
+|Transaction identifier of the last processed transaction.
+
+|=======================
 
 [[mongodb-connector-properties]]
 === Connector properties
@@ -859,7 +1000,7 @@ As the connector generates change events, the Kafka Connect framework records th
 === Connector is stopped for a duration
 
 If the connector is gracefully stopped, the replica sets can continue to be used and any new changes are recorded in MongoDB's oplog.
-When the connector is restarted, it will resume reading the oplog for each replica set where it last left off, recording change events for all of the changes that were made while the connector was stopped. If the connector is stopped long enough such that MongoDB purges from its oplog some operations that the connector has not read, then upon startup the connector will perform an initial sync.
+When the connector is restarted, it will resume reading the oplog for each replica set where it last left off, recording change events for all of the changes that were made while the connector was stopped. If the connector is stopped long enough such that MongoDB purges from its oplog some operations that the connector has not read, then upon startup the connector will perform a snapshot.
 
 A properly configured Kafka cluster is capable of https://engineering.linkedin.com/kafka/benchmarking-apache-kafka-2-million-writes-second-three-cheap-machines[massive throughput].
 Kafka Connect is written with Kafka best practices, and given enough resources will also be able to handle very large numbers of database change events. Because of this, when a connector has been restarted after a while, it is very likely to catch up with the database, though how quickly will depend upon the capabilities and performance of Kafka and the volume of changes being made to the data in MongoDB.
