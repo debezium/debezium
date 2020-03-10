@@ -77,7 +77,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext snapshotContext) throws Exception {
         LOGGER.info("Setting isolation level");
         String transactionStatement = snapshotter.snapshotTransactionIsolationLevelStatement(slotCreatedInfo);
         LOGGER.info("Opening transaction with statement {}", transactionStatement);
@@ -86,12 +86,12 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(SnapshotContext ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
         return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
         final Duration lockTimeout = connectorConfig.snapshotLockTimeout();
         final Optional<String> lockStatement = snapshotter.snapshotTableLockingStatement(lockTimeout, schema.tableIds());
 
@@ -114,11 +114,11 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws SQLException {
     }
 
     @Override
-    protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
         PostgresOffsetContext offset = (PostgresOffsetContext) ctx.offset;
         final long xlogStart = getTransactionStartLsn();
         final long txId = jdbcConnection.currentTransactionId().longValue();
@@ -144,7 +144,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
@@ -170,7 +170,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws SQLException {
         return new SchemaChangeEvent(
                 snapshotContext.offset.getPartition(),
                 snapshotContext.offset.getOffset(),
@@ -243,7 +243,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class PostgresSnapshotContext extends SnapshotContext {
+    private static class PostgresSnapshotContext extends RelationalSnapshotContext {
 
         public PostgresSnapshotContext(String catalogName) throws SQLException {
             super(catalogName);

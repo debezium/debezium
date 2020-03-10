@@ -24,11 +24,10 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.config.CommonConnectorConfig;
-import io.debezium.config.ConfigurationDefaults;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
+import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -37,7 +36,6 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -50,7 +48,7 @@ import io.debezium.util.Threads.Timer;
  *
  * @author Gunnar Morling
  */
-public abstract class RelationalSnapshotChangeEventSource implements SnapshotChangeEventSource {
+public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapshotChangeEventSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalSnapshotChangeEventSource.class);
 
@@ -70,6 +68,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                OffsetContext previousOffset, JdbcConnection jdbcConnection, HistorizedRelationalDatabaseSchema schema,
                                                EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
+        super(connectorConfig, previousOffset, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.previousOffset = previousOffset;
         this.jdbcConnection = jdbcConnection;
@@ -86,28 +85,11 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     }
 
     @Override
-    public SnapshotResult execute(ChangeEventSourceContext context) throws InterruptedException {
-        SnapshottingTask snapshottingTask = getSnapshottingTask(previousOffset);
-
-        // Neither schema nor data require snapshotting
-        if (!snapshottingTask.snapshotSchema() && !snapshottingTask.snapshotData()) {
-            LOGGER.debug("Skipping snapshotting");
-            return SnapshotResult.skipped(previousOffset);
-        }
-
-        delaySnapshotIfNeeded(context);
+    public SnapshotResult doExecute(ChangeEventSourceContext context, SnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+            throws Exception {
+        final RelationalSnapshotContext ctx = (RelationalSnapshotContext) snapshotContext;
 
         Connection connection = null;
-
-        final SnapshotContext ctx;
-        try {
-            ctx = prepare(context);
-        }
-        catch (Exception e) {
-            LOGGER.error("Failed to initialize snapshot context.", e);
-            throw new RuntimeException(e);
-        }
-
         try {
             LOGGER.info("Snapshot step 1 - Preparing");
             snapshotProgressListener.snapshotStarted();
@@ -165,65 +147,15 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
             snapshotProgressListener.snapshotCompleted();
             return SnapshotResult.completed(ctx.offset);
         }
-        catch (InterruptedException e) {
-            LOGGER.warn("Snapshot was interrupted before completion");
-            snapshotProgressListener.snapshotAborted();
-            throw e;
-        }
-        catch (RuntimeException e) {
-            snapshotProgressListener.snapshotAborted();
-            throw e;
-        }
-        catch (Throwable e) {
-            snapshotProgressListener.snapshotAborted();
-            throw new RuntimeException(e);
-        }
         finally {
             rollbackTransaction(connection);
-
-            LOGGER.info("Snapshot step 8 - Finalizing");
-
-            complete(ctx);
         }
     }
-
-    /**
-     * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
-     */
-    protected abstract SnapshottingTask getSnapshottingTask(OffsetContext previousOffset);
-
-    /**
-     * Delays snapshot execution as per the {@link CommonConnectorConfig#SNAPSHOT_DELAY_MS} parameter.
-     */
-    private void delaySnapshotIfNeeded(ChangeEventSourceContext context) throws InterruptedException {
-        Duration snapshotDelay = connectorConfig.getSnapshotDelay();
-
-        if (snapshotDelay.isZero() || snapshotDelay.isNegative()) {
-            return;
-        }
-
-        Timer timer = Threads.timer(Clock.SYSTEM, snapshotDelay);
-        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
-
-        while (!timer.expired()) {
-            if (!context.isRunning()) {
-                throw new InterruptedException("Interrupted while awaiting initial snapshot delay");
-            }
-
-            LOGGER.info("The connector will wait for {}s before proceeding", timer.remaining().getSeconds());
-            metronome.pause();
-        }
-    }
-
-    /**
-     * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
-     */
-    protected abstract SnapshotContext prepare(ChangeEventSourceContext changeEventSourceContext) throws Exception;
 
     /**
      * Executes steps which have to be taken just after the database connection is created.
      */
-    protected void connectionCreated(SnapshotContext snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext snapshotContext) throws Exception {
     }
 
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
@@ -247,7 +179,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private void determineCapturedTables(SnapshotContext ctx) throws Exception {
+    private void determineCapturedTables(RelationalSnapshotContext ctx) throws Exception {
         Set<TableId> allTableIds = getAllTableIds(ctx);
 
         Set<TableId> capturedTables = new HashSet<>();
@@ -269,12 +201,12 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
      * Returns all candidate tables; the current filter configuration will be applied to the result set, resulting in
      * the effective set of captured tables.
      */
-    protected abstract Set<TableId> getAllTableIds(SnapshotContext snapshotContext) throws Exception;
+    protected abstract Set<TableId> getAllTableIds(RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Locks all tables to be captured, so that no concurrent schema changes can be applied to them.
      */
-    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception;
+    protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Determines the current offset (MySQL binlog position, Oracle SCN etc.), storing it into the passed context
@@ -282,19 +214,19 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
      * completed, a {@link StreamingChangeEventSource} will be set up with this initial position to continue with stream
      * reading from there.
      */
-    protected abstract void determineSnapshotOffset(SnapshotContext snapshotContext) throws Exception;
+    protected abstract void determineSnapshotOffset(RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
-     * Reads the structure of all the captured tables, writing it to {@link SnapshotContext#tables}.
+     * Reads the structure of all the captured tables, writing it to {@link RelationalSnapshotContext#tables}.
      */
-    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception;
+    protected abstract void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception;
 
     /**
      * Releases all locks established in order to create a consistent schema snapshot.
      */
-    protected abstract void releaseSchemaSnapshotLocks(SnapshotContext snapshotContext) throws Exception;
+    protected abstract void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws Exception;
 
-    private void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws Exception {
+    private void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
         for (TableId tableId : snapshotContext.capturedTables) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
@@ -313,9 +245,9 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     /**
      * Creates a {@link SchemaChangeEvent} representing the creation of the given table.
      */
-    protected abstract SchemaChangeEvent getCreateTableEvent(SnapshotContext snapshotContext, Table table) throws Exception;
+    protected abstract SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws Exception;
 
-    private void createDataEvents(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext) throws InterruptedException {
+    private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws InterruptedException {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
         snapshotContext.offset.preSnapshotStart();
 
@@ -340,8 +272,8 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     /**
      * Dispatches the data change events for the records of a single table.
      */
-    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, SnapshotContext snapshotContext, SnapshotReceiver snapshotReceiver,
-                                          Table table)
+    private void createDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext,
+                                          SnapshotReceiver snapshotReceiver, Table table)
             throws InterruptedException {
 
         long exportStart = clock.currentTimeInMillis();
@@ -485,7 +417,7 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    public static class SnapshotContext implements AutoCloseable {
+    public static class RelationalSnapshotContext extends SnapshotContext {
         public final String catalogName;
         public final Tables tables;
 
@@ -494,46 +426,9 @@ public abstract class RelationalSnapshotChangeEventSource implements SnapshotCha
         public boolean lastTable;
         public boolean lastRecordInTable;
 
-        public SnapshotContext(String catalogName) throws SQLException {
+        public RelationalSnapshotContext(String catalogName) throws SQLException {
             this.catalogName = catalogName;
             this.tables = new Tables();
-        }
-
-        @Override
-        public void close() throws Exception {
-        }
-    }
-
-    /**
-     * A configuration describing the task to be performed during snapshotting.
-     */
-    public static class SnapshottingTask {
-
-        private final boolean snapshotSchema;
-        private final boolean snapshotData;
-
-        public SnapshottingTask(boolean snapshotSchema, boolean snapshotData) {
-            this.snapshotSchema = snapshotSchema;
-            this.snapshotData = snapshotData;
-        }
-
-        /**
-         * Whether data (rows in captured tables) should be snapshotted.
-         */
-        public boolean snapshotData() {
-            return snapshotData;
-        }
-
-        /**
-         * Whether the schema of captured tables should be snapshotted.
-         */
-        public boolean snapshotSchema() {
-            return snapshotSchema;
-        }
-
-        @Override
-        public String toString() {
-            return "SnapshottingTask [snapshotSchema=" + snapshotSchema + ", snapshotData=" + snapshotData + "]";
         }
     }
 
