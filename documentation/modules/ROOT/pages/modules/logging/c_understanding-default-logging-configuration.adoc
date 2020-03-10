@@ -1,0 +1,26 @@
+[id="understanding-default-logging-configuration"]
+= Understanding the default logging configuration
+
+If you are running {prodname} connectors in a Kafka Connect process,
+then Kafka Connect will use the Log4j configuration file (for example, `/opt/kafka/config/connect-log4j.properties`) in the Kafka installation.
+By default, this file contains the following configuration:
+
+.connect-log4j.properties
+[source,properties,options="nowrap"]
+----
+log4j.rootLogger=INFO, stdout  // <1>
+
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender  // <2>
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout  // <3>
+log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n  // <4>
+...
+----
+<1> The root logger, which defines the default logger configuration.
+By default, loggers will include `INFO`, `WARN`, and `ERROR` messages.
+These log messages will be written to the `stdout` appender.
+<2> The `stdout` appender will write log messages to the console (as opposed to a file).
+<3> The `stdout` appender will use a pattern matching algorithm to format the log messages.
+<4> The pattern for the `stdout` appender (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+
+Unless you configure other loggers,
+all of the loggers used by {prodname} will inherit the `rootLogger` configuration.
