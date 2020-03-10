@@ -52,7 +52,17 @@ public class MongoDbEventMetadataProvider implements EventMetadataProvider {
 
     @Override
     public String getTransactionId(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        // todo: DBZ-1726 for now this returns null; is there an implementation alternative?
-        return null;
+        if (value == null) {
+            return null;
+        }
+        final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
+        if (source == null) {
+            return null;
+        }
+        final Long txOrder = sourceInfo.getInt64(SourceInfo.TX_ORD);
+        if (txOrder == null) {
+            return null;
+        }
+        return Long.toString(txOrder);
     }
 }
