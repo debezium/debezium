@@ -75,6 +75,13 @@ public interface ReplicationStream extends AutoCloseable {
     Long lastReceivedLsn();
 
     /**
+     * Returns the value for the LSN form which the streaming is executed.
+     *
+     * @return a {@link Long} value, possibly null if starting LSN is undefined
+     */
+    Long startLsn();
+
+    /**
      * Starts a background thread to ensure the slot is kept alive, useful for when temporarily
      * stopping reads from the stream such as querying metadata, etc
      */

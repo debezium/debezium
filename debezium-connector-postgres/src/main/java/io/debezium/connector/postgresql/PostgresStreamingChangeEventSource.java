@@ -60,6 +60,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
     private final Snapshotter snapshotter;
     private final Metronome pauseNoMessage;
+    private final boolean hasStartLsnStoredInContext;
 
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
@@ -78,6 +79,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.clock = clock;
         this.schema = schema;
         this.offsetContext = (offsetContext != null) ? offsetContext : PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
+        // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
+        // instead of the last position in the database
+        this.hasStartLsnStoredInContext = (offsetContext != null);
         pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
@@ -92,7 +96,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         try {
-            if (offsetContext.hasLastKnownPosition()) {
+            if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
                 final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
                 if (LOGGER.isDebugEnabled()) {
@@ -113,7 +117,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             // refresh the schema so we have a latest view of the DB tables
             taskContext.refreshSchema(connection, true);
 
-            this.lastCompletelyProcessedLsn = offsetContext.lsn();
+            this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
             while (context.isRunning()) {
                 int noMessageIterations = 0;
