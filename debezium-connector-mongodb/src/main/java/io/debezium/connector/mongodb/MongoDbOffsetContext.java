@@ -27,19 +27,17 @@ import io.debezium.schema.DataCollectionId;
  */
 public class MongoDbOffsetContext implements OffsetContext {
 
-    private final MongoDbConnectorConfig connectorConfig;
     private final SourceInfo sourceInfo;
     private final TransactionContext transactionContext;
     private final Map<ReplicaSet, ReplicaSetOffsetContext> replicaSetOffsetContexts = new ConcurrentHashMap<>();
 
-    public MongoDbOffsetContext(MongoDbConnectorConfig connectorConfig, SourceInfo sourceInfo, TransactionContext transactionContext) {
-        this.connectorConfig = connectorConfig;
+    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext) {
         this.sourceInfo = sourceInfo;
         this.transactionContext = transactionContext;
     }
 
-    public MongoDbOffsetContext(MongoDbConnectorConfig connectorConfig, SourceInfo sourceInfo, TransactionContext transactionContext, Map<ReplicaSet, Document> offsets) {
-        this(connectorConfig, sourceInfo, transactionContext);
+    public MongoDbOffsetContext(SourceInfo sourceInfo, TransactionContext transactionContext, Map<ReplicaSet, Document> offsets) {
+        this(sourceInfo, transactionContext);
         offsets.forEach((replicaSet, document) -> sourceInfo.opLogEvent(replicaSet.replicaSetName(), document, document, 0));
     }
 
@@ -121,12 +119,10 @@ public class MongoDbOffsetContext implements OffsetContext {
 
     public static class Loader {
 
-        private final MongoDbConnectorConfig connectorConfig;
         private final ReplicaSets replicaSets;
         private final SourceInfo sourceInfo;
 
         public Loader(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
-            this.connectorConfig = connectorConfig;
             this.sourceInfo = new SourceInfo(connectorConfig);
             this.replicaSets = replicaSets;
         }
@@ -147,7 +143,7 @@ public class MongoDbOffsetContext implements OffsetContext {
         public MongoDbOffsetContext loadOffsets(Map<Map<String, String>, Map<String, Object>> offsets) {
             // todo: DBZ-1726 - follow-up by removing offset management from SourceInfo
             offsets.forEach(sourceInfo::setOffsetFor);
-            return new MongoDbOffsetContext(connectorConfig, sourceInfo, new TransactionContext());
+            return new MongoDbOffsetContext(sourceInfo, new TransactionContext());
         }
     }
 
