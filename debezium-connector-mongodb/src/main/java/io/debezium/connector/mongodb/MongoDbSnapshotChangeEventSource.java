@@ -250,8 +250,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 performSnapshot = true;
             }
             else {
-                // todo: Right now we implement when needed snapshot by default.  In the future we should provide the
-                //          same options as other connectors and this is where when_needed functionality would go.
+                // todo: Right now we implement when needed snapshot by default. In the future we should provide the
+                // same options as other connectors and this is where when_needed functionality would go.
                 // There is no ongoing snapshot, so look to see if our last recorded offset still exists in the oplog.
                 BsonTimestamp lastRecordedTs = offsetContext.lastOffsetTimestamp();
                 BsonTimestamp firstAvailableTs = primaryClient.execute("get oplog position", primary -> {
