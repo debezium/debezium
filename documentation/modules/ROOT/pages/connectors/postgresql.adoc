@@ -1620,6 +1620,144 @@ See the link:#connector-properties[complete list of connector properties] that c
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the PostgreSQL database and record events to Kafka topics.
 
+[[monitoring]]
+=== Monitoring
+
+Kafka, Zookeeper, and Kafka Connect all have built-in support for JMX metrics. The PostgreSQL connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Streaming metrics help you monitor the progress and activity while the connector processes the logical replication stream.
+
+[[monitoring-snapshots]]
+[[snapshot-metrics]]
+==== Snapshot Metrics
+
+===== *MBean: debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
+
+[cols="30%a,10%a,60%a",options="header"]
+|=======================
+|Attribute Name
+|Type
+|Description
+
+|`LastEvent`
+|`string`
+|The last snapshot event that the connector has read.
+
+|`MilliSecondsSinceLastEvent`
+|`long`
+|The number of milliseconds since the connector has read and processed the most recent event.
+
+|`TotalNumberOfEventsSeen`
+|`long`
+|The total number of events that this connector has seen since last started or reset.
+
+|`NumberOfEventsFiltered`
+|`long`
+|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+
+|`MonitoredTables`
+|`string[]`
+|The list of tables that are monitored by the connector.
+
+|`QueueTotalCapcity`
+|`int`
+|The length of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
+
+|`QueueRemainingCapcity`
+|`int`
+|The free capacity of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
+
+|`TotalTableCount`
+|`int`
+|The total number of tables that are being included in the snapshot.
+
+|`RemainingTableCount`
+|`int`
+|The number of tables that the snapshot has yet to copy.
+
+|`SnapshotRunning`
+|`boolean`
+|Whether the snapshot was started.
+
+|`SnapshotAborted`
+|`boolean`
+|Whether the snapshot was aborted.
+
+|`SnapshotCompleted`
+|`boolean`
+|Whether the snapshot completed.
+
+|`SnapshotDurationInSeconds`
+|`long`
+|The total number of seconds that the snapshot has taken so far, even if not complete.
+
+|`RowsScanned`
+|`Map<String, Long>`
+|Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
+
+|=======================
+
+
+[[monitoring-streaming]]
+[[streaming-metrics]]
+==== Streaming Metrics
+
+===== *MBean: debezium.postres:type=connector-metrics,context=streaming,server=_<database.server.name>_*
+
+[cols="30%a,10%a,60%a",options="header"]
+|=======================
+|Attribute Name
+|Type
+|Description
+
+|`LastEvent`
+|`string`
+|The last streaming event that the connector has read.
+
+|`MilliSecondsSinceLastEvent`
+|`long`
+|The number of milliseconds since the connector has read and processed the most recent event.
+
+|`TotalNumberOfEventsSeen`
+|`long`
+|The total number of events that this connector has seen since last started or reset.
+
+|`NumberOfEventsFiltered`
+|`long`
+|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+
+|`MonitoredTables`
+|`string[]`
+|The list of tables that are monitored by the connector.
+
+|`QueueTotalCapcity`
+|`int`
+|The length of the queue used to pass events between the streamer and the main Kafka Connect loop.
+
+|`QueueRemainingCapcity`
+|`int`
+|The free capacity of the queue used to pass events between the streamer and the main Kafka Connect loop.
+
+|`Connected`
+|`boolean`
+|Flag that denotes whether the connector is currently connected to the database server.
+
+|`MilliSecondsBehindSource`
+|`long`
+|The number of milliseconds between the last change event's timestamp and the connector processing it. The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
+
+|`NumberOfCommittedTransactions`
+|`long`
+|The number of processed transactions that were committed.
+
+|`SourceEventPosition`
+|`map<string, string>`
+|The coordinates of the last received event.
+
+|`LastTransactionId`
+|`string`
+|Transaction identifier of the last processed transaction.
+
+|=======================
+
 [[connector-properties]]
 === Connector Properties
 
