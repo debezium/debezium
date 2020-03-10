@@ -59,7 +59,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final ErrorHandler errorHandler;
     private final Clock clock;
     private final MongoDbOffsetContext offsetContext;
-    private final MongoDbConnectorConfig connectorConfig;
     private final ConnectionContext connectionContext;
     private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
@@ -67,7 +66,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              ReplicaSets replicaSets, MongoDbOffsetContext offsetContext,
                                              EventDispatcher<CollectionId> dispatcher, ErrorHandler errorHandler, Clock clock) {
-        this.connectorConfig = connectorConfig;
         this.connectionContext = taskContext.getConnectionContext();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
@@ -357,7 +355,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         });
 
-        return new MongoDbOffsetContext(connectorConfig, new SourceInfo(connectorConfig), new TransactionContext(), positions);
+        return new MongoDbOffsetContext(new SourceInfo(connectorConfig), new TransactionContext(), positions);
     }
 
     /**
