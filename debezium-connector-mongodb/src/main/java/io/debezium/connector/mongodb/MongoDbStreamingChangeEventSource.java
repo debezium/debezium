@@ -269,11 +269,19 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 oplogContext.setIncompleteEventTimestamp(null);
                 return true;
             }
-            for (Document change : txChanges) {
-                final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext);
-                if (!r) {
-                    return false;
+            try {
+                dispatcher.dispatchTransactionStartedEvent(Long.toString(txOrder), oplogContext.getOffset());
+                for (Document change : txChanges) {
+                    final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext);
+                    if (!r) {
+                        return false;
+                    }
                 }
+                dispatcher.dispatchTransactionCommittedEvent(oplogContext.getOffset());
+            }
+            catch (InterruptedException e) {
+                LOGGER.error("Streaming transaction changes for replica set '{}' was interrupted", oplogContext.getReplicaSetName());
+                throw new ConnectException("Streaming of transaction changes was interrupted for replica set " + oplogContext.getReplicaSetName(), e);
             }
             return true;
         }
