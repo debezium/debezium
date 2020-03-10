@@ -39,6 +39,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.Before;
@@ -65,6 +66,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -74,6 +76,7 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.util.Collect;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
 
@@ -1611,6 +1614,39 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertEquals(topicName, record.topic());
             VerifyRecord.isValidInsert(record, PK_FIELD, STOP_ID + i);
         }
+    }
+
+    @Test
+    @FixFor("DBZ-1730")
+    public void shouldStartConsumingFromSlotLocation() throws Exception {
+        Testing.Print.enable();
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), true);
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_table (text) VALUES ('insert2')");
+        consumer.remove();
+
+        stopConnector();
+        TestHelper.execute(
+                "INSERT INTO test_table (text) VALUES ('insert3');",
+                "INSERT INTO test_table (text) VALUES ('insert4')");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
+
+        consumer.expects(2);
+        consumer.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);
+
+        // We cannot guarantee the flush timing so it is possible that insert2 record will be redelivered
+        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isIn(Collect.unmodifiableSet("insert2", "insert3"));
+        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isIn(Collect.unmodifiableSet("insert3", "insert4"));
+
+        stopConnector();
     }
 
     @Test
