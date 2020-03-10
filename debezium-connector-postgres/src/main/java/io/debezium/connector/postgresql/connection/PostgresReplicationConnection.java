@@ -152,7 +152,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void initReplicationSlot() throws SQLException, InterruptedException {
-        final String postgresPluginName = plugin.getPostgresPluginName();
         ServerInfo.ReplicationSlot slotInfo = getSlotInfo();
 
         boolean shouldCreateSlot = ServerInfo.ReplicationSlot.INVALID == slotInfo;
@@ -479,6 +478,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 w.getMessage(), w.getSQLState(), w.getErrorCode());
                     }
                 }
+            }
+
+            @Override
+            public Long startLsn() {
+                return startingLsn;
             }
         };
     }
