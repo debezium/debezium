@@ -220,5 +220,5 @@ The SMT adds the event operation (as obtained from the `op` field of the origina
 |
 |_This option is deprecated and scheduled for removal. Please use add.fields instead. If both add.fields and add.source.fields are specified, the latter will be ignored._
 
-Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record. Please no
+Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record.
 |=======================
