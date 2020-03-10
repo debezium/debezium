@@ -60,7 +60,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
     private final Snapshotter snapshotter;
     private final Metronome pauseNoMessage;
-    private final boolean hasStartLsnStoredInContext;
 
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
@@ -78,10 +77,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.schema = schema;
-        this.offsetContext = (offsetContext != null) ? offsetContext : PostgresOffsetContext.initialContext(connectorConfig, connection, clock);
-        // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
-        // instead of the last position in the database
-        this.hasStartLsnStoredInContext = (offsetContext != null);
+        this.offsetContext = (offsetContext != null) ? offsetContext : PostgresOffsetContext.initialOffsetContext(connectorConfig);
         pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
@@ -96,7 +92,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         try {
-            if (hasStartLsnStoredInContext) {
+            if (offsetContext.hasLastKnownPosition()) {
                 // start streaming from the last recorded position in the offset
                 final Long lsn = offsetContext.lastCompletelyProcessedLsn() != null ? offsetContext.lastCompletelyProcessedLsn() : offsetContext.lsn();
                 if (LOGGER.isDebugEnabled()) {

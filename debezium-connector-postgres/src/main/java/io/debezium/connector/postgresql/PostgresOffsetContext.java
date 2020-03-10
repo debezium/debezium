@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.postgresql;
 
-import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,12 +12,10 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.SnapshotRecord;
-import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.OffsetState;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -190,25 +187,29 @@ public class PostgresOffsetContext implements OffsetContext {
                 + ", lastSnapshotRecord=" + lastSnapshotRecord + "]";
     }
 
-    public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock) {
-        try {
-            LOGGER.info("Creating initial offset context");
-            final long lsn = jdbcConnection.currentXLogLocation();
-            final long txId = jdbcConnection.currentTransactionId().longValue();
-            LOGGER.info("Read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(lsn), txId);
-            return new PostgresOffsetContext(
-                    connectorConfig,
-                    lsn,
-                    null,
-                    txId,
-                    clock.currentTimeAsInstant(),
-                    false,
-                    false,
-                    new TransactionContext());
-        }
-        catch (SQLException e) {
-            throw new ConnectException("Database processing error", e);
-        }
+    public static PostgresOffsetContext snapshotInitialOffsetContext(PostgresConnectorConfig connectorConfig, long snapshotLsn, long snapshotTxnId, Clock clock) {
+        LOGGER.info("Creating initial offset from snapshot at '{}' from transaction '{}'", ReplicationConnection.format(snapshotLsn), snapshotTxnId);
+        return new PostgresOffsetContext(
+                connectorConfig,
+                snapshotLsn,
+                null,
+                snapshotTxnId,
+                clock.currentTimeAsInstant(),
+                false,
+                false,
+                new TransactionContext());
+    }
+
+    public static PostgresOffsetContext initialOffsetContext(PostgresConnectorConfig connectorConfig) {
+        LOGGER.info("Creating initial empty offset context");
+        return new PostgresOffsetContext(connectorConfig,
+                null,
+                null,
+                null,
+                null,
+                false,
+                false,
+                new TransactionContext());
     }
 
     public OffsetState asOffsetState() {

@@ -121,10 +121,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     protected void determineSnapshotOffset(SnapshotContext ctx) throws Exception {
         PostgresOffsetContext offset = (PostgresOffsetContext) ctx.offset;
         final long xlogStart = getTransactionStartLsn();
-        final long txId = jdbcConnection.currentTransactionId().longValue();
+        final long txId = jdbcConnection.currentTransactionId();
         LOGGER.info("Read xlogStart at '{}' from transaction '{}'", ReplicationConnection.format(xlogStart), txId);
         if (offset == null) {
-            offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock());
+            offset = PostgresOffsetContext.snapshotInitialOffsetContext(connectorConfig, xlogStart, txId, getClock());
             ctx.offset = offset;
         }
 

@@ -261,6 +261,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     @Override
+    public long getDefaultStartingPosition() {
+        return defaultStartingPos;
+    }
+
+    @Override
     public Optional<SlotCreationResult> createReplicationSlot() throws SQLException {
         // note that some of these options are only supported in pg94+, additionally
         // the options are not yet exported by the jdbc api wrapper, therefore, we just do this ourselves

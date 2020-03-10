@@ -83,6 +83,13 @@ public interface ReplicationConnection extends AutoCloseable {
     boolean isConnected() throws SQLException;
 
     /**
+     * The default starting position is either the latest flushed LSN or xlogpos.
+     *
+     * @return the LSN to resume from when no previous LSN is found in Kafka
+     */
+    long getDefaultStartingPosition();
+
+    /**
      * Creates a new {@link Builder} instance which can be used for creating replication connections.
      *
      * @param jdbcConfig a {@link Configuration} instance that contains JDBC settings; may not be null
