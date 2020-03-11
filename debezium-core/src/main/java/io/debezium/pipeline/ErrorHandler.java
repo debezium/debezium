@@ -35,7 +35,8 @@ public class ErrorHandler {
 
         if (first) {
             if (retriable) {
-                queue.producerException(new RetriableException("An exception occurred in the change event producer. This connector will be restarted.", producerThrowable));
+                queue.producerException(
+                        new RetriableException("An exception occurred in the change event producer. This connector will be restarted.", producerThrowable));
             }
             else {
                 queue.producerException(new ConnectException("An exception occurred in the change event producer. This connector will be stopped.", producerThrowable));
