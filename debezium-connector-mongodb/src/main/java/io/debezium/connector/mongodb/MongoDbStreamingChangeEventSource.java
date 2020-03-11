@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
@@ -32,6 +33,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -167,19 +169,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             oplogContext.setIncompleteTxOrder(txOrder.getAsLong());
         }
 
-        Bson operationFilter = null;
-        String operations = connectionContext.config.getString(MongoDbConnectorConfig.SKIPPED_OPERATIONS);
-        if (operations != null) {
-            for (String operation : operations.trim().split(",")) {
-                operation = operation.trim();
-
-                if (operationFilter == null) {
-                    operationFilter = Filters.ne("op", operation);
-                }
-                operationFilter = Filters.or(operationFilter, Filters.ne("op", operation));
-            }
-        }
-
+        Bson operationFilter = getSkippedOperationsFilter();
         if (operationFilter != null) {
             filter = Filters.and(filter, operationFilter);
         }
@@ -223,6 +213,29 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 }
             }
         }
+    }
+
+    private Bson getSkippedOperationsFilter() {
+        Set<Operation> skippedOperations = taskContext.getConnectorConfig().getSkippedOps();
+
+        if (skippedOperations.isEmpty()) {
+            return null;
+        }
+
+        Bson skippedOperationsFilter = null;
+
+        for (Operation operation : skippedOperations) {
+            Bson skippedOperationFilter = Filters.ne("op", operation.code());
+
+            if (skippedOperationsFilter == null) {
+                skippedOperationsFilter = skippedOperationFilter;
+            }
+            else {
+                skippedOperationsFilter = Filters.or(skippedOperationsFilter, skippedOperationFilter);
+            }
+        }
+
+        return skippedOperationsFilter;
     }
 
     private boolean handleOplogEvent(ServerAddress primaryAddress, Document event, Document masterEvent, long txOrder, ReplicaSetOplogContext oplogContext) {
