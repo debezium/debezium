@@ -102,7 +102,12 @@ See xref:data-types[] for the list of MySQL-specific data type names.
 
 |`time.precision.mode`
 |`adaptive_time{zwsp}_microseconds`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; `adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive_time_microseconds` (the default) captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds;
+ifndef::cdc-product[]
+// Do not include deprecated content in downstream doc
+`adaptive` (deprecated) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type;
+endif::cdc-product[]
+or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
 
 |`decimal.handling.mode`
 |`precise`
@@ -160,10 +165,13 @@ WARNING: Enabling this option may expose tables or fields explicitly blacklisted
 |
 |A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog position in the MySQL server. Only the GTID ranges that have sources matching none of these exclude patterns will be used. May not be used with `gtid.source.includes`.
 
+ifndef::cdc-product[]
+// Do not include deprecated content in downstream doc
 |`gtid.new.channel.position` +
 _deprecated and scheduled for removal_
 |`earliest`
 | When set to `latest`, when the connector sees a new GTID channel, it will start consuming from the last executed transaction in that GTID channel. If set to `earliest` (default), the connector starts reading that channel from the first available (not purged) GTID position. `earliest` is useful when you have a active-passive MySQL setup where {prodname} is connected to master, in this case during failover the slave with new UUID (and GTID channel) starts receiving writes before {prodname} is connected. These writes would be lost when using `latest`.
+endif::cdc-product[]
 
 |`tombstones.on.delete`
 |`true`
