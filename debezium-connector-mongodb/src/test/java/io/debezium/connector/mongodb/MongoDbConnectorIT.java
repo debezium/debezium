@@ -360,6 +360,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1831")
     public void shouldConsumeAllEventsFromDatabaseWithSkippedOperations() throws InterruptedException, IOException {
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration().edit()
@@ -400,6 +401,9 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Testing.debug("Document ID: " + id.get());
         });
 
+        SourceRecords insert = consumeRecordsByTopic(1);
+        assertThat(insert.recordsForTopic("mongo.dbit.arbitrary")).hasSize(1);
+
         primary().execute("update", mongo -> {
             MongoDatabase db1 = mongo.getDatabase("dbit");
             MongoCollection<Document> coll = db1.getCollection("arbitrary");
@@ -415,11 +419,28 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
             Testing.debug("Document: " + doc);
         });
 
-        // Wait until we can consume the only 1 insert
-        SourceRecords insertAndUpdate = consumeRecordsByTopic(1);
-        assertThat(insertAndUpdate.recordsForTopic("mongo.dbit.arbitrary").size()).isEqualTo(1);
-        assertThat(insertAndUpdate.topics().size()).isEqualTo(1);
+        primary().execute("delete", mongo -> {
+            MongoDatabase db1 = mongo.getDatabase("dbit");
+            MongoCollection<Document> coll = db1.getCollection("arbitrary");
 
+            // Find the document ...
+            Document doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+            Document filter = Document.parse("{\"a\": 1}");
+
+            // delete
+            coll.deleteOne(filter);
+
+            doc = coll.find().first();
+            Testing.debug("Document: " + doc);
+        });
+
+        // Next should be the delete but not the skipped update
+        SourceRecords delete = consumeRecordsByTopic(1);
+        assertThat(delete.recordsForTopic("mongo.dbit.arbitrary")).hasSize(1);
+        SourceRecord deleteRecord = delete.allRecordsInOrder().get(0);
+        validate(deleteRecord);
+        verifyDeleteOperation(deleteRecord);
     }
 
     @Test

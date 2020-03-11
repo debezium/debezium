@@ -7,8 +7,11 @@ package io.debezium.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -19,6 +22,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -265,7 +270,7 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withValidation(CommonConnectorConfig::validateSkippedOperation)
             .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'i' for inserts; 'u' for updates; 'd' for deletes. "
-                     + "By default, no operations will be skipped.");
+                    + "By default, no operations will be skipped.");
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
@@ -376,6 +381,20 @@ public abstract class CommonConnectorConfig {
         return sanitizeFieldNames;
     }
 
+    public Set<Envelope.Operation> getSkippedOps() {
+        String operations = config.getString(SKIPPED_OPERATIONS);
+
+        if (operations != null) {
+            return Arrays.stream(operations.split(","))
+                    .map(String::trim)
+                    .map(Operation::forCode)
+                    .collect(Collectors.toSet());
+        }
+        else {
+            return Collections.emptySet();
+        }
+    }
+
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
         int maxQueueSize = config.getInteger(field);
         int maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
@@ -398,8 +417,9 @@ public abstract class CommonConnectorConfig {
             return 0;
         }
 
-        for (String operation : operations.trim().split(",")) {
+        for (String operation : operations.split(",")) {
             switch (operation.trim()) {
+                case "r":
                 case "i":
                 case "u":
                 case "d":
