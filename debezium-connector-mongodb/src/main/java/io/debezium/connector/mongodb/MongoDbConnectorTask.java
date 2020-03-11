@@ -52,7 +52,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile String taskName;
     private volatile MongoDbTaskContext taskContext;
-    private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile MongoDbSchema schema;
 
@@ -99,7 +98,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     DataChangeEvent::new,
                     metadataProvider);
 
-            coordinator = new ChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                     previousOffsets,
                     errorHandler,
                     MongoDbConnector.class,
@@ -133,17 +132,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     public void doStop() {
         PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
-            try {
-                if (coordinator != null) {
-                    coordinator.stop();
-                }
-            }
-            catch (InterruptedException e) {
-                Thread.interrupted();
-                logger.error("Interrupted while stopping coordinator", e);
-                throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-            }
-
             if (schema != null) {
                 schema.close();
             }

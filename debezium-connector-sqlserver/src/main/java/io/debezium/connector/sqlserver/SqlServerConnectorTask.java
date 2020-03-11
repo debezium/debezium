@@ -46,7 +46,6 @@ public class SqlServerConnectorTask extends BaseSourceTask {
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile SqlServerConnection dataConnection;
     private volatile SqlServerConnection metadataConnection;
-    private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile SqlServerDatabaseSchema schema;
 
@@ -111,7 +110,7 @@ public class SqlServerConnectorTask extends BaseSourceTask {
                 DataChangeEvent::new,
                 metadataProvider);
 
-        coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
                 errorHandler,
                 SqlServerConnector.class,
@@ -138,17 +137,6 @@ public class SqlServerConnectorTask extends BaseSourceTask {
 
     @Override
     protected void doStop() {
-        try {
-            if (coordinator != null) {
-                coordinator.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.interrupted();
-            LOGGER.error("Interrupted while stopping coordinator", e);
-            throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
         try {
             if (dataConnection != null) {
                 dataConnection.close();
