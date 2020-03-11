@@ -90,8 +90,8 @@ public class SnapshotChangeEventSourceMetrics extends PipelineMetrics implements
     }
 
     @Override
-    public void monitoredCollectionsDetermined(Iterable<DataCollectionId> dataCollectionIds) {
-        Iterator<DataCollectionId> it = dataCollectionIds.iterator();
+    public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
+        Iterator<? extends DataCollectionId> it = dataCollectionIds.iterator();
         while (it.hasNext()) {
             DataCollectionId dataCollectionId = it.next();
 

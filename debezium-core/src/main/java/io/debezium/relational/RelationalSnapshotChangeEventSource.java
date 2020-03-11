@@ -107,7 +107,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
             determineCapturedTables(ctx);
-            snapshotProgressListener.monitoredTablesDetermined(ctx.capturedTables);
+            snapshotProgressListener.monitoredDataCollectionsDetermined(ctx.capturedTables);
 
             LOGGER.info("Snapshot step 3 - Locking captured tables");
 
@@ -329,7 +329,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
             LOGGER.info("\t Finished exporting {} records for table '{}'; total duration '{}'", rows,
                     table.id(), Strings.duration(clock.currentTimeInMillis() - exportStart));
-            snapshotProgressListener.tableSnapshotCompleted(table.id(), rows);
+            snapshotProgressListener.dataCollectionSnapshotCompleted(table.id(), rows);
         }
         catch (SQLException e) {
             throw new ConnectException("Snapshotting of table " + table.id() + " failed", e);
