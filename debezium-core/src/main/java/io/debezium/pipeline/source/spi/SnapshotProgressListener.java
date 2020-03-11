@@ -5,9 +5,6 @@
  */
 package io.debezium.pipeline.source.spi;
 
-import static io.debezium.util.Iterators.toIterable;
-import static io.debezium.util.Iterators.transform;
-
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 
@@ -20,27 +17,11 @@ public interface SnapshotProgressListener {
 
     void snapshotStarted();
 
-    /**
-     * @deprecated Since 1.1, use {@link #monitoredCollectionsDetermined(Iterable)} instead.
-     */
-    @Deprecated
-    default void monitoredTablesDetermined(Iterable<TableId> tableIds) {
-        monitoredCollectionsDetermined(toIterable(transform(tableIds.iterator(), tableId -> tableId)));
-    }
-
-    void monitoredCollectionsDetermined(Iterable<DataCollectionId> dataCollectionIds);
+    void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds);
 
     void snapshotCompleted();
 
     void snapshotAborted();
-
-    /**
-     * @deprecated Since 1.1, use {@link #dataCollectionSnapshotCompleted(DataCollectionId, long)} instead.
-     */
-    @Deprecated
-    default void tableSnapshotCompleted(TableId id, long numRows) {
-        dataCollectionSnapshotCompleted(id, numRows);
-    }
 
     void dataCollectionSnapshotCompleted(DataCollectionId dataCollectionId, long numRows);
 
@@ -57,7 +38,7 @@ public interface SnapshotProgressListener {
         }
 
         @Override
-        public void monitoredCollectionsDetermined(Iterable<DataCollectionId> dataCollectionIds) {
+        public void monitoredDataCollectionsDetermined(Iterable<? extends DataCollectionId> dataCollectionIds) {
         }
 
         @Override

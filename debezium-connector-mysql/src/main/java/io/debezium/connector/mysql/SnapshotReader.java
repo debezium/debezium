@@ -578,7 +578,7 @@ public class SnapshotReader extends AbstractReader {
 
                     // Dump all of the tables and generate source records ...
                     logger.info("Step {}: scanning contents of {} tables while still in transaction", step, capturedTableIds.size());
-                    metrics.monitoredTablesDetermined(capturedTableIds);
+                    metrics.monitoredDataCollectionsDetermined(capturedTableIds);
 
                     long startScan = clock.currentTimeInMillis();
                     AtomicLong totalRowCount = new AtomicLong();
@@ -685,7 +685,7 @@ public class SnapshotReader extends AbstractReader {
                                 });
                             }
                             finally {
-                                metrics.tableSnapshotCompleted(tableId, rowNum.get());
+                                metrics.dataCollectionSnapshotCompleted(tableId, rowNum.get());
                                 if (interrupted.get()) {
                                     break;
                                 }
