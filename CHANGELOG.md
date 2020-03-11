@@ -3,6 +3,70 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 1.1.0.CR1
+March 11th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344727)
+
+### New features since 1.1.0.Beta2
+
+* Distinguish between public (API) and internal parts of Debezium [DBZ-234](https://issues.jboss.org/browse/DBZ-234)
+* Default `gtid.new.channel.position` to earliest [DBZ-1705](https://issues.jboss.org/browse/DBZ-1705)
+* Add option to skip unprocesseable event [DBZ-1760](https://issues.jboss.org/browse/DBZ-1760)
+* ExtractNewRecordState - add.source.fields should strip spaces from comma-separated list of fields [DBZ-1772](https://issues.jboss.org/browse/DBZ-1772)
+* Add support for update events for sharded MongoDB collections [DBZ-1781](https://issues.jboss.org/browse/DBZ-1781)
+* Useless/meaningless parameter in function [DBZ-1805](https://issues.jboss.org/browse/DBZ-1805)
+* Replace BlockEventQueue with Debezium ChangeEventQueue  [DBZ-1820](https://issues.jboss.org/browse/DBZ-1820)
+* Option to configure column.propagate.source.type on a per-type basis, not per column-name basis [DBZ-1830](https://issues.jboss.org/browse/DBZ-1830)
+* Support MongoDB Oplog operations as config [DBZ-1831](https://issues.jboss.org/browse/DBZ-1831)
+* Add app metrics for mongodb connector to jmx [DBZ-845](https://issues.jboss.org/browse/DBZ-845)
+* Provide SPI to override schema and value conversion for specific columns [DBZ-1134](https://issues.jboss.org/browse/DBZ-1134)
+* Retry polling on configured exceptions [DBZ-1723](https://issues.jboss.org/browse/DBZ-1723)
+
+
+### Breaking changes since 1.1.0.Beta2
+
+None
+
+
+### Fixes since 1.1.0.Beta2
+
+* CDC Event Schema Doesn't Change After 2 Fields Switch Names and Places [DBZ-1694](https://issues.jboss.org/browse/DBZ-1694)
+* TINYINT(1) value range restricted on snapshot. [DBZ-1773](https://issues.jboss.org/browse/DBZ-1773)
+* MySQL source connector fails while parsing new AWS RDS internal event [DBZ-1775](https://issues.jboss.org/browse/DBZ-1775)
+* Connector fails when performing a Hot Schema Update in SQLServer (Data row is smaller than a column index). [DBZ-1778](https://issues.jboss.org/browse/DBZ-1778)
+* Incosistency in MySQL TINYINT mapping definition [DBZ-1800](https://issues.jboss.org/browse/DBZ-1800)
+* Debezium skips messages after restart [DBZ-1824](https://issues.jboss.org/browse/DBZ-1824)
+* Supply of message.key.columns disables primary keys. [DBZ-1825](https://issues.jboss.org/browse/DBZ-1825)
+* MySql connector fails after CREATE TABLE IF NOT EXISTS table_A, given table_A does exist already [DBZ-1833](https://issues.jboss.org/browse/DBZ-1833)
+* Unable to listen to binlogs for tables with a period in the table names [DBZ-1834](https://issues.jboss.org/browse/DBZ-1834)
+* Mongodb field.renames will add renamed field even when source field is missing [DBZ-1848](https://issues.jboss.org/browse/DBZ-1848)
+* Redundant calls to refresh schema when using user defined types in PostgreSQL [DBZ-1849](https://issues.jboss.org/browse/DBZ-1849)
+* postgres oid is too large to cast to integer [DBZ-1850](https://issues.jboss.org/browse/DBZ-1850)
+
+
+### Other changes since 1.1.0.Beta2
+
+* Verify correctness of JMX metrics [DBZ-1664](https://issues.jboss.org/browse/DBZ-1664)
+* Document that server name option must not use hyphen in name [DBZ-1704](https://issues.jboss.org/browse/DBZ-1704)
+* Move MongoDB connector to base framework [DBZ-1726](https://issues.jboss.org/browse/DBZ-1726)
+* hstore.handling.mode docs seem inaccurate (and map shows null values) [DBZ-1758](https://issues.jboss.org/browse/DBZ-1758)
+* Document transaction metadata topic name [DBZ-1779](https://issues.jboss.org/browse/DBZ-1779)
+* Remove Microsoft references in Db2 connector comments [DBZ-1794](https://issues.jboss.org/browse/DBZ-1794)
+* Fix link to CONTRIBUTE.md in debezium-incubator repository README.md [DBZ-1795](https://issues.jboss.org/browse/DBZ-1795)
+* Invalid dependency definition in Quarkus ITs [DBZ-1799](https://issues.jboss.org/browse/DBZ-1799)
+* Document MySQL boolean handling [DBZ-1801](https://issues.jboss.org/browse/DBZ-1801)
+* Jackson dependency shouldn't be optional in Testcontainers module [DBZ-1803](https://issues.jboss.org/browse/DBZ-1803)
+* Change Db2 configuration for faster test execution [DBZ-1809](https://issues.jboss.org/browse/DBZ-1809)
+* MySQL: Rename event.deserialization.failure.handling.mode to event.processing.failure.handling.mode [DBZ-1826](https://issues.jboss.org/browse/DBZ-1826)
+* Misleading warning message about uncommitted offsets [DBZ-1840](https://issues.jboss.org/browse/DBZ-1840)
+* Missing info on DB2 connector in incubator README file [DBZ-1842](https://issues.jboss.org/browse/DBZ-1842)
+* Only replace log levels if LOG_LEVEL var is set [DBZ-1843](https://issues.jboss.org/browse/DBZ-1843)
+* Modularize tutorial [DBZ-1845](https://issues.jboss.org/browse/DBZ-1845)
+* Modularize the monitoring doc [DBZ-1851](https://issues.jboss.org/browse/DBZ-1851)
+* Remove deprecated methods from SnapshotProgressListener [DBZ-1856](https://issues.jboss.org/browse/DBZ-1856)
+* Document PostgreSQL connector metrics [DBZ-1858](https://issues.jboss.org/browse/DBZ-1858)
+
+
+
 ## 1.1.0.Beta2
 February 13th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344682)
 
