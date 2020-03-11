@@ -49,7 +49,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private volatile PostgresTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
-    private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile PostgresSchema schema;
 
@@ -140,7 +139,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider);
 
-            coordinator = new ChangeEventSourceCoordinator(
+            ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                     previousOffset,
                     errorHandler,
                     PostgresConnector.class,
@@ -212,17 +211,6 @@ public class PostgresConnectorTask extends BaseSourceTask {
 
     @Override
     protected void doStop() {
-        try {
-            if (coordinator != null) {
-                coordinator.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.interrupted();
-            LOGGER.error("Interrupted while stopping coordinator", e);
-            throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
         if (jdbcConnection != null) {
             jdbcConnection.close();
         }

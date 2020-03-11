@@ -180,6 +180,17 @@ public abstract class BaseSourceTask extends SourceTask {
                 LOGGER.info("Stopping down connector");
             }
 
+            try {
+                if (coordinator != null) {
+                    coordinator.stop();
+                }
+            }
+            catch (InterruptedException e) {
+                Thread.interrupted();
+                LOGGER.error("Interrupted while stopping coordinator", e);
+                throw new ConnectException("Interrupted while stopping coordinator, failing the task");
+            }
+
             doStop();
 
             if (restart && restartDelay == null) {
