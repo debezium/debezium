@@ -22,6 +22,7 @@ Attila Szucs
 Aykut Farsak
 Barry LaFond
 Bartosz Miedlar
+Ben Hardesty
 Ben Williams
 Bin Li
 Bingqin Zhou
@@ -72,12 +73,14 @@ Ivan Luzyanin
 Ivan San Jose
 Ivan Vucina
 Jakub Cechacek
+Jan-Hendrik Dolling
 Jan Uyttenhove
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
 Jiri Pechanec
 Johan Venant
+John Graf
 John Martin
 John Psoroulas
 Jon Casstevens
@@ -129,12 +132,14 @@ Raf Liwoch
 Ram Satish
 Ramesh Reddy
 Randall Hauch
+Raúl Tovar
 Renato Mefi
 Roman Kuchar
 Sagar Rao
 René Kerner
 Rich O'Connell
 Robert Coup
+Ruslan Gibaiev
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
@@ -166,3 +171,4 @@ William Pursell
 Willie Cheong
 Wout Scheepers
 Yang Yang
+志飞 张
