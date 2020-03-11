@@ -125,7 +125,7 @@ The extension works out-of-the-box with a default configuration, but this config
 
 === Build time configuration options
 
-[cols="65%a,>15%a,>20%",options="header"]
+[cols="65%a,>12%a,>23%",options="header"]
 |=======================
 |Configuration property
 |Type
@@ -147,7 +147,7 @@ e.g. `uuid`
 The database-specific column definition for the event id column. +
 e.g. `uuid not null`
 |string
-|
+|`UUID NOT NULL`
 
 |`quarkus.debezium-outbox.aggregate-id.name`::
 The column name for the event key column.
@@ -158,7 +158,7 @@ The column name for the event key column.
 The database-specific column definition for the aggregate id. +
 e.g. `varchar(50) not null`
 |string
-|
+|`VARCHAR(255) NOT NULL`
 
 |`quarkus.debezium-outbox.aggregate-id.converter`::
 The JPA AttributeConverter for the event key column. +
@@ -175,7 +175,7 @@ The column name for the event aggregate type column.
 The database-specific column definition for the aggregate type. +
 e.g. `varchar(15) not null`
 |string
-|
+|`VARCHAR(255) NOT NULL`
 
 |`quarkus.debezium-outbox.aggregate-type.converter`::
 The JPA AttributeConverter for the event aggregate type column. +
@@ -192,7 +192,7 @@ The column name for the event type column.
 The database-specific column definition for the event type. +
 e.g. `varchar(50) not null`
 |string
-|
+|`VARCHAR(255) NOT NULL`
 
 |`quarkus.debezium-outbox.type.converter`::
 The JPA AttributeConverter for the event type column. +
@@ -209,7 +209,7 @@ The column name for the event timestamp column.
 The database-specific column definition for the event timestamp. +
 e.g. `timestamp not null`
 |string
-|
+|`TIMESTAMP NOT NULL`
 
 |`quarkus.debezium-outbox.timestamp.converter`::
 The JPA AttributeConverter for the event timestamp column. +
@@ -226,7 +226,7 @@ The column name for the event payload column.
 The database-specific column definition for the event payload. +
 e.g. `text not null`
 |string
-|
+|`VARCHAR(8000)`
 
 |`quarkus.debezium-outbox.payload.converter`::
 The JPA AttributeConverter for the event payload column. +
