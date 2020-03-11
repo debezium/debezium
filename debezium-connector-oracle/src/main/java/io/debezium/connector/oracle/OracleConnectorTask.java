@@ -73,7 +73,7 @@ public class OracleConnectorTask extends BaseSourceTask {
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new ErrorHandler(OracleConnector.class, connectorConfig.getLogicalName(), queue, this::cleanupResources);
+        errorHandler = new ErrorHandler(OracleConnector.class, connectorConfig.getLogicalName(), queue);
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();
 
@@ -95,7 +95,7 @@ public class OracleConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public List<SourceRecord> poll() throws InterruptedException {
+    public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
 
         List<SourceRecord> sourceRecords = records.stream()
@@ -106,16 +106,7 @@ public class OracleConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    public void stop() {
-        cleanupResources();
-    }
-
-    private void cleanupResources() {
-        if (!state.compareAndSet(State.RUNNING, State.STOPPED)) {
-            LOGGER.info("Connector has already been stopped");
-            return;
-        }
-
+    public void doStop() {
         try {
             if (coordinator != null) {
                 coordinator.stop();
@@ -126,16 +117,6 @@ public class OracleConnectorTask extends BaseSourceTask {
             LOGGER.error("Interrupted while stopping coordinator", e);
             // XStream code can end in SIGSEGV so fail the task instead of JVM crash
             throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
-        try {
-            if (errorHandler != null) {
-                errorHandler.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.interrupted();
-            LOGGER.error("Interrupted while stopping", e);
         }
 
         try {
