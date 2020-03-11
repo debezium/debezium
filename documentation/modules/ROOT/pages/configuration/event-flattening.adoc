@@ -138,6 +138,8 @@ transforms.unwrap.add.headers=op,table,lsn,source.ts_ms
 
 will add headers `__op`, `__table`, `__lsn` and `__source_ts_ms` to the outgoing record.
 
+ifndef::cdc-product[]
+// Do not include deprecated content in downstream doc
 === Determine original operation  [DEPRECATED]
 
 _The `operation.header` option is deprecated and scheduled for removal. Please use add.headers instead. If both add.headers and operation.header are specified, the latter will be ignored._
@@ -156,7 +158,10 @@ transforms.unwrap.operation.header=true
 ----
 
 The possible values are the ones from the `op` field of the original change event.
+endif::cdc-product[]
 
+ifndef::cdc-product[]
+// Do not include deprecated content in downstream doc
 === Adding source metadata fields [DEPRECATED]
 
 _The `add.source.fields` option is deprecated and scheduled for removal. Please use add.fields instead. If both add.fields and add.source.fields are specified, the latter will be ignored._
@@ -180,6 +185,7 @@ will add
 to the final flattened record.
 
 For `DELETE` events, this option is only supported when the `delete.handling.mode` option is set to "rewrite".
+endif::cdc-product[]
 
 [[configuration_options]]
 == Configuration options
@@ -210,15 +216,21 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 |
 |Specify a list of metadata fields to add to the header of the flattened message. In case of duplicate field names (e.g. "ts_ms" exists twice), the struct should be specified to get the correct field (e.g. "source.ts_ms"). The fields will be prefixed with "\\__" or "__<struct>__", depending on the specification of the struct. Please use a comma separated list without spaces.
 
+ifndef::cdc-product[]
+// Do not include deprecated content in downstream doc
 |`operation.header` DEPRECATED
 |`false`
-|_This option is deprecated and scheduled for removal. Please use add.headers instead. If both add.headers and operation.header are specified, the latter will be ignored._ 
+|_This option is deprecated and scheduled for removal. Please use add.headers instead. If both add.headers and operation.header are specified, the latter will be ignored._
 
 The SMT adds the event operation (as obtained from the `op` field of the original record) as a message header.
+endif::cdc-product[]
 
+ifndef::cdc-product[]
+// Do not include deprecated content in downstream doc
 |`add.source.fields` DEPRECATED
 |
 |_This option is deprecated and scheduled for removal. Please use add.fields instead. If both add.fields and add.source.fields are specified, the latter will be ignored._
 
 Fields from the change event's `source` structure to add as metadata (prefixed with "__") to the flattened record.
+endif::cdc-product[]
 |=======================
