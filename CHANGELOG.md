@@ -2,6 +2,41 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.0.3.Final
+March 12th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344988)
+
+### New features since 1.0.2.Final
+
+* ExtractNewRecordState - add.source.fields should strip spaces from comma-separated list of fields [DBZ-1772](https://issues.jboss.org/browse/DBZ-1772)
+* Add ability to insert fields from op field in ExtractNewRecordState SMT [DBZ-1452](https://issues.jboss.org/browse/DBZ-1452)
+
+
+### Breaking changes since 1.0.2.Final
+
+None
+
+
+### Fixes since 1.0.2.Final
+
+* Debezium skips messages after restart [DBZ-1824](https://issues.jboss.org/browse/DBZ-1824)
+* Unable to listen to binlogs for tables with a period in the table names [DBZ-1834](https://issues.jboss.org/browse/DBZ-1834)
+* Redundant calls to refresh schema when using user defined types in PostgreSQL [DBZ-1849](https://issues.jboss.org/browse/DBZ-1849)
+* postgres oid is too large to cast to integer [DBZ-1850](https://issues.jboss.org/browse/DBZ-1850)
+
+
+### Other changes since 1.0.2.Final
+
+* Test on top of AMQ Streams [DBZ-924](https://issues.jboss.org/browse/DBZ-924)
+* Verify correctness of JMX metrics [DBZ-1664](https://issues.jboss.org/browse/DBZ-1664)
+* Test with AMQ Streams 1.4 connector operator [DBZ-1714](https://issues.jboss.org/browse/DBZ-1714)
+* hstore.handling.mode docs seem inaccurate (and map shows null values) [DBZ-1758](https://issues.jboss.org/browse/DBZ-1758)
+* Misleading warning message about uncommitted offsets [DBZ-1840](https://issues.jboss.org/browse/DBZ-1840)
+* Modularize tutorial [DBZ-1845](https://issues.jboss.org/browse/DBZ-1845)
+* Modularize the monitoring doc [DBZ-1851](https://issues.jboss.org/browse/DBZ-1851)
+* Document PostgreSQL connector metrics [DBZ-1858](https://issues.jboss.org/browse/DBZ-1858)
+
+
+
 ## 1.0.2.Final
 February 27th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344726)
 
@@ -2128,3 +2163,4 @@ March 17, 2016 - [Detailed release notes](https://issues.jboss.org/secure/Releas
 * Kafka Connect plugin archive for MySQL connector. ([DBZ-17](https://issues.jboss.org/projects/DBZ/issues/DBZ-17))
 * Simple DDL parsing framework that can be extended and used by various connectors. ([DBZ-1](https://issues.jboss.org/projects/DBZ/issues/DBZ-1))
 * Framework for embedding a single Kafka Connect connector inside an application. ([DBZ-8](https://issues.jboss.org/projects/DBZ/issues/DBZ-8))
+
