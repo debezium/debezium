@@ -19,8 +19,10 @@ Arkoprabho Chakraborti
 artiship
 Ashhar Hasan
 Attila Szucs
+Aykut Farsak
 Barry LaFond
 Bartosz Miedlar
+Ben Hardesty
 Ben Williams
 Bin Li
 Bingqin Zhou
@@ -50,6 +52,7 @@ Eero Koplimets
 Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
+Fabio Cantarini
 Felix Eckhardt
 Fintan Bolton
 Gagan Agrawal
@@ -71,12 +74,14 @@ Ivan Luzyanin
 Ivan San Jose
 Ivan Vucina
 Jakub Cechacek
+Jan-Hendrik Dolling
 Jan Uyttenhove
 Jaromir Hamala
 Javier Holguera
 Jeremy Finzel
 Jiri Pechanec
 Johan Venant
+John Graf
 John Martin
 John Psoroulas
 Jon Casstevens
@@ -128,17 +133,22 @@ Raf Liwoch
 Ram Satish
 Ramesh Reddy
 Randall Hauch
+Raúl Tovar
 Renato Mefi
 Roman Kuchar
 Sagar Rao
 René Kerner
 Rich O'Connell
 Robert Coup
+Rui Carlos Leal
+Ruslan Gibaiev
 Sairam Polavarapu
 Sanjay Kr Singh
 Sanne Grinovero
+Sarthak Killedar
 Satyajit Vegesna
 Saulius Valatka
+Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sean Rooney
 Sherafudheen PM
@@ -164,3 +174,4 @@ William Pursell
 Willie Cheong
 Wout Scheepers
 Yang Yang
+志飞 张
