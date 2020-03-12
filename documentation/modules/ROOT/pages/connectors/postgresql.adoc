@@ -2047,7 +2047,7 @@ For example, `add-tables=public.table,public.table2;include-lsn=true`.
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
-See xref:https://debezium.io/documentation/reference/1.0/configuration/avro.html#names[Avro naming] for more details.
+See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
 |`slot.max.retries`
 |6
