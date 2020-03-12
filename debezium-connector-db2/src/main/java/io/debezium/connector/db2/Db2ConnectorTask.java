@@ -48,7 +48,6 @@ public class Db2ConnectorTask extends BaseSourceTask {
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile Db2Connection dataConnection;
     private volatile Db2Connection metadataConnection;
-    private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile Db2DatabaseSchema schema;
 
@@ -113,7 +112,7 @@ public class Db2ConnectorTask extends BaseSourceTask {
                 DataChangeEvent::new,
                 metadataProvider);
 
-        coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
                 errorHandler,
                 Db2Connector.class,
@@ -161,17 +160,6 @@ public class Db2ConnectorTask extends BaseSourceTask {
 
     @Override
     public void doStop() {
-        try {
-            if (coordinator != null) {
-                coordinator.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.interrupted();
-            LOGGER.error("Interrupted while stopping coordinator", e);
-            throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
         try {
             if (dataConnection != null) {
                 dataConnection.close();

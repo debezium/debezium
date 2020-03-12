@@ -9,7 +9,6 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,6 @@ public class OracleConnectorTask extends BaseSourceTask {
     private volatile OracleTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile OracleConnection jdbcConnection;
-    private volatile ChangeEventSourceCoordinator coordinator;
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
 
@@ -80,7 +78,7 @@ public class OracleConnectorTask extends BaseSourceTask {
         EventDispatcher<TableId> dispatcher = new EventDispatcher<>(connectorConfig, topicSelector, schema, queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(), DataChangeEvent::new, metadataProvider);
 
-        coordinator = new ChangeEventSourceCoordinator(
+        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                 previousOffset,
                 errorHandler,
                 OracleConnector.class,
@@ -107,18 +105,6 @@ public class OracleConnectorTask extends BaseSourceTask {
 
     @Override
     public void doStop() {
-        try {
-            if (coordinator != null) {
-                coordinator.stop();
-            }
-        }
-        catch (InterruptedException e) {
-            Thread.interrupted();
-            LOGGER.error("Interrupted while stopping coordinator", e);
-            // XStream code can end in SIGSEGV so fail the task instead of JVM crash
-            throw new ConnectException("Interrupted while stopping coordinator, failing the task");
-        }
-
         try {
             if (jdbcConnection != null) {
                 jdbcConnection.close();
