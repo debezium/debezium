@@ -65,9 +65,24 @@ public class TestHelper {
         return version.get(0) >= 4;
     }
 
+    public static boolean decimal128Supported(MongoPrimary primary, String dbName) {
+        final Document serverInfo = databaseInformation(primary, dbName);
+        @SuppressWarnings("unchecked")
+        final List<Integer> version = (List<Integer>) serverInfo.get("versionArray");
+        return (version.get(0) >= 4) || (version.get(0) == 3 && version.get(1) >= 4);
+    }
+
     public static String lines(String... lines) {
         final StringBuilder sb = new StringBuilder();
         Arrays.stream(lines).forEach(line -> sb.append(line).append(System.lineSeparator()));
         return sb.toString();
+    }
+
+    public static Document getDocumentWithoutLanguageVersion(String jsonString) {
+        // MongoDB 3.6+ added the internal field '$v' which generally is accompanied by the value '1'.
+        // For compatibility against older MongoDB versions in tests, use this to remove such fields.
+        final Document document = Document.parse(jsonString);
+        document.remove("$v");
+        return document;
     }
 }

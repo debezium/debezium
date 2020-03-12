@@ -378,6 +378,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
 
         // ---------------------------------------------------------------------------------------------------------------
         // Create and then update a document
@@ -1365,7 +1366,7 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void shouldGenerateRecordsWithCorrecltySerializedId() throws Exception {
+    public void shouldGenerateRecordsWithCorrectlySerializedId() throws Exception {
         config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
                 .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
@@ -1404,13 +1405,16 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
                 .append("name", "Sally");
         insertDocuments("dbit", "c1", obj3);
 
-        // Decimal128
-        Document obj4 = new Document()
-                .append("_id", new Decimal128(new BigDecimal("123.45678")))
-                .append("name", "Sally");
-        insertDocuments("dbit", "c1", obj4);
+        final boolean decimal128Supported = TestHelper.decimal128Supported(primary(), "mongo");
+        if (decimal128Supported) {
+            // Decimal128
+            Document obj4 = new Document()
+                    .append("_id", new Decimal128(new BigDecimal("123.45678")))
+                    .append("name", "Sally");
+            insertDocuments("dbit", "c1", obj4);
+        }
 
-        final SourceRecords records = consumeRecordsByTopic(5);
+        final SourceRecords records = consumeRecordsByTopic(decimal128Supported ? 5 : 4);
         final List<SourceRecord> sourceRecords = records.allRecordsInOrder();
 
         assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(0), "id", "2147483657");
@@ -1419,7 +1423,10 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         // that's actually not what https://docs.mongodb.com/manual/reference/mongodb-extended-json/#date suggests;
         // seems JsonSerializers is not fully compliant with that description
         assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(3), "id", "{ \"$date\" : " + cal.getTime().getTime() + "}");
-        assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{ \"$numberDecimal\" : \"123.45678\"}");
+
+        if (decimal128Supported) {
+            assertSourceRecordKeyFieldIsEqualTo(sourceRecords.get(4), "id", "{ \"$numberDecimal\" : \"123.45678\"}");
+        }
     }
 
     private static void assertSourceRecordKeyFieldIsEqualTo(SourceRecord record, String fieldName, String expected) {

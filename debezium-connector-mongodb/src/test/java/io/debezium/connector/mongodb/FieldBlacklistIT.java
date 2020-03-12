@@ -1267,6 +1267,8 @@ public class FieldBlacklistIT extends AbstractConnectorTest {
         SourceRecord record = updateRecords.allRecordsInOrder().get(0);
         Struct value = getValue(record);
 
-        assertThat(value.get(field)).isEqualTo(expected);
+        Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(field));
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 }
