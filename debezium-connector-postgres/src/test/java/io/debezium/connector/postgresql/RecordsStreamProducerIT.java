@@ -76,7 +76,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.util.Collect;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Testing;
 
@@ -1639,12 +1638,14 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
                 .with(EmbeddedEngine.OFFSET_STORAGE, MemoryOffsetBackingStore.class), false);
 
-        consumer.expects(2);
+        consumer.expects(3);
         consumer.await(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS);
 
-        // We cannot guarantee the flush timing so it is possible that insert2 record will be redelivered
-        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isIn(Collect.unmodifiableSet("insert2", "insert3"));
-        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isIn(Collect.unmodifiableSet("insert3", "insert4"));
+        // After loss of offset and not doing snapshot we always stream the first record available in replication slot
+        // even if we have seen it as it is not possible to make a difference from plain snapshot never mode
+        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert2");
+        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert3");
+        Assertions.assertThat(((Struct) consumer.remove().value()).getStruct("after").getString("text")).isEqualTo("insert4");
 
         stopConnector();
     }
