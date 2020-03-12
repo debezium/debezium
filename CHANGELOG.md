@@ -9,7 +9,6 @@ March 11th, 2020 [Detailed release notes](https://issues.jboss.org/secure/Releas
 ### New features since 1.1.0.Beta2
 
 * Distinguish between public (API) and internal parts of Debezium [DBZ-234](https://issues.jboss.org/browse/DBZ-234)
-* Default `gtid.new.channel.position` to earliest [DBZ-1705](https://issues.jboss.org/browse/DBZ-1705)
 * Add option to skip unprocesseable event [DBZ-1760](https://issues.jboss.org/browse/DBZ-1760)
 * ExtractNewRecordState - add.source.fields should strip spaces from comma-separated list of fields [DBZ-1772](https://issues.jboss.org/browse/DBZ-1772)
 * Add support for update events for sharded MongoDB collections [DBZ-1781](https://issues.jboss.org/browse/DBZ-1781)
@@ -24,7 +23,9 @@ March 11th, 2020 [Detailed release notes](https://issues.jboss.org/secure/Releas
 
 ### Breaking changes since 1.1.0.Beta2
 
-None
+* Default `gtid.new.channel.position` to earliest [DBZ-1705](https://issues.jboss.org/browse/DBZ-1705)
+* Mongodb field.renames will add renamed field even when source field is missing [DBZ-1848](https://issues.jboss.org/browse/DBZ-1848)
+* MySQL: Rename event.deserialization.failure.handling.mode to event.processing.failure.handling.mode [DBZ-1826](https://issues.jboss.org/browse/DBZ-1826)
 
 
 ### Fixes since 1.1.0.Beta2
@@ -38,7 +39,6 @@ None
 * Supply of message.key.columns disables primary keys. [DBZ-1825](https://issues.jboss.org/browse/DBZ-1825)
 * MySql connector fails after CREATE TABLE IF NOT EXISTS table_A, given table_A does exist already [DBZ-1833](https://issues.jboss.org/browse/DBZ-1833)
 * Unable to listen to binlogs for tables with a period in the table names [DBZ-1834](https://issues.jboss.org/browse/DBZ-1834)
-* Mongodb field.renames will add renamed field even when source field is missing [DBZ-1848](https://issues.jboss.org/browse/DBZ-1848)
 * Redundant calls to refresh schema when using user defined types in PostgreSQL [DBZ-1849](https://issues.jboss.org/browse/DBZ-1849)
 * postgres oid is too large to cast to integer [DBZ-1850](https://issues.jboss.org/browse/DBZ-1850)
 
@@ -56,7 +56,6 @@ None
 * Document MySQL boolean handling [DBZ-1801](https://issues.jboss.org/browse/DBZ-1801)
 * Jackson dependency shouldn't be optional in Testcontainers module [DBZ-1803](https://issues.jboss.org/browse/DBZ-1803)
 * Change Db2 configuration for faster test execution [DBZ-1809](https://issues.jboss.org/browse/DBZ-1809)
-* MySQL: Rename event.deserialization.failure.handling.mode to event.processing.failure.handling.mode [DBZ-1826](https://issues.jboss.org/browse/DBZ-1826)
 * Misleading warning message about uncommitted offsets [DBZ-1840](https://issues.jboss.org/browse/DBZ-1840)
 * Missing info on DB2 connector in incubator README file [DBZ-1842](https://issues.jboss.org/browse/DBZ-1842)
 * Only replace log levels if LOG_LEVEL var is set [DBZ-1843](https://issues.jboss.org/browse/DBZ-1843)
