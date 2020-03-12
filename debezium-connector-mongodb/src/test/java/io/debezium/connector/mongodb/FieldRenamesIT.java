@@ -339,7 +339,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.active:new_active", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -374,7 +376,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.missing:new_missing", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -422,7 +426,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.active:new_active,*.c1.address.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -514,7 +520,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -584,7 +592,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -613,7 +623,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -657,7 +669,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -714,7 +728,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.address.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -772,7 +788,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -835,7 +853,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -871,7 +891,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.address.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -907,7 +929,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -963,7 +987,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -999,7 +1025,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses.second.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1035,7 +1063,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses:new_addresses", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1074,7 +1104,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses:new_addresses", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1110,7 +1142,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.name:new_name,*.c1.address.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1146,7 +1180,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1202,7 +1238,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1238,7 +1276,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses.second.number:new_number", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
@@ -1274,7 +1314,9 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
         SourceRecord record = getUpdateRecord("*.c1.addresses:new_addresses", obj, updateObj);
 
         Struct value = (Struct) record.value();
-        assertThat(value.get(PATCH)).isEqualTo(expected);
+        final Document actualDoc = TestHelper.getDocumentWithoutLanguageVersion(value.getString(PATCH));
+        final Document expectedDoc = TestHelper.getDocumentWithoutLanguageVersion(expected);
+        assertThat(actualDoc).isEqualTo(expectedDoc);
     }
 
     @Test
