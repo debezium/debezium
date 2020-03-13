@@ -7,10 +7,13 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
@@ -80,7 +83,19 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         TestHelper.execute(INSERT_STMT);
 
         // BEGIN, 2 * data, END
-        final List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
+        final List<SourceRecord> records = new ArrayList<>();
+
+        // Database sometimes insert an empty transaction, we must skip those
+        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3)).until(() -> {
+            final List<SourceRecord> candidate = consumeRecordsByTopic(2).allRecordsInOrder();
+            if (candidate.get(1).topic().contains("transaction")) {
+                // empty transaction, should be skipped
+                return false;
+            }
+            records.addAll(candidate);
+            records.addAll(consumeRecordsByTopic(2).allRecordsInOrder());
+            return true;
+        });
 
         Assertions.assertThat(records).hasSize(4);
         final String txId = assertBeginTransaction(records.get(0));
