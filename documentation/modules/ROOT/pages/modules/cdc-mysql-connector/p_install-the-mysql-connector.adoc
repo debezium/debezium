@@ -17,7 +17,12 @@ ifdef::cdc-product[]
 . Download the {prodname} link:{mysql-connector-plugin-download}[MySQL connector plugin].
 endif::cdc-product[]
 ifndef::cdc-product[]
+ifeval::['{page-version}' == 'master']
+. Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plugin].
+endif::[]
+ifeval::['{page-version}' != 'master']
 . Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL connector plugin].
+endif::[]
 endif::cdc-product[]
 . Extract the files into your Kafka Connect environment.
 . Add the plugin's parent directory to your Kafka Connect plugin path:
