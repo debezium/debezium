@@ -8,6 +8,7 @@ package io.debezium.relational;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,11 +105,13 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         }
         // PK update -> emit as delete and re-insert with new key
         else {
-            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset());
+            ConnectHeaders headers = new ConnectHeaders();
+            headers.add("oldkey", oldKey, tableSchema.keySchema());
 
+            Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+            receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
             envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
-            receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset());
+            receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);
         }
     }
 

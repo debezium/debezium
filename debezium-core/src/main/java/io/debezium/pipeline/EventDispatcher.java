@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -255,7 +256,20 @@ public class EventDispatcher<T extends DataCollectionId> {
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
 
         @Override
-        public void changeRecord(DataCollectionSchema dataCollectionSchema, Operation operation, Object key, Struct value, OffsetContext offsetContext)
+        public void changeRecord(DataCollectionSchema dataCollectionSchema,
+                                 Operation operation,
+                                 Object key, Struct value,
+                                 OffsetContext offsetContext)
+                throws InterruptedException {
+            this.changeRecord(dataCollectionSchema, operation, key, value, offsetContext, null);
+        }
+
+        @Override
+        public void changeRecord(DataCollectionSchema dataCollectionSchema,
+                                 Operation operation,
+                                 Object key, Struct value,
+                                 OffsetContext offsetContext,
+                                 ConnectHeaders headers)
                 throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
@@ -265,7 +279,8 @@ public class EventDispatcher<T extends DataCollectionId> {
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
 
             SourceRecord record = new SourceRecord(offsetContext.getPartition(), offsetContext.getOffset(),
-                    topicName, null, keySchema, key, dataCollectionSchema.getEnvelopeSchema().schema(), value);
+                    topicName, null, keySchema, key, dataCollectionSchema.getEnvelopeSchema().schema(), value,
+                    null, headers);
 
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
 
