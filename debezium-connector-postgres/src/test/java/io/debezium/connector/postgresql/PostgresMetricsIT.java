@@ -14,6 +14,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Assert;
@@ -126,15 +127,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
                         .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                         .build());
 
-        // Check snapshot metrics do not exist
-        try {
-            mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen");
-            Assert.fail("Expected Snapshot Metrics to not exist");
-        }
-        catch (InstanceNotFoundException e) {
-            // expected
-        }
-
+        assertSnapshotNotExecutedMetrics();
         assertStreamingMetrics();
     }
 
@@ -152,6 +145,29 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
         Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotRunning")).isEqualTo(false);
         Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotAborted")).isEqualTo(false);
         Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(true);
+    }
+
+    private void assertSnapshotNotExecutedMetrics() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        Awaitility.await("Waiting for snapshot metrics to appear").atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+            try {
+                mBeanServer.getObjectInstance(getSnapshotMetricsObjectName());
+                return true;
+            }
+            catch (InstanceNotFoundException e) {
+                return false;
+            }
+        });
+
+        // Check snapshot metrics
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalTableCount")).isEqualTo(0);
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "MonitoredTables")).isEqualTo(new String[]{});
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(0L);
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "RemainingTableCount")).isEqualTo(0);
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotRunning")).isEqualTo(false);
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotAborted")).isEqualTo(false);
+        Assertions.assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(false);
     }
 
     private void assertStreamingMetrics() throws Exception {
