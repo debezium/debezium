@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
@@ -19,10 +20,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.fest.assertions.Assertions;
 import org.junit.After;
@@ -42,6 +45,7 @@ import io.debezium.embedded.EmbeddedEngine.CompletionResult;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.relational.history.KafkaDatabaseHistory;
@@ -289,6 +293,12 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
     }
 
+    private Header getPKUpdateOldKeyHeader(SourceRecord record) {
+        return StreamSupport.stream(record.headers().spliterator(), false)
+                .filter(header -> RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD.equals(header.key()))
+                .collect(Collectors.toList()).get(0);
+    }
+
     @Test
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         String masterPort = System.getProperty("database.port", "3306");
@@ -434,9 +444,22 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(3);
         List<SourceRecord> updates = records.recordsForTopic(DATABASE.topicForTable("products"));
         assertThat(updates.size()).isEqualTo(3);
-        assertDelete(updates.get(0), "id", 1001);
+
+        SourceRecord deleteRecord = updates.get(0);
+        assertDelete(deleteRecord, "id", 1001);
+
+        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
+        Header oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(deleteRecord);
+        assertEquals(Integer.valueOf(1001), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("id"));
+
         assertTombstone(updates.get(1), "id", 1001);
-        assertInsert(updates.get(2), "id", 2001);
+
+        SourceRecord insertRecord = updates.get(2);
+        assertInsert(insertRecord, "id", 2001);
+
+        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
+        oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        assertEquals(Integer.valueOf(1001), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("id"));
 
         Testing.print("*** Done with PK change");
 
@@ -1983,4 +2006,57 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> uc = records.recordsForTopic(RO_DATABASE.topicForTable("Products"));
         return uc != null ? uc : records.recordsForTopic(RO_DATABASE.topicForTable("products"));
     }
+
+    @Test
+    @FixFor("DBZ-1531")
+    public void shouldEmitOldkeyHeaderOnPrimaryKeyUpdate() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE orders SET order_number=10303 WHERE order_number=10003");
+            }
+        }
+        // Consume the update of the PK, which is one insert followed by a delete followed by a tombstone ...
+        records = consumeRecordsByTopic(3);
+        List<SourceRecord> updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
+
+        assertThat(updates.size()).isEqualTo(3);
+
+        SourceRecord deleteRecord = updates.get(0);
+        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
+        Header oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(deleteRecord);
+        assertEquals(Integer.valueOf(10003), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("order_number"));
+
+        SourceRecord insertRecord = updates.get(2);
+        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
+        oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        assertEquals(Integer.valueOf(10003), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("order_number"));
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("UPDATE orders SET quantity=5 WHERE order_number=10004");
+            }
+        }
+        records = consumeRecordsByTopic(5);
+        updates = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(updates.size()).isEqualTo(1);
+
+        SourceRecord updateRecord = updates.get(0);
+        assertEquals(0, updateRecord.headers().size()); // to be removed/updated once we set additional headers
+
+        stopConnector();
+    }
+
 }
