@@ -174,6 +174,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         assertInsert(INSERT_CASH_TYPES_STMT, 1, schemaAndValuesForMoneyTypes());
 
+        // negative monetary types
+        consumer.expects(1);
+        assertInsert(INSERT_NEGATIVE_CASH_TYPES_STMT, 2, schemaAndValuesForNegativeMoneyTypes());
+
         // bits and bytes
         consumer.expects(1);
         assertInsert(INSERT_BIN_TYPES_STMT, 1, schemaAndValuesForBinTypes());
