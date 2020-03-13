@@ -552,6 +552,42 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-1755")
+    public void shouldGenerateSnapshotForPositiveMoney() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        // insert money
+        TestHelper.execute(INSERT_CASH_TYPES_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig());
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.cash_table", schemaAndValuesForMoneyTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("DBZ-1755")
+    public void shouldGenerateSnapshotForNegativeMoney() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        // insert money
+        TestHelper.execute(INSERT_NEGATIVE_CASH_TYPES_STMT);
+
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_WHITELIST, "public.cash_table"));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.cash_table", schemaAndValuesForNegativeMoneyTypes());
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
     @FixFor("DBZ-1413")
     public void shouldSnapshotDomainTypeWithPropagatedSourceTypeAttributes() throws Exception {
         TestHelper.dropAllSchemas();

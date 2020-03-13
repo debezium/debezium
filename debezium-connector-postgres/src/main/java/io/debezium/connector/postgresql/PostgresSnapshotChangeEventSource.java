@@ -215,6 +215,11 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                         return sMoney;
                     }
                     try {
+                        if (sMoney.startsWith("-")) {
+                            // PGmoney expects negative values to be provided in the format of "($XXXXX.YY)"
+                            final String negativeMoney = "(" + sMoney.substring(1) + ")";
+                            return new PGmoney(negativeMoney).val;
+                        }
                         return new PGmoney(sMoney).val;
                     }
                     catch (SQLException e) {
