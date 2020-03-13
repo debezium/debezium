@@ -6,6 +6,7 @@
 package io.debezium.pipeline.spi;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.ConnectHeaders;
 
 import io.debezium.data.Envelope.Operation;
 import io.debezium.schema.DataCollectionSchema;
@@ -30,6 +31,20 @@ public interface ChangeRecordEmitter {
     OffsetContext getOffset();
 
     public interface Receiver {
-        void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value, OffsetContext offset) throws InterruptedException;
+        void changeRecord(DataCollectionSchema schema,
+                          Operation operation,
+                          Object key, Struct value,
+                          OffsetContext offset)
+                throws InterruptedException;
+
+        default void changeRecord(DataCollectionSchema schema,
+                                  Operation operation,
+                                  Object key, Struct value,
+                                  OffsetContext offset,
+                                  ConnectHeaders headers)
+                throws InterruptedException {
+            throw new RuntimeException("Not implemented yet in " + this.getClass().getName());
+        }
+
     }
 }

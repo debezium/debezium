@@ -18,12 +18,14 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -281,8 +283,12 @@ public class RecordMakers {
                         // The key has changed, so we need to deal with both the new key and old key.
                         // Consumers may push the events into a system that won't allow both records to exist at the same time,
                         // so we first want to send the delete event for the old key...
+
+                        ConnectHeaders headers = new ConnectHeaders();
+                        headers.add(RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD, oldKey, keySchema);
+
                         SourceRecord record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
-                                keySchema, oldKey, envelope.schema(), envelope.delete(valueBefore, origin, ts));
+                                keySchema, oldKey, envelope.schema(), envelope.delete(valueBefore, origin, ts), null, headers);
                         consumer.accept(record);
                         ++count;
 
@@ -295,7 +301,7 @@ public class RecordMakers {
 
                         // And finally send the create event ...
                         record = new SourceRecord(partition, getSourceRecordOffset(offset), topicName, partitionNum,
-                                keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts));
+                                keySchema, key, envelope.schema(), envelope.create(valueAfter, origin, ts), null, headers);
                         consumer.accept(record);
                         ++count;
                     }

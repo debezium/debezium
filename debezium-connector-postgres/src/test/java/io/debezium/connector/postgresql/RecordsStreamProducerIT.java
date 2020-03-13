@@ -32,12 +32,14 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.awaitility.Awaitility;
@@ -73,6 +75,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.ShouldFailWhen;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -680,6 +683,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
+    private Header getPKUpdateOldKeyHeader(SourceRecord record) {
+        return StreamSupport.stream(record.headers().spliterator(), false)
+                .filter(header -> RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD.equals(header.key()))
+                .collect(Collectors.toList()).get(0);
+    }
+
     @Test
     public void shouldReceiveChangesForUpdatesWithPKChanges() throws Exception {
         startConnector();
@@ -693,6 +702,11 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, deleteRecord.topic());
         VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
 
+        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
+
+        Header oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(deleteRecord);
+        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
+
         // followed by a tombstone of the old pk
         SourceRecord tombstoneRecord = consumer.remove();
         assertEquals(topicName, tombstoneRecord.topic());
@@ -702,6 +716,10 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         SourceRecord insertRecord = consumer.remove();
         assertEquals(topicName, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
+
+        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
+        oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
     }
 
     @Test
@@ -721,10 +739,18 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, deleteRecord.topic());
         VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
 
+        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
+        Header oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(deleteRecord);
+        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
+
         // followed by insert of the new value
         SourceRecord insertRecord = consumer.remove();
         assertEquals(topicName, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
+
+        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
+        oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
     }
 
     @Test
