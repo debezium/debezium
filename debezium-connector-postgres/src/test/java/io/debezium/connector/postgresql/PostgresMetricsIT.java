@@ -150,7 +150,7 @@ public class PostgresMetricsIT extends AbstractRecordsProducerTest {
     private void assertSnapshotNotExecutedMetrics() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        Awaitility.await("Waiting for snapshot metrics to apppear").atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
+        Awaitility.await("Waiting for snapshot metrics to appear").atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
             try {
                 mBeanServer.getObjectInstance(getSnapshotMetricsObjectName());
                 return true;
