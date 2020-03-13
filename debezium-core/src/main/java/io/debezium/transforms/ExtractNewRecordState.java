@@ -243,6 +243,7 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         Headers headers = new ConnectHeaders();
 
         for (FieldReference fieldReference : additionalHeaders) {
+            // add "d" operation header to tombstone events
             if (originalRecordValue == null) {
                 if (FieldName.OPERATION.equals(fieldReference.field)) {
                     headers.addString(fieldReference.newFieldName, Operation.DELETE.code());
