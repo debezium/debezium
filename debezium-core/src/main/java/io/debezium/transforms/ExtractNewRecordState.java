@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.FieldName;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteHandling;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -241,6 +243,12 @@ public class ExtractNewRecordState<R extends ConnectRecord<R>> implements Transf
         Headers headers = new ConnectHeaders();
 
         for (FieldReference fieldReference : additionalHeaders) {
+            if (originalRecordValue == null) {
+                if (FieldName.OPERATION.equals(fieldReference.field)) {
+                    headers.addString(fieldReference.newFieldName, Operation.DELETE.code());
+                }
+                continue;
+            }
             headers.add(fieldReference.getNewFieldName(), fieldReference.getValue(originalRecordValue),
                     fieldReference.getSchema(originalRecordValue.schema()));
         }

@@ -110,6 +110,10 @@ public class ExtractNewRecordStateTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", envelope.schema(), payload);
     }
 
+    private SourceRecord createTombstoneRecord() {
+        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null);
+    }
+
     private SourceRecord createCreateRecord() {
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
@@ -510,6 +514,30 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
+    @FixFor("DBZ-1876")
+    public void testAddHeadersHandleDeleteRewriteAndTombstone() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_HEADERS, "op,source.lsn");
+            props.put(DROP_TOMBSTONES, "false");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            String headerValue = getSourceRecordHeaderByKey(unwrapped, "__op");
+            assertThat(headerValue).isEqualTo(Envelope.Operation.DELETE.code());
+            headerValue = getSourceRecordHeaderByKey(unwrapped, "__source_lsn");
+            assertThat(headerValue).isEqualTo(String.valueOf(1234));
+
+            final SourceRecord tombstone = transform.apply(createTombstoneRecord());
+            assertThat(getSourceRecordHeaderByKey(tombstone, "__op")).isEqualTo(Envelope.Operation.DELETE.code());
+            assertThat(tombstone.value()).isNull();
+        }
+    }
+
+    @Test
     public void testAddSourceFields() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
@@ -600,6 +628,27 @@ public class ExtractNewRecordStateTest {
             assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
             assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
             assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1876")
+    public void testAddFieldsHandleDeleteRewriteAndTombstone() {
+        try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(ADD_FIELDS, "op,lsn");
+            props.put(DROP_TOMBSTONES, "false");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord unwrapped = transform.apply(deleteRecord);
+            assertThat(((Struct) unwrapped.value()).getString("__deleted")).isEqualTo("true");
+            assertThat(((Struct) unwrapped.value()).get("__op")).isEqualTo(Envelope.Operation.DELETE.code());
+            assertThat(((Struct) unwrapped.value()).get("__lsn")).isEqualTo(1234);
+
+            final SourceRecord tombstone = transform.apply(createTombstoneRecord());
+            assertThat(tombstone.value()).isNull();
         }
     }
 
