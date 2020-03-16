@@ -214,17 +214,12 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
                     if (sMoney == null) {
                         return sMoney;
                     }
-                    try {
-                        if (sMoney.startsWith("-")) {
-                            // PGmoney expects negative values to be provided in the format of "($XXXXX.YY)"
-                            final String negativeMoney = "(" + sMoney.substring(1) + ")";
-                            return new PGmoney(negativeMoney).val;
-                        }
-                        return new PGmoney(sMoney).val;
+                    if (sMoney.startsWith("-")) {
+                        // PGmoney expects negative values to be provided in the format of "($XXXXX.YY)"
+                        final String negativeMoney = "(" + sMoney.substring(1) + ")";
+                        return new PGmoney(negativeMoney).val;
                     }
-                    catch (SQLException e) {
-                        return sMoney;
-                    }
+                    return new PGmoney(sMoney).val;
                 case PgOid.BIT:
                     return rs.getString(columnIndex);
                 case PgOid.NUMERIC:
