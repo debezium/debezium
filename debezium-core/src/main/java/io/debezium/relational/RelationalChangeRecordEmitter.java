@@ -27,6 +27,7 @@ import io.debezium.util.Clock;
 public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecordEmitter<TableSchema> {
 
     public static final String PK_UPDATE_OLDKEY_FIELD = "oldkey";
+    public static final String PK_UPDATE_NEWKEY_FIELD = "newkey";
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -108,10 +109,13 @@ public abstract class RelationalChangeRecordEmitter extends AbstractChangeRecord
         // PK update -> emit as delete and re-insert with new key
         else {
             ConnectHeaders headers = new ConnectHeaders();
-            headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
+            headers.add(PK_UPDATE_NEWKEY_FIELD, newKey, tableSchema.keySchema());
 
             Struct envelope = tableSchema.getEnvelopeSchema().delete(oldValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
             receiver.changeRecord(tableSchema, Operation.DELETE, oldKey, envelope, getOffset(), headers);
+
+            headers = new ConnectHeaders();
+            headers.add(PK_UPDATE_OLDKEY_FIELD, oldKey, tableSchema.keySchema());
 
             envelope = tableSchema.getEnvelopeSchema().create(newValue, getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
             receiver.changeRecord(tableSchema, Operation.CREATE, newKey, envelope, getOffset(), headers);

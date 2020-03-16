@@ -689,9 +689,17 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
+    private Header getPKUpdateNewKeyHeader(SourceRecord record) {
+        return this.getHeaderField(record, RelationalChangeRecordEmitter.PK_UPDATE_NEWKEY_FIELD);
+    }
+
     private Header getPKUpdateOldKeyHeader(SourceRecord record) {
+        return this.getHeaderField(record, RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD);
+    }
+
+    private Header getHeaderField(SourceRecord record, String fieldName) {
         return StreamSupport.stream(record.headers().spliterator(), false)
-                .filter(header -> RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD.equals(header.key()))
+                .filter(header -> fieldName.equals(header.key()))
                 .collect(Collectors.toList()).get(0);
     }
 
@@ -710,8 +718,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
 
-        Header oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(deleteRecord);
-        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
+        Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
+        assertEquals(Integer.valueOf(2), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
 
         // followed by a tombstone of the old pk
         SourceRecord tombstoneRecord = consumer.remove();
@@ -724,8 +732,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
 
         assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
-        oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
-        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
+        keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        assertEquals(Integer.valueOf(1), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
     }
 
     @Test
@@ -746,8 +754,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
 
         assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
-        Header oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(deleteRecord);
-        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
+        Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
+        assertEquals(Integer.valueOf(2), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
 
         // followed by insert of the new value
         SourceRecord insertRecord = consumer.remove();
@@ -755,8 +763,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
 
         assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
-        oldkeyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
-        assertEquals(Integer.valueOf(1), ((Struct) oldkeyPKUpdateHeader.value()).getInt32("pk"));
+        keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        assertEquals(Integer.valueOf(1), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
     }
 
     @Test
