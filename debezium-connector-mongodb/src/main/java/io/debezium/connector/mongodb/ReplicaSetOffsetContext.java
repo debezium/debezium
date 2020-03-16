@@ -48,7 +48,9 @@ public class ReplicaSetOffsetContext implements OffsetContext {
 
     @Override
     public Map<String, ?> getOffset() {
-        return sourceInfo.lastOffset(replicaSetName);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> offsets = (Map<String, Object>) sourceInfo.lastOffset(replicaSetName);
+        return isSnapshotOngoing() ? offsets : offsetContext.getTransactionContext().store(offsets);
     }
 
     @Override

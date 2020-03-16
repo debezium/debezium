@@ -59,7 +59,7 @@ public class MongoDbEventMetadataProvider implements EventMetadataProvider {
         if (source == null) {
             return null;
         }
-        final Long txOrder = sourceInfo.getInt64(SourceInfo.TX_ORD);
+        final Long txOrder = sourceInfo.getInt64(SourceInfo.OPERATION_ID);
         if (txOrder == null) {
             return null;
         }

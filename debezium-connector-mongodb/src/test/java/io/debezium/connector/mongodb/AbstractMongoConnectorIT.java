@@ -19,8 +19,11 @@ import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
 
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
@@ -59,6 +62,28 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
                 context.getConnectionContext().shutdown();
             }
         }
+    }
+
+    /**
+     * Load test documents from the classpath.
+     *
+     * @param pathOnClasspath the path on the classpath to the file containing the documents to load
+     * @return list of loaded documents; never null but may contain no entries.
+     */
+    protected List<Document> loadTestDocuments(String pathOnClasspath) {
+        final List<Document> documents = new ArrayList<>();
+        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
+            assertThat(stream).isNotNull();
+            IoUtil.readLines(stream, line -> {
+                Document document = Document.parse(line);
+                assertThat(document.size()).isGreaterThan(0);
+                documents.add(document);
+            });
+        }
+        catch (IOException e) {
+            fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
+        }
+        return documents;
     }
 
     /**
@@ -123,6 +148,40 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
     }
 
     /**
+     * Inserts all documents in the specified collection within a transaction.
+     *
+     * @param dbName the database name
+     * @param collectionName the collection name
+     * @param documents the documents to be inserted, can be empty
+     */
+    protected void insertDocumentsInTx(String dbName, String collectionName, Document... documents) {
+        assertThat(TestHelper.transactionsSupported(primary(), dbName)).isTrue();
+
+        primary().execute("store documents in tx", mongo -> {
+            Testing.debug("Storing documents in '" + dbName + "." + collectionName + "'");
+            // If the collection does not exist, be sure to create it
+            final MongoDatabase db = mongo.getDatabase(dbName);
+            if (!collectionExists(db, collectionName)) {
+                db.createCollection(collectionName);
+            }
+
+            final MongoCollection<Document> collection = db.getCollection(collectionName);
+
+            final ClientSession session = mongo.startSession();
+            session.startTransaction();
+
+            final InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+            for (Document document : documents) {
+                assertThat(document).isNotNull();
+                assertThat(document.size()).isGreaterThan(0);
+                collection.insertOne(session, document, insertOptions);
+            }
+
+            session.commitTransaction();
+        });
+    }
+
+    /**
      * Updates a document in a collection based on a specified filter.
      *
      * @param dbName the database name
@@ -170,6 +229,17 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
         };
     }
 
+    private static boolean collectionExists(MongoDatabase database, String collectionName) {
+        final MongoIterable<String> collections = database.listCollectionNames();
+        final MongoCursor<String> cursor = collections.cursor();
+        while (cursor.hasNext()) {
+            if (collectionName.equalsIgnoreCase(cursor.next())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
         primary().execute("storing documents", mongo -> {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
@@ -187,21 +257,5 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             assertThat(doc.size()).isGreaterThan(0);
             collection.insertOne(doc, insertOptions);
         });
-    }
-
-    protected List<Document> loadTestDocuments(String pathOnClasspath) {
-        List<Document> results = new ArrayList<>();
-        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
-            assertThat(stream).isNotNull();
-            IoUtil.readLines(stream, line -> {
-                Document doc = Document.parse(line);
-                assertThat(doc.size()).isGreaterThan(0);
-                results.add(doc);
-            });
-        }
-        catch (IOException e) {
-            fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
-        }
-        return results;
     }
 }
