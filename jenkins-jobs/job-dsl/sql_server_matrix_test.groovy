@@ -72,6 +72,7 @@ esac
 mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-sqlserver -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Ddocker.filter=$DATABASE_IMAGE \
+    -Dinsecure.repositories=WARN \
     -P$PROFILE_PROD 
 ''')
     }
