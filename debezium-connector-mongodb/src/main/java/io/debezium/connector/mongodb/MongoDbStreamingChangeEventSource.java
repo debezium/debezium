@@ -300,7 +300,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 return true;
             }
             try {
-                dispatcher.dispatchTransactionStartedEvent(Long.toString(txOrder), oplogContext.getOffset());
+                dispatcher.dispatchTransactionStartedEvent(Long.toString(event.getLong("h")), oplogContext.getOffset());
                 for (Document change : txChanges) {
                     final boolean r = handleOplogEvent(primaryAddress, change, event, ++txOrder, oplogContext);
                     if (!r) {

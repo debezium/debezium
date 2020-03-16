@@ -27,6 +27,7 @@ import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Json;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.TopicSelector;
@@ -87,6 +88,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .field(FieldName.SOURCE, sourceSchema)
                     .field(FieldName.OPERATION, Schema.OPTIONAL_STRING_SCHEMA)
                     .field(FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
+                    .field(FieldName.TRANSACTION, TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                     .build();
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);
