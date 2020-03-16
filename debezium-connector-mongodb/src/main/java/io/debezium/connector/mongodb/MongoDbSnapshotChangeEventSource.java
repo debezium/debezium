@@ -340,6 +340,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         LOGGER.info("Beginning snapshot of '{}' at {}", rsName, rsOffsetContext.getOffset());
 
         final List<CollectionId> collections = primaryClient.collections();
+        snapshotProgressListener.monitoredDataCollectionsDetermined(collections);
         if (connectionContext.maxNumberOfCopyThreads() > 1) {
             // Since multiple copy threads are to be used, create a thread pool and initiate the copy.
             // The current thread will wait until the copy threads either have completed or an error occurred.

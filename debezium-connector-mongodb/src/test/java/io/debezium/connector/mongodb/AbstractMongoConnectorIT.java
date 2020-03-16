@@ -8,6 +8,10 @@ package io.debezium.connector.mongodb;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
@@ -23,6 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
 /**
@@ -163,5 +168,40 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
             }
             logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
         };
+    }
+
+    protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {
+        primary().execute("storing documents", mongo -> {
+            Testing.debug("Storing in '" + dbName + "." + collectionName + "' documents loaded from from '" + pathOnClasspath + "'");
+            MongoDatabase db1 = mongo.getDatabase(dbName);
+            MongoCollection<Document> coll = db1.getCollection(collectionName);
+            coll.drop();
+            storeDocuments(coll, pathOnClasspath);
+        });
+    }
+
+    protected void storeDocuments(MongoCollection<Document> collection, String pathOnClasspath) {
+        InsertOneOptions insertOptions = new InsertOneOptions().bypassDocumentValidation(true);
+        loadTestDocuments(pathOnClasspath).forEach(doc -> {
+            assertThat(doc).isNotNull();
+            assertThat(doc.size()).isGreaterThan(0);
+            collection.insertOne(doc, insertOptions);
+        });
+    }
+
+    protected List<Document> loadTestDocuments(String pathOnClasspath) {
+        List<Document> results = new ArrayList<>();
+        try (InputStream stream = Testing.Files.readResourceAsStream(pathOnClasspath)) {
+            assertThat(stream).isNotNull();
+            IoUtil.readLines(stream, line -> {
+                Document doc = Document.parse(line);
+                assertThat(doc.size()).isGreaterThan(0);
+                results.add(doc);
+            });
+        }
+        catch (IOException e) {
+            fail("Unable to find or read file '" + pathOnClasspath + "': " + e.getMessage());
+        }
+        return results;
     }
 }
