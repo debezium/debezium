@@ -61,6 +61,7 @@ fi
 mvn clean install -U -s $HOME/.m2/settings-snapshots.xml -pl debezium-connector-mongodb -am -fae \
     -Dmaven.test.failure.ignore=true \
     -Dversion.mongo.server=$MONGODB_VERSION \
+    -Dinsecure.repositories=WARN \
     -P$PROFILE_PROD 
 ''')
     }
