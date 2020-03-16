@@ -126,6 +126,11 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     @Override
     public PGmoney asMoney() {
         try {
+            final String value = asString();
+            if (value != null && value.startsWith("-")) {
+                final String negativeMoney = "(" + value.substring(1) + ")";
+                return new PGmoney(negativeMoney);
+            }
             return new PGmoney(asString());
         }
         catch (final SQLException e) {
