@@ -36,6 +36,10 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
         TestHelper.cleanDatabase(primary(), "dbA");
 
+        if (!TestHelper.transactionsSupported(primary(), "mongo1")) {
+            return;
+        }
+
         start(MongoDbConnector.class, config);
         assertConnectorIsRunning();
 
