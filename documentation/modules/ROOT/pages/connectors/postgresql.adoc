@@ -13,14 +13,6 @@ include::../_attributes.adoc[]
 toc::[]
 endif::cdc-product[]
 
-ifdef::cdc-product[]
-[IMPORTANT]
-====
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete; therefore, Red Hat does not recommend implementing any Technology Preview features in production environments. This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope^].
-====
-endif::cdc-product[]
-
 {prodname}'s PostgreSQL Connector can monitor and record row-level changes in the schemas of a PostgreSQL database.
 
 The first time it connects to a PostgreSQL server/cluster, it reads a consistent snapshot of all of the schemas. When that snapshot is complete, the connector continuously streams the changes that were committed to PostgreSQL 9.6 or later and generates corresponding insert, update and delete events. All of the events for each table are recorded in a separate Kafka topic, where they can be easily consumed by applications and services.
@@ -84,7 +76,7 @@ With a single byte character encoding it is not possible to correctly process st
 == Setting up PostgreSQL
 
 ifdef::cdc-product[]
-The Technology Preview release of {prodname} only supports the native pgoutput logical replication stream.
+This release of {prodname} only supports the native pgoutput logical replication stream.
 To set up PostgreSQL using pgoutput, you will need to enable a replication slot, and configure a user with sufficient privileges to perform the replication.
 
 === Configuring the replication slot
@@ -2102,7 +2094,7 @@ If the primary node goes down, only after a new primary has been promoted (with 
 
 There are some really important caveats to failovers, and you should pause Debezium until you can verify that you have a replication slot intact which has not lost data.  After a failover, you will miss change events unless your administration of failovers includes a process to recreate the Debezium replication slot before the application is allowed to write to the *new* primary. You also may need to verify in a failover situation that Debezium was able to read all changes in the slot **before the old primary failed**.
 
-One reliable method of recovering and verifying any lost changes (yet administratively difficult) is to recover a backup of your failed primary to the point immediately before it failed, which would allow you to inspect the replication slot for any unconsumed changes. In any case, it is crucial that you recreate the replication slot on the new primary prior to allowing writes to it. 
+One reliable method of recovering and verifying any lost changes (yet administratively difficult) is to recover a backup of your failed primary to the point immediately before it failed, which would allow you to inspect the replication slot for any unconsumed changes. In any case, it is crucial that you recreate the replication slot on the new primary prior to allowing writes to it.
 
 ifndef::cdc-product[]
 [NOTE]
