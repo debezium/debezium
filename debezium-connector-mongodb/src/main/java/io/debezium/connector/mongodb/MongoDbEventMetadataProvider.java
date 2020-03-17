@@ -14,6 +14,7 @@ import io.debezium.data.Envelope;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionId;
+import io.debezium.time.Conversions;
 import io.debezium.util.Collect;
 
 /**
@@ -31,6 +32,10 @@ public class MongoDbEventMetadataProvider implements EventMetadataProvider {
         final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
         if (source == null) {
             return null;
+        }
+        if (sourceInfo.schema().field(SourceInfo.TIMESTAMP) != null) {
+            final Integer timestamp = sourceInfo.getInt32(SourceInfo.TIMESTAMP);
+            return timestamp == null ? null : Conversions.toInstantFromMicros(timestamp);
         }
         final Long timestamp = sourceInfo.getInt64(SourceInfo.TIMESTAMP_KEY);
         return timestamp == null ? null : Instant.ofEpochMilli(timestamp);

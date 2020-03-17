@@ -1691,6 +1691,61 @@ public class MongoDbConnectorIT extends AbstractConnectorTest {
         assertThat(foundNames).containsOnly("Ygritte");
     }
 
+    @Test
+    @FixFor("DBZ-1880")
+    public void shouldGenerateRecordForUpdateEventUsingLegacyV1SourceInfo() throws Exception {
+        config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.COLLECTION_WHITELIST, "dbit.*")
+                .with(CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, "v1")
+                .with(MongoDbConnectorConfig.LOGICAL_NAME, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+
+        TestHelper.cleanDatabase(primary(), "dbit");
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert record
+        ObjectId objId = new ObjectId();
+        Document obj = new Document("_id", objId).append("name", "John");
+        insertDocuments("dbit", "c1", obj);
+
+        // Consume the insert
+        consumeRecordsByTopic(1);
+        assertNoRecordsToConsume();
+
+        Document updateObj = new Document()
+                .append("$set", new Document()
+                        .append("name", "Sally"));
+
+        final Instant timestamp = Instant.now();
+        final Document filter = Document.parse("{\"_id\": {\"$oid\": \"" + objId + "\"}}");
+        updateDocuments("dbit", "c1", filter, updateObj);
+
+        // Consume records, should be 1, the update
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        final SourceRecord deleteRecord = records.allRecordsInOrder().get(0);
+        final Struct key = (Struct) deleteRecord.key();
+        final Struct value = (Struct) deleteRecord.value();
+
+        assertThat(key.schema()).isSameAs(deleteRecord.keySchema());
+        assertThat(key.get("id")).isEqualTo(JSONSerializers.getStrict().serialize(objId));
+
+        Document patchObj = Document.parse(value.getString("patch"));
+        patchObj.remove("$v");
+
+        assertThat(value.schema()).isSameAs(deleteRecord.valueSchema());
+        assertThat(value.getString(Envelope.FieldName.AFTER)).isNull();
+        assertThat(patchObj.toJson(COMPACT_JSON_SETTINGS)).isEqualTo(updateObj.toJson(COMPACT_JSON_SETTINGS));
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.UPDATE.code());
+        assertThat(value.getInt64(Envelope.FieldName.TIMESTAMP)).isGreaterThanOrEqualTo(timestamp.toEpochMilli());
+    }
+
     private void insertDocuments(String dbName, String collectionName, Document... documents) {
         primary().execute("store documents", mongo -> {
             Testing.debug("Storing in '" + dbName + "." + collectionName + "' document");
