@@ -30,29 +30,28 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("The query executed with every heartbeat. Defaults to an empty string.")
-            .withDefault("");
+            .withDescription("The query executed with every heartbeat. Defaults to an empty string.");
 
     private final String heartBeatActionQuery;
     private final JdbcConnection jdbcConnection;
 
-    DatabaseHeartbeatImpl(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection) {
+    DatabaseHeartbeatImpl(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery) {
         super(configuration, topicName, key);
-        heartBeatActionQuery = configuration.getString(HEARTBEAT_ACTION_QUERY);
+
+        this.heartBeatActionQuery = heartBeatActionQuery;
         this.jdbcConnection = jdbcConnection;
     }
 
     @Override
     public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        if (!heartBeatActionQuery.isEmpty() && jdbcConnection != null) {
-            try {
-                jdbcConnection.execute(heartBeatActionQuery);
-            }
-            catch (Exception e) {
-                LOGGER.error("Could not execute heartbeat action", e);
-            }
-            LOGGER.debug("Executed heartbeat action query");
+        try {
+            jdbcConnection.execute(heartBeatActionQuery);
         }
+        catch (Exception e) {
+            LOGGER.error("Could not execute heartbeat action", e);
+        }
+        LOGGER.debug("Executed heartbeat action query");
+
         super.forcedBeat(partition, offset, consumer);
     }
 }
