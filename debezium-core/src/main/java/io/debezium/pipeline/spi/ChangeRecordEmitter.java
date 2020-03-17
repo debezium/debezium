@@ -31,11 +31,6 @@ public interface ChangeRecordEmitter {
     OffsetContext getOffset();
 
     public interface Receiver {
-        void changeRecord(DataCollectionSchema schema,
-                          Operation operation,
-                          Object key, Struct value,
-                          OffsetContext offset)
-                throws InterruptedException;
 
         default void changeRecord(DataCollectionSchema schema,
                                   Operation operation,

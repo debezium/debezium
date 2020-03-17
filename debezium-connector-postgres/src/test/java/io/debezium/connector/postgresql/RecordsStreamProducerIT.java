@@ -710,8 +710,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, deleteRecord.topic());
         VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
 
-        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
-
         Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
         assertEquals(Integer.valueOf(2), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
 
@@ -725,7 +723,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
 
-        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
         keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
         assertEquals(Integer.valueOf(1), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
     }
@@ -747,7 +744,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, deleteRecord.topic());
         VerifyRecord.isValidDelete(deleteRecord, PK_FIELD, 1);
 
-        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
         Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
         assertEquals(Integer.valueOf(2), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
 
@@ -756,7 +752,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertEquals(topicName, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, PK_FIELD, 2);
 
-        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
         keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
         assertEquals(Integer.valueOf(1), ((Struct) keyPKUpdateHeader.value()).getInt32("pk"));
     }
