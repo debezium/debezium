@@ -155,7 +155,7 @@ public abstract class ConnectorOutputTest {
     public static final String DEFAULT_ENV_PROPERTIES_FILENAME = "env.properties";
     public static final String DEFAULT_EXPECTED_RECORDS_FILENAME = "expected-records.json";
 
-    public static final String ENV_CONNECTOR_TIMEOUT_IN_SECONDS = "connector.timeout.in.seconds";
+    public static final String ENV_CONNECTOR_TIMEOUT_IN_SECONDS = "-connector.timeout.in.seconds";
     public static final String ENV_IGNORE_FIELDS = "ignore.fields";
 
     /**

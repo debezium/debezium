@@ -122,6 +122,15 @@ public class SimpleSourceConnectorOutputTest extends ConnectorOutputTest {
         runConnector("simple-test-d", "src/test/resources/simple/test/d");
     }
 
+    /**
+     * Run the connector and verify that {@link org.apache.kafka.connect.errors.RetriableException} is handled.
+     */
+    @Test
+    public void shouldRecoverFromRetriableException() {
+        // Testing.Debug.enable();
+        runConnector("simple-test-e", "src/test/resources/simple/test/e");
+    }
+
     protected void writeConfigurationFileWithDefaultName(Path dir, Properties props) throws IOException {
         Path configFilePath = dir.resolve(DEFAULT_CONNECTOR_PROPERTIES_FILENAME);
         writeConfigurationFile(configFilePath, props);
