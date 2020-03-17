@@ -456,7 +456,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecord deleteRecord = updates.get(0);
         assertDelete(deleteRecord, "id", 1001);
 
-        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
         Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
         assertEquals(Integer.valueOf(2001), ((Struct) keyPKUpdateHeader.value()).getInt32("id"));
 
@@ -465,7 +464,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecord insertRecord = updates.get(2);
         assertInsert(insertRecord, "id", 2001);
 
-        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
         keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
         assertEquals(Integer.valueOf(1001), ((Struct) keyPKUpdateHeader.value()).getInt32("id"));
 
@@ -2017,7 +2015,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1531")
-    public void shouldEmitOldKeyHeaderOnPrimaryKeyUpdate() throws Exception {
+    public void shouldEmitHeadersOnPrimaryKeyUpdate() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .build();
@@ -2043,12 +2041,10 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(updates.size()).isEqualTo(3);
 
         SourceRecord deleteRecord = updates.get(0);
-        assertEquals(1, deleteRecord.headers().size()); // to be removed/updated once we set additional headers
         Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
         assertEquals(Integer.valueOf(10303), ((Struct) keyPKUpdateHeader.value()).getInt32("order_number"));
 
         SourceRecord insertRecord = updates.get(2);
-        assertEquals(1, insertRecord.headers().size()); // to be removed/updated once we set additional headers
         keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
         assertEquals(Integer.valueOf(10003), ((Struct) keyPKUpdateHeader.value()).getInt32("order_number"));
 
@@ -2062,7 +2058,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(updates.size()).isEqualTo(1);
 
         SourceRecord updateRecord = updates.get(0);
-        assertEquals(0, updateRecord.headers().size()); // to be removed/updated once we set additional headers
 
         stopConnector();
     }

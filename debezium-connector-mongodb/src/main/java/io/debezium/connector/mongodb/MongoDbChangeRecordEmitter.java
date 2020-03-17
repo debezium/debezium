@@ -64,7 +64,7 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
 
-        receiver.changeRecord(schema, getOperation(), newKey, value, getOffset());
+        receiver.changeRecord(schema, getOperation(), newKey, value, getOffset(), null);
     }
 
     @Override
@@ -97,7 +97,7 @@ public class MongoDbChangeRecordEmitter extends AbstractChangeRecordEmitter<Mong
         value.put(FieldName.OPERATION, getOperation().code());
         value.put(FieldName.TIMESTAMP, getClock().currentTimeAsInstant().toEpochMilli());
 
-        receiver.changeRecord(schema, getOperation(), newKey, value, getOffset());
+        receiver.changeRecord(schema, getOperation(), newKey, value, getOffset(), null);
     }
 
     public static boolean isValidOperation(String operation) {
