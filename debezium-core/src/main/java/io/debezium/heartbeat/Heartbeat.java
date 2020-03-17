@@ -143,7 +143,16 @@ public interface Heartbeat {
      * @param jdbcConnection a database connection
      */
     public static Heartbeat create(Configuration configuration, String topicName, String key, JdbcConnection jdbcConnection) {
-        return configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero() ? NULL
-                : new DatabaseHeartbeatImpl(configuration, topicName, key, jdbcConnection);
+        if (configuration.getDuration(HeartbeatImpl.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS).isZero()) {
+            return NULL;
+        }
+
+        String heartBeatActionQuery = configuration.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY);
+
+        if (heartBeatActionQuery != null) {
+            return new DatabaseHeartbeatImpl(configuration, topicName, key, jdbcConnection, heartBeatActionQuery);
+        }
+
+        return new HeartbeatImpl(configuration, topicName, key);
     }
 }
