@@ -7,7 +7,6 @@ package io.debezium.testing.openshift.tools.kafka;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 
-import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,6 +14,7 @@ import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.debezium.testing.openshift.tools.YAML;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.openshift.client.OpenShiftClient;
