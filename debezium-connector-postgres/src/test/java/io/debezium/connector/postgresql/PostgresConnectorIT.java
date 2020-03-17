@@ -54,7 +54,10 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
+import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.converters.CloudEventsConverterTest;
@@ -93,7 +96,10 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     private PostgresConnector connector;
 
     @Rule
-    public final TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
+    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
+
+    @Rule
+    public final TestRule skipVersion = new SkipTestDependingOnDatabaseVersionRule();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
@@ -690,6 +696,33 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         // insert and verify 2 new records
         TestHelper.execute(INSERT_STMT);
         assertRecordsAfterInsert(2, 3, 3);
+
+        stopConnector();
+        TestHelper.dropDefaultReplicationSlot();
+    }
+
+    @Test
+    @FixFor("DBZ-1857")
+    @SkipWhenDatabaseVersionLessThan(PostgresVersion.POSTGRES_10)
+    public void shouldRecoverFromRetriableException() throws Exception {
+        // Testing.Print.enable();
+        String setupStmt = SETUP_TABLES_STMT;
+        TestHelper.execute(setupStmt);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        assertRecordsFromSnapshot(2, 1, 1);
+
+        // kill all opened connections to the database
+        TestHelper.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE backend_type='walsender'");
+        TestHelper.execute(INSERT_STMT);
+        assertRecordsAfterInsert(2, 2, 2);
 
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();

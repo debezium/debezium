@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectorContext;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
@@ -734,9 +735,9 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                     Throwable handlerError = null;
                     try {
                         timeOfLastCommitMillis = clock.currentTimeInMillis();
-                        List<SourceRecord> changeRecords = null;
                         RecordCommitter committer = buildRecordCommitter(offsetWriter, task, commitTimeout);
                         while (runningThread.get() != null) {
+                            List<SourceRecord> changeRecords = null;
                             try {
                                 logger.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
                                 changeRecords = task.poll(); // blocks until there are values ...
@@ -752,6 +753,11 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                     Thread.currentThread().interrupt();
                                 }
                                 break;
+                            }
+                            catch (RetriableException e) {
+                                // Retriable exception should be ignored by the engine
+                                // and no change records delivered.
+                                // The retry is handled in io.debezium.connector.common.BaseSourceTask.poll()
                             }
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {

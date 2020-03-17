@@ -195,6 +195,7 @@ public abstract class BaseSourceTask extends SourceTask {
 
             if (restart && restartDelay == null) {
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), 10_000);
+                restartDelay.hasElapsed();
             }
         }
         finally {

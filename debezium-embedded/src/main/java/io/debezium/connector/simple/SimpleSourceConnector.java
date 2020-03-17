@@ -18,6 +18,7 @@ import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
@@ -61,6 +62,7 @@ public class SimpleSourceConnector extends SourceConnector {
     public static final String BATCH_COUNT = "batch.count";
     public static final String DEFAULT_TOPIC_NAME = "simple.topic";
     public static final String INCLUDE_TIMESTAMP = "include.timestamp";
+    public static final String RETRIABLE_ERROR_ON = "error.retriable.on";
     public static final int DEFAULT_RECORD_COUNT_PER_BATCH = 1;
     public static final int DEFAULT_BATCH_COUNT = 10;
     public static final boolean DEFAULT_INCLUDE_TIMESTAMP = false;
@@ -105,8 +107,10 @@ public class SimpleSourceConnector extends SourceConnector {
     public static class SimpleConnectorTask extends SourceTask {
 
         private int recordsPerBatch;
+        private int errorOnRecord;
         private Queue<SourceRecord> records;
         private final AtomicBoolean running = new AtomicBoolean();
+        private List<SourceRecord> retryRecords = null;
 
         @Override
         public String version() {
@@ -121,6 +125,7 @@ public class SimpleSourceConnector extends SourceConnector {
                 int batchCount = config.getInteger(BATCH_COUNT, DEFAULT_BATCH_COUNT);
                 String topic = config.getString(TOPIC_NAME, DEFAULT_TOPIC_NAME);
                 boolean includeTimestamp = config.getBoolean(INCLUDE_TIMESTAMP, DEFAULT_INCLUDE_TIMESTAMP);
+                errorOnRecord = config.getInteger(RETRIABLE_ERROR_ON, -1);
 
                 // Create the partition and schemas ...
                 Map<String, ?> partition = Collect.hashMapOf("source", "simple");
@@ -178,11 +183,23 @@ public class SimpleSourceConnector extends SourceConnector {
                 new CountDownLatch(1).await();
             }
             if (running.get()) {
+                if (retryRecords != null) {
+                    final List<SourceRecord> r = retryRecords;
+                    retryRecords = null;
+                    return r;
+                }
                 // Still running, so process whatever is in the queue ...
                 List<SourceRecord> results = new ArrayList<>();
                 int record = 0;
                 while (record < recordsPerBatch && !records.isEmpty()) {
-                    results.add(records.poll());
+                    record++;
+                    final SourceRecord fetchedRecord = records.poll();
+                    final Integer id = ((Struct) (fetchedRecord.key())).getInt32("id");
+                    results.add(fetchedRecord);
+                    if (id == errorOnRecord) {
+                        retryRecords = results;
+                        throw new RetriableException("Error on record " + errorOnRecord);
+                    }
                 }
                 return results;
             }
