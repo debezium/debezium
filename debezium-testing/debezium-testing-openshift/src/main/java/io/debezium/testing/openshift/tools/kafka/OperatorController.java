@@ -5,6 +5,15 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
@@ -12,14 +21,6 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentCondition;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
 import io.fabric8.openshift.client.OpenShiftClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Stream;
-
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 /**
  * This class provides control over Strimzi Cluster Operator  deployed in OpenShift

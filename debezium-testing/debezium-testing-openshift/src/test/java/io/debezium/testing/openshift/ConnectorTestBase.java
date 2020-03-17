@@ -18,7 +18,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import io.debezium.testing.openshift.tools.kafka.OperatorController;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -32,6 +31,7 @@ import io.debezium.testing.openshift.resources.ConfigProperties;
 import io.debezium.testing.openshift.tools.kafka.KafkaConnectController;
 import io.debezium.testing.openshift.tools.kafka.KafkaController;
 import io.debezium.testing.openshift.tools.kafka.KafkaDeployer;
+import io.debezium.testing.openshift.tools.kafka.OperatorController;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
