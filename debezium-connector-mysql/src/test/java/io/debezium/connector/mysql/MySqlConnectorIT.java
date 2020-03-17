@@ -2017,7 +2017,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1531")
-    public void shouldEmitOldkeyHeaderOnPrimaryKeyUpdate() throws Exception {
+    public void shouldEmitOldKeyHeaderOnPrimaryKeyUpdate() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
                 .build();
