@@ -2004,6 +2004,18 @@ Disabled by default.
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
+|`heartbeat.action.query`
+|
+|If specified, this query will be executed upon every heartbeat against the source database.
+
+This can be used to overcome the situation described in xref:wal-disk-space[],
+where capturing changes from a low-traffic database on the same host as a high-traffic database prevents Debezium from processing any WAL records and thus acknowledging WAL positions with the database.
+
+Inserting records into some heartbeat table (which must have been created upfront) will allow the connector to receive changes from the low-traffic database and acknowledge their LSNs,
+preventing an unbounded WAL growth on the database host.
+
+Example: `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
+
 |`schema.refresh.mode`
 |`columns_diff`
 |Specify the conditions that trigger a refresh of the in-memory schema for a table.
