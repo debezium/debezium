@@ -68,6 +68,9 @@ public abstract class ConnectorTestBase {
 
         kafkaDeployer = new KafkaDeployer(ConfigProperties.OCP_PROJECT_DBZ, ocp);
         operatorController = kafkaDeployer.getOperator();
+        operatorController.setLogLevel("DEBUG");
+        operatorController.setAlwaysPullPolicy();
+        operatorController.setOperandAlwaysPullPolicy();
 
         if (ConfigProperties.OCP_PULL_SECRET_PATHS.isPresent()) {
             String paths = ConfigProperties.OCP_PULL_SECRET_PATHS.get();
@@ -80,9 +83,9 @@ public abstract class ConnectorTestBase {
 
             secrets.forEach(operatorController::setImagePullSecret);
             operatorController.setOperandImagePullSecrets(String.join(",", secrets));
-            operatorController.setAlwaysPullPolicy();
-            operatorController.updateOperator();
         }
+
+        operatorController.updateOperator();
 
         kafkaController = kafkaDeployer.deployKafkaCluster(KAFKA);
         kafkaConnectController = kafkaDeployer.deployKafkaConnectCluster(KAFKA_CONNECT_S2I, KAFKA_CONNECT_S2I_LOGGING, ConfigProperties.STRIMZI_OPERATOR_CONNECTORS);

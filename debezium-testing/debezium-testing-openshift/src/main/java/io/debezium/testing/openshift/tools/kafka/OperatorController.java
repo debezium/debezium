@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
+import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.LocalObjectReference;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -73,6 +74,13 @@ public class OperatorController {
     }
 
     public Deployment setAlwaysPullPolicy() {
+        LOGGER.info("Using 'Always' pull policy for all containers of deployment " + name + "'");
+        List<Container> containers = operator.getSpec().getTemplate().getSpec().getContainers();
+        containers.forEach(c -> c.setImagePullPolicy("Always"));
+        return operator;
+    }
+
+    public Deployment setOperandAlwaysPullPolicy() {
         return setEnvVar("STRIMZI_IMAGE_PULL_POLICY", "Always");
     }
 
@@ -83,7 +91,7 @@ public class OperatorController {
      * @return {@link Deployment} resource of the operator
      */
     public Deployment setEnvVar(String name, String val) {
-        LOGGER.info("Setting variable " + name + "=" + val + " on deployment '" + name + "'");
+        LOGGER.info("Setting variable " + name + "='" + val + "' on deployment '" + this.name + "'");
         ocpUtils.ensureHasEnv(operator, new EnvVar(name, val, null));
         return operator;
     }
