@@ -273,6 +273,8 @@
                 <test.strimzi.operator.connectors>${strimzi.operator.connectors}</test.strimzi.operator.connectors>
 
                 <test.database.mysql.host>${database.mysql.host}</test.database.mysql.host>
+                <test.database.mysql.username>${database.mysql.username}</test.database.mysql.username>
+                <test.database.mysql.password>${database.mysql.password}</test.database.mysql.password>
                 <test.database.mysql.dbz.username>${database.mysql.dbz.username}</test.database.mysql.dbz.username>
                 <test.database.mysql.dbz.password>${database.mysql.dbz.password}</test.database.mysql.dbz.password>
                 <test.database.mysql.port>${database.mysql.port}</test.database.mysql.port>
