@@ -102,7 +102,7 @@ If the result is empty then please make sure that the user has privileges to acc
 While enabling CDC for a table, SQL Server creates a CDC table to store the changes and a function to enumerate all changes. If the parameter @supports_net_changes is set to 1, SQL Server will add to the change table an index and create a second function to enumerate net changes, which means that only the final result of all the captured changes is returned, rather than all the intermediate changes that the first function returns.
 
 Debezium queries the changes through the https://docs.microsoft.com/en-us/sql/relational-databases/system-functions/cdc-fn-cdc-get-all-changes-capture-instance-transact-sql[all changes function] (with <row filter option> set to 'all update old'). So if you do not require support for net changes, it is recommended to set @supports_net_changes to 0, to save the load that is incurred by maintaining the additional index to support net changes queries.
-For more information on performance impact of sys.sp_cdc_enable_table's parameters, see this https://docs.microsoft.com/en-us/previous-versions/sql/sql-server-2008/dd266396(v=sql.100)[whitepaper] conducted by Microsoft.
+For more information on the performance impact of sys.sp_cdc_enable_table's parameters, see this https://docs.microsoft.com/en-us/previous-versions/sql/sql-server-2008/dd266396(v=sql.100)[whitepaper] conducted by Microsoft.
 
 
 [[azure]]
