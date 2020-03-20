@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.function.BlockingConsumer;
 
+import java.time.Instant;
+
 /**
  * Responsible for generating ChangeRecord and/or TombstoneRecord for create/update/delete events, as well as EOF events.
  */
@@ -19,28 +21,39 @@ public class RecordMaker {
     private static final Logger LOGGER = LoggerFactory.getLogger(RecordMaker.class);
     private final boolean emitTombstoneOnDelete;
     private final Filters filters;
-    private final SourceInfo sourceInfo;
+    private final CassandraConnectorConfig config;
 
-    public RecordMaker(boolean emitTombstoneOnDelete, Filters filters, SourceInfo sourceInfo) {
+    public RecordMaker(boolean emitTombstoneOnDelete, Filters filters, CassandraConnectorConfig config) {
         this.emitTombstoneOnDelete = emitTombstoneOnDelete;
         this.filters = filters;
-        this.sourceInfo = sourceInfo;
+        this.config = config;
     }
 
-    public void insert(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, BlockingConsumer<Record> consumer) {
-        createRecord(data, keySchema, valueSchema, markOffset, consumer, Record.Operation.INSERT);
+    public void insert(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot,
+                       Instant tsMicro, RowData data, Schema keySchema, Schema valueSchema,
+                       boolean markOffset, BlockingConsumer<Record> consumer) {
+        createRecord(cluster, offsetPosition, keyspaceTable, snapshot, tsMicro,
+                data, keySchema, valueSchema, markOffset, consumer, Record.Operation.INSERT);
     }
 
-    public void update(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, BlockingConsumer<Record> consumer) {
-        createRecord(data, keySchema, valueSchema, markOffset, consumer, Record.Operation.UPDATE);
+    public void update(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot,
+                       Instant tsMicro, RowData data, Schema keySchema, Schema valueSchema,
+                       boolean markOffset, BlockingConsumer<Record> consumer) {
+        createRecord(cluster, offsetPosition, keyspaceTable, snapshot, tsMicro,
+                data, keySchema, valueSchema, markOffset, consumer, Record.Operation.UPDATE);
     }
 
-    public void delete(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, BlockingConsumer<Record> consumer) {
-        createRecord(data, keySchema, valueSchema, markOffset, consumer, Record.Operation.DELETE);
+    public void delete(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot,
+                       Instant tsMicro, RowData data, Schema keySchema, Schema valueSchema,
+                       boolean markOffset, BlockingConsumer<Record> consumer) {
+        createRecord(cluster, offsetPosition, keyspaceTable, snapshot, tsMicro,
+                data, keySchema, valueSchema, markOffset, consumer, Record.Operation.DELETE);
     }
 
-    private void createRecord(RowData data, Schema keySchema, Schema valueSchema, boolean markOffset, BlockingConsumer<Record> consumer, Record.Operation operation) {
-        FieldFilterSelector.FieldFilter fieldFilter = filters.getFieldFilter(sourceInfo.keyspaceTable);
+    private void createRecord(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot,
+                              Instant tsMicro, RowData data, Schema keySchema, Schema valueSchema,
+                              boolean markOffset, BlockingConsumer<Record> consumer, Record.Operation operation) {
+        FieldFilterSelector.FieldFilter fieldFilter = filters.getFieldFilter(keyspaceTable);
         RowData filteredData;
         switch (operation) {
             case INSERT:
@@ -53,7 +66,8 @@ public class RecordMaker {
                 break;
         }
 
-        ChangeRecord record = new ChangeRecord(sourceInfo, filteredData, keySchema, valueSchema, operation, markOffset);
+        SourceInfo source = new SourceInfo(config, cluster, offsetPosition, keyspaceTable, snapshot, tsMicro);
+        ChangeRecord record = new ChangeRecord(source, filteredData, keySchema, valueSchema, operation, markOffset);
         try {
             consumer.accept(record);
         }
@@ -64,7 +78,7 @@ public class RecordMaker {
 
         if (operation == Record.Operation.DELETE && emitTombstoneOnDelete) {
             // generate kafka tombstone event
-            TombstoneRecord tombstoneRecord = new TombstoneRecord(sourceInfo, filteredData, keySchema);
+            TombstoneRecord tombstoneRecord = new TombstoneRecord(source, filteredData, keySchema);
             try {
                 consumer.accept(tombstoneRecord);
             }
@@ -73,10 +87,6 @@ public class RecordMaker {
                 throw new CassandraConnectorTaskException("Enqueuing has been interrupted: ", e);
             }
         }
-    }
-
-    public SourceInfo getSourceInfo() {
-        return this.sourceInfo;
     }
 
 }

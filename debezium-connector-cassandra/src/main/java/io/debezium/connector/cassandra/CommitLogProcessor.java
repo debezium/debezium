@@ -51,7 +51,7 @@ public class CommitLogProcessor extends AbstractProcessor {
                 context.getOffsetWriter(),
                 new RecordMaker(context.getCassandraConnectorConfig().tombstonesOnDelete(),
                         new Filters(context.getCassandraConnectorConfig().fieldBlacklist()),
-                        new SourceInfo(context.getCassandraConnectorConfig())),
+                        context.getCassandraConnectorConfig()),
                 metrics);
         cdcDir = new File(DatabaseDescriptor.getCDCLogLocation());
         watcher = new AbstractDirectoryWatcher(cdcDir.toPath(), context.getCassandraConnectorConfig().cdcDirPollIntervalMs(), Collections.singleton(ENTRY_CREATE)) {

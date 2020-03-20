@@ -129,8 +129,8 @@ public class FileOffsetWriterTest {
 
     private ChangeRecord generateRecord(boolean markOffset, boolean isSnapshot, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable) {
         CassandraConnectorConfig config = new CassandraConnectorConfig(Configuration.from(new Properties()));
-        SourceInfo sourceInfo = new SourceInfo(config);
-        sourceInfo.update("test-cluster", offsetPosition, keyspaceTable, isSnapshot, Conversions.toInstantFromMicros(System.currentTimeMillis() * 1000));
+        SourceInfo sourceInfo = new SourceInfo(config, "test-cluster", offsetPosition, keyspaceTable,
+                isSnapshot, Conversions.toInstantFromMicros(System.currentTimeMillis() * 1000));
         return new ChangeRecord(sourceInfo, new RowData(), Schema.INT32_SCHEMA, Schema.INT32_SCHEMA, Record.Operation.INSERT, markOffset);
     }
 

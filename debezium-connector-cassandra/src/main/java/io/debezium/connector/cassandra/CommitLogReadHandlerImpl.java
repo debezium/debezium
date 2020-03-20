@@ -331,9 +331,9 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 after.addCell(cellData);
             }
 
-            recordMaker.getSourceInfo().update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
-                    Conversions.toInstantFromMicros(pu.maxTimestamp()));
-            recordMaker.delete(after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+            recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                    Conversions.toInstantFromMicros(pu.maxTimestamp()), after, keySchema, valueSchema,
+                    MARK_OFFSET, queue::enqueue);
         }
         catch (Exception e) {
             LOGGER.error("Fail to delete partition at {}. Reason: {}", offsetPosition, e);
@@ -367,19 +367,21 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         populateRegularColumns(after, row, rowType, schema);
 
         long ts = rowType == DELETE ? row.deletion().time().markedForDeleteAt() : pu.maxTimestamp();
-        recordMaker.getSourceInfo().update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false, Conversions.toInstantFromMicros(ts));
 
         switch (rowType) {
             case INSERT:
-                recordMaker.insert(after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+                recordMaker.insert(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
                 break;
 
             case UPDATE:
-                recordMaker.update(after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+                recordMaker.update(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
                 break;
 
             case DELETE:
-                recordMaker.delete(after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
+                recordMaker.delete(DatabaseDescriptor.getClusterName(), offsetPosition, keyspaceTable, false,
+                        Conversions.toInstantFromMicros(ts), after, keySchema, valueSchema, MARK_OFFSET, queue::enqueue);
                 break;
 
             default:

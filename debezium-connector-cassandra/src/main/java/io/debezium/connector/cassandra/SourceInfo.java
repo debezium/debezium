@@ -35,11 +35,9 @@ public class SourceInfo extends AbstractSourceInfo {
     public boolean snapshot;
     public Instant tsMicro;
 
-    public SourceInfo(CommonConnectorConfig config) {
+    public SourceInfo(CommonConnectorConfig config, String cluster, OffsetPosition offsetPosition,
+                      KeyspaceTable keyspaceTable, boolean snapshot, Instant tsMicro) {
         super(config);
-    }
-
-    public void update(String cluster, OffsetPosition offsetPosition, KeyspaceTable keyspaceTable, boolean snapshot, Instant tsMicro) {
         this.cluster = cluster;
         this.offsetPosition = offsetPosition;
         this.keyspaceTable = keyspaceTable;
