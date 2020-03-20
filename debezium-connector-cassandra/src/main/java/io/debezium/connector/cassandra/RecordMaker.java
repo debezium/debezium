@@ -5,14 +5,14 @@
  */
 package io.debezium.connector.cassandra;
 
+import java.time.Instant;
+
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.cassandra.exceptions.CassandraConnectorTaskException;
 import io.debezium.function.BlockingConsumer;
-
-import java.time.Instant;
 
 /**
  * Responsible for generating ChangeRecord and/or TombstoneRecord for create/update/delete events, as well as EOF events.
