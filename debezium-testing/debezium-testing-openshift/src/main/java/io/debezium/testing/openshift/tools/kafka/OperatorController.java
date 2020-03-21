@@ -6,6 +6,8 @@
 package io.debezium.testing.openshift.tools.kafka;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,6 +47,31 @@ public class OperatorController {
     }
 
     /**
+     * Disables Strimzi cluster operator by scaling it to ZERO
+     * @return {@link Deployment} resource of the operator
+     */
+    public Deployment disable() {
+        operator = ocp.apps().deployments().inNamespace(project).withName(name).edit().editSpec().withReplicas(0).endSpec().done();
+        await()
+                .atMost(30, SECONDS)
+                .pollDelay(5, SECONDS)
+                .pollInterval(3, SECONDS)
+                .until(() -> ocp.pods().inNamespace(project).withLabel("strimzi.io/kind", "cluster-operator").list().getItems().isEmpty());
+        return operator;
+    }
+
+    /**
+     * Enables Strimzi cluster operator by scaling it to ONE
+     * @return {@link Deployment} resource of the operator
+     * @throws InterruptedException
+     */
+    public Deployment enable() throws InterruptedException {
+        operator = ocp.apps().deployments().inNamespace(project).withName(name).edit().editSpec().withReplicas(1).endSpec().done();
+        operator = waitForAvailable();
+        return operator;
+    }
+
+    /**
      * Sets image pull secret for operator's {@link Deployment} resource
      * @param secret name of the secret
      * @return {@link Deployment} resource of the operator
@@ -73,6 +100,10 @@ public class OperatorController {
         return setEnvVar("STRIMZI_LOG_LEVEL", level);
     }
 
+    /**
+     * Sets pull policy of the operator to 'Always'
+     * @return {@link Deployment} resource of the operator
+     */
     public Deployment setAlwaysPullPolicy() {
         LOGGER.info("Using 'Always' pull policy for all containers of deployment " + name + "'");
         List<Container> containers = operator.getSpec().getTemplate().getSpec().getContainers();
@@ -80,6 +111,10 @@ public class OperatorController {
         return operator;
     }
 
+    /**
+     * Sets pull policy of operands to 'Always'
+     * @return {@link Deployment} resource of the operator
+     */
     public Deployment setOperandAlwaysPullPolicy() {
         return setEnvVar("STRIMZI_IMAGE_PULL_POLICY", "Always");
     }
@@ -102,12 +137,15 @@ public class OperatorController {
      */
     public Deployment updateOperator() throws InterruptedException {
         operator = ocp.apps().deployments().inNamespace(project).createOrReplace(operator);
-        operator = ocp.apps().deployments().inNamespace(project).withName(name)
-                .waitUntilCondition(this::waitForAvailable, 5, MINUTES);
+        operator = waitForAvailable();
         return operator;
     }
 
-    private boolean waitForAvailable(Deployment resource) {
+    private Deployment waitForAvailable() throws InterruptedException {
+        return ocp.apps().deployments().inNamespace(project).withName(name).waitUntilCondition(this::deploymentAvailableCondition, 5, MINUTES);
+    }
+
+    private boolean deploymentAvailableCondition(Deployment resource) {
         DeploymentStatus status = resource.getStatus();
         if (status == null) {
             return false;
