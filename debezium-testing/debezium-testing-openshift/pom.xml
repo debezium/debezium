@@ -151,7 +151,11 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>${version.awaitility}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
     </dependency>
   </dependencies>
 
@@ -193,10 +197,6 @@
           <classifier>plugin</classifier>
           <type>zip</type>
           <version>${project.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>mysql</groupId>
-          <artifactId>mysql-connector-java</artifactId>
         </dependency>
       </dependencies>
 

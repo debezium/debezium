@@ -5,7 +5,15 @@
  */
 package io.debezium.testing.openshift.tools.databases;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
@@ -18,19 +26,22 @@ import io.fabric8.openshift.client.OpenShiftClient;
  * @author Jakub Cechacek
  */
 public class DatabaseController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseController.class);
 
-    private final Deployment deployment;
-    private final List<Service> services;
     private final OpenShiftClient ocp;
     private final String project;
     private final String dbType;
     private final OpenShiftUtils ocpUtils;
+    private Deployment deployment;
+    private String name;
+    private List<Service> services;
 
     public DatabaseController(Deployment deployment, List<Service> services, String dbType, OpenShiftClient ocp) {
         this.deployment = deployment;
+        this.name = deployment.getMetadata().getName();
+        this.project = deployment.getMetadata().getNamespace();
         this.services = services;
         this.ocp = ocp;
-        this.project = deployment.getMetadata().getNamespace();
         this.dbType = dbType;
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
@@ -41,11 +52,33 @@ public class DatabaseController {
                 .inNamespace(project)
                 .withName(deployment.getMetadata().getName() + "-lb")
                 .get();
-
         LoadBalancerIngress ingress = svc.getStatus().getLoadBalancer().getIngress().get(0);
         String hostname = ingress.getHostname();
         Integer port = svc.getSpec().getPorts().stream().filter(p -> p.getName().equals("db")).findAny().get().getPort();
 
-        return "jdbc:" + dbType + "://" + hostname + ":" + port;
+        return "jdbc:" + dbType + "://" + hostname + ":" + port + "/";
+    }
+
+    public void executeStatement(String database, String username, String password, String sql) throws SQLException {
+        try (Connection con = DriverManager.getConnection(getDatabaseUrl(), username, password)) {
+            con.setCatalog(database);
+            Statement stmt = con.createStatement();
+            stmt.execute(sql);
+        }
+    }
+
+    public void reload() throws InterruptedException {
+        LOGGER.info("Recreating all pods of '" + name + "' deployment in namespace '" + project + "'");
+        ocp.pods().inNamespace(project).withLabel("deployment", name).delete();
+        deployment = ocp.apps().deployments()
+                .inNamespace(project)
+                .withName(name)
+                .waitUntilCondition(this::deploymentAvailableCondition, 30, TimeUnit.SECONDS);
+        LOGGER.info("Deployment '" + name + "' is available");
+    }
+
+    private boolean deploymentAvailableCondition(Deployment d) {
+        return d.getStatus() != null &&
+                d.getStatus().getConditions().stream().anyMatch(c -> c.getType().equalsIgnoreCase("Available") && c.getStatus().equalsIgnoreCase("true"));
     }
 }

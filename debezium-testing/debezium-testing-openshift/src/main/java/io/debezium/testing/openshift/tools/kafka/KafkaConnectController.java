@@ -6,6 +6,7 @@
 package io.debezium.testing.openshift.tools.kafka;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
@@ -201,8 +202,9 @@ public class KafkaConnectController {
      * @throws IOException on request error
      */
     public void undeployConnector(String name) throws IOException {
+        LOGGER.info("Undeploying kafka connector " + name);
         if (useConnectorResources) {
-            undeployConnectorrCr(name);
+            undeployConnectorCr(name);
         }
         else {
             undeployConnectorJson(name);
@@ -226,8 +228,12 @@ public class KafkaConnectController {
         }
     }
 
-    private void undeployConnectorrCr(String name) {
+    private void undeployConnectorCr(String name) {
         kafkaConnectorOperation().withName(name).delete();
+        await()
+                .atMost(1, MINUTES)
+                .pollInterval(5, SECONDS)
+                .until(() -> kafkaConnectorOperation().withName(name).get() == null);
     }
 
     public List<String> getConnectMetrics() throws IOException {
@@ -260,6 +266,7 @@ public class KafkaConnectController {
      * @throws IOException on metric request error
      */
     public void waitForMySqlSnapshot(String connectorName) throws IOException {
+        LOGGER.info("Waiting for connector '" + connectorName + "' to finish snapshot");
         waitForSnapshot(connectorName, "debezium_mysql_connector_metrics_snapshotcompleted");
     }
 
