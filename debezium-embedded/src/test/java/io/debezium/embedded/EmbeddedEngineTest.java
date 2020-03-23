@@ -25,6 +25,7 @@ import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.Transformation;
+import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,6 +33,8 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.format.Change;
+import io.debezium.engine.format.Json;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -321,6 +324,66 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
                 })
                 .using(this.getClass().getClassLoader())
                 .build();
+    }
+
+    @Test
+    public void shouldRunDebeziumEngineWithJson() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+        props.setProperty("converter.schemas.enable", "false");
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+        CountDownLatch allLatch = new CountDownLatch(6);
+
+        // create an engine with our custom class
+        final DebeziumEngine<Change<String>> engine = DebeziumEngine.create(Json.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    Integer groupCount = records.size() / NUMBER_OF_LINES;
+
+                    for (Change<String> r : records) {
+                        Assertions.assertThat(r.key).isNull();
+                        Assertions.assertThat(r.value).startsWith("\"Generated line number ");
+                        committer.markProcessed(r);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                    for (int i = 0; i < groupCount; i++) {
+                        allLatch.countDown();
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        for (int i = 0; i < 5; i++) {
+            // Add a few more lines, and then verify they are consumed ...
+            appendLinesToSource(NUMBER_OF_LINES);
+            Thread.sleep(10);
+        }
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
+
+        // Stop the connector ...
+        stopConnector();
     }
 
     protected void appendLinesToSource(int numberOfLines) throws IOException {
