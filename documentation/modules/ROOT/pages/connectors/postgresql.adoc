@@ -872,6 +872,19 @@ There are several things we can learn by just looking at this `payload` section.
 When the columns for a row's primary/unique key are updated, the value of the row's key has changed so {prodname} will output _three_ events: a `DELETE` event and link:#tombstone-events[tombstone event] with the old key for the row, followed by an `INSERT` event with the new key for the row.
 ====
 
+===== Primary Key Update Header
+
+When there is an update event that's changing the rows primary key field/s, also known
+as a primary key change, Debezium will in that case send a DELETE event for the old key
+and an INSERT event for the new (updated) key.
+
+The DELETE event produces a Kafka message which has a message header `__debezium.newkey`
+and the value is the new primary key.
+
+The INSERT event produces a Kafka message which has a message header `__debezium.oldkey`
+and the value is the previous (old) primary key of the updated row.
+
+
 [[delete-events]]
 ===== Delete Events
 So far we've seen samples of _create_ and _update_ events. Now, let's look at the value of a _delete_ event for the same table. Once again, the `schema` portion of the value will be exactly the same as with the _create_ and _update_ events:
