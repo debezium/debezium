@@ -755,6 +755,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 break;
                             }
                             catch (RetriableException e) {
+                                logger.info("Retrieable exception thrown, connector will be restarted", e);
                                 // Retriable exception should be ignored by the engine
                                 // and no change records delivered.
                                 // The retry is handled in io.debezium.connector.common.BaseSourceTask.poll()
