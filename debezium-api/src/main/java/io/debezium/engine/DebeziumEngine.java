@@ -210,6 +210,14 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         Builder<R> using(OffsetCommitPolicy policy);
 
         /**
+         * Prescribe the output format used by the {@link DebeziumEngine}.
+         * Usually called by {@link DebeziumEngine#create}.
+         * @param format
+         * @return this builder object so methods can be chained together; never null
+         */
+        Builder<R> asType(Class<? extends ChangeEventFormat<R>> format);
+
+        /**
          * Build a new connector with the information previously supplied to this builder.
          *
          * @return the embedded connector; never null
@@ -235,6 +243,6 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         if (iterator.hasNext()) {
             LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
         }
-        return builder;
+        return builder.asType(eventFormat);
     }
 }
