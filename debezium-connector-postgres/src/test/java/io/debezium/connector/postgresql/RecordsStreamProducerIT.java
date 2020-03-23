@@ -2223,12 +2223,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test()
     @FixFor("DBZ-1815")
     public void testHeartbeatActionQueryExecuted() throws Exception {
-        // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
-        startConnector(config -> config
-                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
-                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
-                        "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');"));
-
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_table;" +
                         "CREATE TABLE test_table (id SERIAL, text TEXT);" +
@@ -2237,6 +2231,12 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         TestHelper.execute(
                 "DROP TABLE IF EXISTS test_heartbeat_table;" +
                         "CREATE TABLE test_heartbeat_table (text TEXT);");
+
+        // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
+        startConnector(config -> config
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
+                        "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');"));
 
         // Expecting 1 data change
         Awaitility.await().atMost(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS).until(() -> {
