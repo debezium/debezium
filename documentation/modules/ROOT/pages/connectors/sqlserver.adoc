@@ -98,11 +98,18 @@ GO
 ----
 If the result is empty then please make sure that the user has privileges to access both the capture instance and _CDC_ tables.
 
-=== Note on Net Changes support
-While enabling CDC for a table, SQL Server creates a CDC table to store the changes and a function to enumerate all changes. If the parameter @supports_net_changes is set to 1, SQL Server will add to the change table an index and create a second function to enumerate net changes, which means that only the final result of all the captured changes is returned, rather than all the intermediate changes that the first function returns.
+=== Note on "Net Changes" support
+Here is a small summary on how SQL Server makes available CDC data and how Debezium queries them in order to provide all the elements to help making a learned decision on how to set the `@supports_net_changes` parameter while executing https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sys-sp-cdc-enable-table-transact-sql?view=sql-server-ver15[sys.sp_cdc_enable_table].
 
-Debezium queries the changes through the https://docs.microsoft.com/en-us/sql/relational-databases/system-functions/cdc-fn-cdc-get-all-changes-capture-instance-transact-sql[all changes function] (with <row filter option> set to 'all update old'). So if you do not require support for net changes, it is recommended to set @supports_net_changes to 0, to save the load that is incurred by maintaining the additional index to support net changes queries.
-For more information on the performance impacts of sys.sp_cdc_enable_table's parameters, see this https://docs.microsoft.com/en-us/previous-versions/sql/sql-server-2008/dd266396(v=sql.100)[whitepaper] conducted by Microsoft.
+When change data capture is enabled for a table, SQL Server generates a change table and one or two query functions. The change table is where the changes performed on the table will be made available. The first of the query functions queries for "all changes", which means that if a given key, for a given interval, happened to have undergone several changes, the function will return all those states. The second function queries for "net changes", which means that if a given key, for a given interval, happened to have undergone several changes, the function will return only the most recent state and not the intermediate states.
+
+- Executing `sys.sp_cdc_enable_table` with `@supports_net_changes` parameter set to 0, generates only the "all changes" function.
+- Executing `sys.sp_cdc_enable_table` with `@supports_net_changes` parameter set to 1, generates both the "all changes" and "net changes". This has also the effect that SQL Server will create an index on the change table to support the query performed by the "net changes" function.
+
+Supporting net changes doesn't come for free as described in a https://docs.microsoft.com/en-us/previous-versions/sql/sql-server-2008/dd266396(v=sql.100)[Microsoft benchmark], "_The @supports_net_changes parameter can have significant influence on change data capture performance. Especially if change data capture is just able to keep up with a workload, the additional load that is incurred by maintaining the additional index to support net changes queries can be enough to prevent change data capture from keeping up with the workload.
+ [...] *Recommendation:* If you do not require support for net changes, set @supports_net_changes to 0. [...]_".
+
+As for what concerns Debezium, change data are queried through the "all changes" function, (with <row filter option> set to 'all update old'). So depending on your other requirements, you may need to set `@supports_net_changes` to 1, but Debezium doesn't require it to work.
 
 [[azure]]
 === SQL Server on Azure
