@@ -6,6 +6,8 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -31,9 +33,12 @@ import org.junit.rules.TestRule;
 
 import io.debezium.connector.postgresql.DecoderDifferences;
 import io.debezium.connector.postgresql.TestHelper;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
+import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection.ResultSetMapper;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -47,6 +52,8 @@ public class ReplicationConnectionIT {
 
     @Rule
     public TestRule skip = new SkipTestDependingOnDecoderPluginNameRule();
+    @Rule
+    public final TestRule skipDatabaseVersion = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void before() throws Exception {
@@ -70,6 +77,25 @@ public class ReplicationConnectionIT {
             ReplicationStream stream = connection.startStreaming();
             assertNull(stream.lastReceivedLsn());
             stream.close();
+        }
+    }
+
+    @Test // since postgres 10 pg_stat_activity reports non-client activity, incl. walsender processes
+    @SkipWhenDatabaseVersionLessThan(SkipWhenDatabaseVersionLessThan.PostgresVersion.POSTGRES_10)
+    @FixFor("https://issues.redhat.com/browse/DBZ-1893")
+    public void shouldNotShowQueryInPgStatActivity() throws Exception {
+        try (ReplicationConnection connection = TestHelper.createForReplication("test1", true)) {
+            try (ReplicationStream stream = connection.startStreaming()) {
+                final PostgresConnection inspect = TestHelper.create(ReplicationConnectionIT.class.getName());
+                inspect.query("SELECT query FROM pg_stat_activity WHERE backend_type = 'walsender';", rs -> {
+                    assertTrue("expected one active walsender process", rs.next());
+
+                    final String activeQuery = rs.getString("query");
+                    assertEquals("expected no active query for walsender process", "", activeQuery);
+
+                    assertFalse("expected only one walsender process", rs.next());
+                });
+            }
         }
     }
 

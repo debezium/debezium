@@ -140,6 +140,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         }
                     }
                 }
+                // pg_stat_activity will keep the SELECT COUNT(1) as active query on this connection when switching to streaming
+                // AWS RDS performance insights does not handle this correctly and shows it as a long running statement
+                // re-create the connection now to clear the pg_stat_activity view, see https://issues.redhat.com/browse/DBZ-1893
+                pgConnection().close();
             }
             catch (SQLException e) {
                 throw new JdbcConnectionException(e);
