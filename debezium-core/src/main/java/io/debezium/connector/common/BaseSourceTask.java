@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.common;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.Metronome;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -34,7 +37,8 @@ import io.debezium.util.ElapsedTimeStrategy;
  */
 public abstract class BaseSourceTask extends SourceTask {
 
-    private static final int PAUSE_WHEN_NOT_STARTED = 2_000;
+    private static final Metronome PAUSE_WHEN_NOT_STARTED = Metronome.parker(Duration.of(2, ChronoUnit.SECONDS),
+            Clock.SYSTEM);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
 
@@ -122,7 +126,7 @@ public abstract class BaseSourceTask extends SourceTask {
             // WorkerSourceTask calls us immediately after we return the empty list.
             // This turns into a throttling so we need to make a pause before we return
             // the control back.
-            Thread.sleep(PAUSE_WHEN_NOT_STARTED);
+            PAUSE_WHEN_NOT_STARTED.pause();
             return Collections.emptyList();
         }
 
