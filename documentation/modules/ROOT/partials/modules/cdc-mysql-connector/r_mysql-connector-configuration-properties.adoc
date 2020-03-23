@@ -342,4 +342,9 @@ endif::cdc-product[]
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 
+|`skipped.operations`
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `c` for inserts, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 |===
