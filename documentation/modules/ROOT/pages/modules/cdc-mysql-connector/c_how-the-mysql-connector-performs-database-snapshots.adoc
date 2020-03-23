@@ -23,7 +23,7 @@ The connector...::
 |``{counter:snapshotStep}``
 a| Grabs a *global read lock* that blocks _writes_ by other database clients.
 
-NOTE: The snapshot itself does not prevent other clients from applying DDL which might interfere with the connector's attempt to read the binlog position and table schemas. The global read lock is kept while teh binlog position is read before released in a later step.
+NOTE: The snapshot itself does not prevent other clients from applying DDL which might interfere with the connector's attempt to read the binlog position and table schemas. The global read lock is kept while the binlog position is read before released in a later step.
 
 |``{counter:snapshotStep}``
 a| Starts a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
