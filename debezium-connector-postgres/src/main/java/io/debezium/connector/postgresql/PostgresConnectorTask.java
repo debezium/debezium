@@ -50,6 +50,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
     private volatile PostgresTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile PostgresConnection jdbcConnection;
+    private volatile PostgresConnection heartbeatConnection;
     private volatile ErrorHandler errorHandler;
     private volatile PostgresSchema schema;
 
@@ -64,6 +65,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
         }
 
         jdbcConnection = new PostgresConnection(connectorConfig.jdbcConfig());
+        heartbeatConnection = new PostgresConnection(connectorConfig.jdbcConfig());
         final TypeRegistry typeRegistry = jdbcConnection.getTypeRegistry();
         final Charset databaseCharset = jdbcConnection.getDatabaseCharset();
 
@@ -131,7 +133,7 @@ public class PostgresConnectorTask extends BaseSourceTask {
             final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
             Heartbeat heartbeat = Heartbeat.create(connectorConfig.getConfig(), topicSelector.getHeartbeatTopic(),
-                    connectorConfig.getLogicalName(), jdbcConnection);
+                    connectorConfig.getLogicalName(), heartbeatConnection);
 
             final EventDispatcher<TableId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
@@ -218,6 +220,10 @@ public class PostgresConnectorTask extends BaseSourceTask {
     protected void doStop() {
         if (jdbcConnection != null) {
             jdbcConnection.close();
+        }
+
+        if (heartbeatConnection != null) {
+            heartbeatConnection.close();
         }
 
         if (schema != null) {
