@@ -440,6 +440,45 @@ public class BinlogReaderIT {
         assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
     }
 
+    @Test
+    public void shouldNotConsumeAllEventsFromDatabaseWithSkippedOperations() throws Exception {
+        // Define configuration that will ignore all events from MySQL source.
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "c")
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, "never")
+                .build();
+        Filters filters = new Filters.Builder(config).build();
+        context = new MySqlTaskContext(config, filters);
+        context.start();
+        context.initializeHistory();
+        reader = new BinlogReader("binlog", context, new AcceptAllPredicate());
+
+        // Start reading the binlog ...
+        reader.start();
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                final Connection jdbc = connection.connection();
+                connection.setAutoCommit(false);
+                final Statement statement = jdbc.createStatement();
+                statement.executeUpdate("INSERT INTO customers VALUES(default, 'first', 'first', 'first')");
+                jdbc.setSavepoint();
+                statement.executeUpdate("INSERT INTO customers VALUES(default, 'second', 'second', 'second')");
+                jdbc.commit();
+                connection.query("SELECT * FROM customers", rs -> {
+                    if (Testing.Print.isEnabled()) {
+                        connection.print(rs);
+                    }
+                });
+                connection.setAutoCommit(true);
+            }
+        }
+
+        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
+        assertThat(customers.numberOfTombstones()).isEqualTo(2);
+
+    }
+
     @Test(expected = ConnectException.class)
     public void shouldFailOnSchemaInconsistency() throws Exception {
         inconsistentSchema(null);

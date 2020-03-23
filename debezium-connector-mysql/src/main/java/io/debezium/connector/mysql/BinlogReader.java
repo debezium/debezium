@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,6 +58,7 @@ import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDataDeserializationException;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.NullEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
@@ -66,6 +68,7 @@ import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.mysql.RecordMakers.RecordsForTable;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.relational.TableId;
@@ -267,21 +270,44 @@ public class BinlogReader extends AbstractReader {
         // Add our custom deserializers ...
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
-        eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
-        eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
-        eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
-        eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(
-                        tableMapEventByTableId).setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(
-                        tableMapEventByTableId).setMayContainExtraInformation(true));
-        eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(
-                        tableMapEventByTableId).setMayContainExtraInformation(true));
+
+        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOps();
+        if (skippedOperations.contains(Operation.CREATE.code())) {
+            eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS, new NullEventDataDeserializer());
+            eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS, new NullEventDataDeserializer());
+        }
+        else {
+            eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
+                    new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
+            eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
+                    new RowDeserializers.WriteRowsDeserializer(
+                            tableMapEventByTableId).setMayContainExtraInformation(true));
+        }
+
+        if (skippedOperations.contains(Operation.UPDATE.code())) {
+            eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS, new NullEventDataDeserializer());
+            eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS, new NullEventDataDeserializer());
+        }
+        else {
+            eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
+                    new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
+            eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
+                    new RowDeserializers.UpdateRowsDeserializer(
+                            tableMapEventByTableId).setMayContainExtraInformation(true));
+        }
+
+        if (skippedOperations.contains(Operation.DELETE.code())) {
+            eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS, new NullEventDataDeserializer());
+            eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS, new NullEventDataDeserializer());
+        }
+        else {
+            eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
+                    new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
+            eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
+                    new RowDeserializers.DeleteRowsDeserializer(
+                            tableMapEventByTableId).setMayContainExtraInformation(true));
+        }
+
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...

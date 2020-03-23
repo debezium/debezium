@@ -985,7 +985,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
             CommonConnectorConfig.TOMBSTONES_ON_DELETE, ENABLE_TIME_ADJUSTER,
-            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION);
+            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
+            CommonConnectorConfig.SKIPPED_OPERATIONS);
 
     /**
      * The set of {@link Field}s that are included in the {@link #configDef() configuration definition}. This includes
@@ -1044,7 +1045,7 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
         Field.group(config, "MySQL", HOSTNAME, PORT, USER, PASSWORD, ON_CONNECT_STATEMENTS, SERVER_NAME, SERVER_ID, SERVER_ID_OFFSET,
-                SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER);
+                SSL_MODE, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD, JDBC_DRIVER, CommonConnectorConfig.SKIPPED_OPERATIONS);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, DATABASE_HISTORY,
