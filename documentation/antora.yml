@@ -1,16 +1,16 @@
 name: reference
 title: Debezium Documentation
-version: 'master'
+version: '1.1'
 nav:
   - modules/ROOT/nav.adoc
 
 asciidoc:
   attributes:
-    debezium-version: '1.1.0.CR1'
-    debezium-dev-version: '1.1'
+    debezium-version: '1.1.0.Final'
+    debezium-dev-version: '1.2'
     debezium-kafka-version: '2.4.0'
-    debezium-docker-label: '1.0'
-    install-version: '1.0'
+    debezium-docker-label: '1.1'
+    install-version: '1.1'
     assemblies: '../assemblies'
     modules: '../../modules'
     mysql-version: '8.0'

@@ -3,6 +3,49 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 1.1.0.Final
+March 23rd, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12344981)
+
+### New features since 1.1.0.CR1
+
+ * The Postgres connector heartbeat should optionally write back a heartbeat change to the DB [DBZ-1815](https://issues.redhat.com/browse/DBZ-1815)
+
+
+### Breaking changes since 1.1.0.CR1
+
+None
+
+
+### Fixes since 1.1.0.CR1
+
+ * Postgres Connector ignoring confirmed_flush_lsn and skipping ahead to latest txn [DBZ-1730](https://issues.redhat.com/browse/DBZ-1730)
+ * Postgresql money error handling [DBZ-1755](https://issues.redhat.com/browse/DBZ-1755)
+ * MongoDB tests not working correctly [DBZ-1867](https://issues.redhat.com/browse/DBZ-1867)
+ * MongoDB transaction metadata topic generates extra events [DBZ-1874](https://issues.redhat.com/browse/DBZ-1874)
+ * NullPointerException on delete in ExtractNewRecordState class [DBZ-1876](https://issues.redhat.com/browse/DBZ-1876)
+ * MongoDB connector unrecoverable exception [DBZ-1880](https://issues.redhat.com/browse/DBZ-1880)
+ * High log volume from: "Awaiting end of restart backoff period" logs [DBZ-1889](https://issues.redhat.com/browse/DBZ-1889)
+ * Kafka records from one Cassandra table get published to the kafka queue of another Cassandra table [DBZ-1892](https://issues.redhat.com/browse/DBZ-1892)
+
+
+### Other changes since 1.1.0.CR1
+
+ * Use snapshot versions in master branch documentation [DBZ-1793](https://issues.redhat.com/browse/DBZ-1793)
+ * Misc docs issues [DBZ-1798](https://issues.redhat.com/browse/DBZ-1798)
+ * Outbox Quarkus Extension: Clarify default column types when using defaults. [DBZ-1804](https://issues.redhat.com/browse/DBZ-1804)
+ * Create CI job to run OpenShift test [DBZ-1817](https://issues.redhat.com/browse/DBZ-1817)
+ * Failing test jobs for Mongo and SQL Server due to insecure maven registry [DBZ-1837](https://issues.redhat.com/browse/DBZ-1837)
+ * Support retriable exceptions with embedded engine [DBZ-1857](https://issues.redhat.com/browse/DBZ-1857)
+ * Modularize Debezium logging doc [DBZ-1861](https://issues.redhat.com/browse/DBZ-1861)
+ * Centralize closing of coordinator [DBZ-1863](https://issues.redhat.com/browse/DBZ-1863)
+ * Assert format of commit messages [DBZ-1868](https://issues.redhat.com/browse/DBZ-1868)
+ * Bump MongoDB java driver to the latest version 3.12.2 [DBZ-1869](https://issues.redhat.com/browse/DBZ-1869)
+ * Add Travis CI task for MongoDB 3.2 [DBZ-1871](https://issues.redhat.com/browse/DBZ-1871)
+ * Unstable tests for PostgreSQL [DBZ-1875](https://issues.redhat.com/browse/DBZ-1875)
+ * Add MongoDB JMX integration tests [DBZ-1879](https://issues.redhat.com/browse/DBZ-1879)
+    
+    
+
 ## 1.1.0.CR1
 March 11th, 2020 [Detailed release notes](https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12317320&version=12344727)
 
