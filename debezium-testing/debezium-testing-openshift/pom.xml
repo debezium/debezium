@@ -43,6 +43,8 @@
     <database.postgresql.port>5432</database.postgresql.port>
     <database.postgresql.username>debezium</database.postgresql.username>
     <database.postgresql.password>debezium</database.postgresql.password>
+    <database.postgresql.dbz.username>debezium</database.postgresql.dbz.username>
+    <database.postgresql.dbz.password>debezium</database.postgresql.dbz.password>
     <database.postgresql.dbname>debezium</database.postgresql.dbname>
   </properties>
 
@@ -156,6 +158,11 @@
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
     </dependency>
   </dependencies>
 
@@ -283,6 +290,8 @@
                 <test.database.postgresql.port>${database.postgresql.port}</test.database.postgresql.port>
                 <test.database.postgresql.username>${database.postgresql.username}</test.database.postgresql.username>
                 <test.database.postgresql.password>${database.postgresql.password}</test.database.postgresql.password>
+                <test.database.postgresql.dbz.username>${database.postgresql.dbz.username}</test.database.postgresql.dbz.username>
+                <test.database.postgresql.dbz.password>${database.postgresql.dbz.password}</test.database.postgresql.dbz.password>
                 <test.database.postgresql.dbname>${database.postgresql.dbname}</test.database.postgresql.dbname>
               </systemPropertyVariables>
             </configuration>
