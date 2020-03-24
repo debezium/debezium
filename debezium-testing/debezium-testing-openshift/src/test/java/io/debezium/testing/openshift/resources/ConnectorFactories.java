@@ -45,7 +45,7 @@ public class ConnectorFactories {
                 .put("database.dbname", ConfigProperties.DATABASE_POSTGRESQL_DBZ_DBNAME)
                 .put("database.server.name", "postgresqldb") // this should be overwritten with unique name
                 .put("schema.whitelist", "inventory") // might want to change
-                .put("slot.name", "debezium") // this should be overwritten with unique name
+                .put("slot.name", "debezium")
                 .put("plugin.name", "pgoutput");
     }
 }
