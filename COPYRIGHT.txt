@@ -52,9 +52,11 @@ Eero Koplimets
 Emrul Islam
 Eric S. Kreiseir
 Ewen Cheslack-Postava
+Fabian Aussems
 Fabio Cantarini
 Felix Eckhardt
 Fintan Bolton
+Frank Mormino
 Gagan Agrawal
 Grant Cooksey
 Guillaume Rosauro
@@ -136,6 +138,7 @@ Raúl Tovar
 Renato Mefi
 Roman Kuchar
 Sagar Rao
+Sahan Dilshan
 René Kerner
 Rich O'Connell
 Robert Coup
