@@ -352,7 +352,7 @@ The full API of the interface can be seen here:
 
 [source,java,indent=0,subs="+attributes"]
 ----
-**
+/**
  * This interface is used to determine details about the snapshot process:
  *
  * Namely:
@@ -874,7 +874,7 @@ When the columns for a row's primary/unique key are updated, the value of the ro
 
 ===== Primary Key Update Header
 
-When there is an update event that's changing the rows primary key field/s, also known
+When there is an update event that's changing the row's primary key field/s, also known
 as a primary key change, Debezium will in that case send a DELETE event for the old key
 and an INSERT event for the new (updated) key.
 

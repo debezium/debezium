@@ -396,7 +396,7 @@ CREATE TABLE customers (
 
 == Primary Key Update Header
 
-When there is an update event that's changing the rows primary key field/s, also known
+When there is an update event that's changing the row's primary key field/s, also known
 as a primary key change, Debezium will in that case send a DELETE event for the old key
 and an INSERT event for the new (updated) key.
 
@@ -405,4 +405,3 @@ and the value is the new primary key.
 
 The INSERT event produces a Kafka message which has a message header `__debezium.oldkey`
 and the value is the previous (old) primary key of the updated row.
-

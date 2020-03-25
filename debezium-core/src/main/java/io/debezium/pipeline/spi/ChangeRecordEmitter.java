@@ -30,16 +30,14 @@ public interface ChangeRecordEmitter {
      */
     OffsetContext getOffset();
 
+    /**
+     * Callback passed to {@link ChangeRecordEmitter}s, allowing them to produce one
+     * or more change records.
+     */
     public interface Receiver {
 
-        default void changeRecord(DataCollectionSchema schema,
-                                  Operation operation,
-                                  Object key, Struct value,
-                                  OffsetContext offset,
-                                  ConnectHeaders headers)
-                throws InterruptedException {
-            throw new RuntimeException("Not implemented yet in " + this.getClass().getName());
-        }
-
+        void changeRecord(DataCollectionSchema schema, Operation operation, Object key, Struct value,
+                          OffsetContext offset, ConnectHeaders headers)
+                throws InterruptedException;
     }
 }

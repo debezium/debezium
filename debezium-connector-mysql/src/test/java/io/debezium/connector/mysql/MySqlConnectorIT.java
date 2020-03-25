@@ -293,18 +293,18 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         }
     }
 
-    private Header getPKUpdateNewKeyHeader(SourceRecord record) {
+    private Optional<Header> getPKUpdateNewKeyHeader(SourceRecord record) {
         return this.getHeaderField(record, RelationalChangeRecordEmitter.PK_UPDATE_NEWKEY_FIELD);
     }
 
-    private Header getPKUpdateOldKeyHeader(SourceRecord record) {
+    private Optional<Header> getPKUpdateOldKeyHeader(SourceRecord record) {
         return this.getHeaderField(record, RelationalChangeRecordEmitter.PK_UPDATE_OLDKEY_FIELD);
     }
 
-    private Header getHeaderField(SourceRecord record, String fieldName) {
+    private Optional<Header> getHeaderField(SourceRecord record, String fieldName) {
         return StreamSupport.stream(record.headers().spliterator(), false)
                 .filter(header -> fieldName.equals(header.key()))
-                .collect(Collectors.toList()).get(0);
+                .findFirst();
     }
 
     @Test
@@ -456,7 +456,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecord deleteRecord = updates.get(0);
         assertDelete(deleteRecord, "id", 1001);
 
-        Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
+        Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord).get();
         assertEquals(Integer.valueOf(2001), ((Struct) keyPKUpdateHeader.value()).getInt32("id"));
 
         assertTombstone(updates.get(1), "id", 1001);
@@ -464,7 +464,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         SourceRecord insertRecord = updates.get(2);
         assertInsert(insertRecord, "id", 2001);
 
-        keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord).get();
         assertEquals(Integer.valueOf(1001), ((Struct) keyPKUpdateHeader.value()).getInt32("id"));
 
         Testing.print("*** Done with PK change");
@@ -2041,11 +2041,11 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(updates.size()).isEqualTo(3);
 
         SourceRecord deleteRecord = updates.get(0);
-        Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord);
+        Header keyPKUpdateHeader = getPKUpdateNewKeyHeader(deleteRecord).get();
         assertEquals(Integer.valueOf(10303), ((Struct) keyPKUpdateHeader.value()).getInt32("order_number"));
 
         SourceRecord insertRecord = updates.get(2);
-        keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord);
+        keyPKUpdateHeader = getPKUpdateOldKeyHeader(insertRecord).get();
         assertEquals(Integer.valueOf(10003), ((Struct) keyPKUpdateHeader.value()).getInt32("order_number"));
 
         try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
@@ -2058,8 +2058,8 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertThat(updates.size()).isEqualTo(1);
 
         SourceRecord updateRecord = updates.get(0);
+        assertThat(getPKUpdateNewKeyHeader(updateRecord).isPresent()).isFalse();
 
         stopConnector();
     }
-
 }
