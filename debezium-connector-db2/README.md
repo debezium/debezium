@@ -1,6 +1,6 @@
 # Ingesting DB2 change events
 
-This module defines the connector that ingests change events from DB2 databases. See in this [Dockerfile](src/test/docker/db2-cdc-docker/Dockerfile) how [this script](src/test/docker/db2-cdc-docker/dbsetup.sh) is used to set up CDC tables in the docker DB2 instance. `ASNCDC.ADDTABLE` and `ASNCDC.REMOVETABLE` in [asncdcaddremove.sql](src/test/docker/db2-cdc-docker/asncdcaddremove.sql) can be conveniently used to add and remove tables from CDC.
+This module defines the connector that ingests change events from DB2 databases. Documentation on how to use the connector and the internal workings can be found [here](https://debezium.io/documentation/reference/connectors/db2.html). See in this [Dockerfile](src/test/docker/db2-cdc-docker/Dockerfile) how [this script](src/test/docker/db2-cdc-docker/dbsetup.sh) is used to set up CDC tables in the docker DB2 instance. `ASNCDC.ADDTABLE` and `ASNCDC.REMOVETABLE` in [asncdcaddremove.sql](src/test/docker/db2-cdc-docker/asncdcaddremove.sql) can be conveniently used to add and remove tables from CDC.
 
 ## Using the DB2 connector with Kafka Connect
 
