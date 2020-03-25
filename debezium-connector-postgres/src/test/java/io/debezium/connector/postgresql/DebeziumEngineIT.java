@@ -19,12 +19,15 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.fest.assertions.Assertions;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.CompletionCallback;
+import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Change;
 import io.debezium.engine.format.Json;
 import io.debezium.util.LoggingContext;
@@ -85,6 +88,45 @@ public class DebeziumEngineIT {
                     }
                     committer.markBatchFinished();
                 }).using(this.getClass().getClassLoader()).build()) {
+
+            executor.execute(() -> {
+                LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
+                engine.run();
+            });
+            allLatch.await(5000, TimeUnit.MILLISECONDS);
+            assertThat(allLatch.getCount()).isEqualTo(0);
+        }
+    }
+
+    @Test
+    public void shouldSerializeToAvro() throws Exception {
+        final Properties props = new Properties();
+        props.putAll(TestHelper.defaultConfig().build().asMap());
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
+                OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("converter.schema.registry.url",
+                "http://localhost:" + TestHelper.defaultJdbcConfig().getPort());
+
+        CountDownLatch allLatch = new CountDownLatch(1);
+
+        final ExecutorService executor = Executors.newFixedThreadPool(1);
+        try (final DebeziumEngine<Change<byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
+                .notifying((records, committer) -> {
+                    Assert.fail("Should not be invoked due to serialization error");
+                })
+                .using(new CompletionCallback() {
+
+                    @Override
+                    public void handle(boolean success, String message, Throwable error) {
+                        Assertions.assertThat(success).isFalse();
+                        Assertions.assertThat(message).contains("Failed to serialize Avro data from topic debezium");
+                        allLatch.countDown();
+                    }
+                })
+                .build()) {
 
             executor.execute(() -> {
                 LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
