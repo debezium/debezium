@@ -173,7 +173,7 @@ For example, consider a SQL Server installation with an `inventory` database tha
 
 === Schema change topic
 
-The user-facing schema change topic is not implemented yet (see {jira-url}/browse/DBZ-753[DBZ-753]).
+The name of the database history topic can be specified via `database.history.kafka.topic` configuration property. See the link:#connector-properties[complete list of connector properties] for details.
 
 === Events
 
