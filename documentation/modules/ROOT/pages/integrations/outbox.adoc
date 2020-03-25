@@ -166,7 +166,7 @@ e.g. `com.company.TheAttributeConverter`
 |string
 |
 
-|`quarkus.debezium-outbox.aggregate-type-name`::
+|`quarkus.debezium-outbox.aggregate-type.name`::
 The column name for the event aggregate type column.
 |string
 |`aggregatetype`
