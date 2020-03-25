@@ -25,6 +25,7 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
+import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Change;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -149,6 +150,9 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         if (!isFormat(Connect.class)) {
             if (isFormat(Json.class)) {
                 converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+            }
+            else if (isFormat(Avro.class)) {
+                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
             }
             else {
                 throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
