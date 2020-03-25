@@ -1,0 +1,15 @@
+{
+    "name": "inventory-connector",
+    "config": {
+        "connector.class" : "io.debezium.connector.db2.Db2Connector",
+        "tasks.max" : "1",
+        "database.server.name" : "db2server",
+        "database.hostname" : "db2server",
+        "database.port" : "50000",
+        "database.user" : "db2inst1",
+        "database.password" : "######",
+        "database.dbname" : "TESTDB",
+        "database.history.kafka.bootstrap.servers" : "kafka:9092",
+        "database.history.kafka.topic": "schema-changes.inventory"
+    }
+}
