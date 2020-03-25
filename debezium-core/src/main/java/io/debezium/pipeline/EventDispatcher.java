@@ -318,6 +318,10 @@ public class EventDispatcher<T extends DataCollectionId> {
      */
     public interface SnapshotReceiver extends ChangeRecordEmitter.Receiver {
         void completeSnapshot() throws InterruptedException;
+
+        boolean hasEventStaged();
+
+        void flushStagedEvent() throws InterruptedException;
     }
 
     private final class StreamingChangeRecordReceiver implements ChangeRecordEmitter.Receiver {
@@ -378,9 +382,7 @@ public class EventDispatcher<T extends DataCollectionId> {
 
             LOGGER.trace("Received change record for {} operation on key {}", operation, key);
 
-            if (bufferedEvent != null) {
-                queue.enqueue(bufferedEvent.get());
-            }
+            flushStagedEvent();
 
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicSelector.topicNameFor((T) dataCollectionSchema.id());
@@ -414,6 +416,19 @@ public class EventDispatcher<T extends DataCollectionId> {
                     }
                 }
                 queue.enqueue(event);
+                bufferedEvent = null;
+            }
+        }
+
+        @Override
+        public boolean hasEventStaged() {
+            return bufferedEvent != null;
+        }
+
+        @Override
+        public void flushStagedEvent() throws InterruptedException {
+            if (bufferedEvent != null) {
+                queue.enqueue(bufferedEvent.get());
                 bufferedEvent = null;
             }
         }

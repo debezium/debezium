@@ -223,6 +223,11 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     }
 
     @Override
+    protected boolean supportsConcurrentSnapshot() {
+        return false;
+    }
+
+    @Override
     protected Object getColumnValue(ResultSet rs, int columnIndex, Column column) throws SQLException {
         final ResultSetMetaData metaData = rs.getMetaData();
         final int columnType = metaData.getColumnType(columnIndex);

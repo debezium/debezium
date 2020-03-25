@@ -64,6 +64,12 @@ public class ReplicaSetOffsetContext implements OffsetContext {
     }
 
     @Override
+    public OffsetContext getDataCollectionOffsetContext(DataCollectionId collectionId) {
+        // Concurrent snapshot not support so mutable copy not used
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean isSnapshotRunning() {
         return offsetContext.isSnapshotRunning();
     }

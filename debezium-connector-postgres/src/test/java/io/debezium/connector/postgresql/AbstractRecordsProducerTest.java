@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
+import static io.debezium.connector.postgresql.TestHelper.topicName;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -1019,6 +1020,11 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         assertNotNull(source.getString("db"));
         assertNotNull(source.getString("schema"));
         assertNotNull(source.getString("table"));
+    }
+
+    protected String topicNameFromSourceRecord(SourceRecord record) {
+        Struct source = ((Struct) record.value()).getStruct("source");
+        return topicName(source.getString("schema") + "." + source.getString("table"));
     }
 
     protected static String topicNameFromInsertStmt(String statement) {

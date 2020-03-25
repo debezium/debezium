@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
@@ -191,6 +192,35 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
         return snapshotter.buildSnapshotQuery(tableId);
+    }
+
+    @Override
+    protected boolean supportsConcurrentSnapshot() {
+        boolean canSnapshotConcurrently = snapshotter.exportSnapshot();
+        if (!canSnapshotConcurrently) {
+            LOGGER.debug("Parallel snapshots require snapshot.mode=exported or a custom Snapshotter than exports snapshots");
+        }
+        canSnapshotConcurrently = canSnapshotConcurrently && slotCreatedInfo != null && slotCreatedInfo.snapshotName() != null;
+        if (!canSnapshotConcurrently) {
+            LOGGER.debug("Parallel snapshots cannot perform exported snapshot on existing replication slot.");
+        }
+
+        if (canSnapshotConcurrently) {
+            LOGGER.debug("Using parallel snapshot.");
+        }
+        else {
+            LOGGER.debug("Cannot use parallel snapshot, reverting to synchronous snapshot.");
+        }
+        return canSnapshotConcurrently;
+    }
+
+    @Override
+    protected void prepareSnapshotWorker(Statement statement, RelationalSnapshotContext snapshotContext) throws SQLException {
+        if (isUsingConcurrentSnapshot(snapshotContext)) {
+            String snapshotSet = String.format("SET TRANSACTION SNAPSHOT '%s';", slotCreatedInfo.snapshotName());
+            String query = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ; \n" + snapshotSet;
+            statement.execute(query);
+        }
     }
 
     @Override

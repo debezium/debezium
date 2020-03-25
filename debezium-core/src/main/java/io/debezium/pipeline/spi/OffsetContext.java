@@ -40,6 +40,8 @@ public interface OffsetContext {
 
     Struct getSourceInfo();
 
+    OffsetContext getDataCollectionOffsetContext(DataCollectionId collectionId);
+
     /**
      * Whether this offset indicates that an (uncompleted) snapshot is currently running or not.
      * @return

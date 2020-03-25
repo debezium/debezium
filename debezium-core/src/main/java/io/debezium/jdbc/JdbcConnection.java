@@ -789,17 +789,31 @@ public class JdbcConnection implements AutoCloseable {
             if (!isConnected()) {
                 throw new SQLException("Unable to obtain a JDBC connection");
             }
-            // Always run the initial operations on this new connection
-            if (initialOps != null) {
-                execute(initialOps);
-            }
-            final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
-            if (statements != null && executeOnConnect) {
-                final List<String> splitStatements = parseSqlStatementString(statements);
-                execute(splitStatements.toArray(new String[splitStatements.size()]));
-            }
+            runInitialStatements(executeOnConnect);
         }
         return conn;
+    }
+
+    public Connection workerConnection(boolean executeOnConnect) throws SQLException {
+        Connection workerConnection = factory.connect(JdbcConfiguration.adapt(config));
+        if (workerConnection.isClosed()) {
+            throw new SQLException("Unable to obtain a JDBC connection");
+        }
+        runInitialStatements(executeOnConnect);
+        workerConnection.setAutoCommit(false);
+        return workerConnection;
+    }
+
+    void runInitialStatements(boolean executeOnConnect) throws SQLException {
+        // Always run the initial operations on this new connection
+        if (initialOps != null) {
+            execute(initialOps);
+        }
+        final String statements = config.getString(JdbcConfiguration.ON_CONNECT_STATEMENTS);
+        if (statements != null && executeOnConnect) {
+            final List<String> splitStatements = parseSqlStatementString(statements);
+            execute(splitStatements.toArray(new String[splitStatements.size()]));
+        }
     }
 
     protected List<String> parseSqlStatementString(final String statements) {

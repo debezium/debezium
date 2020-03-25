@@ -193,4 +193,10 @@ public class SqlServerOffsetContext implements OffsetContext {
     public TransactionContext getTransactionContext() {
         return transactionContext;
     }
+
+    @Override
+    public OffsetContext getDataCollectionOffsetContext(DataCollectionId collectionId) {
+        // Concurrent snapshot not support so mutable copy not used
+        throw new UnsupportedOperationException();
+    }
 }

@@ -40,9 +40,11 @@ public class PostgresOffsetContext implements OffsetContext {
     private boolean lastSnapshotRecord;
     private Long lastCompletelyProcessedLsn;
     private final TransactionContext transactionContext;
+    private PostgresConnectorConfig connectorConfig;
 
     private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Long lsn, Long lastCompletelyProcessedLsn, Long txId, Instant time, boolean snapshot,
                                   boolean lastSnapshotRecord, TransactionContext transactionContext) {
+        this.connectorConfig = connectorConfig;
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
@@ -58,6 +60,20 @@ public class PostgresOffsetContext implements OffsetContext {
             sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
         this.transactionContext = transactionContext;
+    }
+
+    public PostgresOffsetContext(PostgresOffsetContext postgresOffsetContext) {
+        SourceInfo sourceInfoCopy = new SourceInfo(postgresOffsetContext.connectorConfig);
+        sourceInfoCopy.update(postgresOffsetContext.sourceInfo.lsn(), null, postgresOffsetContext.sourceInfo.txId(), null, postgresOffsetContext.sourceInfo.xmin());
+        sourceInfoCopy.setSnapshot(postgresOffsetContext.sourceInfo.snapshot());
+
+        this.sourceInfoSchema = postgresOffsetContext.sourceInfoSchema;
+        this.sourceInfo = sourceInfoCopy;
+        this.partition = postgresOffsetContext.partition;
+        this.lastSnapshotRecord = postgresOffsetContext.lastSnapshotRecord;
+        this.lastCompletelyProcessedLsn = postgresOffsetContext.lastCompletelyProcessedLsn;
+        this.transactionContext = postgresOffsetContext.transactionContext;
+        this.connectorConfig = postgresOffsetContext.connectorConfig;
     }
 
     @Override
@@ -98,6 +114,11 @@ public class PostgresOffsetContext implements OffsetContext {
     @Override
     public Struct getSourceInfo() {
         return sourceInfo.struct();
+    }
+
+    @Override
+    public OffsetContext getDataCollectionOffsetContext(DataCollectionId tableId) {
+        return new PostgresOffsetContext(this);
     }
 
     @Override

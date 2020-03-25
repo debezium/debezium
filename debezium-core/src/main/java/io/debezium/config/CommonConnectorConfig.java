@@ -221,6 +221,15 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum number of records that should be loaded into memory while performing a snapshot")
             .withValidation(Field::isNonNegativeInteger);
 
+    public static final Field SNAPSHOT_MAX_THREADS = Field.create("snapshot.max.threads")
+            .withDisplayName("Snapshot max threads")
+            .withType(Type.INT)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The maximum number of worker threads used to perform a snapshot")
+            .withDefault(1)
+            .withValidation(Field::isNonNegativeInteger);
+
     public static final Field SOURCE_STRUCT_MAKER_VERSION = Field.create("source.struct.version")
             .withDisplayName("Source struct maker version")
             .withEnum(Version.class, Version.V2)

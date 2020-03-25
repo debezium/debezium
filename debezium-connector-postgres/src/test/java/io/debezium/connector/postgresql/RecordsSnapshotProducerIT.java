@@ -21,9 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -35,6 +38,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.data.Bits;
@@ -228,12 +232,22 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer = testConsumer(expectedRecordsCount, "s1", "s2");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        AtomicInteger counter = new AtomicInteger(0);
+        // each table has 3 entries keyed 1-3, no guarantee on ordering
+        ConcurrentHashMap<String, CopyOnWriteArraySet<Integer>> pkTableMap = new ConcurrentHashMap<>();
+        pkTableMap.put(topicName("s1.a"), IntStream.rangeClosed(1, 3).boxed().collect(Collectors.toCollection(CopyOnWriteArraySet::new)));
+        pkTableMap.put(topicName("s2.a"), IntStream.rangeClosed(1, 3).boxed().collect(Collectors.toCollection(CopyOnWriteArraySet::new)));
         consumer.process(record -> {
-            int counterVal = counter.getAndIncrement();
-            int expectedPk = (counterVal % 3) + 1; // each table has 3 entries keyed 1-3
-            VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
-            assertRecordOffsetAndSnapshotSource(record, true, counterVal == (expectedRecordsCount - 1));
+            VerifyRecord.isValidRead(record);
+            int pk = (int) ((Struct) record.key()).get(PK_FIELD);
+            String topicName = topicNameFromSourceRecord(record);
+            CopyOnWriteArraySet<Integer> pkSetForTable = pkTableMap.get(topicName);
+            assertThat(pkSetForTable.remove(pk)).isTrue();
+
+            if (pkSetForTable.isEmpty()) {
+                pkTableMap.remove(topicName);
+            }
+
+            assertRecordOffsetAndSnapshotSource(record, true, pkTableMap.isEmpty());
             assertSourceInfo(record);
         });
         consumer.clear();
@@ -251,6 +265,84 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         second = consumer.remove();
         VerifyRecord.isValidInsert(second, PK_FIELD, 4);
+        assertRecordOffsetAndSnapshotSource(second, false, false);
+        assertSourceInfo(second, TestHelper.TEST_DATABASE, "s2", "a");
+    }
+
+    @Test
+    public void shouldGenerateConcurrentSnapshotAndContinueStreaming() throws Exception {
+        // PostGIS must not be used
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        String insertStmt = "INSERT INTO s1.a (aa) VALUES (1);" +
+                "INSERT INTO s2.a (aa) VALUES (1);";
+
+        String statements = "CREATE SCHEMA s1; " +
+                "CREATE SCHEMA s2; " +
+                "CREATE TABLE s1.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                "CREATE TABLE s2.a (pk SERIAL, aa integer, PRIMARY KEY(pk));" +
+                insertStmt;
+        TestHelper.execute(statements);
+        int expectedRecordsCount = 2;
+
+        buildWithExportedSnapshotStreamProducer(TestHelper.defaultConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 5));
+
+        TestConsumer consumer = testConsumer(expectedRecordsCount, "s1", "s2");
+        consumer.await(TestHelper.waitTimeForRecords() * 300, TimeUnit.SECONDS); // TODO set back to 30
+
+        AtomicInteger counter = new AtomicInteger(0);
+        consumer.process(record -> {
+            int counterVal = counter.getAndIncrement();
+            int expectedPk = 1;
+            VerifyRecord.isValidRead(record, PK_FIELD, expectedPk);
+            assertRecordOffsetAndSnapshotSource(record, true, counterVal == (expectedRecordsCount - 1));
+            assertSourceInfo(record);
+        });
+        consumer.clear();
+        waitForSnapshotToBeCompleted();
+
+        // then insert some more data and check that we get it back
+        waitForStreamingToStart();
+        TestHelper.execute(insertStmt);
+        consumer.expects(2);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        SourceRecord first = consumer.remove();
+        VerifyRecord.isValidInsert(first, PK_FIELD, 2);
+        assertEquals(topicName("s1.a"), first.topic());
+        assertRecordOffsetAndSnapshotSource(first, false, false);
+        assertSourceInfo(first, TestHelper.TEST_DATABASE, "s1", "a");
+
+        SourceRecord second = consumer.remove();
+        VerifyRecord.isValidInsert(second, PK_FIELD, 2);
+        assertEquals(topicName("s2.a"), second.topic());
+        assertRecordOffsetAndSnapshotSource(second, false, false);
+        assertSourceInfo(second, TestHelper.TEST_DATABASE, "s2", "a");
+
+        // now shut down the producers and insert some more records
+        stopConnector();
+        assertConnectorNotRunning();
+
+        TestHelper.execute(insertStmt);
+
+        // start a new producer back up, immediately start streaming
+        buildWithExportedSnapshotStreamProducer(TestHelper.defaultConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 5));
+        waitForStreamingToStart();
+
+        consumer = testConsumer(expectedRecordsCount, "s1", "s2");
+        consumer.expects(expectedRecordsCount);
+
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+        first = consumer.remove();
+        VerifyRecord.isValidInsert(first, PK_FIELD, 3);
+        assertRecordOffsetAndSnapshotSource(first, false, false);
+        assertSourceInfo(first, TestHelper.TEST_DATABASE, "s1", "a");
+
+        second = consumer.remove();
+        VerifyRecord.isValidInsert(second, PK_FIELD, 3);
         assertRecordOffsetAndSnapshotSource(second, false, false);
         assertSourceInfo(second, TestHelper.TEST_DATABASE, "s2", "a");
     }
@@ -942,6 +1034,14 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE_CLASS, CustomTestSnapshot.class.getName())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .build());
+        assertConnectorIsRunning();
+    }
+
+    private void buildWithExportedSnapshotStreamProducer(Configuration.Builder config) {
+        start(PostgresConnector.class, config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.EXPORTED)
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .build());
         assertConnectorIsRunning();
