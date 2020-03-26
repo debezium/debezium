@@ -6,7 +6,7 @@
 
 The configuration properties listed here are *required* to run the {prodname} MySQL connector. There are also <<advanced-mysql-connector-properties, advanced MySQL connector properties>> whose default value rarely need changed and therefore, specified in the connector configuration.
 
-TIP: The {prodname} MySQL connector supports _pass-through_ configuration when creating the Kafka producer and consumer. See link:http://kafka.apache.org/documentation.html[the Kafka documentation] for more details on _pass-through_ properties.
+TIP: The {prodname} MySQL connector supports _pass-through_ configuration when creating the Kafka producer and consumer. See link:{link-kafka-docs}.html[the Kafka documentation] for more details on _pass-through_ properties.
 
 [cols="3,2,5"]
 |===
