@@ -14,7 +14,7 @@ ifdef::cdc-product[]
 {prodname} {debezium-version} requires Kafka Connect {debezium-kafka-version}.
 Therefore, this procedure uses {debezium-kafka-version} of the Kafka broker.
 For more information about compatibility between different versions of Kafka Connect and Kafka broker,
-see the http://kafka.apache.org/documentation.html[Kafka documentation].
+see the {link-kafka-docs}.html[Kafka documentation].
 ====
 endif::cdc-product[]
 ifndef::cdc-product[]

@@ -1006,7 +1006,7 @@ See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
 The connector also supports pass-through configuration properties that are used when creating the Kafka producer. Specifically, all connector configuration properties that begin with the `kafka.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes events to Kafka.
 
-For example, the follwoing connector configuration properties can be used to http://kafka.apache.org/documentation.html#security_configclients[secure connections to the Kafka broker]:
+For example, the follwoing connector configuration properties can be used to {link-kafka-docs}.html#security_configclients[secure connections to the Kafka broker]:
 
 [source,properties,indent=0]
 ----
@@ -1024,7 +1024,7 @@ kafka.consumer.ssl.truststore.password=test1234
 kafka.consumer.ssl.key.password=test1234
 ----
 
-Be sure to consult the http://kafka.apache.org/documentation.html[Kafka documentation] for all of the configuration properties for Kafka producers.
+Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers.
 
 The connector supports the following Kafka Connect converters for key/value serialization:
 

@@ -8,7 +8,7 @@
 {prodname} is a distributed platform that turns your existing databases into event streams,
 so applications can see and respond immediately to each row-level change in the databases.
 
-{prodname} is built on top of http://kafka.apache.org[Apache Kafka] and provides http://kafka.apache.org/documentation.html#connect[Kafka Connect] compatible connectors that monitor specific database management systems.
+{prodname} is built on top of http://kafka.apache.org[Apache Kafka] and provides {link-kafka-docs}.html#connect[Kafka Connect] compatible connectors that monitor specific database management systems.
 {prodname} records the history of data changes in Kafka logs, from where your application consumes them.
 This makes it possible for your application to easily consume all of the events correctly and completely.
 Even if your application stops unexpectedly,
