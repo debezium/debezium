@@ -27,12 +27,12 @@ Restart your Kafka Connect process to pick up the new JARs.
 
 The connector plugins are available from Maven:
 
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{install-version}/debezium-connector-mysql-{install-version}-plugin.tar.gz[MySQL Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{install-version}/debezium-connector-postgres-{install-version}-plugin.tar.gz[Postgres Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{install-version}/debezium-connector-mongodb-{install-version}-plugin.tar.gz[MongoDB Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{install-version}/debezium-connector-sqlserver-{install-version}-plugin.tar.gz[SQL Server Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{install-version}/debezium-connector-oracle-{install-version}-plugin.tar.gz[Oracle Connector plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{install-version}/debezium-connector-cassandra-{install-version}-plugin.tar.gz[Cassandra plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[Postgres Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[MongoDB Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-{debezium-version}-plugin.tar.gz[Cassandra plugin archive] (incubating)
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[Debezium's container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different Debezium connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what Debezium is all about.
 Of course you also can run Debezium on Kubernetes and xref:operations/openshift.adoc[OpenShift].
