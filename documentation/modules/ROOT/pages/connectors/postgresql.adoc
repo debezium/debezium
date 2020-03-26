@@ -1801,7 +1801,7 @@ ifdef::cdc-product[]
 The only supported value is `pgoutput`.
 endif::cdc-product[]
 ifndef::cdc-product[]
-Supported values are `decoderbufs`, `wal2json`, `wal2json_rds`, `wal2json_streaming` (added in 0.8.0.Beta1), `wal2json_rds_streaming` (added in 0.8.0.Beta1) and `pgoutput` (added in 0.10.0.Beta3)
+Supported values are `decoderbufs`, `wal2json`, `wal2json_rds`, `wal2json_streaming`, `wal2json_rds_streaming` and `pgoutput`
 endif::cdc-product[]
 
 When the processed transactions are very large it is possible that the `JSON` batch event with all changes in the transaction will not fit into the hard-coded memory buffer of size 1 GB.
@@ -1921,7 +1921,7 @@ Emitting the tombstone event (the default behavior) allows Kafka to completely d
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|`column.propagate.source.type` 0.8.0 and later
+|`column.propagate.source.type`
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
