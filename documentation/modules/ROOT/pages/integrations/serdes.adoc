@@ -15,7 +15,7 @@ This feature is currently in incubating state, i.e. exact semantics, configurati
 
 Debezium generates data change events in the form of a complex message structure.
 This message is later on serialized by the configured Kafka Connect converter and it is the responsibility of the consumer to deserialize it into a logical message.
-For this purpose, Kafka uses the so-called https://kafka.apache.org/documentation/streams/developer-guide/datatypes.html[SerDes].
+For this purpose, Kafka uses the so-called {link-kafka-docs}/streams/developer-guide/datatypes.html[SerDes].
 
 Debezium provides SerDes (`io.debezium.serde.DebeziumSerdes`) to simplify the deserialization for the consumer either being it Kafka Streams pipeline or plain Kafka consumer.
 

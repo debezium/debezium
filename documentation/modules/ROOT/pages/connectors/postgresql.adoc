@@ -531,7 +531,7 @@ All data change events produced by the PostgreSQL connector have a key and a val
 
 [NOTE]
 ====
-Starting with Kafka 0.10, Kafka can optionally record with the message key and value the http://kafka.apache.org/documentation.html#upgrade_10_performance_impact[_timestamp_] at which the message was created (recorded by the producer) or written to the log by Kafka.
+Starting with Kafka 0.10, Kafka can optionally record with the message key and value the {link-kafka-docs}.html#upgrade_10_performance_impact[_timestamp_] at which the message was created (recorded by the producer) or written to the log by Kafka.
 ====
 
 [WARNING]
@@ -1549,7 +1549,7 @@ For consistent toasted values handling we recommend to
 == Deploying the PostgreSQL Connector
 
 ifndef::cdc-product[]
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's PostgreSQL connector is easy. Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to http://kafka.apache.org/documentation/#connectconfigs[Kafka Connect's plugin.path]. Restart your Kafka Connect process to pick up the new JARs.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's PostgreSQL connector is easy. Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path]. Restart your Kafka Connect process to pick up the new JARs.
 endif::cdc-product[]
 
 ifdef::cdc-product[]
@@ -1557,7 +1557,7 @@ Installing the PostgreSQL connector is a simple process whereby you only need to
 
 .Prerequisites
 
-* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:http://kafka.apache.org/documentation.html#connect[Kafka Connect] installed.
+* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] installed.
 * You have PostgreSQL installed and setup.
 
 .Procedure
@@ -2098,7 +2098,7 @@ See link:#transaction-metadata[Transaction Metadata] for additional details.
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer.
 
-Be sure to consult the http://kafka.apache.org/documentation.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The PostgreSQL connector does use the http://kafka.apache.org/documentation.html#newconsumerconfigs[new consumer].)
+Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The PostgreSQL connector does use the {link-kafka-docs}.html#newconsumerconfigs[new consumer].)
 
 [[when-things-go-wrong]]
 == PostgreSQL common issues
