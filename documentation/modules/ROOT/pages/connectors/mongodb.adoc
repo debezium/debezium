@@ -193,7 +193,7 @@ If the connector monitoring this database were given a logical name of `fulfillm
 Notice that the topic names do not incorporate the replica set name or shard name.
 As a result, all changes to a sharded collection (where each shard contains a subset of the collection's documents) all go to the same Kafka topic.
 
-You can set up Kafka to http://kafka.apache.org/documentation.html#basic_ops_add_topic[auto-create] the topics as they are needed.
+You can set up Kafka to {link-kafka-docs}.html#basic_ops_add_topic[auto-create] the topics as they are needed.
 If not, then you must use Kafka administration tools to create the topics before starting the connector.
 
 [[partitions]]
@@ -213,7 +213,7 @@ All data change events produced by the MongoDB connector have a key and a value.
 
 [NOTE]
 ====
-Starting with Kafka 0.10, Kafka can optionally record with the message key and value the http://kafka.apache.org/documentation.html#upgrade_10_performance_impact[_timestamp_] at which the message was created (recorded by the producer) or written to the log by Kafka.
+Starting with Kafka 0.10, Kafka can optionally record with the message key and value the {link-kafka-docs}.html#upgrade_10_performance_impact[_timestamp_] at which the message was created (recorded by the producer) or written to the log by Kafka.
 ====
 
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_, and the structure of these events could potentially change over time if the source of those events changed in structure or if the connector is improved or changed.
@@ -534,7 +534,7 @@ And, a tombstone event informs Kafka that _all_ messages with that same key can 
 == Deploying the MongoDB connector
 
 ifndef::cdc-product[]
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's MongoDB connector is easy.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's MongoDB connector is easy.
 Simply download the
 ifeval::['{page-version}' == 'master']
 {link-mongodb-plugin-snapshot}[connector's plugin archive],
@@ -550,7 +550,7 @@ Installing the MongoDB connector is a simple process whereby you only need to do
 
 .Prerequisites
 
-* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:http://kafka.apache.org/documentation.html#connect[Kafka Connect] installed.
+* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] installed.
 * You have MongoDB installed and setup.
 
 .Procedure

@@ -9,7 +9,7 @@ include::../_attributes.adoc[]
 toc::[]
 
 Debezium enables you to re-route the emitted change before the message reaches the converter using a single message transformation,
-or https://kafka.apache.org/documentation/#connect_transforms[SMT].
+or {link-kafka-docs}/#connect_transforms[SMT].
 The SMT provided by Debezium enables you to rewrite the topic and the key according to a regular expression and a replacement pattern,
 configurable per instance of Debezium.
 

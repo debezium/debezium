@@ -1091,7 +1091,7 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 [[deploying-a-connector]]
 == Deploying a connector
 
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using Debezium's Db2` connector is easy.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's Db2` connector is easy.
 First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive],
 extract it, and add the contained directory to https://docs.confluent.io/current/connect/managing/install.html#install-connector-manually[Kafka Connect's plug-in path].
 
@@ -1105,7 +1105,7 @@ You can even link:/docs/openshift/[run Debezium on OpenShift].
 To use the connector to produce change events for a particular Db2 database or cluster:
 
 . enable the link:#setting-up-Db2[CDC on Db2] to publish the _CDC_ events in the database
-. create a link:#example-configuration[configuration file for the Db2 Connector] and use the http://kafka.apache.org/documentation/#connect_rest[Kafka Connect REST API] to add that connector to your Kafka Connect cluster.
+. create a link:#example-configuration[configuration file for the Db2 Connector] and use the {link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector to your Kafka Connect cluster.
 
 When the connector starts, it will grab a consistent snapshot of the schemas in your Db2 database and start streaming changes, producing events for every inserted, updated, and deleted row.
 You can also choose to produce events for a subset of the schemas and tables.
@@ -1527,7 +1527,7 @@ See link:#transaction-metadata[Transaction Metadata] for additional details.
 
 The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer. Specifically, all connector configuration properties that begin with the `database.history.producer.` prefix are used (without the prefix) when creating the Kafka producer that writes to the database history, and all those that begin with the prefix `database.history.consumer.` are used (without the prefix) when creating the Kafka consumer that reads the database history upon connector startup.
 
-For example, the following connector configuration properties can be used to http://kafka.apache.org/documentation.html#security_configclients[secure connections to the Kafka broker]:
+For example, the following connector configuration properties can be used to {link-kafka-docs}.html#security_configclients[secure connections to the Kafka broker]:
 
 In addition to the _pass-through_ to the Kafka producer and consumer, the properties starting with `database.`, e.g. `database.applicationName=debezium` are passed to the JDBC URL.
 
@@ -1547,4 +1547,4 @@ database.history.consumer.ssl.truststore.password=test1234
 database.history.consumer.ssl.key.password=test1234
 ----
 
-Be sure to consult the http://kafka.apache.org/documentation.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The Db2 connector does use the http://kafka.apache.org/documentation.html#newconsumerconfigs[new consumer].)
+Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. (The Db2 connector does use the {link-kafka-docs}.html#newconsumerconfigs[new consumer].)
