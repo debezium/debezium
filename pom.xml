@@ -83,8 +83,12 @@
 
         <!-- Quarkus -->
         <quarkus.version>1.2.0.Final</quarkus.version>
+
         <!-- HTTP client -->
         <version.okhttp>4.2.2</version.okhttp>
+
+        <!-- Scripting -->
+        <version.groovy>3.0.2</version.groovy>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
@@ -355,6 +359,13 @@
                 <groupId>log4j</groupId>
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
+            </dependency>
+
+            <!-- Scripting -->
+            <dependency>
+                <groupId>org.codehaus.groovy</groupId>
+                <artifactId>groovy</artifactId>
+                <version>${version.groovy}</version>
             </dependency>
 
             <!-- Testing utilities -->
