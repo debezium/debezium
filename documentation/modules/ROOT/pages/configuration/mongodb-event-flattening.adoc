@@ -43,7 +43,7 @@ More details about the message structure are provided in xref:connectors/mongodb
 While this structure is a good fit to represent changes to MongoDB's schemaless collections,
 it's not understood by existing sink connectors as for instance the Confluent JDBC sink connector.
 
-Therefore Debezium provides a https://kafka.apache.org/documentation/#connect_transforms[a single message transformation] (SMT)
+Therefore Debezium provides a {link-kafka-docs}/#connect_transforms[a single message transformation] (SMT)
 which converts the `after`/`patch` information from the MongoDB CDC events into a structure suitable for consumption by existing sink connectors.
 To do so, the SMT parses the JSON strings and reconstructs properly typed Kafka Connect
 (comprising the correct message payload and schema) records from that,
