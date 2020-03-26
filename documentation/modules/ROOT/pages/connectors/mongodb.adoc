@@ -162,7 +162,7 @@ Try to avoid task reassignment and reconfiguration while the connector is perfor
 === Tailing the oplog
 
 Once the connector task for a replica set has an offset, it uses the offset to determine the position in the oplog where it should start reading.
-The task will then connect to the replica set's primary node and start reading the oplog from that position, processing all of the create, insert, and delete operations and converting them into {prodname} link:#mongodb-events[change events]. Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset. (The interval at which the offset is recorded is governed by the `offset.flush.interval.ms` http://docs.confluent.io/3.0.0/connect/userguide.html#configuring-workers[Kafka Connect worker configuration property].)
+The task will then connect to the replica set's primary node and start reading the oplog from that position, processing all of the create, insert, and delete operations and converting them into {prodname} link:#mongodb-events[change events]. Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset. (The interval at which the offset is recorded is governed by the `offset.flush.interval.ms` {link-kafka-docs}/#connectconfigs[Kafka Connect worker configuration property].)
 
 When the connector is stopped gracefully, the last offset processed is recorded so that, upon restart, the connector will continue exactly where it left off.
 If the connector's tasks terminate unexpectedly, however, then the tasks may have processed and generated events after it last records the offset but before the last offset is recorded; upon restart, the connector begins at the last _recorded_ offset, possibly generating some the same events that were previously generated just prior to the crash.
@@ -542,7 +542,8 @@ endif::[]
 ifeval::['{page-version}' != 'master']
 https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[connector's plugin archive],
 endif::[]
-extract the JARs into your Kafka Connect environment, and add the directory with the JARs to http://docs.confluent.io/3.0.0/connect/userguide.html#installing-connector-plugins[Kafka Connect's classpath]. Restart your Kafka Connect process to pick up the new JARs.
+extract the JARs into your Kafka Connect environment, and add the directory with the JARs to Kafka Connect's plugin path using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
+Restart your Kafka Connect process to pick up the new JARs.
 endif::cdc-product[]
 
 ifdef::cdc-product[]

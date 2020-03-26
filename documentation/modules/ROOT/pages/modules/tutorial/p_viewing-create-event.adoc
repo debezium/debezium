@@ -335,7 +335,7 @@ The JSON converter includes the key and value schemas in every message,
 so it does produce very verbose events.
 // The following condition can be removed when the downstream supports Avro.
 ifndef::cdc-product[]
-Alternatively, you can use the link:http://docs.confluent.io/3.1.2/schema-registry/docs/index.html[Avro converter], which results in far smaller event messages.
+Alternatively, you can use xref:configuration/avro.adoc[Apache Avro] as a serialization format, which results in far smaller event messages.
 This is because it transforms each Kafka Connect schema into an Avro schema and stores the Avro schemas in a separate Schema Registry service.
 Thus, when the Avro converter serializes an event message,
 it places only a unique identifier for the schema along with an Avro-encoded binary representation of the value.

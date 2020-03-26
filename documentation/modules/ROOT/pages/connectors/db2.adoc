@@ -206,7 +206,7 @@ A table MYTABLE in MYSCHEMA can be put into capture mode by doing:
 
 [source,sql]
 ----
-CALL ASNCDC.ADDTABLE('MYSCHEMA', 'MYTABLE' )";
+CALL ASNCDC.ADDTABLE('MYSCHEMA', 'MYTABLE');
 ----
 
 
@@ -215,7 +215,7 @@ At table MYTABLE in MYSCHEMA can be removed from capture mode by doing:
 
 [source,sql]
 ----
-CALL ASNCDC.REMOVETABLE('MYSCHEMA', 'MYTABLE' );
+CALL ASNCDC.REMOVETABLE('MYSCHEMA', 'MYTABLE');
 ----
 
 After a table is added or removed, the user __MUST__ reinitialize the ASN service:
@@ -1093,7 +1093,7 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's Db2` connector is easy.
 First download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[connector's plugin archive],
-extract it, and add the contained directory to https://docs.confluent.io/current/connect/managing/install.html#install-connector-manually[Kafka Connect's plug-in path].
+extract it, and add the contained directory to Kafka Connect's plugin path using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
 
 In addition, due to licensing reasons you need to separately obtain the https://www.ibm.com/support/pages/db2-jdbc-driver-versions-and-downloads[JDBC driver for Db2].
 Add the JDBC driver JAR to the directory with the Debezium Db2 connector JARs.
