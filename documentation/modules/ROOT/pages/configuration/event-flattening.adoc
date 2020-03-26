@@ -55,7 +55,7 @@ The downside of using the complex format is that other connectors or other parts
 }
 ----
 
-Debezium provides https://kafka.apache.org/documentation/#connect_transforms[a single message transformation] that crosses the bridge between the complex and simple formats, the https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/ExtractNewRecordState.java[ExtractNewRecordState] SMT.
+Debezium provides {link-kafka-docs}/#connect_transforms[a single message transformation] that crosses the bridge between the complex and simple formats, the https://github.com/debezium/debezium/blob/master/debezium-core/src/main/java/io/debezium/transforms/ExtractNewRecordState.java[ExtractNewRecordState] SMT.
 
 The SMT provides three main functions.
 It
@@ -87,7 +87,7 @@ The SMT provides a special handling for events that signal a `delete` operation.
 When a `DELETE` is executed on a datasource then Debezium generates two events:
 
 * a record with `d` operation that contains only old row data
-* (optionally) a record with `null` value and the same key (a "tombstone" message). This record serves as a marker for Apache Kafka that all messages with this key can be removed from the topic during https://kafka.apache.org/documentation/#compaction[log compaction].
+* (optionally) a record with `null` value and the same key (a "tombstone" message). This record serves as a marker for Apache Kafka that all messages with this key can be removed from the topic during {link-kafka-docs}/#compaction[log compaction].
 
 Upon processing these two records, the SMT can pass on the `d` record as is,
 convert it into another tombstone record or drop it.

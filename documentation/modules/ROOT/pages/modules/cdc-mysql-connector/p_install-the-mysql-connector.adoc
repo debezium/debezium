@@ -8,7 +8,7 @@ Installing the {prodname} MySQL connector is a simple process whereby you only n
 
 .Prerequisites
 
-* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:http://kafka.apache.org/documentation.html#connect[Kafka Connect] installed.
+* You have link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] installed.
 * You have MySQL Server installed and setup.
 
 .Procedure

@@ -12,7 +12,7 @@ There are several ways to install and use Debezium connectors, so we've document
 
 == Installing a Debezium Connector
 
-If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and http://kafka.apache.org/documentation.html#connect[Kafka Connect], then using one of Debezium's connectors is easy.
+If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using one of Debezium's connectors is easy.
 Simply download one or more connector plugin archives (see below), extract their files into your Kafka Connect environment, and add the parent directory of the extracted plugin(s) to https://docs.confluent.io/current/connect/userguide.html#installing-plugins[Kafka Connect's plugin path].
 If not the case yet, specify the plugin path in your worker configuration (e.g. _connect-distributed.properties_) using the `plugin.path` property.
 As an example, let's assume you have downloaded the Debezium MySQL connector archive and extracted its contents to _/kafka/connect/debezium-connector-mysql_.
@@ -77,7 +77,7 @@ xref:connectors/sqlserver.adoc#deploying-a-connector[SQL Server Connector],
 xref:connectors/oracle.adoc#deploying-a-connector[Oracle Connector],
 xref:connectors/db2.adoc#deploying-a-connector[Db2 Connector]
 or xref:connectors/cassandra.adoc#deploying-a-connector[Cassandra Connector]
-and use the link:http://kafka.apache.org/documentation/#connect_rest[Kafka Connect REST API] to add that
+and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
 for each inserted, updated, and deleted row or document.
 
@@ -93,7 +93,7 @@ There are certain limitations and recommendations which apply to topics:
 ** Replication factor at least 3 for production
 ** Single partition
 * Other topics
-** Optionally, https://kafka.apache.org/documentation/#compaction[log compaction] enabled
+** Optionally, {link-kafka-docs}/#compaction[log compaction] enabled
 (if you wish to only keep the _last_ change event for a given record);
 in this case the `min.compaction.lag.ms` and `delete.retention.ms` topic-level settings in Apache Kafka should be configured,
 so that consumers have enough time to receive all events and delete markers;
