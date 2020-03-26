@@ -82,7 +82,7 @@ EXEC sys.sp_cdc_enable_table
 @source_name   = N'MyTable',
 @role_name     = N'MyRole',
 @filegroup_name = N'MyDB_CT',
-@supports_net_changes = 1
+@supports_net_changes = 0
 GO
 ----
 
