@@ -4,11 +4,11 @@
 [id="how-the-mysql-connector-handles-schema-change-topics_{context}"]
 = How the MySQL connector handles schema change topics
 
-You can configure the  {prodname} *MySQL connector* to produce schema change events that include all DDL statements applied to databases in the MySQL server. The connector writes all of these events to a Kakfa topic named `<serverName>` where `serverName` is the name of the connector as specified in the `database.server.name` configuration property.
+You can configure the  {prodname} *MySQL connector* to produce schema change events that include all DDL statements applied to databases in the MySQL server. The connector writes all of these events to a Kafka topic named `<serverName>` where `serverName` is the name of the connector as specified in the `database.server.name` configuration property.
 
 IMPORTANT: If you choose to use _schema change events_, use the schema change topic and *do not* consume the database history topic.
 
-NOTE: Make sure that the `num.partitions` configuration for Kakfa is set to `1` to ensure schema changes are kept in the correct order.
+NOTE: Make sure that the `num.partitions` configuration for Kafka is set to `1` to ensure schema changes are kept in the correct order.
 
 == Schema change topic structure
 

@@ -7,7 +7,7 @@
 
 When your {prodname} MySQL connector is first started, it performs an initial _consistent snapshot_ of your database. The following flow describes how this snapshot is completed.
 
-NOTE: This is the default snapshot mode which is set as `inital` in the `snapshot.mode` property. For other snapshots modes, please check out the xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+NOTE: This is the default snapshot mode which is set as `initial` in the `snapshot.mode` property. For other snapshots modes, please check out the xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 ifeval::["{isImageReady}" == "true"]
 image:debezium-architecture.png[Debezium Architecture]
@@ -43,7 +43,7 @@ a| Writes the DDL changes to the schema change topic, including all necessary `D
 NOTE: This happens if applicable.
 
 |``{counter:snapshotStep}``
-a| Scans the database tables and generates `CREATE` events on the relevant table-specific Kakfa topics for each row.
+a| Scans the database tables and generates `CREATE` events on the relevant table-specific Kafka topics for each row.
 
 |``{counter:snapshotStep}``
 a| Commits the transaction.
@@ -55,7 +55,7 @@ a| Records the completed snapshot in the connector offsets.
 
 == What happens if the connector fails?
 
-If the connector fails, stops, or is rebalanced while making the _initial snapshot_, the connector creates a new snapshot once restarted. Once that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates. 
+If the connector fails, stops, or is rebalanced while making the _initial snapshot_, the connector creates a new snapshot once restarted. Once that _intial snapshot_ is completed, the {prodname} MySQL connector restarts from the same position in the binlog so it does not miss any updates.
 
 NOTE: If the connector stops for long enough, MySQL could purge old binlog files and the connector's position would be lost. If the position is lost, the connector reverts to the _initial snapshot_ for its starting position. For more tips on troubleshooting the {prodname} MySQL connector, see <<connector-common-issues>>.
 
@@ -64,7 +64,7 @@ NOTE: If the connector stops for long enough, MySQL could purge old binlog files
 
 Some environments do not allow a *global read lock*. If the {prodname} MySQL connector detects that global read locks are not permitted, the connector uses table-level locks instead and performs a snapshot with this method.
 
-IMPORTANT: The user must have `LOCK_TABLES` privileges. 
+IMPORTANT: The user must have `LOCK_TABLES` privileges.
 
 :snapshotStep-noLock: 0
 
@@ -91,7 +91,7 @@ a| Writes the DDL changes to the schema change topic, including all necessary `D
 NOTE: This happens if applicable.
 
 |``{counter:snapshotStep-noLock}``
-a| Scans the database tables and generates `CREATE` events on the relevant table-specific Kakfa topics for each row.
+a| Scans the database tables and generates `CREATE` events on the relevant table-specific Kafka topics for each row.
 
 |``{counter:snapshotStep-noLock}``
 a| Commits the transaction.
@@ -103,4 +103,3 @@ a| Commits the transaction.
 a| Records the completed snapshot in the connector offsets.
 
 |===
-

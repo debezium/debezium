@@ -5,9 +5,9 @@
 
 All data change events produced by the {prodname} MySQL connector contain a key and a value. The change event key and the change event value each contain a _schema_ and a _payload_ where the schema describes the structure of the payload and the payload contains the data.
 
-WARNING: The MySQL connector ensures that all Kakfa Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This is important as any character that is not a latin letter or underscore is replaced by an underscore which can lead to unexpected conflicts in schema names when the logical server names, database names, and table names container other characters that are replaced with these underscores.
+WARNING: The MySQL connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This is important as any character that is not a latin letter or underscore is replaced by an underscore which can lead to unexpected conflicts in schema names when the logical server names, database names, and table names container other characters that are replaced with these underscores.
 
-== Change event key 
+== Change event key
 
 For any given table, the change event's key has a structure that contains a field for each column in the `PRIMARY KEY` (or unique constraint) at the time the event was created. Let us look at an example table and then how the schema and payload would appear for the table.
 
@@ -46,7 +46,7 @@ CREATE TABLE customers (
 ----
 
 
-. `schema` describes what is in the `payload` 
+. `schema` describes what is in the `payload`
 . `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database and `customers` is the table
 . denotes that the `payload` is not optional
 . specifies the type of fields expected in the `payload`
@@ -59,7 +59,7 @@ This key describes the row in the `inventory.customers` table which is out from 
 
 The change event value contains a schema and a payload section. There are three types of change event values which have an envelope structure. The fields in this structure are explained below and marked on each of the change event value examples.
 
-* <<Create change event value>> 
+* <<Create change event value>>
 * <<Update change event value>>
 * <<Delete change event value>>
 
@@ -79,7 +79,7 @@ a| A *mandatory* string that describes the type of operation.
 * `c` = create
 * `u` = update
 * `d` = delete
-* `r` = read (non _initial snapshot_ only)
+* `r` = read (_initial snapshot_ only)
 
 |3
 |`before`
@@ -104,17 +104,17 @@ a| A *mandatory* field that describes the source metadata for the event includin
 * the MySQL server ID (if available)
 * timestamp
 
-NOTE: If the xref:assemblies/cdc-mysql-connector/as_setup-the-mysql-server.adoc#enable-query-log-events-for-cdc_{context}[binlog_rows_query_log_events] option is enabled and the connector has the `include.query` option enabled, a `query` field displays which contains the original SQL statement that generated the event.
+NOTE: If the xref:assemblies/cdc-mysql-connector/as_setup-the-mysql-server.adoc#enable-query-log-events-for-cdc_{context}[binlog_rows_query_log_events] option is enabled and the connector has the `include.query` option enabled, a `query` field is displayed which contains the original SQL statement that generated the event.
 
 |6
 |`ts_ms`
 a| An optional field that displays the time at which the connector processed the event.
 
-NOTE: The time is based on the system clock in the JVM running the Kakfa Connect task.
+NOTE: The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
-Let us look at an example table and then how the schema and payload would appear for the table. 
+Let us look at an example table and then how the schema and payload would appear for the table.
 
 .example table
 [source,sql]

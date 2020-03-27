@@ -1504,6 +1504,7 @@ When set to `0` the connector will fail immediately when it cannot obtain the lo
 This property contains a comma-separated list of fully-qualified tables _(SCHEMA_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[SCHEMA_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
 *Note*: This setting has impact on snapshots only. Events captured during log reading are not affected by it.
 
+ifndef::cdc-product[]
 |`source.struct.version`
 |v2
 |Schema version for the `source` block in CDC events; Debezium 0.10 introduced a few breaking +
@@ -1511,6 +1512,7 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
+endif::cdc-product[]
 
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.

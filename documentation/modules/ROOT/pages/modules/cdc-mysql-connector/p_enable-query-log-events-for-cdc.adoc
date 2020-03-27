@@ -4,9 +4,9 @@
 [id="enable-query-log-events-for-cdc_{context}"]
 = Enabling query log events for {prodname}
 
-You might want to see the original `SQL` statement for each binlog event. Enabling the `binlog_rows_query_log_events` options in the MySQL configuration file allows you to do this.
+You might want to see the original `SQL` statement for each binlog event. Enabling the `binlog_rows_query_log_events` option in the MySQL configuration file allows you to do this.
 
-NOTE: This options is only available from MySQL 5.6 and later.
+NOTE: This option is only available from MySQL 5.6 and later.
 
 .Prerequisites
 
