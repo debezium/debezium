@@ -8,7 +8,7 @@ The configuration properties listed here are *required* to run the {prodname} My
 
 TIP: The {prodname} MySQL connector supports _pass-through_ configuration when creating the Kafka producer and consumer. See link:http://kafka.apache.org/documentation.html[the Kafka documentation] for more details on _pass-through_ properties.
 
-[cols="3,1,6"]
+[cols="3,2,5"]
 |===
 |Property |Default |Description
 
@@ -190,7 +190,7 @@ Fully-qualified tables could be defined as `DB_NAME.TABLE_NAME` or `SCHEMA_NAME.
 == Advanced MySQL connector properties
 [[advanced-mysql-connector-properties]]
 
-[cols="3,1,6"]
+[cols="3,2,5"]
 |===
 |Property |Default |Description
 
@@ -307,6 +307,7 @@ This is usually done by database. +
 Set to `true` (the default) when {prodname} should do the conversion. +
 Set to `false` when conversion is fully delegated to the database.
 
+ifndef::cdc-product[]
 |`source.struct.version`
 |v2
 |Schema version for the `source` block in {prodname} events; {prodname} 0.10 introduced a few breaking +
@@ -314,6 +315,7 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
+endif::cdc-product[]
 
 |`sanitize.field.names`
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
