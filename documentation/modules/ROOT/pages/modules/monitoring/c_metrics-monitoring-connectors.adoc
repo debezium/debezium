@@ -1,0 +1,16 @@
+
+[id="metrics-monitoring-connectors"]
+= Metrics for monitoring {prodname} connectors
+
+In addition to the built-in support for JMX metrics in Kafka, Zookeeper, and Kafka Connect,
+each connector provides additional metrics that you can use to monitor their activities.
+
+* {link-prefix}:{link-deploy-mysql-connector}#mysql-connector-monitoring-metrics_{context}[MySQL connector metrics]
+* {link-prefix}:{link-mongodb-connector}#mongodb-connector-monitoring[MongoDB connector metrics]
+* {link-prefix}:{link-postgresql-connector}#monitoring[PosgreSQL connector metrics]
+* {link-prefix}:{link-sqlserver-connector}#monitoring[SQL Server connector metrics]
+ifndef::cdc-product[]
+* {link-prefix}:{link-oracle-connector}#monitoring[Oracle connector metrics]
+* {link-prefix}:{link-db2-connector}#monitoring[Db2 connector metrics]
+* {link-prefix}:{link-cassandra-connector}#monitoring[Cassandra connector metrics]
+endif::cdc-product[]

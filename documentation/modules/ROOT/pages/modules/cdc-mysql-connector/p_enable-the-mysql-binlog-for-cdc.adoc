@@ -5,7 +5,7 @@
 = Enabling the MySQL binlog for {prodname}
 // Start the title of a procedure module with a verb, such as Creating or Create. See also _Wording of headings_ in _The IBM Style Guide_.
 
-You must enable binary logging for MySQL replication. The binary logs record transaction updates for replication tools to propogate changes. 
+You must enable binary logging for MySQL replication. The binary logs record transaction updates for replication tools to propagate changes. 
 
 .Prerequisites
 

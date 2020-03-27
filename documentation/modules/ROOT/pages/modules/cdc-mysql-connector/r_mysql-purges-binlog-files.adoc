@@ -4,6 +4,6 @@
 [id="mysql-purges-binlog-files_{context}"]
 = MySQL purges binlog files
 
-If the {prodname} MySQL connector stops for too long, the MySQL server purges older binlog files and the connector's last position may be lost. When the connector is restarted, the MySQL server no longer has the starting point and the connector performs another initial snapshot. If the snapshot mode is `disabled`, the connector fails with an error.
+If the {prodname} MySQL connector stops for too long, the MySQL server purges older binlog files and the connector's last position may be lost. When the connector is restarted, the MySQL server no longer has the starting point and the connector performs another initial snapshot. If the snapshot is disabled, the connector fails with an error.
 
 TIP: See xref:assemblies/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc#how-the-mysql-connector-performs-database-snapshots_{context}[How the MySQL connector performs database snapshots] for more information on initial snapshots.

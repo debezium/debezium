@@ -895,6 +895,7 @@ The following _advanced_ configuration properties have good defaults that will w
 |`true`
 |Boolean value that specifies whether the addresses in 'mongodb.hosts' are seeds that should be used to discover all members of the cluster or replica set (`true`), or whether the address(es) in `mongodb.hosts` should be used as is (`false`). The default is `true` and should be used in all cases except where MongoDB is link:#mongodb-replicaset[fronted by a proxy].
 
+ifndef::cdc-product[]
 |`source.struct.version`
 |v2
 |Schema version for the `source` block in CDC events. Debezium 0.10 introduced a few breaking +
@@ -902,6 +903,7 @@ changes to the structure of the `source` block in order to unify the exposed str
 all the connectors. +
 By setting this option to `v1` the structure used in earlier versions can be produced.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
+endif::cdc-product[]
 
 |`heartbeat.interval.ms`
 |`0`

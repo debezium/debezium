@@ -15,7 +15,7 @@ The {prodname} MySQL connector has three metric types in addition to the built-i
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=<database.server.name>`.
 
-[cols="3,1,6"]
+[cols="3,2,5"]
 |===
 |Attribute |Type |Description
 
@@ -89,7 +89,7 @@ The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<dat
 
 NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
 
-[cols="3,1,6"]
+[cols="3,2,5"]
 |===
 |Attribute |Type |Description
 
@@ -196,7 +196,7 @@ NOTE: The transaction-related attributes are only available if binlog event buff
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=<database.server.name>`.
 
-[cols="3,1,6"]
+[cols="3,2,5"]
 |===
 |Attribute |Type |Description
 
