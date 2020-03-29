@@ -262,6 +262,13 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                     "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
+    public static final Field MASK_COLUMN_WITH_HASH = Field.create("column.mask.hash.([^.]+).with.salt.(.+)")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
+                    + "be masked by hashing the input. Using the specified hash algorithms and salt.");
+
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;
