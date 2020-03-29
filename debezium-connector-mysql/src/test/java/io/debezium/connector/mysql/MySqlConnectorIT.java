@@ -1229,6 +1229,58 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1692")
+    public void shouldConsumeEventsWithMaskedHashedColumns() throws InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = RO_DATABASE.defaultConfig()
+                .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K", RO_DATABASE.qualifiedTableName("customers") + ".email")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 1);
+        assertThat(recordsForTopicForRoProductsTable(records)).hasSize(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand"))).hasSize(9);
+        final List<SourceRecord> customers = records.recordsForTopic(RO_DATABASE.topicForTable("customers"));
+        assertThat(customers).hasSize(4);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders"))).hasSize(5);
+        assertThat(records.topics()).hasSize(5);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        // Check that the customer.email is masked ...
+        Struct value1001 = (Struct) customers.get(0).value();
+        if (value1001.getStruct("after") != null) {
+            assertThat(value1001.getStruct("after").getString("email")).isEqualTo("d540e71abf15be8b51c7967397ba359db27d6f6ae85a297fe8d0d7005ffd0e82");
+        }
+
+        Struct value1002 = (Struct) customers.get(1).value();
+        if (value1002.getStruct("after") != null) {
+            assertThat(value1002.getStruct("after").getString("email")).isEqualTo("b1f1a1a63559c1d3a98bd7bb5c363d7e21a37463a7266bc2ff341eaef7ac8ef3");
+        }
+
+        Struct value1003 = (Struct) customers.get(2).value();
+        if (value1003.getStruct("after") != null) {
+            assertThat(value1003.getStruct("after").getString("email")).isEqualTo("bbe1de7b1068bc8f86bbb19f432ce1d44fbd461339916f42544b3f7ebff674d6");
+        }
+
+        Struct value1004 = (Struct) customers.get(3).value();
+        if (value1004.getStruct("after") != null) {
+            assertThat(value1004.getStruct("after").getString("email")).isEqualTo("ff21be44fb224e57d822ea9a51d343d77e4c49ac3dedd3d144024ac2012af0a1");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-582")
     public void shouldEmitTombstoneOnDeleteByDefault() throws Exception {
         config = DATABASE.defaultConfig()

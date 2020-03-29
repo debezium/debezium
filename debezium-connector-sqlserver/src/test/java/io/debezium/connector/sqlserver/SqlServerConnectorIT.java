@@ -35,6 +35,7 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
@@ -910,6 +911,54 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         SourceRecordAssert.assertThat(tableB.get(0))
                 .valueAfterFieldIsEqualTo(expectedValueB)
                 .valueAfterFieldSchemaIsEqualTo(expectedSchemaB);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1692")
+    public void shouldConsumeEventsWithMaskedHashedColumns() throws Exception {
+        connection.execute(
+                "CREATE TABLE masked_hashed_column_table_a (id int, name varchar(255) primary key(id))",
+                "CREATE TABLE masked_hashed_column_table_b (id int, name varchar(20), primary key(id))");
+        TestHelper.enableTableCdc(connection, "masked_hashed_column_table_a");
+        TestHelper.enableTableCdc(connection, "masked_hashed_column_table_b");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K", "testDB.dbo.masked_hashed_column_table_a.name, testDB.dbo.masked_hashed_column_table_b.name")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.execute("INSERT INTO masked_hashed_column_table_a VALUES(10, 'some_name')");
+        connection.execute("INSERT INTO masked_hashed_column_table_b VALUES(11, 'some_name')");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.masked_hashed_column_table_a");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.masked_hashed_column_table_b");
+
+        assertThat(tableA).hasSize(1);
+        SourceRecord record = tableA.get(0);
+        VerifyRecord.isValidInsert(record, "id", 10);
+
+        Struct value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("name")).isEqualTo("3b225d0696535d66f2c0fb2e36b012c520d396af3dd8f18330b9c9cd23ca714e");
+        }
+
+        assertThat(tableB).hasSize(1);
+        record = tableB.get(0);
+        VerifyRecord.isValidInsert(record, "id", 11);
+
+        value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("name")).isEqualTo("3b225d0696535d66f2c0");
+        }
 
         stopConnector();
     }

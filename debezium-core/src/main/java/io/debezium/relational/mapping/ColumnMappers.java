@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -52,6 +54,15 @@ public class ColumnMappers {
         config.forEachMatchingFieldNameWithInteger("column\\.mask\\.with\\.(\\d+)\\.chars", builder::maskStrings);
         config.forEachMatchingFieldName("column\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameter);
         config.forEachMatchingFieldName("datatype\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameterByDatatype);
+
+        final Pattern hashAlgorithmAndSaltExtractPattern = Pattern.compile("((?<hashAlgorithm>[^.]+)\\.with\\.salt\\.(?<salt>.+))");
+        config.forEachMatchingFieldNameWithString("column\\.mask\\.hash\\." + hashAlgorithmAndSaltExtractPattern.pattern(),
+                (fullyQualifiedColumnNames, hashAlgorithmAndSalt) -> {
+                    Matcher matcher = hashAlgorithmAndSaltExtractPattern.matcher(hashAlgorithmAndSalt);
+                    if (matcher.matches()) {
+                        builder.maskStringsByHashing(fullyQualifiedColumnNames, matcher.group("hashAlgorithm"), matcher.group("salt"));
+                    }
+                });
 
         return builder.build();
     }
@@ -169,6 +180,10 @@ public class ColumnMappers {
          */
         public Builder maskStrings(String fullyQualifiedColumnNames, String maskValue) {
             return map(fullyQualifiedColumnNames, new MaskStrings(maskValue));
+        }
+
+        public Builder maskStringsByHashing(String fullyQualifiedColumnNames, String hashAlgorithm, String salt) {
+            return map(fullyQualifiedColumnNames, new MaskStrings(salt.getBytes(), hashAlgorithm));
         }
 
         public Builder propagateSourceTypeToSchemaParameter(String fullyQualifiedColumnNames, String value) {
