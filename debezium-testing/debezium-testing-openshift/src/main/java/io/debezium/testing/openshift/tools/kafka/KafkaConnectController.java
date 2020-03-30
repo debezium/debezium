@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.openshift.tools.kafka;
 
+import static io.strimzi.api.kafka.Crds.kafkaConnectOperation;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.openshift.tools.HttpUtils;
 import io.debezium.testing.openshift.tools.OpenShiftUtils;
+import io.debezium.testing.openshift.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.networking.NetworkPolicy;
@@ -36,7 +38,6 @@ import io.strimzi.api.kafka.KafkaConnectorList;
 import io.strimzi.api.kafka.model.DoneableKafkaConnector;
 import io.strimzi.api.kafka.model.KafkaConnect;
 import io.strimzi.api.kafka.model.KafkaConnector;
-import io.strimzi.api.kafka.model.status.KafkaConnectorStatus;
 
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
@@ -53,24 +54,63 @@ public class KafkaConnectController {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConnectController.class);
 
     private final OpenShiftClient ocp;
-    private final KafkaConnect kafkaConnect;
     private final OkHttpClient http;
     private final String project;
     private final OpenShiftUtils ocpUtils;
     private final HttpUtils httpUtils;
     private final boolean useConnectorResources;
+    private final String name;
 
+    private KafkaConnect kafkaConnect;
     private Route apiRoute;
     private Route metricsRoute;
 
     public KafkaConnectController(KafkaConnect kafkaConnect, OpenShiftClient ocp, OkHttpClient http, boolean useConnectorResources) {
         this.kafkaConnect = kafkaConnect;
+        this.name = kafkaConnect.getMetadata().getName();
         this.ocp = ocp;
         this.http = http;
         this.useConnectorResources = useConnectorResources;
         this.project = kafkaConnect.getMetadata().getNamespace();
         this.ocpUtils = new OpenShiftUtils(ocp);
         this.httpUtils = new HttpUtils(http);
+    }
+
+    /**
+     * Disables Kafka Connect by scaling it to ZERO
+     *
+     * NOTICE: cluster operator needs to be disabled first!
+     */
+    public void disable() {
+        LOGGER.info("Disabling KafkaConnect deployment (scaling to ZERO).");
+        ocp.apps().deployments().inNamespace(project).withName(this.kafkaConnect.getMetadata().getName() + "-connect")
+                .edit().editSpec().withReplicas(0).endSpec().done();
+        await()
+                .atMost(30, SECONDS)
+                .pollDelay(5, SECONDS)
+                .pollInterval(3, SECONDS)
+                .until(() -> ocp.pods().inNamespace(project).withLabel("strimzi.io/kind", "KafkaConnect").list().getItems().isEmpty());
+    }
+
+    /**
+     * Crashes Kafka Connect by force deleting all pods. Then it immediately scales its deployment to ZERO by calling {@link #disable()}
+     *
+     * NOTICE: cluster operator needs to be disabled first!
+     */
+    public void destroy() {
+        LOGGER.info("Force deleting all KafkaConnect pods.");
+        ocp.pods().inNamespace(project).withLabel("strimzi.io/kind", "KafkaConnect").withGracePeriod(0).delete();
+        disable();
+    }
+
+    /**
+     * Wait until KafkaConnect instance is back and ready
+     * @return {@link KafkaConnect} resource instance
+     * @throws InterruptedException
+     */
+    public KafkaConnect waitForConnectCluster() throws InterruptedException {
+        kafkaConnect = Crds.kafkaConnectOperation(ocp).inNamespace(project).withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
+        return kafkaConnect;
     }
 
     /**
@@ -181,15 +221,7 @@ public class KafkaConnectController {
         if (!useConnectorResources) {
             throw new IllegalStateException("Unable to wait for connector, deployment doesn't use custom resources.");
         }
-        return kafkaConnectorOperation().withName(name).waitUntilCondition(this::waitForReadyStatus, 5, MINUTES);
-    }
-
-    private boolean waitForReadyStatus(KafkaConnector connector) {
-        KafkaConnectorStatus status = connector.getStatus();
-        if (status == null) {
-            return false;
-        }
-        return status.getConditions().stream().anyMatch(c -> c.getType().equalsIgnoreCase("Ready") && c.getStatus().equalsIgnoreCase("True"));
+        return kafkaConnectorOperation().withName(name).waitUntilCondition(WaitConditions::kafkaReadyCondition, 5, MINUTES);
     }
 
     private NonNamespaceOperation<KafkaConnector, KafkaConnectorList, DoneableKafkaConnector, Resource<KafkaConnector, DoneableKafkaConnector>> kafkaConnectorOperation() {
@@ -304,6 +336,6 @@ public class KafkaConnectController {
      * @return true if the CR was found and deleted
      */
     public boolean undeployCluster() {
-        return Crds.kafkaConnectOperation(ocp).delete(kafkaConnect);
+        return kafkaConnectOperation(ocp).delete(kafkaConnect);
     }
 }

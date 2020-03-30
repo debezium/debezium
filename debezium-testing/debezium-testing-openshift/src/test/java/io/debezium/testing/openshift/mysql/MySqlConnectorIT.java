@@ -138,4 +138,27 @@ public class MySqlConnectorIT extends ConnectorTestBase {
                 .untilAsserted(() -> assertRecordsCount(connectorName + ".inventory.customers", 6));
         assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com");
     }
+
+    @Test
+    @Order(7)
+    public void shouldBeDownAfterCrash() throws SQLException {
+        operatorController.disable();
+        kafkaConnectController.destroy();
+        String sql = "INSERT INTO customers VALUES  (default, 'Nibbles', 'Tester', 'nibbles@test.com')";
+        dbController.executeStatement("inventory", DATABASE_MYSQL_USERNAME, DATABASE_MYSQL_PASSWORD, sql);
+        assertRecordsCount(connectorName + ".inventory.customers", 6);
+    }
+
+    @Test
+    @Order(8)
+    public void shouldResumeStreamingAfterCrash() throws InterruptedException {
+        operatorController.enable();
+        kafkaConnectController.waitForConnectCluster();
+        await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
+        assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com");
+    }
+
 }
