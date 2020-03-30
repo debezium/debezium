@@ -140,4 +140,25 @@ public class PostgreSqlConnectorIT extends ConnectorTestBase {
         assertRecordsContain(connectorName + ".inventory.customers", "jerry@test.com");
     }
 
+    @Test
+    @Order(7)
+    public void shouldBeDownAfterCrash() throws SQLException {
+        operatorController.disable();
+        kafkaConnectController.destroy();
+        String sql = "INSERT INTO inventory.customers VALUES  (default, 'Nibbles', 'Tester', 'nibbles@test.com')";
+        dbController.executeStatement(DATABASE_POSTGRESQL_DBZ_DBNAME, DATABASE_POSTGRESQL_USERNAME, DATABASE_POSTGRESQL_PASSWORD, sql);
+        assertRecordsCount(connectorName + ".inventory.customers", 6);
+    }
+
+    @Test
+    @Order(8)
+    public void shouldResumeStreamingAfterCrash() throws InterruptedException {
+        operatorController.enable();
+        kafkaConnectController.waitForConnectCluster();
+        await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertMinimalRecordsCount(connectorName + ".inventory.customers", 7));
+        assertRecordsContain(connectorName + ".inventory.customers", "nibbles@test.com");
+    }
 }

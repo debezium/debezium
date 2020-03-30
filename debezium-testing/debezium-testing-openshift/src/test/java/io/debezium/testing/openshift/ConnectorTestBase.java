@@ -67,12 +67,13 @@ public abstract class ConnectorTestBase {
                 .build();
         ocp = new DefaultOpenShiftClient(cfg);
         testUtils = new TestUtils();
-
         kafkaDeployer = new KafkaDeployer(ConfigProperties.OCP_PROJECT_DBZ, ocp);
+
         operatorController = kafkaDeployer.getOperator();
         operatorController.setLogLevel("DEBUG");
         operatorController.setAlwaysPullPolicy();
         operatorController.setOperandAlwaysPullPolicy();
+        operatorController.setSingleReplica();
 
         if (ConfigProperties.OCP_PULL_SECRET_PATHS.isPresent()) {
             String paths = ConfigProperties.OCP_PULL_SECRET_PATHS.get();
@@ -91,10 +92,15 @@ public abstract class ConnectorTestBase {
 
         kafkaController = kafkaDeployer.deployKafkaCluster(KAFKA);
         kafkaConnectController = kafkaDeployer.deployKafkaConnectCluster(KAFKA_CONNECT_S2I, KAFKA_CONNECT_S2I_LOGGING, ConfigProperties.STRIMZI_OPERATOR_CONNECTORS);
+
         kafkaConnectController.allowServiceAccess();
         kafkaConnectController.exposeApi();
         kafkaConnectController.exposeMetrics();
 
+        initKafkaConsumerProps();
+    }
+
+    private static void initKafkaConsumerProps() {
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaController.getKafkaBootstrapAddress());
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         KAFKA_CONSUMER_PROPS.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -126,13 +132,24 @@ public abstract class ConnectorTestBase {
         }
     }
 
+    protected void assertMinimalRecordsCount(String topic, int count) {
+        try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
+            consumer.subscribe(Collections.singleton(topic));
+            ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
+            consumer.seekToBeginning(consumer.assignment());
+            assertThat(
+                    records.count()).withFailMessage("Expecting topic '%s' to have  at least <%d> messages but it had <%d>.", topic, count, records.count())
+                            .isGreaterThanOrEqualTo(count);
+        }
+    }
+
     protected void assertRecordsContain(String topic, String content) {
         try (Consumer<String, String> consumer = new KafkaConsumer<>(KAFKA_CONSUMER_PROPS)) {
             consumer.subscribe(Collections.singleton(topic));
             consumer.seekToBeginning(consumer.assignment());
             ConsumerRecords<String, String> records = consumer.poll(Duration.of(10, ChronoUnit.SECONDS));
             long matchingCount = StreamSupport.stream(records.records(topic).spliterator(), false).filter(r -> r.value().contains(content)).count();
-            assertThat(matchingCount).withFailMessage("Topic '%s' doesn't have messing containing <%s>.", topic, content).isGreaterThan(0);
+            assertThat(matchingCount).withFailMessage("Topic '%s' doesn't have message containing <%s>.", topic, content).isGreaterThan(0);
 
         }
     }
