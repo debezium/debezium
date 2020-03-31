@@ -367,6 +367,11 @@
                 <artifactId>groovy</artifactId>
                 <version>${version.groovy}</version>
             </dependency>
+            <dependency>
+                <groupId>org.codehaus.groovy</groupId>
+                <artifactId>groovy-jsr223</artifactId>
+                <version>${version.groovy}</version>
+            </dependency>
 
             <!-- Testing utilities -->
             <dependency>

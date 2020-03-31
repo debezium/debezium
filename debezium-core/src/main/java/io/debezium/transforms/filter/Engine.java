@@ -13,13 +13,14 @@ import org.apache.kafka.connect.connector.ConnectRecord;
  * @author Jiri Pechanec
  */
 public interface Engine {
+
     /**
      * Pre-compiles the expression for repeated execution.
      * The method is called once upon the engine initialization.
      * 
      * @param expression
      */
-    void parseExpression(String expression);
+    void configure(String language, String expression);
 
     /**
      * Evaluates whether the record should be filtered out or not by executing the expression.
