@@ -18,7 +18,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.transforms.filter.Engine;
-import io.debezium.transforms.filter.GroovyEngine;
+import io.debezium.transforms.filter.Jsr223Engine;
 
 /**
  * This SMT should allow user to filter out records depending on an expression and language configured.
@@ -41,7 +41,7 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
      *
      */
     public static enum ExpressionLanguage implements EnumeratedValue {
-        GROOVY("groovy", GroovyEngine.class);
+        GROOVY("groovy", Jsr223Engine.class);
 
         private final String value;
         private final Class<? extends Engine> engine;
@@ -196,7 +196,7 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
             throw new DebeziumException("Could not create the expression language engine '" + language.getValue() + "'. Are dependencies on the classpath?", e);
         }
         try {
-            engine.parseExpression(expression);
+            engine.configure(language.getValue(), expression);
         }
         catch (Exception e) {
             throw new DebeziumException("Failed to parse filtering expression '" + expression + "'", e);
