@@ -32,16 +32,18 @@ public class Jsr223Engine implements Engine {
 
     private String expression;
     private CompiledScript script;
-    private ScriptEngine engine;
+    protected ScriptEngine engine;
 
     @Override
     public void configure(String language, String expression) {
+        this.expression = expression;
         final ScriptEngineManager factory = new ScriptEngineManager();
         engine = factory.getEngineByName(language);
         if (engine == null) {
             throw new DebeziumException("Implementation of language '" + language + "' not found on the classpath");
         }
-        this.expression = expression;
+        configureEngine();
+
         if (engine instanceof Compilable) {
             try {
                 script = ((Compilable) engine).compile(expression);
@@ -50,6 +52,9 @@ public class Jsr223Engine implements Engine {
                 throw new DebeziumException(e);
             }
         }
+    }
+
+    protected void configureEngine() {
     }
 
     @Override

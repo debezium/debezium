@@ -5,6 +5,7 @@
  */
 package io.debezium.transforms;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -18,6 +19,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.transforms.filter.Engine;
+import io.debezium.transforms.filter.GraalJsEngine;
 import io.debezium.transforms.filter.Jsr223Engine;
 
 /**
@@ -41,7 +43,8 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
      *
      */
     public static enum ExpressionLanguage implements EnumeratedValue {
-        GROOVY("groovy", Jsr223Engine.class);
+        GROOVY("groovy", Jsr223Engine.class),
+        GRAAL_JS("graal.js", GraalJsEngine.class);
 
         private final String value;
         private final Class<? extends Engine> engine;
@@ -183,7 +186,8 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
         final String expression = config.getString(EXPRESSION);
         if (language == null || expression == null) {
             throw new DebeziumException(
-                    "Options '" + LANGUAGE + "' and '" + EXPRESSION + "' must be present. Language must be one of (" + ExpressionLanguage.GROOVY.getValue() + ")");
+                    "Options '" + LANGUAGE + "' and '" + EXPRESSION + "' must be present. Language must be one of (" + Arrays.toString(ExpressionLanguage.values())
+                            + ")");
         }
         LOGGER.info("Using language '{}' to evaluate expression '{}'", language.getValue(), expression);
 
