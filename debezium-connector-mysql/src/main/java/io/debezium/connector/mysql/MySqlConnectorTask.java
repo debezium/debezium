@@ -94,7 +94,7 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                             throw new ConnectException(msg);
                         }
                         logger.info("The db-history topic is missing but we are in {} snapshot mode. " +
-                                        "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.",
+                                "Attempting to snapshot the current schema and then begin reading the binlog from the last recorded offset.",
                                 SnapshotMode.SCHEMA_ONLY_RECOVERY);
                     }
                     else {
