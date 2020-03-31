@@ -29,6 +29,7 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.format.Avro;
 import io.debezium.engine.format.Change;
+import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
@@ -136,4 +137,49 @@ public class DebeziumEngineIT {
             assertThat(allLatch.getCount()).isEqualTo(0);
         }
     }
+
+    @Test
+    public void shouldSerializeToCloudEvents() throws Exception {
+        final Properties props = new Properties();
+        props.putAll(TestHelper.defaultConfig().build().asMap());
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
+                OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("converter.schemas.enable", "false");
+
+        CountDownLatch allLatch = new CountDownLatch(1);
+
+        final ExecutorService executor = Executors.newFixedThreadPool(1);
+        try (final DebeziumEngine<Change<String>> engine = DebeziumEngine.create(CloudEvents.class).using(props)
+                .notifying((records, committer) -> {
+
+                    for (Change<String> r : records) {
+                        Assertions.assertThat(r.key).isNull();
+                        Assertions.assertThat(r.value).isNotNull();
+                        try {
+                            final Document value = DocumentReader.defaultReader().read(r.value);
+                            Assertions.assertThat(value.getString("id")).contains("txId");
+                            Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);
+                            Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getString("val")).isEqualTo("value1");
+                        }
+                        catch (IOException e) {
+                            throw new IllegalStateException(e);
+                        }
+                        allLatch.countDown();
+                        committer.markProcessed(r);
+                    }
+                    committer.markBatchFinished();
+                }).using(this.getClass().getClassLoader()).build()) {
+
+            executor.execute(() -> {
+                LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
+                engine.run();
+            });
+            allLatch.await(5000, TimeUnit.MILLISECONDS);
+            assertThat(allLatch.getCount()).isEqualTo(0);
+        }
+    }
+
 }
