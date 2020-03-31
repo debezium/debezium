@@ -7,33 +7,22 @@
 The {prodname} MySQL connector supports the following MySQL topologies:
 
 Standalone::
-====
-When a single MySQL server is used, the server must have the binlog enabled (_and optionally GTIDs enabled_) so the {prodname} MySQL connector can monitor the server. This is often acceptable, since the binary log can also be used as an incremental link:https://dev.mysql.com/doc/refman/5.7/en/backup-methods.html[backup]. In this case, the MySQL connector always connects to and follows this standalone MySQL server instance.
-====
+When a single MySQL server is used, the server must have the binlog enabled (_and optionally GTIDs enabled_) so the {prodname} MySQL connector can monitor the server. This is often acceptable, since the binary log can also be used as an incremental link:https://dev.mysql.com/doc/refman/{mysql-version}/en/backup-methods.html[backup]. In this case, the MySQL connector always connects to and follows this standalone MySQL server instance.
 
 Master and slave::
-====
 The {prodname} MySQL connector can follow one of the masters or one of the slaves (_if that slave has its binlog enabled_), but the connector only sees changes in the cluster that are visible to that server. Generally, this is not a problem except for the multi-master topologies.
-
++
 The connector records its position in the server’s binlog, which is different on each server in the cluster. Therefore, the connector will need to follow just one MySQL server instance. If that server fails, it must be restarted or recovered before the connector can continue.
-====
 
 High available clusters::
-====
 A variety of link:https://dev.mysql.com/doc/mysql-ha-scalability/en/[high availability] solutions exist for MySQL, and they make it far easier to tolerate and almost immediately recover from problems and failures. Most HA MySQL clusters use GTIDs so that slaves are able to keep track of all changes on any of the master.
-====
 
 Multi-master::
-====
-A link:https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-replication-multi-master.html[multi-master MySQL topology] uses one or more MySQL slaves that each replicate from multiple masters. This is a powerful way to aggregate the replication of multiple MySQL clusters, and requires using GTIDs.
-
+A link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-master.html[multi-master MySQL topology] uses one or more MySQL slaves that each replicate from multiple masters. This is a powerful way to aggregate the replication of multiple MySQL clusters, and requires using GTIDs.
++
 The {prodname} MySQL connector can use these multi-master MySQL slaves as sources, and can fail over to different multi-master MySQL slaves as long as thew new slave is caught up to the old slave (_e.g., the new slave has all of the transactions that were last seen on the first slave_). This works even if the connector is only using a subset of databases and/or tables, as the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-master MySQL slave and find the correct position in the binlog.
-====
 
 Hosted::
-====
 There is support for the {prodname} MySQL connector to use hosted options such as Amazon RDS and Amazon Aurora.
-
++
 IMPORTANT: Because these hosted options do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_.
-====
-

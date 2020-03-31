@@ -8,8 +8,8 @@ The {prodname} MySQL connector represents changes to rows with events that are s
 
 Columns that store strings are defined in MySQL with a character set and collation. The MySQL connector uses the column's character set when reading the binary representation of the column values in the binlog events. The following table shows how the connector maps the MySQL data types to both _literal_ and _semantic_ types.
 
-* *literal type* : how the value is represented using Kakfa Connect schema types
-* *semantic type* : how the Kakfa Connect schema captures the meaning of the field (schema name) 
+* *literal type* : how the value is represented using Kafka Connect schema types
+* *semantic type* : how the Kafka Connect schema captures the meaning of the field (schema name)
 
 [cols="2,2,6"]
 |===
@@ -192,7 +192,7 @@ NOTE: Represents the number of microseconds past epoch and does not include time
 +
 
 time.precision.mode=connect::
-    The MySQL connector uses the predefined Kakfa Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`.
+    The MySQL connector uses the predefined Kafka Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`.
 +
 [cols="2,2,6"]
 |===
@@ -214,7 +214,7 @@ NOTE: Represents the time value in microseconds since midnight and does not incl
 |`INT64`
 a| org.apache.kafka.connect.data.Timestamp
 
-NOTE: Represents the number of milliseconds since epoch, and does not include timezone information. 
+NOTE: Represents the number of milliseconds since epoch, and does not include timezone information.
 
 |===
 +
@@ -228,7 +228,7 @@ TIP: See xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#
 
 decimal.handling.mode=precise::
 +
-[cols="2,2,6"]
+[cols="3,2,5"]
 |===
 |MySQL type |Literal type |Semantic type
 
@@ -236,13 +236,13 @@ decimal.handling.mode=precise::
 |`BYTES`
 a| org.apache.kafka.connect.data.Decimal
 
-NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+NOTE: The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |`DECIMAL[(M[,D])]`
 |`BYTES`
 a| org.apache.kafka.connect.data.Decimal
 
-NOTE: The `scaled` schema parameter contains an integer that represents how many digits the decimal point shifted.
+NOTE: The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
 
 |===
 +
@@ -250,7 +250,7 @@ NOTE: The `scaled` schema parameter contains an integer that represents how many
 
 decimal.handling.mode=double::
 +
-[cols="2,2,6"]
+[cols="3,2,5"]
 |===
 |MySQL type |Literal type |Semantic type
 
@@ -268,7 +268,7 @@ a| _n/a_
 
 decimal.handling.mode=string::
 +
-[cols="2,2,6"]
+[cols="3,2,5"]
 |===
 |MySQL type |Literal type |Semantic type
 
