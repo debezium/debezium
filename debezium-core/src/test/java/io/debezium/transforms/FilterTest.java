@@ -158,4 +158,17 @@ public class FilterTest {
     private SourceRecord createNullRecord() {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null, null, null);
     }
+
+    @Test
+    public void shouldRunJavaScript() {
+        try (final Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, "value.get('op') == 'd' && value.get('before').get('id') == 2");
+            props.put(LANGUAGE, "graal.js");
+            transform.configure(props);
+            final SourceRecord record = createDeleteRecord(1);
+            Assertions.assertThat(transform.apply(createDeleteRecord(2))).isNull();
+            Assertions.assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
 }

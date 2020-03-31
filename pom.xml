@@ -89,6 +89,7 @@
 
         <!-- Scripting -->
         <version.groovy>3.0.2</version.groovy>
+        <version.graalvm.js>20.0.0</version.graalvm.js>
 
         <!-- Testing -->
         <version.junit>4.12</version.junit>
@@ -371,6 +372,16 @@
                 <groupId>org.codehaus.groovy</groupId>
                 <artifactId>groovy-jsr223</artifactId>
                 <version>${version.groovy}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.graalvm.js</groupId>
+                <artifactId>js</artifactId>
+                <version>${version.graalvm.js}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.graalvm.js</groupId>
+                <artifactId>js-scriptengine</artifactId>
+                <version>${version.graalvm.js}</version>
             </dependency>
 
             <!-- Testing utilities -->
