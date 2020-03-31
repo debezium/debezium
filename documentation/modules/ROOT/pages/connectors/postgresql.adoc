@@ -313,6 +313,7 @@ endif::cdc-product[]
 
 A separate process would then periodically update the table (either inserting a new event or updating the same row all over).
 PostgreSQL then will invoke {prodname} which will confirm the latest LSN and allow the database to reclaim the WAL space.
+This task can be automated by means of the `heartbeat.action.query` connector opton (see below).
 
 [TIP]
 ====
