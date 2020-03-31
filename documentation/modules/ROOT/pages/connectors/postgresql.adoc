@@ -1964,7 +1964,7 @@ Finally, if set to *custom* then the user must also set `snapshot.custom.class` 
 endif::cdc-product[]
 |`snapshot.lock.timeout.ms`
 |`10000`
-|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail See link:#snapshots[snapshots]
+|Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail. See link:#snapshots[snapshots]
 
 |`snapshot.select.statement.overrides`
 |
