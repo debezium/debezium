@@ -16,6 +16,7 @@ asciidoc:
     mysql-version: '8.0'
     strimzi-version: '0.13.0'
     link-prefix: 'xref'
+    link-avro-serialization: 'configuration/avro.adoc'
     link-mysql-connector: 'connectors/mysql.adoc'
     link-deploy-mysql-connector: 'assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc'
     link-mongodb-connector: 'connectors/mongodb.adoc'
