@@ -44,13 +44,11 @@ CREATE TABLE customers (
   }
 }
 ----
-
-
-. `schema` describes what is in the `payload`
-. `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database and `customers` is the table
-. denotes that the `payload` is not optional
-. specifies the type of fields expected in the `payload`
-. the payload itself which in this case only contains a single `id` field
+<1> The `schema` describes what is in the `payload`.
+<2> The `mysql-server-1.inventory.customers.Key` is the name of the schema which defines the structure where `mysql-server-1` is the connector name, `inventory` is the database, and `customers` is the table.
+<3> Denotes that the `payload` is not optional.
+<4> Specifies the type of fields expected in the `payload`.
+<5> The payload itself, which in this case only contains a single `id` field.
 
 This key describes the row in the `inventory.customers` table which is out from the connector entitled `mysql-server-1` whose `id` primary key column has a value of `1001`.
 =====
@@ -129,10 +127,12 @@ CREATE TABLE customers (
 
 === Create change event value
 
-[source,json]
+This example shows a _create_ event for the `customers` table:
+
+[source,json,options="nowrap",subs="+attributes"]
 ----
 {
-  "schema": {
+  "schema": { // <1>
     "type": "struct",
     "fields": [
       {
@@ -282,23 +282,23 @@ CREATE TABLE customers (
       }
     ],
     "optional": false,
-    "name": "mysql-server-1.inventory.customers.Envelope" <1>
+    "name": "mysql-server-1.inventory.customers.Envelope"
   },
-  "payload": {
-    "op": "c", <2>
+  "payload": { // <2>
+    "op": "c",
     "ts_ms": 1465491411815,
-    "before": null, <3>
-    "after": { <4>
+    "before": null,
+    "after": {
       "id": 1004,
       "first_name": "Anne",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "source": { <5>
-      "version": "0.10.0.Beta4",
+    "source": {
+      "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_ms": 0, <6>
+      "ts_ms": 0,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -313,33 +313,52 @@ CREATE TABLE customers (
   }
 }
 ----
+<1> The `schema` portion of this event’s _value_ shows the schema for the envelope, the schema for the source structure (which is specific to the MySQL connector and reused across all events), and the table-specific schemas for the `before` and `after` fields.
+ifndef::cdc-product[]
++
+[TIP]
+====
+The names of the schemas for the `before` and `after` fields are of the form `<logicalName>.<tableName>.Value`, and thus are entirely independent from all other schemas for all other tables. This means that when using the {link-prefix}:{link-avro-serialization}[Avro Converter], the resulting Avro schemas for each table in each logical source have their own evolution and history.
+====
+endif::cdc-product[]
 
+<2> The `payload` portion of this event’s _value_ shows the information in the event, namely that it is describing that the row was created (because `op=c`), and that the `after` field value contains the values of the new inserted row's `id`, `first_name`, `last_name`, and `email` columns.
+ifndef::cdc-product[]
++
+[TIP]
+====
+It may appear that the JSON representations of the events are much larger than the rows they describe. This is because the JSON representation must include the schema and the payload portions of the message.
+However, by using the {link-prefix}:{link-avro-serialization}[Avro Converter], you can dramatically decrease the size of the actual messages written to the Kafka topics.
+====
+endif::cdc-product[]
 
 === Update change event value
 
-[source,json]
+The value of an _update_ change event on the `customers` table has the exact same schema as a _create_ event. The payload is structured the same, but holds different values. Here is an example (formatted for readability):
+
+[source,json,options="nowrap",subs="+attributes"]
 ----
 {
   "schema": { ... },
   "payload": {
-    "before": { <3>
+    "before": { // <1>
       "id": 1004,
       "first_name": "Anne",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "after": { <4>
+    "after": { // <2>
       "id": 1004,
       "first_name": "Anne Marie",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "source": { <5>
-      "version": "0.10.0.Beta4",
+    "source": { // <3>
+      "version": "{debezium-version}",
       "name": "mysql-server-1",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_ms": 1465581, <6>
+      "ts_ms": 1465581,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -351,32 +370,47 @@ CREATE TABLE customers (
       "thread": 7,
       "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
     },
-    "op": "u", <2>
-    "ts_ms": 1465581029523
+    "op": "u", // <4>
+    "ts_ms": 1465581029523 // <5>
   }
 }
 ----
 
+Comparing this to the value in the _insert_ event, you can see a couple of differences in the `payload` section:
+
+<1> The `before` field now has the state of the row with the values before the database commit.
+<2> The `after` field now has the updated state of the row, and the `first_name` value is now `Anne Marie`. You can compare the `before` and `after` structures to determine what actually changed in this row because of the commit.
+<3> The `source` field structure has the same fields as before, but the values are different (this event is from a different position in the binlog). The `source` structure shows information about MySQL’s record of this change (providing traceability). It also has information you can use to compare to other events in this and other topics to know whether this event occurred before, after, or as part of the same MySQL commit as other events.
+<4> The `op` field value is now `u`, signifying that this row changed because of an update.
+<5> The `ts_ms` field shows the timestamp when {prodname} processed this event.
+
+[NOTE]
+====
+When the columns for a row’s primary or unique key are updated, the value of the row’s key is changed and {prodname} outputs three events: a _DELETE_ event and tombstone event with the old key for the row, followed by an _INSERT_ event with the new key for the row.
+====
 
 === Delete change event value
 
-[source,json]
+The value of a _delete_ change event on the `customers` table has the exact same schema as _create_ and _update_ events. The payload is structured the same, but holds different values. Here is an example (formatted for readability):
+
+
+[source,json,options="nowrap",subs="+attributes"]
 ----
 {
   "schema": { ... },
   "payload": {
-    "before": { <3>
+    "before": { // <1>
       "id": 1004,
       "first_name": "Anne Marie",
       "last_name": "Kretchmar",
       "email": "annek@noanswer.org"
     },
-    "after": null, <4>
-    "source": { <5>
-      "version": "0.10.0.Beta4",
+    "after": null, // <2>
+    "source": { // <3>
+      "version": "{debezium-version}",
       "connector": "mysql",
       "name": "mysql-server-1",
-      "ts_ms": 1465581, <6>
+      "ts_ms": 1465581,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -388,11 +422,25 @@ CREATE TABLE customers (
       "thread": 7,
       "query": "DELETE FROM customers WHERE id=1004"
     },
-    "op": "d", <2>
-    "ts_ms": 1465581902461
+    "op": "d", // <4>
+    "ts_ms": 1465581902461 // <5>
   }
 }
 ----
+
+Comparing the `payload` portion to the payloads in the _create_ and _update_ events, you can see some differences:
+
+<1> The `before` field now has the state of the row that was deleted with the database commit.
+<2> The `after` field is `null`, signifying that the row no longer exists.
+<3> The `source` field structure has many of the same values as before, except the `ts_sec` and `pos` fields have changed (and the file might have changed in other scenarios).
+<4> The `op` field value is now `d`, signifying that this row was deleted.
+<5> The `ts_ms` shows the timestamp when {prodname} processed this event.
+
+This event provides a consumer with the information that it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
+
+The MySQL connector’s events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction], which allows for the removal of some older messages as long as at least the most recent message for every key is kept. This allows Kafka to reclaim storage space while ensuring the topic contains a complete data set and can be used for reloading key-based state.
+
+When a row is deleted, the _delete_ event value listed above still works with log compaction, because Kafka can still remove all earlier messages with that same key. If the message value is `null`, Kafka knows that it can remove all messages with that same key. To make this possible, {prodname}’s MySQL connector always follows a _delete_ event with a special tombstone event that has the same key but a `null` value.
 
 == Primary Key Update Header
 
