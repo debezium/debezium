@@ -1287,7 +1287,12 @@ The following _advanced_ configuration properties have good defaults that will w
 
 |`snapshot.mode`
 |_initial_
-|A mode for taking an initial snapshot of the structure and optionally data of captured tables. Supported values are _initial_ (will take a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables) and _schema_only_ (will take a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics). Once the snapshot is complete, the connector will continue reading change events from the database's redo logs.
+|A mode for taking an initial snapshot of the structure and optionally data of captured tables.
+Once the snapshot is complete, the connector will continue reading change events from the database's redo logs. +
+ +
+Supported values are: +
+`initial`: Takes a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables. +
+`schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
 
 |`snapshot.isolation.mode`
 |_repeatable_read_
