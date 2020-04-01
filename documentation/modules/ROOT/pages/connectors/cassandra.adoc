@@ -773,6 +773,10 @@ As the connector generate change event, it will publish those events to Kafka us
 
 Depending on the write load of a table, when a Cassandra connector is stopped for a long time, it risks into hitting the cdc_total_space_in_mb capacity. Once this upper limit is reached, Cassandra will stop accepting writes for this table; which means it is important to monitor this space while running the Cassandra connector. In the worst case scenario when this happens, the best thing to do is to (1) turn off Cassandra connector (2) disable cdc for the table so it stops generating additional writes (although writes to other cdc-enabled tables on the same node could still affect the commitlog file generation given the commit logs are not filtered) (3) remove the recorded offset from the offset file (4) once the capacity is increased or the directory used space is under control, restart the connector so it will rebootstrap the table.
 
+==== Cassandra Table CDC is Enabled, Then Temporarily Disabled, And Then Enabled Again
+
+If a Cassandra table temporarily disabled CDC and then re-enabled it again after some time, it must be re-bootstrapped. To re-bootstrap an individual table, you can remove the recorded offset line from offset.properties corresponding to that table.
+
 [[deploying-a-connector]]
 == Deploying A Connector
 
