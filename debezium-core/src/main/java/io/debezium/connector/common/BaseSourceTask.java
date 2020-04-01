@@ -37,9 +37,6 @@ import io.debezium.util.Metronome;
  */
 public abstract class BaseSourceTask extends SourceTask {
 
-    private static final Metronome PAUSE_WHEN_NOT_STARTED = Metronome.parker(Duration.of(2, ChronoUnit.SECONDS),
-            Clock.SYSTEM);
-
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseSourceTask.class);
 
     protected static enum State {
@@ -126,7 +123,7 @@ public abstract class BaseSourceTask extends SourceTask {
             // WorkerSourceTask calls us immediately after we return the empty list.
             // This turns into a throttling so we need to make a pause before we return
             // the control back.
-            PAUSE_WHEN_NOT_STARTED.pause();
+            Metronome.parker(Duration.of(2, ChronoUnit.SECONDS), Clock.SYSTEM).pause();
             return Collections.emptyList();
         }
 
