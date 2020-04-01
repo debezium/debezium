@@ -109,11 +109,15 @@ public class CommitLogProcessor extends AbstractProcessor {
                 LOGGER.info("Processing commit log {}", file.getName());
                 metrics.setCommitLogFilename(file.getName());
                 commitLogReader.readCommitLogSegment(commitLogReadHandler, file, false);
-                queue.enqueue(new EOFEvent(file, true));
+                if (!latestOnly) {
+                    queue.enqueue(new EOFEvent(file, true));
+                }
                 LOGGER.info("Successfully processed commit log {}", file.getName());
             }
             catch (IOException e) {
-                queue.enqueue(new EOFEvent(file, false));
+                if (!latestOnly) {
+                    queue.enqueue(new EOFEvent(file, false));
+                }
                 LOGGER.warn("Error occurred while processing commit log " + file.getName(), e);
             }
         }
