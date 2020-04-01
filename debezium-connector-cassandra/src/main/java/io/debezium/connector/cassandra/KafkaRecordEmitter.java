@@ -19,6 +19,8 @@ import org.apache.kafka.connect.storage.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.schema.TopicSelector;
+
 /**
  * This emitter is responsible for emitting records to Kafka broker and managing offsets post send.
  */
@@ -26,7 +28,7 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaRecordEmitter.class);
 
     private final KafkaProducer<byte[], byte[]> producer;
-    private final CassandraTopicSelector topicSelector;
+    private final TopicSelector<KeyspaceTable> topicSelector;
     private final OffsetWriter offsetWriter;
     private final OffsetFlushPolicy offsetFlushPolicy;
     private final Map<Record, Future<RecordMetadata>> futures = new LinkedHashMap<>();
@@ -36,11 +38,11 @@ public class KafkaRecordEmitter implements AutoCloseable {
     private Converter keyConverter;
     private Converter valueConverter;
 
-    public KafkaRecordEmitter(String kafkaTopicPrefix, Properties kafkaProperties, OffsetWriter offsetWriter,
-                              Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
+    public KafkaRecordEmitter(String kafkaTopicPrefix, String heartbeatPrefix, Properties kafkaProperties,
+                              OffsetWriter offsetWriter, Duration offsetFlushIntervalMs, long maxOffsetFlushSize,
                               Converter keyConverter, Converter valueConverter) {
         this.producer = new KafkaProducer<>(kafkaProperties);
-        this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix);
+        this.topicSelector = CassandraTopicSelector.defaultSelector(kafkaTopicPrefix, heartbeatPrefix);
         this.offsetWriter = offsetWriter;
         this.offsetFlushPolicy = offsetFlushIntervalMs.isZero() ? OffsetFlushPolicy.always() : OffsetFlushPolicy.periodic(offsetFlushIntervalMs, maxOffsetFlushSize);
         this.keyConverter = keyConverter;

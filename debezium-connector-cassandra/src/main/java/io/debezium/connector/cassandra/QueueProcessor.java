@@ -35,6 +35,7 @@ public class QueueProcessor extends AbstractProcessor {
     public QueueProcessor(CassandraConnectorContext context) {
         this(context, new KafkaRecordEmitter(
                 context.getCassandraConnectorConfig().kafkaTopicPrefix(),
+                context.getCassandraConnectorConfig().getHeartbeatTopicsPrefix(),
                 context.getCassandraConnectorConfig().getKafkaConfigs(),
                 context.getOffsetWriter(),
                 context.getCassandraConnectorConfig().offsetFlushIntervalMs(),
