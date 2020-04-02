@@ -665,7 +665,6 @@ public class SnapshotReader extends AbstractReader {
                                                 metrics.rowsScanned(tableId, rowNum.get());
                                             }
                                         }
-
                                         totalRowCount.addAndGet(rowNum.get());
                                         if (isRunning()) {
                                             if (logger.isInfoEnabled()) {
@@ -829,6 +828,7 @@ public class SnapshotReader extends AbstractReader {
             }
         }
         catch (Throwable e) {
+            failed(e, "Aborting snapshot due to error when last running '" + sql.get() + "': " + e.getMessage());
             if (isLocked) {
                 try {
                     sql.set("UNLOCK TABLES");
@@ -844,7 +844,6 @@ public class SnapshotReader extends AbstractReader {
                     logger.error("Execption while rollback is executed", eRollback);
                 }
             }
-            failed(e, "Aborting snapshot due to error when last running '" + sql.get() + "': " + e.getMessage());
         }
         finally {
             try {
