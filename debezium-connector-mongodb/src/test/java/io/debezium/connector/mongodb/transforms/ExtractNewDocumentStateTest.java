@@ -230,7 +230,9 @@ public class ExtractNewDocumentStateTest {
                 valueSchema,
                 value);
 
-        exceptionRule.expect(NullPointerException.class);
+        // Prior to AK 2.4.1, this threw a NullPointerException
+        // As of AK 2.4.1, this now causes an IllegalArgumentException
+        exceptionRule.expect(IllegalArgumentException.class);
 
         // when
         SourceRecord transformed = transformation.apply(eventRecord);
