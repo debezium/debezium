@@ -775,7 +775,7 @@ Depending on the write load of a table, when a Cassandra connector is stopped fo
 
 ==== Cassandra Table CDC is Enabled, Then Temporarily Disabled, And Then Enabled Again
 
-If a Cassandra table temporarily disabled CDC and then re-enabled it again after some time, it must be re-bootstrapped. To re-bootstrap an individual table, you can remove the recorded offset line from offset.properties corresponding to that table.
+If a Cassandra table temporarily disables CDC and then re-enables it again after some time, it must be re-bootstrapped. To re-bootstrap an individual table, you can manually remove the recorded offset line corresponding to that table from snapshot_offset.properties file.
 
 [[deploying-a-connector]]
 == Deploying A Connector
