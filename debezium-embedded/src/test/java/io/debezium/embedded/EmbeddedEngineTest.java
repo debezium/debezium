@@ -208,6 +208,68 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    public void shouldExecuteSmt() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+        props.setProperty("transforms", "router");
+        props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.RegexRouter");
+        props.setProperty("transforms.router.regex", "(.*)");
+        props.setProperty("transforms.router.replacement", "trf$1");
+
+        CountDownLatch firstLatch = new CountDownLatch(1);
+        CountDownLatch allLatch = new CountDownLatch(6);
+
+        // create an engine with our custom class
+        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    records.forEach(r -> assertThat(r.topic()).isEqualTo("trftopicX"));
+                    Integer groupCount = records.size() / NUMBER_OF_LINES;
+
+                    for (SourceRecord r : records) {
+                        committer.markProcessed(r);
+                    }
+
+                    committer.markBatchFinished();
+                    firstLatch.countDown();
+                    for (int i = 0; i < groupCount; i++) {
+                        allLatch.countDown();
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        firstLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(firstLatch.getCount()).isEqualTo(0);
+
+        for (int i = 0; i < 5; i++) {
+            // Add a few more lines, and then verify they are consumed ...
+            appendLinesToSource(NUMBER_OF_LINES);
+            Thread.sleep(10);
+        }
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
+
+        // Stop the connector ...
+        stopConnector();
+    }
+
     protected void appendLinesToSource(int numberOfLines) throws IOException {
         CharSequence[] lines = new CharSequence[numberOfLines];
         for (int i = 0; i != numberOfLines; ++i) {
