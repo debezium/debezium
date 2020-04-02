@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.ReplicationMessage.NoopMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
@@ -256,7 +257,7 @@ public class StreamingWal2JsonMessageDecoder extends AbstractMessageDecoder {
             // truncate table, materialized views, etc. The transaction still needs to be processed for the heartbeat
             // to fire.
             LOGGER.trace("Empty change arrived");
-            processor.process(null);
+            processor.process(new NoopMessage(txId, commitTime));
         }
 
     }
