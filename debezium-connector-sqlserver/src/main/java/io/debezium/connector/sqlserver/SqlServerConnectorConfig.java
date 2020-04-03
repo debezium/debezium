@@ -368,7 +368,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean readOnlyDatabaseConnection;
 
     public SqlServerConnectorConfig(Configuration config) {
-        super(config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
+        super(SqlServerConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), true);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());

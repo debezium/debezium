@@ -7,19 +7,23 @@ package io.debezium.relational.history;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -39,13 +43,18 @@ import org.apache.kafka.common.errors.UnsupportedVersionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.document.DocumentReader;
 import io.debezium.util.Collect;
+import io.debezium.util.Threads;
 
 /**
  * A {@link DatabaseHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
@@ -55,6 +64,18 @@ import io.debezium.util.Collect;
  */
 @NotThreadSafe
 public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(KafkaDatabaseHistory.class);
+
+    private static final String CLEANUP_POLICY_NAME = "cleanup.policy";
+    private static final String CLEANUP_POLICY_VALUE = "delete";
+    private static final String RETENTION_MS_NAME = "retention.ms";
+    private static final long RETENTION_MS_MAX = Long.MAX_VALUE;
+    private static final long RETENTION_MS_MIN = Duration.of(5 * 365, ChronoUnit.DAYS).toMillis(); // 5 years
+
+    private static final String RETENTION_BYTES_NAME = "retention.bytes";
+    private static final int UNLIMITED_VALUE = -1;
+    private static final short PARTITION_COUNT = (short) 1;
 
     /**
      * The name of broker property defining default replication factor for topics without the explicit setting.
@@ -108,8 +129,24 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withDefault(100)
             .withValidation(Field::isInteger);
 
+    public static final Field CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
+            .withDisplayName("Debezium connector class")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.HIGH)
+            .withDescription("The class of the Debezium database connector")
+            .withValidation(Field::isRequired);
+
+    public static final Field CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
+            .withDisplayName("Debezium connector identifier")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The unique identifier of the Debezium connector")
+            .withValidation(Field::isRequired);
+
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
-            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS);
+            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, CONNECTOR_CLASS, CONNECTOR_ID);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
@@ -128,11 +165,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     private volatile KafkaProducer<String, String> producer;
     private int maxRecoveryAttempts;
     private Duration pollInterval;
+    private ExecutorService checkTopicSettingsExecutor;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
-        if (!config.validateAndRecord(ALL_FIELDS, logger::error)) {
+        if (!config.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.topicName = config.getString(TOPIC);
@@ -167,9 +205,17 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                 .build();
-        if (logger.isInfoEnabled()) {
-            logger.info("KafkaDatabaseHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
-            logger.info("KafkaDatabaseHistory Producer config: {}", producerConfig.withMaskedPasswords());
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("KafkaDatabaseHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
+            LOGGER.info("KafkaDatabaseHistory Producer config: {}", producerConfig.withMaskedPasswords());
+        }
+
+        try {
+            checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(config.getString(CONNECTOR_CLASS)),
+                    config.getString(CONNECTOR_ID), "db-history-config-check", true);
+        }
+        catch (ClassNotFoundException e) {
+            throw new DebeziumException(e);
         }
     }
 
@@ -186,7 +232,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database history records.");
         }
-        logger.trace("Storing record into database history: {}", record);
+        LOGGER.trace("Storing record into database history: {}", record);
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, PARTITION, null, record.toString());
             Future<RecordMetadata> future = this.producer.send(produced);
@@ -194,12 +240,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             this.producer.flush();
             RecordMetadata metadata = future.get(); // block forever since we have to be sure this gets recorded
             if (metadata != null) {
-                logger.debug("Stored record in topic '{}' partition {} at offset {} ",
+                LOGGER.debug("Stored record in topic '{}' partition {} at offset {} ",
                         metadata.topic(), metadata.partition(), metadata.offset());
             }
         }
         catch (InterruptedException e) {
-            logger.trace("Interrupted before record was written into database history: {}", record);
+            LOGGER.trace("Interrupted before record was written into database history: {}", record);
             Thread.currentThread().interrupt();
             throw new DatabaseHistoryException(e);
         }
@@ -212,11 +258,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     protected void recoverRecords(Consumer<HistoryRecord> records) {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
-            logger.debug("Subscribing to database history topic '{}'", topicName);
+            LOGGER.debug("Subscribing to database history topic '{}'", topicName);
             historyConsumer.subscribe(Collect.arrayListOf(topicName));
 
             // Read all messages in the topic ...
-            long lastProcessedOffset = -1;
+            long lastProcessedOffset = UNLIMITED_VALUE;
             Long endOffset = null;
             int recoveryAttempts = 0;
 
@@ -227,7 +273,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 }
 
                 endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
-                logger.debug("End offset of database history topic is {}", endOffset);
+                LOGGER.debug("End offset of database history topic is {}", endOffset);
 
                 // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval.toMillis());
@@ -237,20 +283,20 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     try {
                         if (lastProcessedOffset < record.offset()) {
                             if (record.value() == null) {
-                                logger.warn("Skipping null database history record. " +
+                                LOGGER.warn("Skipping null database history record. " +
                                         "This is often not an issue, but if it happens repeatedly please check the '{}' topic.", topicName);
                             }
                             else {
                                 HistoryRecord recordObj = new HistoryRecord(reader.read(record.value()));
-                                logger.trace("Recovering database history: {}", recordObj);
+                                LOGGER.trace("Recovering database history: {}", recordObj);
                                 if (recordObj == null || !recordObj.isValid()) {
-                                    logger.warn("Skipping invalid database history record '{}'. " +
+                                    LOGGER.warn("Skipping invalid database history record '{}'. " +
                                             "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
                                             recordObj, topicName);
                                 }
                                 else {
                                     records.accept(recordObj);
-                                    logger.trace("Recovered database history: {}", recordObj);
+                                    LOGGER.trace("Recovered database history: {}", recordObj);
                                 }
                             }
                             lastProcessedOffset = record.offset();
@@ -258,19 +304,19 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                         }
                     }
                     catch (final IOException e) {
-                        logger.error("Error while deserializing history record '{}'", record, e);
+                        LOGGER.error("Error while deserializing history record '{}'", record, e);
                     }
                     catch (final Exception e) {
-                        logger.error("Unexpected exception while processing record '{}'", record, e);
+                        LOGGER.error("Unexpected exception while processing record '{}'", record, e);
                         throw e;
                     }
                 }
                 if (numRecordsProcessed == 0) {
-                    logger.debug("No new records found in the database history; will retry");
+                    LOGGER.debug("No new records found in the database history; will retry");
                     recoveryAttempts++;
                 }
                 else {
-                    logger.debug("Processed {} records from database history", numRecordsProcessed);
+                    LOGGER.debug("Processed {} records from database history", numRecordsProcessed);
                 }
             } while (lastProcessedOffset < endOffset - 1);
         }
@@ -298,6 +344,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
             // First, check if the topic exists in the list of all topics
             if (historyConsumer.listTopics().keySet().contains(topicName)) {
+                checkTopicSettings(topicName);
                 // check if the topic is empty
                 Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
 
@@ -314,8 +361,73 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         return exists;
     }
 
+    private void checkTopicSettings(String topicName) {
+        checkTopicSettingsExecutor.execute(() -> {
+            try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
+
+                Set<ConfigResource> resources = Collections.singleton(new ConfigResource(ConfigResource.Type.TOPIC, topicName));
+                final Map<ConfigResource, Config> configs = admin.describeConfigs(resources).all().get(
+                        KAFKA_QUERY_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                if (configs.size() != 1) {
+                    LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, configs.values().size());
+                    return;
+                }
+                final Config topic = configs.values().iterator().next();
+                if (topic == null) {
+                    LOGGER.info("Could not get config for topic '{}'", topic);
+                    return;
+                }
+
+                final String cleanupPolicy = topic.get(CLEANUP_POLICY_NAME).value();
+                if (!CLEANUP_POLICY_VALUE.equals(cleanupPolicy)) {
+                    LOGGER.warn("Database history topic '{}' option '{}' should be '{}' but is '{}'", topicName, CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE,
+                            cleanupPolicy);
+                    return;
+                }
+
+                final String retentionBytes = topic.get(RETENTION_BYTES_NAME).value();
+                if (retentionBytes != null && Long.parseLong(retentionBytes) != UNLIMITED_VALUE) {
+                    LOGGER.warn("Database history topic '{}' option '{}' should be '{}' but is '{}'", topicName, RETENTION_BYTES_NAME, UNLIMITED_VALUE, retentionBytes);
+                    return;
+                }
+
+                final String retentionMs = topic.get(RETENTION_MS_NAME).value();
+                if (retentionMs != null && (Long.parseLong(retentionMs) != UNLIMITED_VALUE && Long.parseLong(retentionMs) < RETENTION_MS_MIN)) {
+                    LOGGER.warn("Database history topic '{}' option '{}' should be '{}' or greater than '{}' (5 years) but is '{}'", topicName, RETENTION_MS_NAME,
+                            UNLIMITED_VALUE, RETENTION_MS_MIN, retentionMs);
+                    return;
+                }
+
+                final DescribeTopicsResult result = admin.describeTopics(Collections.singleton(topicName));
+                if (result.values().size() != 1) {
+                    LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, result.values().size());
+                    return;
+                }
+                final TopicDescription topicDesc = result.values().values().iterator().next().get();
+                if (topicDesc == null) {
+                    LOGGER.info("Could not get description for topic '{}'", topicName);
+                    return;
+                }
+
+                final int partitions = topicDesc.partitions().size();
+                if (partitions != PARTITION_COUNT) {
+                    LOGGER.warn("Database history topic '{}' should have one partiton but has '{}'", topicName, partitions);
+                    return;
+                }
+
+                LOGGER.info("Database history topic '{}' has correct settings", topicName);
+            }
+            catch (Throwable e) {
+                LOGGER.info("Attempted to validate database history topic but failed", e);
+            }
+        });
+    }
+
     @Override
     public synchronized void stop() {
+        if (checkTopicSettingsExecutor != null) {
+            checkTopicSettingsExecutor.shutdown();
+        }
         try {
             if (this.producer != null) {
                 try {
@@ -355,11 +467,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             final short replicationFactor = getDefaultTopicReplicationFactor(admin);
 
             // Create topic
-            final NewTopic topic = new NewTopic(topicName, (short) 1, replicationFactor);
-            topic.configs(Collect.hashMapOf("cleanup.policy", "delete", "retention.ms", Long.toString(Long.MAX_VALUE), "retention.bytes", "-1"));
+            final NewTopic topic = new NewTopic(topicName, PARTITION_COUNT, replicationFactor);
+            topic.configs(Collect.hashMapOf(CLEANUP_POLICY_NAME, CLEANUP_POLICY_VALUE, RETENTION_MS_NAME, Long.toString(RETENTION_MS_MAX), RETENTION_BYTES_NAME,
+                    Long.toString(UNLIMITED_VALUE)));
             admin.createTopics(Collections.singleton(topic));
 
-            logger.info("Database history topic '{}' created", topic);
+            LOGGER.info("Database history topic '{}' created", topic);
         }
         catch (Exception e) {
             throw new ConnectException("Creation of database history topic failed, please create the topic manually", e);
@@ -384,7 +497,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
 
         // Otherwise warn that no property was obtained and default it to 1 - users can increase this later if desired
-        logger.warn(
+        LOGGER.warn(
                 "Unable to obtain the default replication factor from the brokers at {}. Setting value to {} instead.",
                 producerConfig.getString(BOOTSTRAP_SERVERS),
                 DEFAULT_TOPIC_REPLICATION_FACTOR);

@@ -244,9 +244,10 @@ public class Threads {
      * @param connectorId - the identifier to differentiate between connector instances
      * @param name - the name of the thread
      * @param indexed - true if the thread name should be appended with an index
+     * @param daemon - true if the thread should be a daemon thread
      * @return the thread factory setting the correct name
      */
-    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed) {
+    public static ThreadFactory threadFactory(Class<? extends SourceConnector> connector, String connectorId, String name, boolean indexed, boolean daemon) {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Requested thread factory for connector {}, id = {} named = {}", connector.getSimpleName(), connectorId, name);
         }
@@ -266,16 +267,22 @@ public class Threads {
                     threadName.append('-').append(index.getAndIncrement());
                 }
                 LOGGER.info("Creating thread {}", threadName);
-                return new Thread(r, threadName.toString());
+                final Thread t = new Thread(r, threadName.toString());
+                t.setDaemon(daemon);
+                return t;
             }
         };
     }
 
-    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
-        return Executors.newSingleThreadExecutor(threadFactory(connector, connectorId, name, false));
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name, boolean daemon) {
+        return Executors.newSingleThreadExecutor(threadFactory(connector, connectorId, name, false, daemon));
     }
 
     public static ExecutorService newFixedThreadPool(Class<? extends SourceConnector> connector, String connectorId, String name, int threadCount) {
-        return Executors.newFixedThreadPool(threadCount, threadFactory(connector, connectorId, name, true));
+        return Executors.newFixedThreadPool(threadCount, threadFactory(connector, connectorId, name, true, false));
+    }
+
+    public static ExecutorService newSingleThreadExecutor(Class<? extends SourceConnector> connector, String connectorId, String name) {
+        return newSingleThreadExecutor(connector, connectorId, name, false);
     }
 }

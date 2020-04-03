@@ -109,6 +109,8 @@ public class KafkaDatabaseHistoryTest {
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
                 .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, skipUnparseableDDL)
+                .with(KafkaDatabaseHistory.CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+                .with(KafkaDatabaseHistory.CONNECTOR_ID, "dbz-test")
                 .build();
         history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
         history.start();
@@ -284,6 +286,8 @@ public class KafkaDatabaseHistoryTest {
                         ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
                         50000)
                 .with(KafkaDatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                .with(KafkaDatabaseHistory.CONNECTOR_CLASS, "org.apache.kafka.connect.source.SourceConnector")
+                .with(KafkaDatabaseHistory.CONNECTOR_ID, "dbz-test")
                 .build();
 
         history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
