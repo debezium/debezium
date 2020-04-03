@@ -781,7 +781,10 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
                                     logger.debug("Received {} records from the task", changeRecords.size());
-                                    changeRecords = changeRecords.stream().map(transformations::transform).filter(x -> x != null).collect(Collectors.toList());
+                                    changeRecords = changeRecords.stream()
+                                            .map(transformations::transform)
+                                            .filter(x -> x != null)
+                                            .collect(Collectors.toList());
                                 }
 
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
