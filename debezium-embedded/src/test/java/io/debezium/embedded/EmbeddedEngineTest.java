@@ -13,18 +13,22 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.kafka.connect.transforms.Transformation;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
@@ -46,6 +50,27 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     private int nextConsumedLineNumber;
     private int linesAdded;
     private Configuration connectorConfig;
+
+    public static class FilterTransform implements Transformation<SourceRecord> {
+
+        @Override
+        public void configure(Map<String, ?> configs) {
+        }
+
+        @Override
+        public SourceRecord apply(SourceRecord record) {
+            return ((String) record.value()).equals("Generated line number 1") ? null : record;
+        }
+
+        @Override
+        public ConfigDef config() {
+            return null;
+        }
+
+        @Override
+        public void close() {
+        }
+    }
 
     @Before
     public void beforeEach() throws Exception {
@@ -220,23 +245,25 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("offset.flush.interval.ms", "0");
         props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty("topic", "topicX");
-        props.setProperty("transforms", "router");
+        props.setProperty("transforms", "filter, router");
         props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.RegexRouter");
         props.setProperty("transforms.router.regex", "(.*)");
         props.setProperty("transforms.router.replacement", "trf$1");
+        props.setProperty("transforms.filter.type", "io.debezium.embedded.EmbeddedEngineTest$FilterTransform");
 
         CountDownLatch firstLatch = new CountDownLatch(1);
-        CountDownLatch allLatch = new CountDownLatch(6);
+        CountDownLatch allLatch = new CountDownLatch(5);
 
         // create an engine with our custom class
         final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
                 .using(props)
                 .notifying((records, committer) -> {
-                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
+                    assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES - 1);
                     records.forEach(r -> assertThat(r.topic()).isEqualTo("trftopicX"));
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
                     for (SourceRecord r : records) {
+                        assertThat((String) r.value()).isNotEqualTo("Generated line number 1");
                         committer.markProcessed(r);
                     }
 
@@ -268,6 +295,32 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
 
         // Stop the connector ...
         stopConnector();
+    }
+
+    @Test(expected = DebeziumException.class)
+    public void invalidSmt() throws Exception {
+        // Add initial content to the file ...
+        appendLinesToSource(NUMBER_OF_LINES);
+
+        final Properties props = new Properties();
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "org.apache.kafka.connect.file.FileStreamSourceConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("file", TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty("topic", "topicX");
+        props.setProperty("transforms", "router");
+        props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.Regex");
+        props.setProperty("transforms.router.regex", "(.*)");
+        props.setProperty("transforms.router.replacement", "trf$1");
+
+        // create an engine with our custom class
+        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+                .using(props)
+                .notifying((records, committer) -> {
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
     }
 
     protected void appendLinesToSource(int numberOfLines) throws IOException {
