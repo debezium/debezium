@@ -23,11 +23,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
@@ -169,7 +170,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         assertThat(routedEvent.headers().lastWithName("eventType").value()).isEqualTo("UserCreated");
         assertThat(value).isInstanceOf(String.class);
         JsonNode payload = (new ObjectMapper()).readTree((String) value);
-        assertThat(payload.get("email").getTextValue()).isEqualTo("gh@mefi.in");
+        assertThat(payload.get("email").asText()).isEqualTo("gh@mefi.in");
     }
 
     @Test
@@ -192,7 +193,7 @@ public class OutboxEventRouterIT extends AbstractConnectorTest {
         Struct valueStruct = requireStruct(routedEvent.value(), "test payload");
         assertThat(valueStruct.getString("eventType")).isEqualTo("UserCreated");
         JsonNode payload = (new ObjectMapper()).readTree(valueStruct.getString("payload"));
-        assertThat(payload.get("email").getTextValue()).isEqualTo("gh@mefi.in");
+        assertThat(payload.get("email").asText()).isEqualTo("gh@mefi.in");
     }
 
     @Test
