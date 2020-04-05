@@ -70,10 +70,10 @@ endif::[]
 == Using a Debezium Connector
 
 To use a connector to produce change events for a particular source server/cluster, simply create a configuration file for the
-xref:connectors/mysql.adoc#deploying-a-connector[MySQL Connector],
+xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc[MySQL Connector],
 xref:connectors/postgresql.adoc#deploying-a-connector[Postgres Connector],
-xref:connectors/mongodb.adoc#deploying-a-connector[MongoDB Connector],
-xref:connectors/sqlserver.adoc#deploying-a-connector[SQL Server Connector],
+xref:connectors/mongodb.adoc#mongodb-deploying-a-connector[MongoDB Connector],
+xref:connectors/sqlserver.adoc#sqlserver-deploying-a-connector[SQL Server Connector],
 xref:connectors/oracle.adoc#deploying-a-connector[Oracle Connector],
 xref:connectors/db2.adoc#deploying-a-connector[Db2 Connector]
 or xref:connectors/cassandra.adoc#deploying-a-connector[Cassandra Connector]
