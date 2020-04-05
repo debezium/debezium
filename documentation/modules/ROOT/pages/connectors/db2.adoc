@@ -228,6 +228,7 @@ VALUES ASNCDC.ASNCDCSERVICES('reinit','asncdc');
 
 == How the Db2 connector works
 
+[[snapshots]]
 === Snapshots
 
 Db2 ASN is not designed to store the complete history of database changes.
@@ -264,6 +265,7 @@ After a restart, the connector will resume from the offset (commit and change LS
 
 The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behaviour.
 
+[[topic-names]]
 === Topic names
 
 The Db2 connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topics always takes the form _databaseName_._schemaName_._tableName_, where _databaseName_ is the logical name of the connector as specified with the `database.server.name` configuration property, _schemaName_ is the name of the schema where the operation occurred, and _tableName_ is the name of the database table on which the operation occurred.
@@ -959,7 +961,7 @@ Other data type mappings are described in the following sections.
 If present, a column's default value will be propagated to the corresponding field's Kafka Connect schema.
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
-Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.advoc[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
 
 [[temporal-values]]
 ==== Temporal values
