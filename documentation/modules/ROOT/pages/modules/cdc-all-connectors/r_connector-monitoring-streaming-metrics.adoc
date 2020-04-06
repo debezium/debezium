@@ -1,0 +1,54 @@
+[cols="3,2,5"]
+|===
+|Attributes |Type |Description
+
+|`LastEvent`
+|`string`
+|The last streaming event that the connector has read.
+
+|`MilliSecondsSinceLastEvent`
+|`long`
+|The number of milliseconds since the connector has read and processed the most recent event.
+
+|`TotalNumberOfEventsSeen`
+|`long`
+|The total number of events that this connector has seen since last started or reset.
+
+|`NumberOfEventsFiltered`
+|`long`
+|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+
+|`MonitoredTables`
+|`string[]`
+|The list of tables that are monitored by the connector.
+
+|`QueueTotalCapacity`
+|`int`
+|The length the queue used to pass events between the streamer and the main Kafka Connect loop.
+
+|`QueueRemainingCapacity`
+|`int`
+|The free capacity of the queue used to pass events between the streamer and the main Kafka Connect loop.
+
+|`Connected`
+|`boolean`
+|`Flag that denotes whether the connector is currently connected to the database server.
+
+|`MilliSecondsBehindSource`
+|`long`
+|`The number of milliseconds between the last change event's timestamp and the connector processing it.
+The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
+
+|`NumberOfCommittedTransactions`
+|`long`
+|The number of processed transactions that were committed.
+
+|`SourceEventPosition`
+|`Map<String, String>`
+|The coordinates of the last received event.
+
+|`LastTransactionId`
+|`string`
+|Transaction identifier of the last processed transaction.
+
+|===
