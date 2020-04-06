@@ -180,7 +180,7 @@ The bottom line is that the MongoDB connector will continue running under most s
 === Topics names
 
 The MongoDB connector writes events for all insert, update, and delete operations to documents in each collection to a single Kafka topic.
-The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the link:logical-name[logical name] of the connector as specified with the `mongodb.name` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
+The name of the Kafka topics always takes the form _logicalName_._databaseName_._collectionName_, where _logicalName_ is the link:#logical-name[logical name] of the connector as specified with the `mongodb.name` configuration property, _databaseName_ is the name of the database where the operation occurred, and _collectionName_ is the name of the MongoDB collection in which the affected document existed.
 
 For example, consider a MongoDB replica set with an `inventory` database that contains four collections: `products`, `products_on_hand`, `customers`, and `orders`.
 If the connector monitoring this database were given a logical name of `fulfillment`, then the connector would produce events on these four Kafka topics:

@@ -217,7 +217,7 @@ transforms.unwrap.type=io.debezium.connector.mongodb.transforms.ExtractNewDocume
 transforms.unwrap.operation.header=true
 ----
 
-The possible values are the ones from the `op` field of xref:connectors/mongodb.adoc#change-events-value[MongoDB connector change events].
+The possible values are the ones from the `op` field of xref:connectors/mongodb.adoc#mongodb-change-events-value[MongoDB connector change events].
 
 === Adding source metadata fields
 
@@ -266,7 +266,7 @@ For `DELETE` events, this option is only supported when the `delete.handling.mod
 
 |`operation.header`
 |`false`
-|The SMT adds the xref:connectors/mongodb.adoc#change-events-value[event operation] as a message header.
+|The SMT adds the xref:connectors/mongodb.adoc#mongodb-change-events-value[event operation] as a message header.
 
 |`drop.tombstones`
 |`true`

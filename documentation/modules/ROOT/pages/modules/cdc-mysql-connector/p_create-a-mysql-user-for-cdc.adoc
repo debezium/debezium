@@ -29,7 +29,7 @@ mysql> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIE
 
 TIP: See xref:permissions-explained-mysql-connector[permissions explained] for notes on each permission.
 
-IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK_TABLES` permissions to the user that you create. See <<overview-of-how-the-mysql-connector-works>> for more details.
+IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that do not allow a *global read lock*, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK_TABLES` permissions to the user that you create. See xref:assemblies/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[Overview of how the MySQL connector works] for more details.
 
 [start=3]
 . Finalize the user's permissions:
