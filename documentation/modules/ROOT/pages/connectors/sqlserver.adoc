@@ -124,6 +124,7 @@ endif::cdc-product[]
 [[how-the-connector-works]]
 == How the SQL Server connector works
 
+[[snapshots]]
 === Snapshots
 
 SQL Server CDC is not designed to store the complete history of database changes.
@@ -160,6 +161,7 @@ After a restart, the connector will resume from the offset (commit and change LS
 
 The connector is able to detect whether the CDC is enabled or disabled for whitelisted source table during the runtime and modify its behaviour.
 
+[[topic-names]]
 === Topic names
 
 The SQL Server connector writes events for all insert, update, and delete operations on a single table to a single Kafka topic. The name of the Kafka topics always takes the form _serverName_._schemaName_._tableName_, where _serverName_ is the logical name of the connector as specified with the `database.server.name` configuration property, _schemaName_ is the name of the schema where the operation occurred, and _tableName_ is the name of the database table on which the operation occurred.
@@ -890,7 +892,7 @@ If present, a column's default value is propagated to the corresponding field's 
 Change messages will contain the field's default value
 (unless an explicit column value had been given), so there should rarely be the need to obtain the default value from the schema.
 ifndef::cdc-product[]
-Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.advoc[using Avro] as serialization format together with the Confluent schema registry.
+Passing the default value helps though with satisfying the compatibility rules when xref:configuration/avro.adoc[using Avro] as serialization format together with the Confluent schema registry.
 endif::cdc-product[]
 
 [[sqlserver-temporal-values]]
@@ -1123,7 +1125,7 @@ Here is an example of the configuration for a connector instance that monitors a
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
 
-See the link:#connector-properties[complete list of connector properties] that can be specified in these configurations.
+See the link:#sqlserver-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
 This configuration can be sent via POST to a running Kafka Connect service, which will then record the configuration and start up the one connector task that will connect to the SQL Server database, read the transaction log, and record events to Kafka topics.
 
@@ -1388,7 +1390,7 @@ Note that primary key columns are always included in the event's key, also if bl
 
 |`time.precision.mode`
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#temporal-values[temporal values].
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#sqlserver-temporal-values[temporal values].
 
 |`tombstones.on.delete`
 |`true`
@@ -1409,7 +1411,7 @@ Fully-qualified names for columns are of the form _schemaName_._tableName_._colu
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _schemaName_._tableName_._typeName_.
-See xref:data-types[] for the list of SQL Server-specific data type names.
+See xref:sqlserver-data-types[] for the list of SQL Server-specific data type names.
 
 |`message.key.columns`
 |_empty string_

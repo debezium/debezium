@@ -22,7 +22,7 @@ e.g. to use topic names that deviate from the captured tables names or to stream
 
 Once the change events are in Apache Kafka, different connectors from the Kafka Connect eco-system can be used
 to stream the changes to other systems and databases such as Elasticsearch, data warehouses and analytics systems or caches such as Infinispan.
-Depending on the chosen sink connector, it may be needed to apply Debezium's xref:configuration/event-flattening.adoc[new record state extration] SMT,
+Depending on the chosen sink connector, it may be needed to apply Debezium's xref:configuration/event-flattening.adoc[new record state extraction] SMT,
 which will only propagate the "after" structure from Debezium's event envelope to the sink connector.
 
 == Embedded Engine
