@@ -202,8 +202,7 @@ public class MySqlMetricsIT extends AbstractConnectorTest {
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalTableCount")).isEqualTo(1);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "MonitoredTables"))
                 .isEqualTo(new String[]{ DATABASE.qualifiedTableName("simple") });
-        // ommitted the following because its only populated as part of the common connector framework.
-        // assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "NumberOfEventsFiltered")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "NumberOfErroneousEvents")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "RemainingTableCount")).isEqualTo(0);
