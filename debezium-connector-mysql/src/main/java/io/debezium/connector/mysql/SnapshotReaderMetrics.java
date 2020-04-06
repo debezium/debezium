@@ -42,4 +42,11 @@ class SnapshotReaderMetrics extends SnapshotChangeEventSourceMetrics implements 
     public String[] getMonitoredTables() {
         return schema.monitoredTablesAsStringArray();
     }
+
+    @Override
+    public long getTotalNumberOfEventsSeen() {
+        return getRowsScanned().values().stream()
+                .mapToLong((x) -> x)
+                .sum();
+    }
 }
