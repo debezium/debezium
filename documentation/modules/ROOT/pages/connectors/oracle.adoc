@@ -909,188 +909,37 @@ The following shows an example JSON request for registering an instance of the D
 [[monitoring]]
 === Monitoring
 
-Kafka, Zookeeper, and Kafka Connect all have link:/docs/monitoring/[built-in support] for JMX metrics. The Oracle connector also publishes a number of metrics about the connector's activities that can be monitored through JMX. The connector has two types of metrics. Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot. Streaming metrics help you monitor the progress and activity while the connector reads XStream events.
+The {prodname} Oracle connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+
+* <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
+* <<schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+
+Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
 
 [[monitoring-snapshots]]
 [[snapshot-metrics]]
 ==== Snapshot Metrics
 
-===== *MBean: debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_*
+The *MBean* is `debezium.oracle:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
-|=======================
-|Attribute Name
-|Type
-|Description
-
-|`LastEvent`
-|`string`
-|The last snapshot event that the connector has read.
-
-|`MilliSecondsSinceLastEvent`
-|`long`
-|The number of milliseconds since the connector has read and processed the most recent event.
-
-|`TotalNumberOfEventsSeen`
-|`long`
-|The total number of events that this connector has seen since last started or reset.
-
-|`NumberOfEventsFiltered`
-|`long`
-|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
-
-|`MonitoredTables`
-|`string[]`
-|The list of tables that are monitored by the connector.
-
-|`QueueTotalCapcity`
-|`int`
-|The length of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
-
-|`QueueRemainingCapcity`
-|`int`
-|The free capacity of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
-
-|`TotalTableCount`
-|`int`
-|The total number of tables that are being included in the snapshot.
-
-|`RemainingTableCount`
-|`int`
-|The number of tables that the snapshot has yet to copy.
-
-|`SnapshotRunning`
-|`boolean`
-|Whether the snapshot was started.
-
-|`SnapshotAborted`
-|`boolean`
-|Whether the snapshot was aborted.
-
-|`SnapshotCompleted`
-|`boolean`
-|Whether the snapshot completed.
-
-|`SnapshotDurationInSeconds`
-|`long`
-|The total number of seconds that the snapshot has taken so far, even if not complete.
-
-|`RowsScanned`
-|`Map<String, Long>`
-|Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
-
-|=======================
-
+include::../modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 [[monitoring-streaming]]
 [[streaming-metrics]]
 ==== Streaming Metrics
 
-===== *MBean: debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_*
+The *MBean* is `debezium.oracle:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
-|=======================
-|Attribute Name
-|Type
-|Description
-
-|`LastEvent`
-|`string`
-|The last streaming event that the connector has read.
-
-|`MilliSecondsSinceLastEvent`
-|`long`
-|The number of milliseconds since the connector has read and processed the most recent event.
-
-|`TotalNumberOfEventsSeen`
-|`long`
-|The total number of events that this connector has seen since last started or reset.
-
-|`NumberOfEventsFiltered`
-|`long`
-|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
-
-|`MonitoredTables`
-|`string[]`
-|The list of tables that are monitored by the connector.
-
-|`QueueTotalCapcity`
-|`int`
-|The length of the queue used to pass events between the streamer and the main Kafka Connect loop.
-
-|`QueueRemainingCapcity`
-|`int`
-|The free capacity of the queue used to pass events between the streamer and the main Kafka Connect loop.
-
-|`Connected`
-|`boolean`
-|Flag that denotes whether the connector is currently connected to the database server.
-
-|`MilliSecondsBehindSource`
-|`long`
-|The number of milliseconds between the last change event's timestamp and the connector processing it. The values will incorporate any differences between the clocks on the machines where the database server and the Debezium connector are running.
-
-|`NumberOfCommittedTransactions`
-|`long`
-|The number of processed transactions that were committed.
-
-|`SourceEventPosition`
-|`map<string, string>`
-|The coordinates of the last received event.
-
-|`LastTransactionId`
-|`string`
-|Transaction identifier of the last processed transaction.
-
-|=======================
+include::../modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 [[monitoring-schema-history]]
 [[schema-history-metrics]]
 ==== Schema History Metrics
 
-===== *MBean: debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_*
+The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=_<database.server.name>_`.
 
-[cols="30%a,10%a,60%a",options="header"]
-|=======================
-|Attribute Name
-|Type
-|Description
-
-|`Status`
-|`string`
-|One of `STOPPED`, `RECOVERING` (recovering history from the storage), `RUNNING` describing state of the database history.
-
-|`RecoveryStartTime`
-|`long`
-|The time in epoch seconds at what recovery has started.
-
-|`ChangesRecovered`
-|`long`
-|The number of changes that were read during recovery phase.
-
-|`ChangesApplied`
-|`long`
-|The total number of schema changes applie during recovery and runtime.
-
-|`MilliSecondsSinceLastRecoveredChange`
-|`long`
-|The number of milliseconds that elapsed since the last change was recovered from the history store.
-
-|`MilliSecondsSinceLastAppliedChange`
-|`long`
-|The number of milliseconds that elapsed since the last change was applied.
-
-|`LastRecoveredChange`
-|`string`
-|The string representation of the last change recovered from the history store.
-
-|`LastAppliedChange`
-|`string`
-|The string representation of the last applied change.
-
-|=======================
-
-
+include::../modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 [[connector-properties]]
 === Connector Properties

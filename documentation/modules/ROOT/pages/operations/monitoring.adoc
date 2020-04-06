@@ -18,10 +18,10 @@ If you are running multiple services on the same machine,
 be sure to use distinct JMX ports for each service.
 ====
 
+include::../modules/monitoring/c_metrics-monitoring-connectors.adoc[leveloffset=+1]
+
 include::../assemblies/monitoring/as_enabling-jmx-local-installations.adoc[leveloffset=+1]
 
 include::../assemblies/monitoring/as_enabling-jmx-docker.adoc[leveloffset=+1]
-
-include::../modules/monitoring/c_metrics-monitoring-connectors.adoc[leveloffset=+1]
 
 include::../modules/monitoring/c_using-prometheus-grafana.adoc[leveloffset=+1]

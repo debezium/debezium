@@ -1,0 +1,63 @@
+[cols="3,2,5"]
+|===
+|Attributes |Type |Description
+
+|`LastEvent`
+|`string`
+|The last snapshot event that the connector has read.
+
+|`MilliSecondsSinceLastEvent`
+|`long`
+|The number of milliseconds since the connector has read and processed the most recent event.
+
+|`TotalNumberOfEventsSeen`
+|`long`
+|The total number of events that this connector has seen since last started or reset.
+
+|`NumberOfEventsFiltered`
+|`long`
+| The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
+
+|`MonitoredTables`
+|`string[]`
+|The list of tables that are monitored by the connector.
+
+|`QueueTotalCapacity`
+|`int`
+|The length the queue used to pass events between the snapshotter and the main Kafka Connect loop.
+
+|`QueueRemainingCapacity`
+|`int`
+|The free capacity of the queue used to pass events between the snapshotter and the main Kafka Connect loop.
+
+|`TotalTableCount`
+|`int`
+|The total number of tables that are being included in the snapshot.
+
+|`RemainingTableCount`
+|`int`
+|The number of tables that the snapshot has yet to copy.
+
+|`SnapshotRunning`
+|`boolean`
+|Whether the snapshot was started.
+
+|`SnapshotAborted`
+|`boolean`
+|Whether the snapshot was aborted.
+
+|`SnapshotCompleted`
+|`boolean`
+|Whether the snapshot completed.
+
+|`SnapshotDurationInSeconds`
+|`long`
+|The total number of seconds that the snapshot has taken so far, even if not complete.
+
+|`RowsScanned`
+|`Map<String, Long>`
+|Map containing the number of rows scanned for each table in the snapshot.
+Tables are incrementally added to the Map during processing.
+Updates every 10,000 rows scanned and upon completing a table.
+
+|===

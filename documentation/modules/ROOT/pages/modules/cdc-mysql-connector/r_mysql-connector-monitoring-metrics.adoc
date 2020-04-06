@@ -6,78 +6,28 @@
 
 The {prodname} MySQL connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<mysql-connector-snapshot-metrics, snapshot metrics>>
-* <<mysql-connector-binlog-metrics, binlog metrics>>
-* <<mysql-connector-schema-history-metrics, schema history metrics>>
+* <<mysql-connector-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<mysql-connector-binlog-metrics, binlog metrics>>; for monitoring the connector when reading CDC table data
+* <<mysql-connector-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+
+Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
 
 == Snapshot metrics
 [[mysql-connector-snapshot-metrics]]
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=<database.server.name>`.
 
+include::../../modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+The {prodname} MySQL connector also provides the following custom snapshot metrics:
+
 [cols="3,2,5"]
 |===
 |Attribute |Type |Description
 
-|`TotalTableCount`
-|`int`
-|The total number of tables that are being included in the snapshot.
-
-|`RemainingTableCount`
-|`int`
-|The number of tables that the snapshot has yet to copy.
-
 |`HoldingGlobalLock`
 |`boolean`
 |Whether the connector currently holds a global or table write lock.
-
-|`SnapshotRunning`
-|`boolean`
-|Whether the snapshot was started.
-
-|`SnapshotAborted`
-|`boolean`
-|Whether the snapshot was aborted.
-
-|`SnapshotCompleted`
-|`boolean`
-|Whether the snapshot completed.
-
-|`SnapshotDurationInSeconds`
-|`long`
-|The total number of seconds that the snapshot has taken so far, even if not complete.
-
-|`RowsScanned`
-|`Map<String, Long>`
-|Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
-
-|`LastEvent`
-|`string`
-|The last snapshot event that the connector has read.
-
-|`MilliSecondsSinceLastEvent`
-|`long`
-|The number of milliseconds since the connector has read and processed the most recent event.
-
-|`TotalNumberOfEventsSeen`
-|`long`
-|The total number of events that this connector has seen since last started or reset.
-
-|`NumberOfEventsFiltered`
-|`long`
-|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
-
-|`MonitoredTables`
-|`string[]`
-|The list of tables that are monitored by the connector.
-
-|`QueueTotalCapcity`
-|`int`
-|The length of the queue used to pass events between snapshot reader and the main Kafka Connect loop.
-
-|`QueueRemainingCapcity`
-|`int`
-|The free capacity of the queue used to pass events between snapshot reader and the main Kafka Connect loop.
 
 |===
 
@@ -89,13 +39,13 @@ The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<dat
 
 NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
 
+include::../../modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+The {prodname} MySQL connector also provides the following custom binlog metrics:
+
 [cols="3,2,5"]
 |===
 |Attribute |Type |Description
-
-|`Connected`
-|`boolean`
-|Flag that denotes whether the connector is currently connected to the MySQL server.
 
 |`BinlogFilename`
 |`string`
@@ -113,10 +63,6 @@ NOTE: The transaction-related attributes are only available if binlog event buff
 |`string`
 |The string representation of the most recent GTID set seen by the connector when reading the binlog.
 
-|`LastEvent`
-|`string`
-|The last binlog event that the connector has read.
-
 |`SecondsSinceLastEvent` (obsolete)
 |`long`
 |The number of seconds since the connector has read and processed the most recent event.
@@ -125,57 +71,13 @@ NOTE: The transaction-related attributes are only available if binlog event buff
 |`long`
 |The number of seconds between the last event's MySQL timestamp and the connector processing it. The values will incorporate any differences between the clocks on the machines where the MySQL server and the MySQL connector are running.
 
-|`MilliSecondsBehindSource`
-|`long`
-|The number of milliseconds between the last event's MySQL timestamp and the connector processing it. The values will incorporate any differences between the clocks on the machines where the MySQL server and the MySQL connector are running.
-
-|`TotalNumberOfEventsSeen`
-|`long`
-|The total number of events that this connector has seen since last started or reset.
-
 |`NumberOfSkippedEvents`
 |`long`
 |The number of events that have been skipped by the MySQL connector.  Typically events are skipped due to a malformed or unparseable event from MySQL's binlog.
 
-|`NumberOfEventsFiltered`
-|`long`
-|The number of events that have been filtered by whitelist or blacklist filtering rules configured on the connector.
-
 |`NumberOfDisconnects`
 |`long`
 |The number of disconnects by the MySQL connector.
-
-|`SourceEventPosition`
-|`map<string, string>`
-|The coordinates of the last received event.
-
-|`LastTransactionId`
-|`string`
-|Transaction identifier of the last processed transaction.
-
-|`LastEvent`
-|`string`
-|The last binlog event that the connector has read.
-
-|`MilliSecondsSinceLastEvent`
-|`long`
-|The number of milliseconds since the connector has read and processed the most recent event.
-
-|`MonitoredTables`
-|`string[]`
-|The list of tables that are monitored by {prodname}.
-
-|`QueueTotalCapcity`
-|`int`
-|The length of the queue used to pass events between binlog reader and the main Kafka Connect loop.
-
-|`QueueRemainingCapcity`
-|`int`
-|The free capacity of the queue used to pass events between binlog reader and the main Kafka Connect loop.
-
-|`NumberOfCommittedTransactions`
-|`long`
-|The number of processed transactions that were committed.
 
 |`NumberOfRolledBackTransactions`
 |`long`
@@ -196,40 +98,4 @@ NOTE: The transaction-related attributes are only available if binlog event buff
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=<database.server.name>`.
 
-[cols="3,2,5"]
-|===
-|Attribute |Type |Description
-
-|`Status`
-|`string`
-|One of `STOPPED`, `RECOVERING` (recovering history from the storage), `RUNNING` describing state of the database history.
-
-|`RecoveryStartTime`
-|`long`
-|The time in epoch seconds at what recovery has started.
-
-|`ChangesRecovered`
-|`long`
-|The number of changes that were read during recovery phase.
-
-|`ChangesApplied`
-|`long`
-|The total number of schema changes applie during recovery and runtime.
-
-|`MilliSecondsSinceLastRecoveredChange`
-|`long`
-|The number of milliseconds that elapsed since the last change was recovered from the history store.
-
-|`MilliSecondsSinceLastAppliedChange`
-|`long`
-|The number of milliseconds that elapsed since the last change was applied.
-
-|`LastRecoveredChange`
-|`string`
-|The string representation of the last change recovered from the history store.
-
-|`LastAppliedChange`
-|`string`
-|The string representation of the last applied change.
-
-|===
+include::../../modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]

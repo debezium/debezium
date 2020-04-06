@@ -1,0 +1,37 @@
+[cols="3,2,5"]
+|===
+|Attributes |Type |Description
+
+|`Status`
+|`string`
+|One of `STOPPED`, `RECOVERING` (recovering history from the storage), `RUNNING` describing the state of the database history.
+
+|`RecoveryStartTime`
+|`long`
+|The time in epoch seconds at what recovery has started.
+
+|`ChangesRecovered`
+|`long`
+|The number of changes that were read during recovery phase.
+
+|`ChangesApplied`
+|`long`
+|the total number of schema changes applied during recovery and runtime.
+
+|`MilliSecondsSinceLastRecoveredChange`
+|`long`
+|The number of milliseconds that elapsed since the last change was recovered from the history store.
+
+|`MilliSecondsSinceLastAppliedChange`
+|`long`
+|The number of milliseconds that elapsed since the last change was applied.
+
+|`LastRecoveredChange`
+|`string`
+|The string representation of the last change recovered from the history store.
+
+|`LastAppliedChange`
+|`string`
+|The string representation of the last applied change.
+
+|===
