@@ -410,4 +410,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     public String getContextName() {
         return Module.contextName();
     }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
+    }
 }

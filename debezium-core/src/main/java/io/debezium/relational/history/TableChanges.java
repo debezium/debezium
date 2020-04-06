@@ -8,16 +8,8 @@ package io.debezium.relational.history;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import io.debezium.document.Array;
-import io.debezium.document.Array.Entry;
-import io.debezium.document.Document;
-import io.debezium.document.Value;
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
-import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.TableChanges.TableChange;
 
@@ -36,28 +28,6 @@ public class TableChanges implements Iterable<TableChange> {
         this.changes = new ArrayList<>();
     }
 
-    /**
-     * @param useCatalogBeforeSchema true if the parsed string contains only 2 items and the first should be used as
-     * the catalog and the second as the table name, or false if the first should be used as the schema and the
-     * second as the table name
-     */
-    public static TableChanges fromArray(Array array, boolean useCatalogBeforeSchema) {
-        TableChanges tableChanges = new TableChanges();
-
-        for (Entry entry : array) {
-            TableChange change = TableChange.fromDocument(entry.getValue().asDocument(), useCatalogBeforeSchema);
-
-            if (change.getType() == TableChangeType.CREATE) {
-                tableChanges.create(change.table);
-            }
-            else if (change.getType() == TableChangeType.ALTER) {
-                tableChanges.alter(change.table);
-            }
-        }
-
-        return tableChanges;
-    }
-
     public TableChanges create(Table table) {
         changes.add(new TableChange(TableChangeType.CREATE, table));
         return this;
@@ -71,15 +41,6 @@ public class TableChanges implements Iterable<TableChange> {
     @Override
     public Iterator<TableChange> iterator() {
         return changes.iterator();
-    }
-
-    public Array toArray() {
-        List<Value> values = changes.stream()
-                .map(TableChange::toDocument)
-                .map(Value::create)
-                .collect(Collectors.toList());
-
-        return Array.create(values);
     }
 
     @Override
@@ -123,18 +84,6 @@ public class TableChanges implements Iterable<TableChange> {
             this.id = table.id();
         }
 
-        public static TableChange fromDocument(Document document, boolean useCatalogBeforeSchema) {
-            TableChangeType type = TableChangeType.valueOf(document.getString("type"));
-            TableId id = TableId.parse(document.getString("id"), useCatalogBeforeSchema);
-            Table table = null;
-
-            if (type == TableChangeType.CREATE || type == TableChangeType.ALTER) {
-                table = fromDocument(id, document.getDocument("table"));
-            }
-
-            return new TableChange(type, table);
-        }
-
         public TableChangeType getType() {
             return type;
         }
@@ -145,15 +94,6 @@ public class TableChanges implements Iterable<TableChange> {
 
         public Table getTable() {
             return table;
-        }
-
-        public Document toDocument() {
-            Document document = Document.create();
-
-            document.setString("type", type.name());
-            document.setString("id", id.toDoubleQuotedString());
-            document.setDocument("table", toDocument(table));
-            return document;
         }
 
         @Override
@@ -199,98 +139,26 @@ public class TableChanges implements Iterable<TableChange> {
         public String toString() {
             return "TableChange [type=" + type + ", id=" + id + ", table=" + table + "]";
         }
+    }
 
-        private Document toDocument(Table table) {
-            Document document = Document.create();
+    /**
+     * The interface that defines conversion of {@code TableChanges} into a serialized format for
+     * persistent storage or delivering as a message.
+     *
+     * @author Jiri Pechanec
+     *
+     * @param <T> target type
+     */
+    public static interface TableChangesSerializer<T> {
 
-            document.set("defaultCharsetName", table.defaultCharsetName());
-            document.set("primaryKeyColumnNames", Array.create(table.primaryKeyColumnNames()));
+        T serialize(TableChanges tableChanges);
 
-            List<Document> columns = table.columns()
-                    .stream()
-                    .map(this::toDocument)
-                    .collect(Collectors.toList());
-
-            document.setArray("columns", Array.create(columns));
-
-            return document;
-        }
-
-        private Document toDocument(Column column) {
-            Document document = Document.create();
-
-            document.setString("name", column.name());
-            document.setNumber("jdbcType", column.jdbcType());
-
-            if (column.nativeType() != Column.UNSET_INT_VALUE) {
-                document.setNumber("nativeType", column.nativeType());
-            }
-
-            document.setString("typeName", column.typeName());
-            document.setString("typeExpression", column.typeExpression());
-            document.setString("charsetName", column.charsetName());
-
-            if (column.length() != Column.UNSET_INT_VALUE) {
-                document.setNumber("length", column.length());
-            }
-
-            column.scale().ifPresent(s -> document.setNumber("scale", s));
-
-            document.setNumber("position", column.position());
-            document.setBoolean("optional", column.isOptional());
-            document.setBoolean("autoIncremented", column.isAutoIncremented());
-            document.setBoolean("generated", column.isGenerated());
-
-            return document;
-        }
-
-        private static Table fromDocument(TableId id, Document document) {
-            TableEditor editor = Table.editor()
-                    .tableId(id)
-                    .setDefaultCharsetName(document.getString("defaultCharsetName"));
-
-            document.getArray("columns")
-                    .streamValues()
-                    .map(Value::asDocument)
-                    .map(v -> {
-                        ColumnEditor columnEditor = Column.editor()
-                                .name(v.getString("name"))
-                                .jdbcType(v.getInteger("jdbcType"));
-
-                        Integer nativeType = v.getInteger("nativeType");
-                        if (nativeType != null) {
-                            columnEditor.nativeType(nativeType);
-                        }
-
-                        columnEditor.type(v.getString("typeName"), v.getString("typeExpression"))
-                                .charsetName(v.getString("charsetName"));
-
-                        Integer length = v.getInteger("length");
-                        if (length != null) {
-                            columnEditor.length(length);
-                        }
-
-                        Integer scale = v.getInteger("scale");
-                        if (scale != null) {
-                            columnEditor.scale(scale);
-                        }
-
-                        columnEditor.position(v.getInteger("position"))
-                                .optional(v.getBoolean("optional"))
-                                .autoIncremented(v.getBoolean("autoIncremented"))
-                                .generated(v.getBoolean("generated"));
-
-                        return columnEditor.create();
-                    })
-                    .forEach(editor::addColumn);
-
-            editor.setPrimaryKeyNames(document.getArray("primaryKeyColumnNames")
-                    .streamValues()
-                    .map(Value::asString)
-                    .collect(Collectors.toList()));
-
-            return editor.create();
-        }
+        /**
+         * @param useCatalogBeforeSchema true if the parsed string contains only 2 items and the first should be used as
+         * the catalog and the second as the table name, or false if the first should be used as the schema and the
+         * second as the table name
+         */
+        TableChanges deserialize(T data, boolean useCatalogBeforeSchema);
     }
 
     public enum TableChangeType {

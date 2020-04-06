@@ -12,10 +12,12 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import io.debezium.document.Array;
 import io.debezium.document.DocumentReader;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.util.Collect;
 
 /**
@@ -66,7 +68,8 @@ public class HistoryRecordTest {
         assertThat(deserialized.ddl()).isEqualTo(ddl);
 
         System.out.println(record);
-        assertThat((Object) TableChanges.fromArray(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
+        final TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
+        assertThat((Object) tableChangesSerializer.deserialize(deserialized.tableChanges(), true)).isEqualTo(tableChanges);
 
     }
 }

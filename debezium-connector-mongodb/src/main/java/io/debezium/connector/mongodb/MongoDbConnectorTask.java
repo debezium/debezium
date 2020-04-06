@@ -29,6 +29,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
+import io.debezium.util.SchemaNameAdjuster;
 
 /**
  * A Kafka Connect source task that replicates the changes from one or more MongoDB replica sets.
@@ -64,6 +65,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
     @Override
     public ChangeEventSourceCoordinator start(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
+        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create(logger);
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
         this.taskContext = new MongoDbTaskContext(config);
@@ -97,7 +99,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                     queue,
                     taskContext.filters().collectionFilter()::test,
                     DataChangeEvent::new,
-                    metadataProvider);
+                    metadataProvider,
+                    schemaNameAdjuster);
 
             ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
                     previousOffsets,

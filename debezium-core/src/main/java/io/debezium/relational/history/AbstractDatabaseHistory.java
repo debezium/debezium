@@ -37,6 +37,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
     private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
+    private TableChanges.TableChangesSerializer<Array> tableChangesSerializer = new JsonTableChangeSerializer();
 
     protected AbstractDatabaseHistory() {
     }
@@ -85,7 +86,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                 String ddl = recovered.ddl();
 
                 if (tableChanges != null) {
-                    TableChanges changes = TableChanges.fromArray(tableChanges, useCatalogBeforeSchema);
+                    TableChanges changes = tableChangesSerializer.deserialize(tableChanges, useCatalogBeforeSchema);
                     for (TableChange entry : changes) {
                         if (entry.getType() == TableChangeType.CREATE || entry.getType() == TableChangeType.ALTER) {
                             schema.overwriteTable(entry.getTable());

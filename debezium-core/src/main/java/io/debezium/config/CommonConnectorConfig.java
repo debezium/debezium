@@ -353,6 +353,8 @@ public abstract class CommonConnectorConfig {
 
     public abstract String getContextName();
 
+    public abstract String getConnectorName();
+
     public String getHeartbeatTopicsPrefix() {
         return heartbeatTopicsPrefix;
     }
@@ -412,6 +414,14 @@ public abstract class CommonConnectorConfig {
         else {
             return Collections.emptySet();
         }
+    }
+
+    /**
+     * @return true if the connector should emit messages about schema changes into a public facing
+     * topic.
+     */
+    public boolean isSchemaChangesHistoryEnabled() {
+        return false;
     }
 
     private static int validateMaxQueueSize(Configuration config, Field field, Field.ValidationOutput problems) {
