@@ -806,17 +806,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
 
-    public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
-            .withDisplayName("Include database schema changes")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
-                    + "the same name as the database server ID. Each schema change will be recorded using a key that "
-                    + "contains the database name and whose value includes the DDL statement(s)."
-                    + "The default is 'true'. This is independent of how the connector internally records database history.")
-            .withDefault(true);
-
     public static final Field INCLUDE_SQL_QUERY = Field.create("include.query")
             .withDisplayName("Include original SQL query with in change events")
             .withType(Type.BOOLEAN)
@@ -1166,6 +1155,11 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public String getContextName() {
         return Module.contextName();
+    }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
     }
 
     @Override

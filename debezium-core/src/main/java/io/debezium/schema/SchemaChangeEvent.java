@@ -10,7 +10,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Struct;
+
 import io.debezium.relational.Table;
+import io.debezium.relational.history.TableChanges;
 
 /**
  * Represents a structural change to a database schema.
@@ -26,17 +29,22 @@ public class SchemaChangeEvent {
     private final SchemaChangeEventType type;
     private final Map<String, ?> partition;
     private final Map<String, ?> offset;
+    private final Struct source;
     private final boolean isFromSnapshot;
+    private final TableChanges tableChanges = new TableChanges();
 
-    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, String database, String schema, String ddl, Table table, SchemaChangeEventType type,
+    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Table table,
+                             SchemaChangeEventType type,
                              boolean isFromSnapshot) {
-        this(partition, offset, database, schema, ddl, table != null ? Collections.singleton(table) : null, type, isFromSnapshot);
+        this(partition, offset, source, database, schema, ddl, table != null ? Collections.singleton(table) : null, type, isFromSnapshot);
     }
 
-    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, String database, String schema, String ddl, Set<Table> tables, SchemaChangeEventType type,
+    public SchemaChangeEvent(Map<String, ?> partition, Map<String, ?> offset, Struct source, String database, String schema, String ddl, Set<Table> tables,
+                             SchemaChangeEventType type,
                              boolean isFromSnapshot) {
         this.partition = Objects.requireNonNull(partition, "partition must not be null");
         this.offset = Objects.requireNonNull(offset, "offset must not be null");
+        this.source = Objects.requireNonNull(source, "source must not be null");
         this.database = Objects.requireNonNull(database, "database must not be null");
         this.schema = Objects.requireNonNull(schema, "schema must not be null");
         // DDL is not mandatory
@@ -44,6 +52,13 @@ public class SchemaChangeEvent {
         this.tables = Objects.requireNonNull(tables, "tables must not be null");
         this.type = Objects.requireNonNull(type, "type must not be null");
         this.isFromSnapshot = isFromSnapshot;
+        switch (type) {
+            case CREATE:
+                tables.forEach(tableChanges::create);
+            case ALTER:
+                tables.forEach(tableChanges::alter);
+            case DROP:
+        }
     }
 
     public Map<String, ?> getPartition() {
@@ -52,6 +67,10 @@ public class SchemaChangeEvent {
 
     public Map<String, ?> getOffset() {
         return offset;
+    }
+
+    public Struct getSource() {
+        return source;
     }
 
     public String getDatabase() {
@@ -76,6 +95,10 @@ public class SchemaChangeEvent {
 
     public boolean isFromSnapshot() {
         return isFromSnapshot;
+    }
+
+    public TableChanges getTableChanges() {
+        return tableChanges;
     }
 
     @Override

@@ -24,6 +24,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -124,7 +125,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             if (snapshottingTask.snapshotSchema()) {
                 LOGGER.info("Snapshot step 6 - Persisting schema history");
 
-                createSchemaChangeEventsForTables(context, ctx);
+                createSchemaChangeEventsForTables(context, ctx, snapshottingTask);
 
                 // if we've been interrupted before, the TX rollback will cause any locks to be released
                 releaseSchemaSnapshotLocks(ctx);
@@ -226,8 +227,11 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
      */
     protected abstract void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws Exception;
 
-    private void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws Exception {
-        for (TableId tableId : snapshotContext.capturedTables) {
+    private void createSchemaChangeEventsForTables(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext, SnapshottingTask snapshottingTask)
+            throws Exception {
+        tryStartingSnapshot(snapshotContext);
+        for (Iterator<TableId> iterator = snapshotContext.capturedTables.iterator(); iterator.hasNext();) {
+            final TableId tableId = iterator.next();
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
             }
@@ -237,7 +241,20 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
             Table table = snapshotContext.tables.forTable(tableId);
 
             if (schema != null) {
-                schema.applySchemaChange(getCreateTableEvent(snapshotContext, table));
+                snapshotContext.offset.event(tableId, getClock().currentTime());
+
+                // If data are not snapshotted then the last schema change must set last snapshot flag
+                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
+                    snapshotContext.offset.markLastSnapshotRecord();
+                }
+                dispatcher.dispatchSchemaChangeEvent(table.id(), (receiver) -> {
+                    try {
+                        receiver.schemaChangeEvent(getCreateTableEvent(snapshotContext, table));
+                    }
+                    catch (Exception e) {
+                        throw new DebeziumException(e);
+                    }
+                });
             }
         }
     }
@@ -249,7 +266,7 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
 
     private void createDataEvents(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws InterruptedException {
         SnapshotReceiver snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
-        snapshotContext.offset.preSnapshotStart();
+        tryStartingSnapshot(snapshotContext);
 
         for (Iterator<TableId> tableIdIterator = snapshotContext.capturedTables.iterator(); tableIdIterator.hasNext();) {
             final TableId tableId = tableIdIterator.next();
@@ -267,6 +284,12 @@ public abstract class RelationalSnapshotChangeEventSource extends AbstractSnapsh
         snapshotContext.offset.preSnapshotCompletion();
         snapshotReceiver.completeSnapshot();
         snapshotContext.offset.postSnapshotCompletion();
+    }
+
+    private void tryStartingSnapshot(RelationalSnapshotContext snapshotContext) {
+        if (!snapshotContext.offset.isSnapshotRunning()) {
+            snapshotContext.offset.preSnapshotStart();
+        }
     }
 
     /**

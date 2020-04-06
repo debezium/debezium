@@ -277,6 +277,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDefault(DEFAULT_SNAPSHOT_LOCK_TIMEOUT_MILLIS)
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                     "time frame, the snapshot will be aborted. Defaults to 10 seconds");
+    public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
+            .withDisplayName("Include database schema changes")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
+                    + "the same name as the database server ID. Each schema change will be recorded using a key that "
+                    + "contains the database name and whose value include logical description of the new schema and optionally the DDL statement(s)."
+                    + "The default is 'true'. This is independent of how the connector internally records database history.")
+            .withDefault(true);
 
     public static final Field MASK_COLUMN_WITH_HASH = Field.create("column.mask.hash.([^.]+).with.salt.(.+)")
             .withType(Type.STRING)
@@ -375,6 +385,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             return 1;
         }
         return 0;
+    }
+
+    public boolean isSchemaChangesHistoryEnabled() {
+        return getConfig().getBoolean(INCLUDE_SCHEMA_CHANGES);
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {

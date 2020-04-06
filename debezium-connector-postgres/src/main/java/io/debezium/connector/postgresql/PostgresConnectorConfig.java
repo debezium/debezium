@@ -714,17 +714,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription(
                     "A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
 
-    // TODO author=Horia Chiorean date=25/10/2016 description=PG 9.x logical decoding does not support schema changes
-    public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
-            .withDisplayName("Include database schema changes")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
-                    + "the same name as the database server name."
-                    + "The default is 'false' because atm this feature is not supported by Postgres logical decoding")
-            .withDefault(false);
-
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -1043,6 +1032,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     @Override
     public String getContextName() {
         return Module.contextName();
+    }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
     }
 
     private static class SystemTablesPredicate implements TableFilter {

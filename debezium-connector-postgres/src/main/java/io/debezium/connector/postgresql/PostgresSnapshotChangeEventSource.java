@@ -175,6 +175,7 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         return new SchemaChangeEvent(
                 snapshotContext.offset.getPartition(),
                 snapshotContext.offset.getOffset(),
+                snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
                 table.id().schema(),
                 null,
