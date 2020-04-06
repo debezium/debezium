@@ -529,7 +529,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         return new BuilderImpl();
     }
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedEngine.class);
     private final Configuration config;
     private final Clock clock;
     private final ClassLoader classLoader;
@@ -558,7 +558,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         this.clock = clock;
         this.completionCallback = completionCallback != null ? completionCallback : (success, msg, error) -> {
             if (!success) {
-                logger.error(msg, error);
+                LOGGER.error(msg, error);
             }
         };
         this.connectorCallback = connectorCallback;
@@ -605,7 +605,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
     private void fail(String msg, Throwable error) {
         if (completionResult.hasError()) {
             // there's already a recorded failure, so keep the original one and simply log this one
-            logger.error(msg, error);
+            LOGGER.error(msg, error);
             return;
         }
         // don't use the completion callback here because we want to store the error and message only
@@ -644,7 +644,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             // Only one thread can be in this part of the method at a time ...
             latch.countUp();
             try {
-                if (!config.validateAndRecord(CONNECTOR_FIELDS, logger::error)) {
+                if (!config.validateAndRecord(CONNECTOR_FIELDS, LOGGER::error)) {
                     fail("Failed to start connector with invalid configuration (see logs for actual errors)");
                     return;
                 }
@@ -757,13 +757,13 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         while (runningThread.get() != null) {
                             List<SourceRecord> changeRecords = null;
                             try {
-                                logger.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
+                                LOGGER.debug("Embedded engine is polling task for records on thread {}", runningThread.get());
                                 changeRecords = task.poll(); // blocks until there are values ...
-                                logger.debug("Embedded engine returned from polling task for records");
+                                LOGGER.debug("Embedded engine returned from polling task for records");
                             }
                             catch (InterruptedException e) {
                                 // Interrupted while polling ...
-                                logger.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
+                                LOGGER.debug("Embedded engine interrupted on thread {} while polling the task for records", runningThread.get());
                                 if (this.runningThread.get() == Thread.currentThread()) {
                                     // this thread is still set as the running thread -> we were not interrupted
                                     // due the stop() call -> probably someone else called the interrupt on us ->
@@ -773,14 +773,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 break;
                             }
                             catch (RetriableException e) {
-                                logger.info("Retrieable exception thrown, connector will be restarted", e);
+                                LOGGER.info("Retrieable exception thrown, connector will be restarted", e);
                                 // Retriable exception should be ignored by the engine
                                 // and no change records delivered.
                                 // The retry is handled in io.debezium.connector.common.BaseSourceTask.poll()
                             }
                             try {
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    logger.debug("Received {} records from the task", changeRecords.size());
+                                    LOGGER.debug("Received {} records from the task", changeRecords.size());
                                     changeRecords = changeRecords.stream()
                                             .map(transformations::transform)
                                             .filter(x -> x != null)
@@ -788,7 +788,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                 }
 
                                 if (changeRecords != null && !changeRecords.isEmpty()) {
-                                    logger.debug("Received {} transformed records from the task", changeRecords.size());
+                                    LOGGER.debug("Received {} transformed records from the task", changeRecords.size());
 
                                     try {
                                         handler.handleBatch(changeRecords, committer);
@@ -798,7 +798,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                                     }
                                 }
                                 else {
-                                    logger.debug("Received no records from the task");
+                                    LOGGER.debug("Received no records from the task");
                                 }
                             }
                             catch (Throwable t) {
@@ -816,7 +816,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
                         }
                         try {
                             // First stop the task ...
-                            logger.debug("Stopping the task and engine");
+                            LOGGER.debug("Stopping the task and engine");
                             task.stop();
                             connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::taskStopped);
                             // Always commit offsets that were captured from the source records we actually processed ...
@@ -931,25 +931,25 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             timeOfLastCommitMillis = clock.currentTimeInMillis();
         }
         catch (InterruptedException e) {
-            logger.warn("Flush of {} offsets interrupted, cancelling", this);
+            LOGGER.warn("Flush of {} offsets interrupted, cancelling", this);
             offsetWriter.cancelFlush();
         }
         catch (ExecutionException e) {
-            logger.error("Flush of {} offsets threw an unexpected exception: ", this, e);
+            LOGGER.error("Flush of {} offsets threw an unexpected exception: ", this, e);
             offsetWriter.cancelFlush();
         }
         catch (TimeoutException e) {
-            logger.error("Timed out waiting to flush {} offsets to storage", this);
+            LOGGER.error("Timed out waiting to flush {} offsets to storage", this);
             offsetWriter.cancelFlush();
         }
     }
 
     protected void completedFlush(Throwable error, Void result) {
         if (error != null) {
-            logger.error("Failed to flush {} offsets to storage: ", this, error);
+            LOGGER.error("Failed to flush {} offsets to storage: ", this, error);
         }
         else {
-            logger.trace("Finished flushing {} offsets to storage", this);
+            LOGGER.trace("Finished flushing {} offsets to storage", this);
         }
     }
 
@@ -962,7 +962,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
      * @see #await(long, TimeUnit)
      */
     public boolean stop() {
-        logger.debug("Stopping the embedded engine");
+        LOGGER.debug("Stopping the embedded engine");
         // Signal that the run() method should stop ...
         Thread thread = this.runningThread.getAndSet(null);
         if (thread != null) {
@@ -974,7 +974,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
             }
             catch (InterruptedException e) {
             }
-            logger.debug("Interrupting the embedded engine's thread {} (already interrupted: {})", thread, thread.isInterrupted());
+            LOGGER.debug("Interrupting the embedded engine's thread {} (already interrupted: {})", thread, thread.isInterrupted());
             // Interrupt the thread in case it is blocked while polling the task for records ...
             thread.interrupt();
             return true;
