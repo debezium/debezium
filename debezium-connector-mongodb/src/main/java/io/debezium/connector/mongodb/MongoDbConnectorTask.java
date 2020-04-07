@@ -110,6 +110,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask {
                             clock,
                             replicaSets,
                             taskContext),
+                    new MongoDbChangeEventSourceMetricsFactory(),
                     dispatcher,
                     schema);
 

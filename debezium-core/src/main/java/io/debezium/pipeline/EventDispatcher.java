@@ -219,6 +219,10 @@ public class EventDispatcher<T extends DataCollectionId> {
         transactionMonitor.transactionStartedEvent(transactionId, offset);
     }
 
+    public void dispatchMetadataEvent(MetadataEvent event) {
+        eventListener.onMetadataEvent(event);
+    }
+
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {
         eventListener.onErroneousEvent("source = " + dataCollectionId);
         throw new IllegalArgumentException("No metadata registered for captured table " + dataCollectionId);
