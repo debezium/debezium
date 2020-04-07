@@ -1639,7 +1639,7 @@ This configuration can be sent via POST to a running Kafka Connect service, whic
 The {prodname} PostgreSQL connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
 * <<snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
-* <<streaming-metrics, streaming metrics>>; for monitoring the connector when reading CDC table data
+* <<streaming-metrics, streaming metrics>>; for monitoring the connector when processing change events via logical decoding
 
 Please refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
 
