@@ -80,8 +80,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
                 .withDefault(DatabaseHistory.NAME, getLogicalName() + "-dbhistory")
-                .withDefault(KafkaDatabaseHistory.CONNECTOR_CLASS, connectorClass.getName())
-                .withDefault(KafkaDatabaseHistory.CONNECTOR_ID, logicalName)
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, connectorClass.getName())
+                .withDefault(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, logicalName)
                 .build();
 
         HistoryRecordComparator historyComparator = getHistoryRecordComparator();
