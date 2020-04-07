@@ -74,7 +74,7 @@ The `io.debezium.engine.DebeziumEngine<R>` class serves as an easy-to-use wrappe
 Basically, you create the `DebeziumEngine` with a configuration (perhaps loaded from a properties file) that defines the environment for both the engine and the connector.
 You also provide parametrize the engine with the format int which you want to receive the messages (currently only `Connect` is supported) and with a function that it will call for every data change event produced by the connector.
 
-Here's an example of code that configures and runs an embedded xref:connectors/mysql[MySQL connector]:
+Here's an example of code that configures and runs an embedded xref:connectors/mysql.adoc[MySQL connector]:
 
 [source,java,indent=0]
 ----
@@ -196,7 +196,7 @@ Now that we have a configuration, we can create our engine. Here again are the r
 ----
 
 A fluent-style builder API is used to create an engine that uses our `Properties` object and that sends all data change records to the `handleEvent(SourceRecord)` method, which can be any method that matches the signature of the `java.util.function.Consumer<SourceRecord>` functional interface, where `SourceRecord` is the `org.apache.kafka.connect.source.SourceRecord` class.
-This example speaks specifically about `SourceRecord` but the engine implementation is parametrized and in future different types like `JSON` or `Avro` could be returned by the engine.
+This example speaks specifically about `SourceRecord` but the engine implementation is parametrized but different types like `JSON` or `Avro` could be returned by the engine.
 Note that your application's handler function should not throw any exceptions; if it does, the engine will log any exception thrown by the method and will continue to operate on the next source record, but your application will not have another chance to handle the particular source record that caused the exception, meaning your application might become inconsistent with the database.
 
 At this point, we have an existing `DebeziumEngine` object that is configured and ready to run, but it doesn't do anything.
@@ -247,6 +247,64 @@ Your application should always properly stop the engine to ensure graceful and c
 For example, do not rely upon shutting down the `ExecutorService`, since that interrupts the running threads.
 Although the `DebeziumEngine` will indeed terminate when its thread is interrupted, the engine may not terminate cleanly, and when your application is restarted it may see some of the same source records that it had processed just prior to the shutdown.
 
+[[output-message-formats]]
+== Output Message Formats
+`DebeziumEngine.create` can accept multiple different parameters that affect the format in which the messages are received by the consumer.
+Allowed values are
+
+* `Connect.class` - the output value is Kafka Connect's `SourceRecord`
+* `Json.class` - the output value is a pair of key and value encoded as `JSON` strings
+* `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records
+* `CloudEvents.class` - the output value is a pair of key and value encoded as xref:integrations/cloudevents.adoc[Cloud Events] messages
+
+Internally the engine uses apropriate implementations of Connect converter to wich the conversion is delegated.
+The convertor can be parametrized using engine properties to modify its behaviour.
+
+An example of `JSON` output format is
+[source,java,indent=0]
+----
+final Properties props = new Properties();
+...
+props.setProperty("converter.schemas.enable", "false"); // don't include schema in message
+...
+final DebeziumEngine<Change<String>> engine = DebeziumEngine.create(Json.class)
+    .using(props)
+    .notifying((records, committer) -> {
+
+        for (Change<String> r : records) {
+            System.out.println("Key = '" + key + "' value = '" + value + "'");
+            committer.markProcessed(r);
+        }
+...
+----
+
+Where the `Change` datatype is the key/value pair.
+
+[[message-transformations]]
+== Message transformations
+Before the messages are delivered to the handler it is possible to run them through a pipeline of Kafka Connect  link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
+Each SMT can pass the message unchanged, modify it or filter it out.
+The chain is configured using property `transforms`.
+The property contains a comma-separated list of logical names of the transformations to be applied.
+Properties `transforms.<logical_name>.type` then defines the name of the implementation class for each transformation and `transforms.<logical_name>.*` configuration options that are passed to the transformation.
+
+An example of the configuration is
+[source,java,indent=0]
+----
+final Properties props = new Properties();
+...
+props.setProperty("transforms", "filter, router");                                               // (1)
+props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.RegexRouter");  // (2)
+props.setProperty("transforms.router.regex", "(.*)");                                            // (3)
+props.setProperty("transforms.router.replacement", "trf$1");                                     // (3)    
+props.setProperty("transforms.filter.type", "io.debezium.embedded.ExampleFilterTransform");      // (4)
+----
+
+1. Two transformations are defined - `filter` and `router`
+2. Implementation of the `router` transformation is `org.apache.kafka.connect.transforms.RegexRouter`
+3. The `router` transformation has two configurations options -`regex` and `replacement`
+4. Implementation of the `filter` transformation is `io.debezium.embedded.ExampleFilterTransform`
+
 [[advanced-consuming]]
 == Advanced Record Consuming
 
@@ -285,7 +343,6 @@ DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
         .notifying(new MyChangeConsumer())
         .build();
 ----
-
 
 [[engine-properties]]
 == Engine Properties
