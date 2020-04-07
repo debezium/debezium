@@ -433,7 +433,7 @@ Let's look at what a _create_ event value might look like for our `customers` ta
       "email": "john.doe@example.org"
     },
     "source": {
-      "version": "0.10.0.Alpha1",
+      "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559729468470,
@@ -491,7 +491,7 @@ Here's an example:
       "email": "noreply@example.org"
     },
     "source": {
-      "version": "0.10.0.Alpha1",
+      "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559729995937,
@@ -548,7 +548,7 @@ Now, let's look at the value of a _delete_ event for the same table. Once again,
     },
     "after": null,
     "source": {
-      "version": "0.10.0.Alpha1",
+      "version": "{debezium-version}",
       "connector": "sqlserver",
       "name": "server1",
       "ts_ms": 1559730445243,
@@ -1039,7 +1039,7 @@ The `connect.decimal.precision` schema parameter contains an integer representin
 
 ifndef::cdc-product[]
 If you've already installed https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using Debezium's SQL Server` connector is easy.
-Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/0.9.0.Alpha1/debezium-connector-sqlserver-0.9.0.Alpha1-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path].
+Simply download the https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[connector's plugin archive], extract the JARs into your Kafka Connect environment, and add the directory with the JARs to {link-kafka-docs}/#connectconfigs[Kafka Connect's plugin.path].
 Restart your Kafka Connect process to pick up the new JARs.
 endif::cdc-product[]
 
