@@ -13,6 +13,7 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.metrics.Metrics;
+import io.debezium.pipeline.MetadataEvent;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -68,6 +69,10 @@ public abstract class PipelineMetrics extends Metrics implements DataChangeEvent
     public void onErroneousEvent(String event) {
         numberOfErroneousEvents.incrementAndGet();
         updateCommonEventMetrics();
+    }
+
+    @Override
+    public void onMetadataEvent(MetadataEvent event) {
     }
 
     @Override

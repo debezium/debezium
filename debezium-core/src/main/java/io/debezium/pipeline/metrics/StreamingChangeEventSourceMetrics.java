@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.MetadataEvent;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -96,6 +97,10 @@ public class StreamingChangeEventSourceMetrics extends PipelineMetrics implement
         if (eventSource != null) {
             sourceEventPosition.set(eventSource);
         }
+    }
+
+    @Override
+    public void onMetadataEvent(MetadataEvent event) {
     }
 
     @Override
