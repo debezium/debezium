@@ -51,7 +51,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(2000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
     }
 
     protected Builder connectorConfig() {

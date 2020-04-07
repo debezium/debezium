@@ -82,7 +82,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(1000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         // Testing.Print.enable();
         connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018/02/22', 'yyyy-mm-dd'))");

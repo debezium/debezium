@@ -36,9 +36,7 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        // wait until snapshotting has completed
-        // TODO add hook to embedded engine to reliably do this
-        Thread.sleep(2000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
         createTables();
     }
 

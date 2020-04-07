@@ -313,7 +313,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(2000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         int expectedRecordCount = 0;
 
@@ -356,7 +356,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(2000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         int expectedRecordCount = 0;
 

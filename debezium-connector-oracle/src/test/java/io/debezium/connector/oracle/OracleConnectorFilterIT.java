@@ -111,7 +111,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(1000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");
@@ -163,7 +163,7 @@ public class OracleConnectorFilterIT extends AbstractConnectorTest {
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
 
-        Thread.sleep(1000);
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium.table2 VALUES (2, 'Text-2')");

@@ -28,6 +28,10 @@ public class TestHelper {
 
     public static final String CONNECTOR_USER = "c##xstrm";
 
+    public static final String CONNECTOR_NAME = "oracle";
+
+    public static final String SERVER_NAME = "server1";
+
     private static JdbcConfiguration defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
@@ -49,7 +53,7 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, "server1")
+        return builder.with(RelationalDatabaseConnectorConfig.SERVER_NAME, SERVER_NAME)
                 .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
                 .with(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout")
                 .with(OracleConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
