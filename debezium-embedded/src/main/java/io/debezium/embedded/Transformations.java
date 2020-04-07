@@ -53,19 +53,20 @@ public class Transformations implements Closeable {
 
     @SuppressWarnings("unchecked")
     private Transformation<SourceRecord> getTransformation(String name) {
+        Transformation<SourceRecord> transformation = null;
+
         try {
-            final Transformation<SourceRecord> transformation = config.getInstance(EmbeddedEngine.TRANSFORMS.name() + "." + name + TYPE_SUFFIX, Transformation.class);
-            if (transformation == null) {
-                throw new DebeziumException("Cannot instatiate transformation '" + name + "'");
-            }
-            return transformation;
-        }
-        catch (DebeziumException e) {
-            throw e;
+            transformation = config.getInstance(EmbeddedEngine.TRANSFORMS.name() + "." + name + TYPE_SUFFIX, Transformation.class);
         }
         catch (Exception e) {
-            throw new DebeziumException("Error while instantiating transformation '" + name + "'");
+            throw new DebeziumException("Error while instantiating transformation '" + name + "'", e);
         }
+
+        if (transformation == null) {
+            throw new DebeziumException("Cannot instatiate transformation '" + name + "'");
+        }
+
+        return transformation;
     }
 
     public SourceRecord transform(SourceRecord record) {
