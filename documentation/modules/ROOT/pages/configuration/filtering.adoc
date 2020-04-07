@@ -1,0 +1,92 @@
+= Message Filtering
+include::../_attributes.adoc[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+With real-life applications, it is often necessary to deliver only a subset of events into the Kafka broker.
+The user might need to filter the events according to different business rules.
+Kafka Connect provides a generic mechanism to do the filtering in the form of link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
+
+The SMT is a Java class that encodes the filtering logic.
+This is a very powerful mechanism but has two drawbacks:
+
+* It is necessary to compile the transformation upfront and deploy it to Kafka Connect.
+* Every change needs code recompilation and redeployment leading to inflexible operations.
+
+To solve the problem Debezium comes with the Filtering SMT.
+This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either filtered out or passed for further processing.
+The current implementation supports two languages in which the expression can be written - `Groovy` and `JavaScript`.
+
+TheFiltering SMT can be used as
+[source]
+----
+...
+transforms=filter
+transforms.filter.type=io.debezium.transforms.Filter
+transforms.filter.language=groovy
+transforms.filter.condition=value.op == 'd' && value.before.id == 2
+----
+
+In this example we are using `Groovy` language and we want to filter out all delete records with `id` field equal to `2`.
+
+[IMPORTANT]
+====
+Debezium does not bring the language implementations in its installation packages by default.
+It is the user's responsibility to provide an implementation of link:https://groovy-lang.org/[Groovy 3] or link:https://github.com/graalvm/graaljs[GraalVM JavaScript] on the classpath.
+In both cases, the support for JSR-223 scripting API must be provided as well.
+====
+
+Debezium binds 4 variables into the expression
+
+* `key` - a key of the message
+* `value` - a value of the message
+* `keySchema` - the schema of the message key
+* `valueSchema` - the schema of the message value
+
+The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `keySchema` and `valueSchema` are variables of type `org.apache.kafka.connect.data.Schema`.
+The expression can invoke arbitrary methods on the variables and should evaluate into a boolean value that decides whether the message is removed `true` or kept.
+
+== Language specifics
+The same business logic - remove all delete records with `id` set to `2` can be expressed in languages
+
+JavaScript
+[source,javascript]
+----
+value.get('op') == 'd' && value.get('before').get('id') == 2
+----
+
+Groovy
+[source,groovy]
+----
+value.op == 'd' && value.before.id == 2
+----
+
+In case of `Grovy` the value fields can be access in a property-like way instead of calling method `get as is the case of JavaScript.
+
+[[configuration-options]]
+== Configuration options
+[cols="35%a,10%a,55%a",options="header"]
+|=======================
+|Property
+|Default
+|Description
+
+|`language`
+|
+|The language in which the expression is written. One of `groovy`, `graal.js`.
+
+|`condition`
+|
+|The expression evaluated for every message. Must evaluate to a boolean value where `true` result filters out the message.
+
+
+|`null.handling.mode`
+|`keep`
+|Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely or `evaluate` to run the message through the condition expression.
+
+|=======================
