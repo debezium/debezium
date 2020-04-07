@@ -8,7 +8,7 @@ Debezium records all row-level changes within each database table in a _change e
 
 
 Use the links at the left to find the documentation for Debezium, including the various Debezium xref:connectors/index.adoc[connectors].
-If you're trying to get your head around what Debezium is or how it works, we recommend starting with our xref:tutorial.adoc[tutorial] and link:/blog/2017/11/11/debezium-at-devoxx-belgium[video talk].
+If you're trying to get your head around what Debezium is or how it works, we recommend starting with our xref:tutorial.adoc[tutorial] and link:https://www.infoq.com/presentations/data-streaming-kafka-debezium/[this session] from QCon San Francisco on CDC use cases with Debezium.
 
 == Feedback
 
