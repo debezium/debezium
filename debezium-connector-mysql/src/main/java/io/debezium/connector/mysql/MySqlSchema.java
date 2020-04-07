@@ -113,8 +113,8 @@ public class MySqlSchema extends RelationalDatabaseSchema {
         Configuration dbHistoryConfig = config.subset(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
                 .withDefault(DatabaseHistory.NAME, connectorName + "-dbhistory")
-                .with(KafkaDatabaseHistory.CONNECTOR_CLASS, MySqlConnector.class.getName())
-                .with(KafkaDatabaseHistory.CONNECTOR_ID, configuration.getLogicalName())
+                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_CLASS, MySqlConnector.class.getName())
+                .with(KafkaDatabaseHistory.INTERNAL_CONNECTOR_ID, configuration.getLogicalName())
                 .build();
         this.skipUnparseableDDL = dbHistoryConfig.getBoolean(DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS);
         this.storeOnlyMonitoredTablesDdl = dbHistoryConfig.getBoolean(DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);

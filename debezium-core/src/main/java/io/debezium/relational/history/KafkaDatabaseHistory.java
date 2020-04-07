@@ -129,24 +129,24 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withDefault(100)
             .withValidation(Field::isInteger);
 
-    public static final Field CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
+    // Required for unified thread creation
+    public static final Field INTERNAL_CONNECTOR_CLASS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.class")
             .withDisplayName("Debezium connector class")
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
-            .withDescription("The class of the Debezium database connector")
-            .withValidation(Field::isRequired);
+            .withDescription("The class of the Debezium database connector");
 
-    public static final Field CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
+    // Required for unified thread creation
+    public static final Field INTERNAL_CONNECTOR_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.id")
             .withDisplayName("Debezium connector identifier")
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.HIGH)
-            .withDescription("The unique identifier of the Debezium connector")
-            .withValidation(Field::isRequired);
+            .withDescription("The unique identifier of the Debezium connector");
 
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, DatabaseHistory.NAME,
-            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, CONNECTOR_CLASS, CONNECTOR_ID);
+            RECOVERY_POLL_INTERVAL_MS, RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
@@ -211,8 +211,11 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         }
 
         try {
-            checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(config.getString(CONNECTOR_CLASS)),
-                    config.getString(CONNECTOR_ID), "db-history-config-check", true);
+            final String connectorClassname = config.getString(INTERNAL_CONNECTOR_CLASS);
+            if (connectorClassname != null) {
+                checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(connectorClassname),
+                        config.getString(INTERNAL_CONNECTOR_ID), "db-history-config-check", true);
+            }
         }
         catch (ClassNotFoundException e) {
             throw new DebeziumException(e);
@@ -362,6 +365,9 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     private void checkTopicSettings(String topicName) {
+        if (checkTopicSettingsExecutor == null) {
+            return;
+        }
         checkTopicSettingsExecutor.execute(() -> {
             try (AdminClient admin = AdminClient.create(this.producerConfig.asProperties())) {
 
