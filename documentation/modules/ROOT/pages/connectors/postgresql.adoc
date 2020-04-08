@@ -1649,7 +1649,7 @@ Please refer to the xref:operations/monitoring.adoc[monitoring documentation] fo
 
 The *MBean* is `debezium.postgres:type=connector-metrics,context=snapshot,server=_<database.server.name>_`.
 
-include::../modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 [[monitoring-streaming]]
 [[streaming-metrics]]
@@ -1657,7 +1657,7 @@ include::../modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.a
 
 The *MBean* is `debezium.postres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
-include::../modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 [[connector-properties]]
 === Connector Properties

@@ -11,10 +11,10 @@
 
 toc::[]
 
-include::../../modules/cdc-mysql-connector/r_configuration-and-startup-errors.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/r_configuration-and-startup-errors.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/r_mysql-is-unavailable.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/r_mysql-is-unavailable.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/r_kafka-connect-stops.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/r_kafka-connect-stops.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/r_mysql-purges-binlog-files.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/r_mysql-purges-binlog-files.adoc[leveloffset=+1]

@@ -13,16 +13,16 @@ toc::[]
 
 The {prodname} MySQL connector tracks the structure of the tables, performs snapshots, transforms binlog events into {prodname} change events and records where those events are recorded in Kafka.
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/c_how-the-mysql-connector-uses-database-schemas.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/c_how-the-mysql-connector-performs-database-snapshots.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/c_how-the-mysql-connector-handles-schema-change-topics.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_mysql-connector-events.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/c_mysql-connector-events.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/c_how-the-mysql-connector-maps-data-types.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/r_the-mysql-connector-and-kafka-topics.adoc[leveloffset=+1]
 
-include::../../modules/cdc-mysql-connector/r_mysql-supported-topologies.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-mysql-connector/r_mysql-supported-topologies.adoc[leveloffset=+1]

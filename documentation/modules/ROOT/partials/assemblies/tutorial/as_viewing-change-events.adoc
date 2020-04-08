@@ -36,10 +36,10 @@ In this topic, you will see different types of change events to see how the conn
 * xref:deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
 * xref:restarting-kafka-connect-service[Restarting Kafka Connect and changing the database]
 
-include::../../modules/tutorial/p_viewing-create-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_viewing-create-event.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_updating-database-viewing-update-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_updating-database-viewing-update-event.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_restarting-kafka-connect-service.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_restarting-kafka-connect-service.adoc[leveloffset=+1]
