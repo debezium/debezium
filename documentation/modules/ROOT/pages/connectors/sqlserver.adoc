@@ -1358,7 +1358,7 @@ Supported values are: +
 `initial`: Takes a snapshot of structure and data of captured tables; useful if topics should be populated with a complete representation of the data from the captured tables. +
 `schema_only`: Takes a snapshot of the structure of captured tables only; useful if only changes happening from now onwards should be propagated to topics.
 ifndef::cdc-product[]
-+
+ +
 `initial_schema_only`: This is equivalent to schema_only. +
 _This option is deprecated and will be removed in a future release._
 endif::[]
