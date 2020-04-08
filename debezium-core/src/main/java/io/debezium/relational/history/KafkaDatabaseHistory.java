@@ -426,14 +426,13 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             catch (Throwable e) {
                 LOGGER.info("Attempted to validate database history topic but failed", e);
             }
+            stopCheckTopicSettingsExecutor();
         });
     }
 
     @Override
     public synchronized void stop() {
-        if (checkTopicSettingsExecutor != null) {
-            checkTopicSettingsExecutor.shutdown();
-        }
+        stopCheckTopicSettingsExecutor();
         try {
             if (this.producer != null) {
                 try {
@@ -447,6 +446,12 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         finally {
             this.producer = null;
             super.stop();
+        }
+    }
+
+    private void stopCheckTopicSettingsExecutor() {
+        if (checkTopicSettingsExecutor != null) {
+            checkTopicSettingsExecutor.shutdown();
         }
     }
 
