@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
-import io.debezium.pipeline.MetadataEvent;
+import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
@@ -31,7 +31,7 @@ public class MongoDbSnapshotChangeEventSourceMetrics extends SnapshotChangeEvent
     }
 
     @Override
-    public void onMetadataEvent(MetadataEvent event) {
+    public void onConnectorEvent(ConnectorEvent event) {
         if (event instanceof DisconnectEvent) {
             numberOfDisconnects.incrementAndGet();
         }

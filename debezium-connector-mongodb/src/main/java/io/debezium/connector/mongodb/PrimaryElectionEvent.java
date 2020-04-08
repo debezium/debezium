@@ -7,14 +7,14 @@ package io.debezium.connector.mongodb;
 
 import com.mongodb.ServerAddress;
 
-import io.debezium.pipeline.MetadataEvent;
+import io.debezium.pipeline.ConnectorEvent;
 
 /**
- * A metadata event that signals that a primary election event was detected.
+ * An event that signals that a primary election has occurred.
  *
  * @author Chris Cranford
  */
-public class PrimaryElectionEvent implements MetadataEvent {
+public class PrimaryElectionEvent implements ConnectorEvent {
 
     private final ServerAddress primaryAddress;
 

@@ -7,8 +7,8 @@ package io.debezium.pipeline.source.spi;
 
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.MetadataEvent;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.DataCollectionId;
 
@@ -36,10 +36,9 @@ public interface DataChangeEventListener {
     void onErroneousEvent(String event);
 
     /**
-     * Invoked for events that represent some metadata state change or event indicator.
-     * @param event
+     * Invoked for events that represent a connector event.
      */
-    void onMetadataEvent(MetadataEvent event);
+    void onConnectorEvent(ConnectorEvent event);
 
     static DataChangeEventListener NO_OP = new DataChangeEventListener() {
         @Override
@@ -51,7 +50,7 @@ public interface DataChangeEventListener {
         }
 
         @Override
-        public void onMetadataEvent(MetadataEvent event) {
+        public void onConnectorEvent(ConnectorEvent event) {
         }
 
         @Override
