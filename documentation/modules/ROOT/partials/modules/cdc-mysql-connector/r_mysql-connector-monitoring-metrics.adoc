@@ -17,7 +17,7 @@ Please refer to the xref:operations/monitoring.adoc[monitoring documentation] fo
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=<database.server.name>`.
 
-include::../../modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
 The {prodname} MySQL connector also provides the following custom snapshot metrics:
 
@@ -39,7 +39,7 @@ The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<dat
 
 NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
 
-include::../../modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
 The {prodname} MySQL connector also provides the following custom binlog metrics:
 
@@ -98,4 +98,4 @@ The {prodname} MySQL connector also provides the following custom binlog metrics
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=schema-history,server=<database.server.name>`.
 
-include::../../modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]

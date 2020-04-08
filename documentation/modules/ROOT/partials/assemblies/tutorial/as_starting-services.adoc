@@ -20,14 +20,14 @@ To start the services needed for this tutorial, you must:
 * xref:starting-mysql-command-line-client[Start a MySQL command line client]
 * xref:starting-kafka-connect[Start Kafka Connect]
 
-include::../../modules/tutorial/c_considerations-running-debezium-with-docker.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/c_considerations-running-debezium-with-docker.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_starting-zookeeper.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_starting-zookeeper.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_starting-kafka.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_starting-kafka.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_starting-mysql-database.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_starting-mysql-database.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_starting-mysql-command-line-client.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_starting-mysql-command-line-client.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/p_starting-kafka-connect.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_starting-kafka-connect.adoc[leveloffset=+1]

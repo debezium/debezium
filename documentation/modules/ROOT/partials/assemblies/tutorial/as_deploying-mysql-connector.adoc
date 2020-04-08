@@ -25,6 +25,6 @@ it will start monitoring the database server's `binlog` and it will generate cha
 +
 Reviewing the Kafka Connect log output as the connector starts helps you to better understand each task it must complete before it can start monitoring the `binlog`.
 
-include::../../modules/tutorial/p_registering-connector-monitor-inventory-database.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_registering-connector-monitor-inventory-database.adoc[leveloffset=+1]
 
-include::../../modules/tutorial/r_watching-connector-start-up.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/r_watching-connector-start-up.adoc[leveloffset=+1]
