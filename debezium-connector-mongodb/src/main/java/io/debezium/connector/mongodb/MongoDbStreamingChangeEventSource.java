@@ -135,7 +135,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 throw new ConnectException("Error while attempting to " + desc, error);
             }
             else {
-                dispatcher.dispatchMetadataEvent(new DisconnectEvent());
+                dispatcher.dispatchConnectorEvent(new DisconnectEvent());
                 LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
                 throw new ConnectException("Error while attempting to " + desc, error);
             }
@@ -275,7 +275,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             "Continue to process oplog event.", primaryAddress);
                 }
 
-                dispatcher.dispatchMetadataEvent(new PrimaryElectionEvent(serverAddress));
+                dispatcher.dispatchConnectorEvent(new PrimaryElectionEvent(serverAddress));
             }
             // Otherwise ignore
             if (LOGGER.isDebugEnabled()) {

@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.mongodb;
 
-import io.debezium.pipeline.MetadataEvent;
+import io.debezium.pipeline.ConnectorEvent;
 
 /**
  * An event that implies that a connection was lost or with the source database.
  *
  * @author Chris Cranford
  */
-public class DisconnectEvent implements MetadataEvent {
+public class DisconnectEvent implements ConnectorEvent {
 }

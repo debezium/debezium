@@ -231,7 +231,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 throw new ConnectException("Error while attempting to " + desc, error);
             }
             else {
-                dispatcher.dispatchMetadataEvent(new DisconnectEvent());
+                dispatcher.dispatchConnectorEvent(new DisconnectEvent());
                 LOGGER.error("Error while attempting to {}: ", desc, error.getMessage(), error);
                 throw new ConnectException("Error while attempting to " + desc, error);
             }

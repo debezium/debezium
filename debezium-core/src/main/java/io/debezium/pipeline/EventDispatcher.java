@@ -219,8 +219,8 @@ public class EventDispatcher<T extends DataCollectionId> {
         transactionMonitor.transactionStartedEvent(transactionId, offset);
     }
 
-    public void dispatchMetadataEvent(MetadataEvent event) {
-        eventListener.onMetadataEvent(event);
+    public void dispatchConnectorEvent(ConnectorEvent event) {
+        eventListener.onConnectorEvent(event);
     }
 
     public Optional<DataCollectionSchema> errorOnMissingSchema(T dataCollectionId, ChangeRecordEmitter changeRecordEmitter) {
