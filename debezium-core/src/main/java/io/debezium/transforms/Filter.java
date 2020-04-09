@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -34,6 +35,7 @@ import io.debezium.transforms.filter.Jsr223Engine;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
  */
+@Incubating
 public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Filter.class);
@@ -154,7 +156,7 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
             .withEnum(ExpressionLanguage.class)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("An expression language used to evaluate the filtering condition. Only 'groovy' is supported.");
+            .withDescription("An expression language used to evaluate the filtering condition. 'groovy' and 'graal.js' are supported.");
 
     public static final Field EXPRESSION = Field.create("condition")
             .withDisplayName("Filtering condition")

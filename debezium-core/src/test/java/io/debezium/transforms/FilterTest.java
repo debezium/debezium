@@ -5,6 +5,8 @@
  */
 package io.debezium.transforms;
 
+import static org.fest.assertions.Assertions.assertThat;
+
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,7 +15,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.fest.assertions.Assertions;
 import org.junit.Test;
 
 import io.debezium.DebeziumException;
@@ -89,8 +90,8 @@ public class FilterTest {
             props.put(LANGUAGE, "groovy");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
-            Assertions.assertThat(transform.apply(createDeleteRecord(2))).isNull();
-            Assertions.assertThat(transform.apply(record)).isSameAs(record);
+            assertThat(transform.apply(createDeleteRecord(2))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
         }
     }
 
@@ -102,7 +103,7 @@ public class FilterTest {
             props.put(LANGUAGE, "groovy");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
-            Assertions.assertThat(transform.apply(record)).isSameAs(record);
+            assertThat(transform.apply(record)).isSameAs(record);
         }
     }
 
@@ -115,7 +116,7 @@ public class FilterTest {
             props.put(NULL_HANDLING, "drop");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
-            Assertions.assertThat(transform.apply(record)).isNull();
+            assertThat(transform.apply(record)).isNull();
         }
     }
 
@@ -167,8 +168,8 @@ public class FilterTest {
             props.put(LANGUAGE, "graal.js");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
-            Assertions.assertThat(transform.apply(createDeleteRecord(2))).isNull();
-            Assertions.assertThat(transform.apply(record)).isSameAs(record);
+            assertThat(transform.apply(createDeleteRecord(2))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
         }
     }
 }
