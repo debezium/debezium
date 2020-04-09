@@ -602,11 +602,6 @@ public final class MySqlConnectorTask extends BaseSourceTask {
                 if (rs.next()) {
                     mode.set(rs.getString(2));
                 }
-                else {
-                    // This setting was introduced in MySQL 5.6+ with default of 'FULL'.
-                    // For older versions, assume 'FULL'.
-                    rowImage.set("FULL");
-                }
             });
         }
         catch (SQLException e) {
@@ -620,6 +615,11 @@ public final class MySqlConnectorTask extends BaseSourceTask {
             connectionContext.jdbc().query("SHOW GLOBAL VARIABLES LIKE 'binlog_row_image'", rs -> {
                 if (rs.next()) {
                     rowImage.set(rs.getString(2));
+                }
+                else {
+                    // This setting was introduced in MySQL 5.6+ with default of 'FULL'.
+                    // For older versions, assume 'FULL'.
+                    rowImage.set("FULL");
                 }
             });
         }
