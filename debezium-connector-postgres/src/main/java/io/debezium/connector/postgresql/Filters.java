@@ -9,12 +9,12 @@ package io.debezium.connector.postgresql;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 
 /**
@@ -26,7 +26,7 @@ import io.debezium.relational.Tables.TableFilter;
 public class Filters {
 
     protected static final List<String> SYSTEM_SCHEMAS = Arrays.asList("pg_catalog", "information_schema");
-    protected static final String SYSTEM_SCHEMA_BLACKLIST = SYSTEM_SCHEMAS.stream().collect(Collectors.joining(","));
+    protected static final String SYSTEM_SCHEMA_BLACKLIST = String.join(",", SYSTEM_SCHEMAS);
     protected static final Predicate<String> IS_SYSTEM_SCHEMA = SYSTEM_SCHEMAS::contains;
     protected static final String TEMP_TABLE_BLACKLIST = ".*\\.pg_temp.*";
 
@@ -63,8 +63,14 @@ public class Filters {
                 .excludeSchemas(schemaBlacklist)
                 .build());
 
-        // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-        this.columnFilter = ColumnNameFilter.getInstance(config.columnBlacklist());
+        String columnBlacklist = config.columnBlacklist();
+        if (columnBlacklist != null) {
+            // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
+            this.columnFilter = ColumnNameFilterFactory.createBlacklistFilter(config.columnBlacklist());
+        }
+        else {
+            this.columnFilter = ColumnNameFilterFactory.createWhitelistFilter(config.columnWhitelist());
+        }
     }
 
     protected TableFilter tableFilter() {

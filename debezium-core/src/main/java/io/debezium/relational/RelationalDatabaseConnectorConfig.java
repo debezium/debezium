@@ -181,6 +181,20 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.MEDIUM)
             .withDescription("");
 
+    /**
+     * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
+     * and change messages. The exact form of fully qualified names for columns might vary between connector types.
+     * For instance, they could be of the form {@code <databaseName>.<tableName>.<columnName>} or
+     * {@code <schemaName>.<tableName>.<columnName>} or {@code <databaseName>.<schemaName>.<tableName>.<columnName>}.
+     */
+    public static final Field COLUMN_WHITELIST = Field.create("column.whitelist")
+            .withDisplayName("Include Columns")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(RelationalDatabaseConnectorConfig::validateColumnBlacklist)
+            .withDescription("");
+
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
             .withType(Type.STRING)
@@ -317,6 +331,16 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     public Duration snapshotLockTimeout() {
         return Duration.ofMillis(getConfig().getLong(SNAPSHOT_LOCK_TIMEOUT_MS));
+    }
+
+    private static int validateColumnBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
+        String whitelist = config.getString(COLUMN_WHITELIST);
+        String blacklist = config.getString(COLUMN_BLACKLIST);
+        if (whitelist != null && blacklist != null) {
+            problems.accept(COLUMN_BLACKLIST, blacklist, "Column whitelist is already specified");
+            return 1;
+        }
+        return 0;
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, ValidationOutput problems) {

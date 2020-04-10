@@ -179,6 +179,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_WHITELIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.TABLE_BLACKLIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.COLUMN_BLACKLIST, null);
+        validateField(validatedConfig, PostgresConnectorConfig.COLUMN_WHITELIST, null);
         validateField(validatedConfig, PostgresConnectorConfig.MSG_KEY_COLUMNS, null);
         validateField(validatedConfig, PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
         validateField(validatedConfig, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
@@ -766,6 +767,26 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
                 "INSERT INTO s2.a (aa) VALUES (7);";
         TestHelper.execute(insertStmt);
         assertNoRecordsToConsume();
+    }
+
+    @Test
+    public void shouldTakeColumnWhitelistFilterIntoAccount() throws Exception {
+        String setupStmt = SETUP_TABLES_STMT +
+                "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                "ALTER TABLE s1.a ADD COLUMN bb integer;" +
+                "INSERT INTO s1.a (aa, bb) VALUES (2, 2);";
+
+        TestHelper.execute(setupStmt);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.COLUMN_WHITELIST, ".+aa");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> recordsForS1a = actualRecords.recordsForTopic(topicName("s1.a"));
+        recordsForS1a.forEach(record -> assertFieldAbsent(record, "bb"));
     }
 
     @Test

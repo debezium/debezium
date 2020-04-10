@@ -16,6 +16,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.util.Collect;
 
@@ -116,7 +117,7 @@ public class Filters {
                     config.getString(MySqlConnectorConfig.TABLE_BLACKLIST));
 
             // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-            this.columnFilter = ColumnNameFilter.getInstance(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
+            this.columnFilter = ColumnNameFilterFactory.createBlacklistFilter(config.getString(MySqlConnectorConfig.COLUMN_BLACKLIST));
         }
 
         /**
