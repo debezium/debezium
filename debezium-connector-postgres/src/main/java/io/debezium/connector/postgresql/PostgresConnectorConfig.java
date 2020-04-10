@@ -899,7 +899,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
             SCHEMA_WHITELIST,
             SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-            COLUMN_BLACKLIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
+            COLUMN_BLACKLIST, COLUMN_WHITELIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
             INTERVAL_HANDLING_MODE, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
             SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
             STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
@@ -1017,6 +1017,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(COLUMN_BLACKLIST);
     }
 
+    protected String columnWhitelist() {
+        return getConfig().getString(COLUMN_WHITELIST);
+    }
+
     protected Snapshotter getSnapshotter() {
         return this.snapshotMode.getSnapshotter(getConfig());
     }
@@ -1053,7 +1057,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                 DROP_SLOT_ON_STOP, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                COLUMN_BLACKLIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+                COLUMN_BLACKLIST, COLUMN_WHITELIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
                 INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, Heartbeat.HEARTBEAT_INTERVAL,
                 Heartbeat.HEARTBEAT_TOPICS_PREFIX, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,

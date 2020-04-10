@@ -593,7 +593,7 @@ Therefore, we interpret this key as describing the row in the `public.customers`
 
 [NOTE]
 ====
-Although the `column.blacklist` configuration property allows you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
+Although the `column.blacklist` and `column.whitelist` configuration properties allow you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
@@ -1754,6 +1754,11 @@ Only alphanumeric characters and underscores should be used.
 |`table.blacklist`
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
+
+|`column.whitelist`
+|
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_
+
 
 |`column.blacklist`
 |
