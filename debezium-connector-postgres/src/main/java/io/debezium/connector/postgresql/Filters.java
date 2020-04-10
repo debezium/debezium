@@ -63,13 +63,13 @@ public class Filters {
                 .excludeSchemas(schemaBlacklist)
                 .build());
 
-        String columnBlacklist = config.columnBlacklist();
-        if (columnBlacklist != null) {
-            // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
-            this.columnFilter = ColumnNameFilterFactory.createBlacklistFilter(config.columnBlacklist());
+        String columnWhitelist = config.columnWhitelist();
+        if (columnWhitelist != null) {
+            this.columnFilter = ColumnNameFilterFactory.createWhitelistFilter(config.columnWhitelist());
         }
         else {
-            this.columnFilter = ColumnNameFilterFactory.createWhitelistFilter(config.columnWhitelist());
+            // Define the filter that excludes blacklisted columns, truncated columns, and masked columns ...
+            this.columnFilter = ColumnNameFilterFactory.createBlacklistFilter(config.columnBlacklist());
         }
     }
 
