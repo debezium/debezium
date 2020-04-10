@@ -556,8 +556,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final int DEFAULT_MAX_RETRIES = 6;
     protected static final Duration DEFAULT_RETRY_DELAY = Duration.ofSeconds(10);
 
-    private static final String TABLE_WHITELIST_NAME = "table.whitelist";
-
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
             .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
@@ -716,33 +714,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription(
                     "A name of class to that creates SSL Sockets. Use org.postgresql.ssl.NonValidatingFactory to disable SSL validation in development environments");
-
-    /**
-     * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
-     * Fully-qualified names for tables are of the form {@code <schemaName>.<tableName>} or
-     * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_BLACKLIST}, and superseded by schema
-     * inclusions/exclusions.
-     */
-    public static final Field TABLE_WHITELIST = Field.create(TABLE_WHITELIST_NAME)
-            .withDisplayName("Tables")
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isListOfRegex)
-            .withDescription("The tables for which changes are to be captured");
-
-    /**
-     * A comma-separated list of regular expressions that match the fully-qualified names of tables to be excluded from
-     * monitoring. Fully-qualified names for tables are of the form {@code <schemaName>.<tableName>} or
-     * {@code <databaseName>.<schemaName>.<tableName>}. May not be used with {@link #TABLE_WHITELIST}.
-     */
-    public static final Field TABLE_BLACKLIST = Field.create("table.blacklist")
-            .withDisplayName("Exclude Tables")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.MEDIUM)
-            .withValidation(Field::isListOfRegex, PostgresConnectorConfig::validateTableBlacklist)
-            .withInvisibleRecommender();
 
     // TODO author=Horia Chiorean date=25/10/2016 description=PG 9.x logical decoding does not support schema changes
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")

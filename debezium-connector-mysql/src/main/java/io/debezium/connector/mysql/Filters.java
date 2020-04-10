@@ -16,8 +16,8 @@ import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
 import io.debezium.relational.Selectors;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.ColumnNameFilter;
+import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.util.Collect;
 
 /**
