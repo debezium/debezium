@@ -14,10 +14,6 @@
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
-*** xref:assemblies/cdc-mysql-connector/as_overview-of-how-the-mysql-connector-works.adoc[How It Works]
-*** xref:assemblies/cdc-mysql-connector/as_setup-the-mysql-server.adoc[Setup]
-*** xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc[Deployment]
-*** xref:assemblies/cdc-mysql-connector/as_connector-common-issues.adoc[Common Issues]
 ** xref:connectors/mongodb.adoc[MongoDB]
 ** xref:connectors/postgresql.adoc[PostgreSQL]
 ** xref:connectors/oracle.adoc[Oracle]
