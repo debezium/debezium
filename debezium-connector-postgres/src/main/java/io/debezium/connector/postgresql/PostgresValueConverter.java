@@ -9,6 +9,7 @@ package io.debezium.connector.postgresql;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -632,17 +633,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = ((PGobject) data).getValue();
         }
         if (data instanceof String) {
-            long longValue = Long.parseLong((String) data, 2);
-            // return the smallest possible value
-            if (Short.MIN_VALUE <= longValue && longValue <= Short.MAX_VALUE) {
-                data = (short) longValue;
-            }
-            else if (Integer.MIN_VALUE <= longValue && longValue <= Integer.MAX_VALUE) {
-                data = (int) longValue;
-            }
-            else {
-                data = longValue;
-            }
+            data = new BigInteger((String) data, 2).toByteArray();
         }
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
