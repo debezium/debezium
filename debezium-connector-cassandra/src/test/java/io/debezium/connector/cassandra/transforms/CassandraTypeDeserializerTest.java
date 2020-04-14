@@ -40,6 +40,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.MapType;
+import org.apache.cassandra.db.marshal.ReversedType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.db.marshal.ShortType;
 import org.apache.cassandra.db.marshal.SimpleDateType;
@@ -424,5 +425,19 @@ public class CassandraTypeDeserializerTest {
         Object deserializedUUID = CassandraTypeDeserializer.deserialize(UUIDType.instance, serializedUUID);
 
         Assert.assertEquals(expectedFixedUUID, deserializedUUID);
+    }
+
+    @Test
+    public void testReversedType() {
+        Date timestamp = new Date();
+        Long expectedLongTimestamp = timestamp.getTime();
+
+        ByteBuffer serializedTimestamp = TimestampType.instance.decompose(timestamp);
+
+        ReversedType reversedTimeStampType = ReversedType.getInstance(TimestampType.instance);
+
+        Object deserializedTimestamp = CassandraTypeDeserializer.deserialize(reversedTimeStampType, serializedTimestamp);
+
+        Assert.assertEquals(expectedLongTimestamp, deserializedTimestamp);
     }
 }

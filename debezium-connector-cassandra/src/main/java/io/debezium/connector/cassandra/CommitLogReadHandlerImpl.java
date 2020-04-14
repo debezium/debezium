@@ -409,7 +409,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 after.addCell(cellData);
             }
             catch (Exception e) {
-                LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
+                LOGGER.debug("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
                         cd.name.toString(), cd.type, cd.cfName, cd.ksName);
                 throw e;
             }
@@ -428,7 +428,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                     after.addCell(cellData);
                 }
                 catch (Exception e) {
-                    LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
+                    LOGGER.debug("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
                             cd.name.toString(), cd.type, cd.cfName, cd.ksName);
                     throw e;
                 }
@@ -471,7 +471,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                 values.add(value);
             }
             catch (Exception e) {
-                LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
+                LOGGER.debug("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
                         cs.name.toString(), cs.type, cs.cfName, cs.ksName);
                 throw e;
             }
@@ -506,7 +506,7 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
                     values.add(value);
                 }
                 catch (Exception e) {
-                    LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}",
+                    LOGGER.debug("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}",
                             cs.name.toString(), cs.type, cs.cfName, cs.ksName);
                     throw e;
                 }
