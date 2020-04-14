@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -30,6 +31,10 @@ import org.hibernate.boot.spi.AdditionalJaxbMappingProducer;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.jboss.jandex.IndexView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.DebeziumException;
 
 /**
  * An {@link AdditionalJaxbMappingProducer} implementation that provides Hibernate ORM
@@ -39,14 +44,22 @@ import org.jboss.jandex.IndexView;
  * @author Chris Cranford
  */
 public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingProducer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalJaxbMappingProducerImpl.class);
+
     @Override
     public Collection<MappingDocument> produceAdditionalMappings(MetadataImplementor metadata,
                                                                  IndexView jandexIndex,
                                                                  MappingBinder mappingBinder,
                                                                  MetadataBuildingContext buildingContext) {
         final Origin origin = new Origin(SourceType.FILE, OUTBOX_ENTITY_HBMXML);
-        try {
-            final InputStream stream = getClass().getResourceAsStream("/" + OUTBOX_ENTITY_HBMXML);
+
+        try (InputStream stream = getOutboxHbmXmlStream()) {
+            if (stream == null) {
+                LOGGER.error("Failed to locate OutboxEvent.hbm.xml on classpath");
+                return Collections.emptyList();
+            }
+
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 final Writer writer = new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
@@ -66,8 +79,20 @@ public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingP
                 }
             }
         }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to submit OutboxEvent.hbm.xml mapping to Hibernate ORM", e);
+        catch (IOException e) {
+            throw new DebeziumException("Failed to read OutboxEvent.hbm.xml", e);
         }
+    }
+
+    private InputStream getOutboxHbmXmlStream() {
+        // Attempt to load the XML using the current context class loader, needed for quarkus:dev
+        final ClassLoader currentThreadClassLoader = Thread.currentThread().getContextClassLoader();
+        final InputStream stream = currentThreadClassLoader.getResourceAsStream("/" + OUTBOX_ENTITY_HBMXML);
+        if (stream != null) {
+            return stream;
+        }
+
+        // Attempt to load the XML using the current class loader
+        return getClass().getResourceAsStream("/" + OUTBOX_ENTITY_HBMXML);
     }
 }
