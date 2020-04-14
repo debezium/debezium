@@ -28,7 +28,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
+import io.debezium.util.DelayStrategy;
 
 /**
  *
@@ -59,7 +59,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final ReplicationConnection replicationConnection;
     private final AtomicReference<ReplicationStream> replicationStream = new AtomicReference<>();
     private final Snapshotter snapshotter;
-    private final Metronome pauseNoMessage;
+    private final DelayStrategy pauseNoMessage;
     private final boolean hasStartLsnStoredInContext;
 
     /**
@@ -82,7 +82,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
         // instead of the last position in the database
         this.hasStartLsnStoredInContext = (offsetContext != null);
-        pauseNoMessage = Metronome.sleeper(taskContext.getConfig().getPollInterval(), Clock.SYSTEM);
+        pauseNoMessage = DelayStrategy.constant(taskContext.getConfig().getPollInterval().toMillis());
         this.taskContext = taskContext;
         this.snapshotter = snapshotter;
         this.replicationConnection = replicationConnection;
@@ -119,8 +119,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
+            int noMessageIterations = 0;
             while (context.isRunning()) {
-                int noMessageIterations = 0;
 
                 boolean receivedMessage = stream.readPending(message -> {
                     final Long lsn = stream.lastReceivedLsn();
@@ -188,7 +188,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     noMessageIterations++;
                     if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                         noMessageIterations = 0;
-                        pauseNoMessage.pause();
+                        pauseNoMessage.sleepWhen(true);
                     }
                 }
             }
