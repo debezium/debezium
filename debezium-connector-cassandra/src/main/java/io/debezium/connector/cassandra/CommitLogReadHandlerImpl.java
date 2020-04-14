@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.config.ColumnDefinition;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.db.LivenessInfo;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.commitlog.CommitLogDescriptor;
@@ -402,9 +403,16 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
     private void populateClusteringColumns(RowData after, Row row, PartitionUpdate pu) {
         for (ColumnDefinition cd : pu.metadata().clusteringColumns()) {
             String name = cd.name.toString();
-            Object value = CassandraTypeDeserializer.deserialize(cd.type, row.clustering().get(cd.position()));
-            CellData cellData = new CellData(name, value, null, CellData.ColumnType.CLUSTERING);
-            after.addCell(cellData);
+            try {
+                Object value = CassandraTypeDeserializer.deserialize(cd.type, row.clustering().get(cd.position()));
+                CellData cellData = new CellData(name, value, null, CellData.ColumnType.CLUSTERING);
+                after.addCell(cellData);
+            }
+            catch (Exception e) {
+                LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
+                        cd.name.toString(), cd.type, cd.cfName, cd.ksName);
+                throw e;
+            }
         }
     }
 
@@ -413,10 +421,17 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             for (ColumnDefinition cd : row.columns()) {
                 org.apache.cassandra.db.rows.Cell cell = row.getCell(cd);
                 String name = cd.name.toString();
-                Object value = cell.isTombstone() ? null : CassandraTypeDeserializer.deserialize(cd.type, cell.value());
-                Object deletionTs = cell.isExpiring() ? TimeUnit.MICROSECONDS.convert(cell.localDeletionTime(), TimeUnit.SECONDS) : null;
-                CellData cellData = new CellData(name, value, deletionTs, CellData.ColumnType.REGULAR);
-                after.addCell(cellData);
+                try {
+                    Object value = cell.isTombstone() ? null : CassandraTypeDeserializer.deserialize(cd.type, cell.value());
+                    Object deletionTs = cell.isExpiring() ? TimeUnit.MICROSECONDS.convert(cell.localDeletionTime(), TimeUnit.SECONDS) : null;
+                    CellData cellData = new CellData(name, value, deletionTs, CellData.ColumnType.REGULAR);
+                    after.addCell(cellData);
+                }
+                catch (Exception e) {
+                    LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
+                            cd.name.toString(), cd.type, cd.cfName, cd.ksName);
+                    throw e;
+                }
             }
 
         }
@@ -449,9 +464,17 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
         // simple partition key
         if (columnDefinitions.size() == 1) {
             ByteBuffer bb = pu.partitionKey().getKey();
-            AbstractType<?> type = columnDefinitions.get(0).type;
-            Object value = CassandraTypeDeserializer.deserialize(type, bb);
-            values.add(value);
+            ColumnSpecification cs = columnDefinitions.get(0);
+            AbstractType<?> type = cs.type;
+            try {
+                Object value = CassandraTypeDeserializer.deserialize(type, bb);
+                values.add(value);
+            }
+            catch (Exception e) {
+                LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}.",
+                        cs.name.toString(), cs.type, cs.cfName, cs.ksName);
+                throw e;
+            }
 
             // composite partition key
         }
@@ -475,11 +498,18 @@ public class CommitLogReadHandlerImpl implements CommitLogReadHandler {
             // this section reads the bytes for each column and deserialize into objects based on each column type
             int i = 0;
             while (keyBytes.remaining() > 0 && i < columnDefinitions.size()) {
-                AbstractType<?> type = columnDefinitions.get(i).type;
+                ColumnSpecification cs = columnDefinitions.get(i);
+                AbstractType<?> type = cs.type;
                 ByteBuffer bb = ByteBufferUtil.readBytesWithShortLength(keyBytes);
-                Object value = CassandraTypeDeserializer.deserialize(type, bb);
-                values.add(value);
-
+                try {
+                    Object value = CassandraTypeDeserializer.deserialize(type, bb);
+                    values.add(value);
+                }
+                catch (Exception e) {
+                    LOGGER.error("Failed to deserialize Column {} with Type {} in Table {} and KeySpace {}",
+                            cs.name.toString(), cs.type, cs.cfName, cs.ksName);
+                    throw e;
+                }
                 byte b = keyBytes.get();
                 if (b != 0) {
                     break;

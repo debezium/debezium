@@ -25,6 +25,7 @@ import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.ListType;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.db.marshal.MapType;
+import org.apache.cassandra.db.marshal.ReversedType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.db.marshal.ShortType;
 import org.apache.cassandra.db.marshal.SimpleDateType;
@@ -116,6 +117,11 @@ public final class CassandraTypeDeserializer {
     public static Object deserialize(AbstractType<?> abstractType, ByteBuffer bb) {
         if (bb == null) {
             return null;
+        }
+
+        // Check if abstract type is reversed, if yes, use the base type for deserialization.
+        if (abstractType.isReversed()) {
+            abstractType = ((ReversedType) abstractType).baseType;
         }
 
         TypeDeserializer typeDeserializer = TYPE_MAP.get(abstractType.getClass());
