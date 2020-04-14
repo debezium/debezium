@@ -3,12 +3,14 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.mongodb;
+package io.debezium.connector.mongodb.metrics;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.mongodb.DisconnectEvent;
 import io.debezium.pipeline.ConnectorEvent;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -16,6 +18,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 /**
  * @author Chris Cranford
  */
+@ThreadSafe
 public class MongoDbSnapshotChangeEventSourceMetrics extends SnapshotChangeEventSourceMetrics implements MongoDbSnapshotChangeEventSourceMetricsMBean {
 
     private AtomicLong numberOfDisconnects = new AtomicLong();
