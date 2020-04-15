@@ -17,7 +17,7 @@ public interface Engine {
     /**
      * Pre-compiles the expression for repeated execution.
      * The method is called once upon the engine initialization.
-     * 
+     *
      * @param expression
      */
     void configure(String language, String expression);
@@ -26,7 +26,7 @@ public interface Engine {
      * Evaluates whether the record should be filtered out or not by executing the expression.
      *
      * @param record to be evaluated
-     * @return true to remove the record, false to keep it
+     * @return true to keep the record, false to remove it
      */
     boolean eval(ConnectRecord<?> record);
 }

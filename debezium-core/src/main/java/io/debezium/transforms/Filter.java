@@ -174,7 +174,7 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
                 return null;
             }
         }
-        return engine.eval(record) ? null : record;
+        return engine.eval(record) ? record : null;
     }
 
     @Override

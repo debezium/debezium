@@ -48,7 +48,7 @@ public class FilterTest {
     public void testLanguageRequired() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "operation == 'd'");
+            props.put(EXPRESSION, "operation != 'd'");
             transform.configure(props);
         }
     }
@@ -66,7 +66,7 @@ public class FilterTest {
     public void shouldFailOnUnkownLanguage() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "operation == 'd'");
+            props.put(EXPRESSION, "operation != 'd'");
             props.put(LANGUAGE, "jsr223.jython");
             transform.configure(props);
         }
@@ -76,7 +76,7 @@ public class FilterTest {
     public void shouldFailToParseCondition() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "operation == 'd");
+            props.put(EXPRESSION, "operation != 'd");
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
         }
@@ -86,7 +86,7 @@ public class FilterTest {
     public void shouldProcessCondition() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
+            props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
@@ -99,7 +99,7 @@ public class FilterTest {
     public void shouldKeepNulls() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
+            props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
@@ -111,7 +111,7 @@ public class FilterTest {
     public void shouldDropNulls() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
+            props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
             props.put(NULL_HANDLING, "drop");
             transform.configure(props);
@@ -124,7 +124,7 @@ public class FilterTest {
     public void shouldEvaluateNulls() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
+            props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.groovy");
             props.put(NULL_HANDLING, "evaluate");
             transform.configure(props);
@@ -164,7 +164,7 @@ public class FilterTest {
     public void shouldRunJavaScript() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "value.get('op') == 'd' && value.get('before').get('id') == 2");
+            props.put(EXPRESSION, "value.get('op') != 'd' || value.get('before').get('id') != 2");
             props.put(LANGUAGE, "jsr223.graal.js");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
