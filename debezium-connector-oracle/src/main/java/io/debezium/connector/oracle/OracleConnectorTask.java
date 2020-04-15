@@ -21,6 +21,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.TopicSelector;
@@ -84,6 +85,7 @@ public class OracleConnectorTask extends BaseSourceTask {
                 OracleConnector.class,
                 connectorConfig,
                 new OracleChangeEventSourceFactory(connectorConfig, jdbcConnection, errorHandler, dispatcher, clock, schema),
+                new DefaultChangeEventSourceMetricsFactory(),
                 dispatcher,
                 schema);
 
