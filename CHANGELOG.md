@@ -2,6 +2,66 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 1.2.0.Alpha1
+April 16th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12344691)
+
+### New features since 1.1.0.Final
+
+* Expose original value for PK updates [DBZ-1531](https://issues.redhat.com/browse/DBZ-1531)
+* New column masking mode: consistent hashing [DBZ-1692](https://issues.redhat.com/browse/DBZ-1692)
+* Provide a filtering SMT [DBZ-1782](https://issues.redhat.com/browse/DBZ-1782)
+* Support converters for embedded engine [DBZ-1807](https://issues.redhat.com/browse/DBZ-1807)
+* Enhance MongoDB connector metrics [DBZ-1859](https://issues.redhat.com/browse/DBZ-1859)
+* SQL Server connector: support reconnect after the database connection is broken [DBZ-1882](https://issues.redhat.com/browse/DBZ-1882)
+* Support SMTs in embedded engine [DBZ-1930](https://issues.redhat.com/browse/DBZ-1930)
+* Snapshot metrics shows TotalNumberOfEventsSeen as zero [DBZ-1932](https://issues.redhat.com/browse/DBZ-1932)
+
+
+### Breaking changes since 1.1.0.Final
+
+* Remove deprecated connector option value "initial_schema_only" [DBZ-1945](https://issues.redhat.com/browse/DBZ-1945)
+* Remove deprecated unwrap SMTs [DBZ-1968](https://issues.redhat.com/browse/DBZ-1968)
+
+
+### Fixes since 1.1.0.Final
+
+* java.lang.IllegalArgumentException: Timestamp format must be yyyy-mm-dd hh:mm:ss[.fffffffff] [DBZ-1744](https://issues.redhat.com/browse/DBZ-1744)
+* Snapshot lock timeout setting is not documented [DBZ-1914](https://issues.redhat.com/browse/DBZ-1914)
+* AvroRuntimeException when publishing transaction metadata [DBZ-1915](https://issues.redhat.com/browse/DBZ-1915)
+* Connector restart logic throttles for the first 2 seconds [DBZ-1918](https://issues.redhat.com/browse/DBZ-1918)
+* Wal2json empty change event could cause NPE above version 1.0.3.final [DBZ-1922](https://issues.redhat.com/browse/DBZ-1922)
+* Misleading error message on lost database connection [DBZ-1926](https://issues.redhat.com/browse/DBZ-1926)
+* Cassandra CDC should not move and delete processed commitLog file under testing mode [DBZ-1927](https://issues.redhat.com/browse/DBZ-1927)
+* Broken internal links and anchors in documentation [DBZ-1935](https://issues.redhat.com/browse/DBZ-1935)
+* Dokumentation files in modules create separate pages, should be partials instead [DBZ-1944](https://issues.redhat.com/browse/DBZ-1944)
+* Validation of binlog_row_image is not compatible with MySQL 5.5 [DBZ-1950](https://issues.redhat.com/browse/DBZ-1950)
+* High CPU usage when idle [DBZ-1960](https://issues.redhat.com/browse/DBZ-1960)
+* Outbox Quarkus Extension throws NPE in quarkus:dev mode [DBZ-1966](https://issues.redhat.com/browse/DBZ-1966)
+* Cassandra Connector: unable to deserialize column mutation with reversed type [DBZ-1967](https://issues.redhat.com/browse/DBZ-1967)
+
+
+### Other changes since 1.1.0.Final
+
+* Replace Custom CassandraTopicSelector with DBZ's TopicSelector class in Cassandra Connector [DBZ-1407](https://issues.redhat.com/browse/DBZ-1407)
+* Improve documentation on WAL disk space usage for Postgres connector [DBZ-1732](https://issues.redhat.com/browse/DBZ-1732)
+* Outbox Quarkus Extension: Update version of extension used by demo [DBZ-1786](https://issues.redhat.com/browse/DBZ-1786)
+* Community newsletter 1/2020 [DBZ-1806](https://issues.redhat.com/browse/DBZ-1806)
+* Remove obsolete SnapshotChangeRecordEmitter [DBZ-1898](https://issues.redhat.com/browse/DBZ-1898)
+* Fix typo in Quarkus Outbox extension documentation [DBZ-1902](https://issues.redhat.com/browse/DBZ-1902)
+* Update schema change topic section of SQL Server connector doc [DBZ-1903](https://issues.redhat.com/browse/DBZ-1903)
+* Log warning about insufficient retention time for DB history topic [DBZ-1905](https://issues.redhat.com/browse/DBZ-1905)
+* Documentation should link to Apache Kafka upstream docs [DBZ-1906](https://issues.redhat.com/browse/DBZ-1906)
+* The error messaging around binlog configuration is missleading [DBZ-1911](https://issues.redhat.com/browse/DBZ-1911)
+* Restore documentation of MySQL event structures [DBZ-1919](https://issues.redhat.com/browse/DBZ-1919)
+* Link from monitoring page to connector-specific metrics [DBZ-1920](https://issues.redhat.com/browse/DBZ-1920)
+* Update snapshot.mode options in SQL Server documentation [DBZ-1924](https://issues.redhat.com/browse/DBZ-1924)
+* Update build and container images to Apache Kafka 2.4.1 [DBZ-1925](https://issues.redhat.com/browse/DBZ-1925)
+* Avoid Thread#sleep() calls in Oracle connector tests [DBZ-1942](https://issues.redhat.com/browse/DBZ-1942)
+* Different versions of Jackson components pulled in as dependencies [DBZ-1943](https://issues.redhat.com/browse/DBZ-1943)
+* Add docs for mask column and truncate column features [DBZ-1954](https://issues.redhat.com/browse/DBZ-1954)
+* Upgrade MongoDB driver to 3.12.3 [DBZ-1958](https://issues.redhat.com/browse/DBZ-1958)
+
+
 
 ## 1.1.0.Final
 March 23rd, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12344981)
