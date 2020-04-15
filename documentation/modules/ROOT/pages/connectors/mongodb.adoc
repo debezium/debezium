@@ -633,6 +633,18 @@ The *MBean* is `debezium.mongodb:type=connector-metrics,context=snapshot,server=
 
 include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
 
+The {prodname} MongoDB connector also provides the following custom snapshot metrics:
+
+[cols="3,2,5"]
+|===
+|Attribute |Type |Description
+
+|`NumberOfDisconnects`
+|`long`
+|Number of database disconnects.
+
+|===
+
 [[monitoring-streaming]]
 [[streaming-metrics]]
 ==== Streaming Metrics
@@ -640,6 +652,22 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapsho
 The *MBean* is `debezium.sql_server:type=connector-metrics,context=streaming,server=_<mongodb.name>_`.
 
 include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+The {prodname} MongoDB connector also provides the following custom streaming metrics:
+
+[cols="3,2,5"]
+|===
+|Attribute |Type |Description
+
+|`NumberOfDisconnects`
+|`long`
+|Number of database disconnects.
+
+|`NumberOfPrimaryElections`
+|`long`
+|Number of primary node elections.
+
+|===
 
 [[mongodb-connector-properties]]
 === Connector properties
