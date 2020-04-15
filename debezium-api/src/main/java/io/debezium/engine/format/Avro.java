@@ -10,5 +10,5 @@ import io.debezium.engine.ChangeEventFormat;
 /**
  * A {@link ChangeEventFormat} defining the Avro format serialized as byte[].
  */
-public class Avro implements ChangeEventFormat<Change<byte[]>> {
+public class Avro implements ChangeEventFormat<ChangeEvent<byte[]>> {
 }

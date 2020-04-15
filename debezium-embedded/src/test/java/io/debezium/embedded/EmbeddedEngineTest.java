@@ -33,7 +33,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.format.Change;
+import io.debezium.engine.format.ChangeEvent;
 import io.debezium.engine.format.Json;
 import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
@@ -318,7 +318,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("transforms.router.replacement", "trf$1");
 
         // create an engine with our custom class
-        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+        DebeziumEngine.create(Connect.class)
                 .using(props)
                 .notifying((records, committer) -> {
                 })
@@ -327,6 +327,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1807")
     public void shouldRunDebeziumEngineWithJson() throws Exception {
         // Add initial content to the file ...
         appendLinesToSource(NUMBER_OF_LINES);
@@ -344,15 +345,15 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        final DebeziumEngine<Change<String>> engine = DebeziumEngine.create(Json.class)
+        final DebeziumEngine<ChangeEvent<String>> engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (Change<String> r : records) {
-                        Assertions.assertThat(r.key).isNull();
-                        Assertions.assertThat(r.value).startsWith("\"Generated line number ");
+                    for (ChangeEvent<String> r : records) {
+                        Assertions.assertThat(r.key()).isNull();
+                        Assertions.assertThat(r.value()).startsWith("\"Generated line number ");
                         committer.markProcessed(r);
                     }
 
