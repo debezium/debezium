@@ -10,5 +10,5 @@ import io.debezium.engine.ChangeEventFormat;
 /**
  * A {@link ChangeEventFormat} defining the JSON format serialized as String.
  */
-public class CloudEvents implements ChangeEventFormat<Change<String>> {
+public class CloudEvents implements ChangeEventFormat<ChangeEvent<String>> {
 }

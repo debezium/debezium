@@ -26,7 +26,7 @@ import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.engine.format.Avro;
-import io.debezium.engine.format.Change;
+import io.debezium.engine.format.ChangeEvent;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -168,12 +168,12 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
             toFormat = (record) -> {
                 final byte[] key = keyConverter.fromConnectData(TOPIC_NAME, record.keySchema(), record.key());
                 final byte[] value = valueConverter.fromConnectData(TOPIC_NAME, record.valueSchema(), record.value());
-                return (R) new Change<String>(
+                return (R) new ChangeEvent<String>(
                         key != null ? new String(key) : null,
                         value != null ? new String(value) : null,
                         record);
             };
-            fromFormat = (record) -> (SourceRecord) ((Change<String>) record).reference();
+            fromFormat = (record) -> (SourceRecord) ((ChangeEvent<String>) record).reference();
         }
 
         return new DebeziumEngine<R>() {
