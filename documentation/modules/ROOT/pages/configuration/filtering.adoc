@@ -91,7 +91,7 @@ In case of `Grovy` the value fields can be accessed in a property-like way, inst
 
 |`condition`
 |
-|The expression evaluated for every message. Must evaluate to a boolean value where a result of `true` will filter out the message.
+|The expression evaluated for every message. Must evaluate to a boolean value where a result of `true` will keep the message, and a result of `false` will remove it.
 
 |`null.handling.mode`
 |`keep`
