@@ -71,18 +71,8 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
     }
 
     @Override
-    public long getSecondsSinceLastEvent() {
-        return this.stats.getSecondsSinceLastEvent();
-    }
-
-    @Override
     public long getMilliSecondsSinceLastEvent() {
         return this.stats.getSecondsSinceLastEvent() * 1000;
-    }
-
-    @Override
-    public long getSecondsBehindMaster() {
-        return this.stats.getSecondsBehindMaster();
     }
 
     @Override
@@ -162,7 +152,7 @@ class BinlogReaderMetrics extends PipelineMetrics implements BinlogReaderMetrics
 
     @Override
     public long getMilliSecondsBehindSource() {
-        return getSecondsBehindMaster() * 1000;
+        return this.stats.getSecondsBehindMaster() * 1000;
     }
 
     @Override
