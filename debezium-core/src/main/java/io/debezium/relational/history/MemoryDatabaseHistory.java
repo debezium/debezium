@@ -40,6 +40,11 @@ public final class MemoryDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
+    public boolean storageExists() {
+        return true;
+    }
+
+    @Override
     public boolean exists() {
         return records != null;
     }

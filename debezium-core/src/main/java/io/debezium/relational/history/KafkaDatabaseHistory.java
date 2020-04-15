@@ -341,12 +341,18 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
+    public boolean storageExists() {
+        // Check if the topic exists in the list of all topics
+        try (KafkaConsumer<String, String> checkTopicConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
+            return checkTopicConsumer.listTopics().containsKey(topicName);
+        }
+    }
+
+    @Override
     public boolean exists() {
         boolean exists = false;
-
-        try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
-            // First, check if the topic exists in the list of all topics
-            if (historyConsumer.listTopics().keySet().contains(topicName)) {
+        if (storageExists()) {
+            try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties());) {
                 checkTopicSettings(topicName);
                 // check if the topic is empty
                 Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
@@ -360,7 +366,6 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                 exists = endOffset > beginOffset;
             }
         }
-
         return exists;
     }
 

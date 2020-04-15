@@ -296,4 +296,35 @@ public class KafkaDatabaseHistoryTest {
         // dummytopic should not exist yet
         assertFalse(history.exists());
     }
+
+    @Test
+    public void differentiateStorageExistsFromHistoryExists() {
+        Configuration config = Configuration.create()
+                .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
+                .with(KafkaDatabaseHistory.TOPIC, topicName)
+                .with(DatabaseHistory.NAME, "my-db-history")
+                .with(KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, 500)
+                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                        ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG),
+                        100)
+                .with(KafkaDatabaseHistory.consumerConfigPropertyName(
+                        ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
+                        50000)
+                .build();
+
+        history.configure(config, null, DatabaseHistoryMetrics.NOOP, true);
+
+        assertFalse(history.storageExists());
+        history.initializeStorage();
+        assertTrue(history.storageExists());
+
+        assertFalse(history.exists());
+        history.start();
+        setLogPosition(0);
+        ddl = "CREATE TABLE foo ( name VARCHAR(255) NOT NULL PRIMARY KEY); \n" +
+                "CREATE TABLE customers ( id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(100) NOT NULL ); \n" +
+                "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, desc VARCHAR(255) NOT NULL); \n";
+        history.record(source, position, "db1", ddl);
+        assertTrue(history.exists());
+    }
 }
