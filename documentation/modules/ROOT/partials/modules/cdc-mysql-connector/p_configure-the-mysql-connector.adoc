@@ -8,7 +8,7 @@
 Typically, you configure the {prodname} MySQL connector in a `JSON` file using the configuration properties available for the connector.
 
 .Prerequisites
-* You should have completed the xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#install-the-mysql-connector_{context}[installation process] for the connector.
+* You should have completed the xref:connectors/mysql.adoc#install-the-mysql-connector_{context}[installation process] for the connector.
 
 
 .Procedure
@@ -16,7 +16,7 @@ Typically, you configure the {prodname} MySQL connector in a `JSON` file using t
 . Set the `"name"` of the connector in the JSON file.
 . Set the configuration properties that you require for your {prodname} MySQL connector.
 
-TIP: For a complete list of configuration properties, see xref:assemblies/cdc-mysql-connector/as_deploy-the-mysql-connector.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
+TIP: For a complete list of configuration properties, see xref:connectors/mysql.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties].
 
 .MySQL connector example configuration
 =========
