@@ -268,7 +268,9 @@ public class MySqlSchema extends RelationalDatabaseSchema {
      * Initialize permanent storage for database history
      */
     public void intializeHistoryStorage() {
-        dbHistory.initializeStorage();
+        if (!dbHistory.storageExists()) {
+            dbHistory.initializeStorage();
+        }
     }
 
     /**

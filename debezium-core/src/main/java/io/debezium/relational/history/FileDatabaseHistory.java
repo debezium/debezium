@@ -68,13 +68,14 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
         super.start();
         lock.write(() -> {
             if (running.compareAndSet(false, true)) {
+                // todo: move to initializeStorage()
                 Path path = this.path;
                 if (path == null) {
                     throw new IllegalStateException("FileDatabaseHistory must be configured before it is started");
                 }
                 try {
                     // Make sure the file exists ...
-                    if (!Files.exists(path)) {
+                    if (!storageExists()) {
                         // Create parent directories if we have them ...
                         if (path.getParent() != null) {
                             Files.createDirectories(path.getParent());
@@ -152,8 +153,13 @@ public final class FileDatabaseHistory extends AbstractDatabaseHistory {
     }
 
     @Override
-    public boolean exists() {
+    public boolean storageExists() {
         return Files.exists(path);
+    }
+
+    @Override
+    public boolean exists() {
+        return storageExists();
     }
 
     @Override

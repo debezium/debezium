@@ -59,7 +59,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
      */
     @Override
     public void initializeStorage() {
-        if (!databaseHistory.exists()) {
+        if (!databaseHistory.storageExists()) {
             databaseHistory.initializeStorage();
         }
     }

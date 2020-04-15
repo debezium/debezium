@@ -134,6 +134,13 @@ public interface DatabaseHistory {
     boolean exists();
 
     /**
+     * Determines if the underlying storage exists.
+     * Note: storage may exists while history entities not yet written, see {@link #exists()}
+     * @return
+     */
+    boolean storageExists();
+
+    /**
      * Called to initialize permanent storage of the history.
      */
     void initializeStorage();
