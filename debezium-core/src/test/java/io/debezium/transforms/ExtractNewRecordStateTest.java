@@ -307,19 +307,6 @@ public class ExtractNewRecordStateTest {
     }
 
     @Test
-    @FixFor("DBZ-677")
-    public void canUseDeprecatedSmt() {
-        try (final UnwrapFromEnvelope<SourceRecord> transform = new UnwrapFromEnvelope<>()) {
-            final Map<String, String> props = new HashMap<>();
-            transform.configure(props);
-
-            final SourceRecord createRecord = createCreateRecord();
-            final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
-        }
-    }
-
-    @Test
     public void testAddSourceField() {
         try (final ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
