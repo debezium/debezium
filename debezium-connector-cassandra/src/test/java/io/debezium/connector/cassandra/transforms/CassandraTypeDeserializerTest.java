@@ -59,6 +59,8 @@ import org.junit.Test;
 
 import com.datastax.driver.core.DataType;
 
+import io.debezium.doc.FixFor;
+
 /**
  * This class ONLY tests the {@link CassandraTypeDeserializer#deserialize(AbstractType, ByteBuffer)}
  * method because the {@link CassandraTypeDeserializer#deserialize(DataType, ByteBuffer)} calls
@@ -428,13 +430,14 @@ public class CassandraTypeDeserializerTest {
     }
 
     @Test
+    @FixFor("DBZ-1967")
     public void testReversedType() {
         Date timestamp = new Date();
         Long expectedLongTimestamp = timestamp.getTime();
 
         ByteBuffer serializedTimestamp = TimestampType.instance.decompose(timestamp);
 
-        ReversedType reversedTimeStampType = ReversedType.getInstance(TimestampType.instance);
+        ReversedType<?> reversedTimeStampType = ReversedType.getInstance(TimestampType.instance);
 
         Object deserializedTimestamp = CassandraTypeDeserializer.deserialize(reversedTimeStampType, serializedTimestamp);
 
