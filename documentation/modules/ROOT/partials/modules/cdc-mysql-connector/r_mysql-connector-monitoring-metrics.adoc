@@ -63,14 +63,6 @@ The {prodname} MySQL connector also provides the following custom binlog metrics
 |`string`
 |The string representation of the most recent GTID set seen by the connector when reading the binlog.
 
-|`SecondsSinceLastEvent` (obsolete)
-|`long`
-|The number of seconds since the connector has read and processed the most recent event.
-
-|`SecondsBehindMaster` (obsolete)
-|`long`
-|The number of seconds between the last event's MySQL timestamp and the connector processing it. The values will incorporate any differences between the clocks on the machines where the MySQL server and the MySQL connector are running.
-
 |`NumberOfSkippedEvents`
 |`long`
 |The number of events that have been skipped by the MySQL connector.  Typically events are skipped due to a malformed or unparseable event from MySQL's binlog.

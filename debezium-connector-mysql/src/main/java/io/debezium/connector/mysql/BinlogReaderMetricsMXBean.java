@@ -29,17 +29,6 @@ public interface BinlogReaderMetricsMXBean extends StreamingChangeEventSourceMet
     String getGtidSet();
 
     /**
-     * Tracks the number of seconds since last MySQL binlog event was processed by underlying mysql-binlog-client.
-     */
-    long getSecondsSinceLastEvent();
-
-    /**
-     * Tracks the number of seconds between "now" and when the last processed MySQL binlog event was originally written
-     * to the MySQL server.
-     */
-    long getSecondsBehindMaster();
-
-    /**
      * Tracks the number of events skipped by underlying mysql-binlog-client, generally due to the client
      * being unable to properly deserialize the event.
      */
