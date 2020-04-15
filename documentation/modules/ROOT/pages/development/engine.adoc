@@ -249,7 +249,8 @@ Although the `DebeziumEngine` will indeed terminate when its thread is interrupt
 
 [[output-message-formats]]
 == Output Message Formats
-`DebeziumEngine.create` can accept multiple different parameters that affect the format in which the messages are received by the consumer.
+
+`DebeziumEngine#create()` can accept multiple different parameters that affect the format in which the messages are received by the consumer.
 Allowed values are
 
 * `Connect.class` - the output value is Kafka Connect's `SourceRecord`
@@ -257,7 +258,7 @@ Allowed values are
 * `Avro.class` - the output value is a pair of key and value encoded as Avro serialized records
 * `CloudEvents.class` - the output value is a pair of key and value encoded as xref:integrations/cloudevents.adoc[Cloud Events] messages
 
-Internally the engine uses apropriate implementations of Connect converter to wich the conversion is delegated.
+Internally, the engine uses the apropriate Kafka Connect converter implementation to which the conversion is delegated.
 The convertor can be parametrized using engine properties to modify its behaviour.
 
 An example of `JSON` output format is
@@ -267,21 +268,22 @@ final Properties props = new Properties();
 ...
 props.setProperty("converter.schemas.enable", "false"); // don't include schema in message
 ...
-final DebeziumEngine<Change<String>> engine = DebeziumEngine.create(Json.class)
+final DebeziumEngine<ChangeEvent<String>> engine = DebeziumEngine.create(Json.class)
     .using(props)
     .notifying((records, committer) -> {
 
-        for (Change<String> r : records) {
+        for (ChangeEvent<String> r : records) {
             System.out.println("Key = '" + key + "' value = '" + value + "'");
             committer.markProcessed(r);
         }
 ...
 ----
 
-Where the `Change` datatype is the key/value pair.
+Where the `ChangeEvent` datatype is the key/value pair.
 
 [[message-transformations]]
 == Message transformations
+
 Before the messages are delivered to the handler it is possible to run them through a pipeline of Kafka Connect  link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
 Each SMT can pass the message unchanged, modify it or filter it out.
 The chain is configured using property `transforms`.
