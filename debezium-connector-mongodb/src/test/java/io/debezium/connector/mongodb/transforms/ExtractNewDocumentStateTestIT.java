@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -1194,78 +1193,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.schema().field("address-name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
         assertThat(value.schema().field("address-city2-part").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
         assertThat(value.schema().fields()).hasSize(4);
-    }
-
-    @Test
-    @FixFor("DBZ-677")
-    public void canUseDeprecatedSmt() throws InterruptedException {
-        waitForStreamingRunning();
-
-        transformation = new UnwrapFromMongoDbEnvelope<SourceRecord>();
-        transformation.configure(Collections.singletonMap("array.encoding", "array"));
-
-        final Map<String, String> props = new HashMap<>();
-        props.put(OPERATION_HEADER, "true");
-        props.put(ADD_SOURCE_FIELDS, "h,ts_ms,ord,db,rs");
-        transformation.configure(props);
-
-        ObjectId objId = new ObjectId();
-        Document obj = new Document()
-                .append("_id", objId)
-                .append("name", "Sally")
-                .append("phone", 123L)
-                .append("active", true)
-                .append("scores", Arrays.asList(1.2, 3.4, 5.6));
-
-        // insert
-        primary().execute("insert", client -> {
-            client.getDatabase(DB_NAME).getCollection(this.getCollectionName()).insertOne(obj);
-        });
-
-        SourceRecords records = consumeRecordsByTopic(1);
-        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
-        assertNoRecordsToConsume();
-
-        final SourceRecord record = records.allRecordsInOrder().get(0);
-        final Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
-
-        // Perform transformation
-        final SourceRecord transformed = transformation.apply(record);
-
-        // then assert operation header is insert
-        Iterator<Header> operationHeader = transformed.headers().allWithName(ExtractNewRecordStateConfigDefinition.DEBEZIUM_OPERATION_HEADER_KEY);
-        assertThat((operationHeader).hasNext()).isTrue();
-        assertThat(operationHeader.next().value().toString()).isEqualTo(Envelope.Operation.CREATE.code());
-
-        // acquire key and value Structs
-        Struct key = (Struct) transformed.key();
-        Struct value = (Struct) transformed.value();
-
-        // then assert key and its schema
-        assertThat(key.schema()).isSameAs(transformed.keySchema());
-        assertThat(key.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(key.get("id")).isEqualTo(objId.toString());
-
-        // and then assert value and its schema
-        assertThat(value.schema().name()).isEqualTo(SERVER_NAME + "." + DB_NAME + "." + getCollectionName());
-        assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.get("id")).isEqualTo(objId.toString());
-        assertThat(value.get("phone")).isEqualTo(123L);
-        assertThat(value.get("active")).isEqualTo(true);
-        assertThat(value.get("scores")).isEqualTo(Arrays.asList(1.2, 3.4, 5.6));
-        assertThat(value.get("__h")).isEqualTo(source.get("h"));
-        assertThat(value.get("__ts_ms")).isEqualTo(source.get("ts_ms"));
-        assertThat(value.get("__ord")).isEqualTo(source.get("ord"));
-        assertThat(value.get("__db")).isEqualTo(source.get("db"));
-        assertThat(value.get("__rs")).isEqualTo(source.get("rs"));
-
-        assertThat(value.schema().field("id").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(value.schema().field("name").schema()).isEqualTo(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-        assertThat(value.schema().field("phone").schema()).isEqualTo(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
-        assertThat(value.schema().field("active").schema()).isEqualTo(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
-        assertThat(value.schema().field("scores").schema()).isEqualTo(SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build());
-        assertThat(value.schema().fields()).hasSize(10);
     }
 
     private static void waitForStreamingRunning() throws InterruptedException {
