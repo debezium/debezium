@@ -6,8 +6,8 @@
 With Zookeeper, Kafka, and Kafka Connect,
 you enable JMX by setting the appropriate environment variables when you start each service.
 
-include:::{partialsdir}/modules/monitoring/r_zookeeper-jmx-environment-variables.adoc[leveloffset=+1]
+include::{partialsdir}/modules/monitoring/r_zookeeper-jmx-environment-variables.adoc[leveloffset=+1]
 
-include:::{partialsdir}/modules/monitoring/r_kafka-jmx-environment-variables.adoc[leveloffset=+1]
+include::{partialsdir}/modules/monitoring/r_kafka-jmx-environment-variables.adoc[leveloffset=+1]
 
-include:::{partialsdir}/modules/monitoring/r_kafka-connect-jmx-environment-variables.adoc[leveloffset=+1]
+include::{partialsdir}/modules/monitoring/r_kafka-connect-jmx-environment-variables.adoc[leveloffset=+1]
