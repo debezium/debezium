@@ -30,14 +30,14 @@ For more information, see link:https://docs.docker.com/engine/installation/[the 
 For this tutorial, do not run Docker in a virtual machine (using Docker Machine).
 ====
 
-include::modules/tutorial/c_introduction-debezium.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/c_introduction-debezium.adoc[leveloffset=+1]
 
-include::assemblies/tutorial/as_starting-services.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/tutorial/as_starting-services.adoc[leveloffset=+1]
 
-include::assemblies/tutorial/as_deploying-mysql-connector.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/tutorial/as_deploying-mysql-connector.adoc[leveloffset=+1]
 
-include::assemblies/tutorial/as_viewing-change-events.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/tutorial/as_viewing-change-events.adoc[leveloffset=+1]
 
-include::modules/tutorial/p_cleaning-up.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/p_cleaning-up.adoc[leveloffset=+1]
 
-include::modules/tutorial/c_next-steps.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/c_next-steps.adoc[leveloffset=+1]
