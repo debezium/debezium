@@ -5,7 +5,6 @@
  */
 package io.debezium.transforms;
 
-import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -40,65 +39,8 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Filter.class);
 
-    /**
-     * An expression language used to evaluate the provided expression.
-     *
-     */
-    public static enum ExpressionLanguage implements EnumeratedValue {
-        GROOVY("groovy", Jsr223Engine.class),
-        GRAAL_JS("graal.js", GraalJsEngine.class);
-
-        private final String value;
-        private final Class<? extends Engine> engine;
-
-        private ExpressionLanguage(String value, Class<? extends Engine> engine) {
-            this.value = value;
-            this.engine = engine;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        public Class<? extends Engine> getEngine() {
-            return engine;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static ExpressionLanguage parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (ExpressionLanguage option : ExpressionLanguage.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static ExpressionLanguage parse(String value, String defaultValue) {
-            ExpressionLanguage mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
+    private static final String JAVAX_SCRIPT_ENGINE_PREFIX = "jsr223.";
+    private static final String GRAAL_JS_ENGINE = "graal.js";
 
     public static enum NullHandling implements EnumeratedValue {
         DROP("drop"),
@@ -153,9 +95,10 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
 
     public static final Field LANGUAGE = Field.create("language")
             .withDisplayName("Expression language")
-            .withEnum(ExpressionLanguage.class)
+            .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
+            .withValidation(Field::isRequired)
             .withDescription("An expression language used to evaluate the filtering condition. 'groovy' and 'graal.js' are supported.");
 
     public static final Field EXPRESSION = Field.create("condition")
@@ -163,6 +106,7 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
+            .withValidation(Field::isRequired)
             .withDescription("An expression determining whether the record should be filtered out. When evaluated to true the record is removed.");
 
     public static final Field NULL_HANDLING = Field.create("null.handling.mode")
@@ -178,31 +122,42 @@ public class Filter<R extends ConnectRecord<R>> implements Transformation<R> {
     private Engine engine;
     private NullHandling nullHandling;
 
-    public Filter() {
-    }
-
     @Override
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
-        final ExpressionLanguage language = ExpressionLanguage.parse(config.getString(LANGUAGE));
-        final String expression = config.getString(EXPRESSION);
-        if (language == null || expression == null) {
-            throw new DebeziumException(
-                    "Options '" + LANGUAGE + "' and '" + EXPRESSION + "' must be present. Language must be one of (" + Arrays.toString(ExpressionLanguage.values())
-                            + ")");
+
+        final Field.Set configFields = Field.setOf(LANGUAGE, EXPRESSION, NULL_HANDLING);
+        if (!config.validateAndRecord(configFields, LOGGER::error)) {
+            throw new DebeziumException("The provided configuration isn't valid; check the error log for details.");
         }
-        LOGGER.info("Using language '{}' to evaluate expression '{}'", language.getValue(), expression);
+
+        final String expression = config.getString(EXPRESSION);
+        String language = config.getString(LANGUAGE);
+
+        LOGGER.info("Using language '{}' to evaluate expression '{}'", language, expression);
 
         nullHandling = NullHandling.parse(config.getString(NULL_HANDLING));
 
-        try {
-            engine = language.getEngine().newInstance();
+        // currently only bootstrapping via JSR 223 is supported, but we could add
+        // support for other means of bootstrapping later on, e.g. for "native"
+        // bootstrap of GraalJS
+        if (!language.startsWith(JAVAX_SCRIPT_ENGINE_PREFIX)) {
+            throw new DebeziumException("Value for option '" + LANGUAGE + "' must begin with 'jsr223.', e.g. 'jsr223.groovy'");
         }
-        catch (InstantiationException | IllegalAccessException e) {
-            throw new DebeziumException("Could not create the expression language engine '" + language.getValue() + "'. Are dependencies on the classpath?", e);
+        else {
+            language = language.substring(JAVAX_SCRIPT_ENGINE_PREFIX.length());
         }
+
+        // graal.js needs a bit of extra-config...
+        if (language.equals(GRAAL_JS_ENGINE)) {
+            engine = new GraalJsEngine();
+        }
+        else {
+            engine = new Jsr223Engine();
+        }
+
         try {
-            engine.configure(language.getValue(), expression);
+            engine.configure(language, expression);
         }
         catch (Exception e) {
             throw new DebeziumException("Failed to parse filtering expression '" + expression + "'", e);

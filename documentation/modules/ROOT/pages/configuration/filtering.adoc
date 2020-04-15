@@ -34,7 +34,7 @@ The Filtering SMT can be used like so:
 ...
 transforms=filter
 transforms.filter.type=io.debezium.transforms.Filter
-transforms.filter.language=groovy
+transforms.filter.language=jsr223.groovy
 transforms.filter.condition=value.op == 'u' && value.before.id == 2
 ...
 ----
@@ -44,8 +44,8 @@ In this example we are using `Groovy` as expression language, and we're filterin
 [IMPORTANT]
 ====
 Debezium does not come with the language implementations in its installation packages.
-It is the user's responsibility to provide an implementation of link:https://groovy-lang.org/[Groovy 3] or link:https://github.com/graalvm/graaljs[GraalVM JavaScript] on the classpath.
-In both cases, the support for the JSR-223 scripting API must be provided as well.
+It is the user's responsibility to provide an implementation, such as link:https://groovy-lang.org/[Groovy 3] or link:https://github.com/graalvm/graaljs[GraalVM JavaScript], on the classpath.
+Bootstrapping is done exclusively via the JSR 223 API currently, so the engine's support for this API must be provided as well.
 ====
 
 Debezium binds four variables into the evaluation context:
@@ -87,7 +87,7 @@ In case of `Grovy` the value fields can be accessed in a property-like way, inst
 
 |`language`
 |
-|The language in which the expression is written. One of `groovy`, `graal.js`.
+|The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. Currently, only bootstrapping via the https://jcp.org/en/jsr/detail?id=223[JSR 223 API] ("Scripting for the Java (TM) Platform") is supported.
 
 |`condition`
 |

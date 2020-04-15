@@ -57,7 +57,7 @@ public class FilterTest {
     public void testExpressionRequired() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(LANGUAGE, "groovy");
+            props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
         }
     }
@@ -67,7 +67,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "operation == 'd'");
-            props.put(LANGUAGE, "jython");
+            props.put(LANGUAGE, "jsr223.jython");
             transform.configure(props);
         }
     }
@@ -77,7 +77,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "operation == 'd");
-            props.put(LANGUAGE, "groovy");
+            props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
         }
     }
@@ -87,7 +87,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
-            props.put(LANGUAGE, "groovy");
+            props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
             assertThat(transform.apply(createDeleteRecord(2))).isNull();
@@ -100,7 +100,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
-            props.put(LANGUAGE, "groovy");
+            props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
             assertThat(transform.apply(record)).isSameAs(record);
@@ -112,7 +112,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
-            props.put(LANGUAGE, "groovy");
+            props.put(LANGUAGE, "jsr223.groovy");
             props.put(NULL_HANDLING, "drop");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
@@ -125,7 +125,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.op == 'd' && value.before.id == 2");
-            props.put(LANGUAGE, "groovy");
+            props.put(LANGUAGE, "jsr223.groovy");
             props.put(NULL_HANDLING, "evaluate");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
@@ -165,7 +165,7 @@ public class FilterTest {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value.get('op') == 'd' && value.get('before').get('id') == 2");
-            props.put(LANGUAGE, "graal.js");
+            props.put(LANGUAGE, "jsr223.graal.js");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
             assertThat(transform.apply(createDeleteRecord(2))).isNull();
