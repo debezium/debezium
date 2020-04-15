@@ -23,10 +23,10 @@ public interface Engine {
     void configure(String language, String expression);
 
     /**
-     * Evaluates whether the record should be filtered out or not by executing the expression.
+     * Evaluates whether the record matches the predicate expression.
      *
      * @param record to be evaluated
-     * @return true to keep the record, false to remove it
+     * @return true if the input argument matches the predicate expression, otherwise false
      */
     boolean eval(ConnectRecord<?> record);
 }
