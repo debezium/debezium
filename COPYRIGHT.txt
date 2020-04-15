@@ -55,6 +55,7 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabio Cantarini
+Fatih Güçlü Akkaya
 Felix Eckhardt
 Fintan Bolton
 Frank Mormino
@@ -64,6 +65,7 @@ Guillaume Rosauro
 Gunnar Morling
 Gurnaaz Randhawa
 Grzegorz Kołakowski
+Jan Hendrik Dolling
 Hans-Peter Grahsl
 Henryk Konsek
 Horia Chiorean
@@ -138,6 +140,7 @@ Ramesh Reddy
 Randall Hauch
 Raúl Tovar
 Renato Mefi
+René Kerner
 Roman Kuchar
 Sagar Rao
 Sahan Dilshan

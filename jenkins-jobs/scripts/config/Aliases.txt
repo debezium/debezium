@@ -41,3 +41,6 @@ daanroosen-DS,Daan Roosen
 jgraf50,John Graf
 42790076+Alan-zhangzf@users.noreply.github.com,Alan Zhang
 FrankMormino,Frank Mormino
+Fatih GÃ¼Ã§lÃ¼ Akkaya,Fatih Güçlü Akkaya
+rk3rn3r,René Kerner
+JanHendrikDolling,Jan Hendrik Dolling
