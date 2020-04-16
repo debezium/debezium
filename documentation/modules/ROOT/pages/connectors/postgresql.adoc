@@ -1655,7 +1655,7 @@ include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-snapsho
 [[streaming-metrics]]
 ==== Streaming Metrics
 
-The *MBean* is `debezium.postres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
+The *MBean* is `debezium.postgres:type=connector-metrics,context=streaming,server=_<database.server.name>_`.
 
 include::{partialsdir}/modules/cdc-all-connectors/r_connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
