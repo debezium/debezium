@@ -1,6 +1,3 @@
-:toc:
-:toclevels: 1
-:toc-placement: macro
 
 // Metadata created by nebel
 //
