@@ -6,6 +6,8 @@
 
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SOURCE_TIMESTAMP_MODE_CONFIG_NAME;
+
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -72,6 +74,7 @@ public class SqlServerConnection extends JdbcConnection {
      */
     private final String realDatabaseName;
     private final ZoneId transactionTimezone;
+    private final SourceTimestampMode sourceTimestampMode;
 
     public static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
@@ -92,6 +95,7 @@ public class SqlServerConnection extends JdbcConnection {
         boolean supportsAtTimeZone = supportsAtTimeZone();
         transactionTimezone = retrieveTransactionTimezone(supportsAtTimeZone);
         lsnToTimestamp = getLsnToTimestamp(supportsAtTimeZone);
+        sourceTimestampMode = getSourceTimestampMode(config);
     }
 
     /**
@@ -198,6 +202,12 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public Instant timestampOfLsn(Lsn lsn) throws SQLException {
+        if (SourceTimestampMode.PROCESSING.equals(sourceTimestampMode)) {
+            // Returning null will make the SqlServerSourceInfoStructMaker#struct
+            // to set the top level field ts_ms in the record.
+            return null;
+        }
+
         if (lsn.getBinary() == null) {
             return null;
         }
@@ -450,5 +460,11 @@ public class SqlServerConnection extends JdbcConnection {
         catch (Exception e) {
             throw new RuntimeException("Couldn't obtain database server version", e);
         }
+    }
+
+    private SourceTimestampMode getSourceTimestampMode(Configuration config) {
+        final SourceTimestampMode mode = SourceTimestampMode.fromMode(config.getString(SOURCE_TIMESTAMP_MODE_CONFIG_NAME));
+        LOGGER.info("Configuring source timestamp with mode={}", mode);
+        return mode;
     }
 }
