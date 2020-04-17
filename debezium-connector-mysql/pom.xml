@@ -172,7 +172,7 @@
                         <inline>
                           <fileSets>
                             <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server</directory>
+                              <directory>${project.basedir}/src/test/docker/server/${version.mysql.server}</directory>
                               <includes>
                                 <include>my.cnf</include>
                               </includes>
@@ -222,7 +222,7 @@
                         <inline>
                           <fileSets>
                             <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server-gtids</directory>
+                              <directory>${project.basedir}/src/test/docker/server-gtids/${version.mysql.server}</directory>
                               <includes>
                                 <include>my.cnf</include>
                               </includes>
@@ -276,7 +276,7 @@
                         <inline>
                           <fileSets>
                             <fileSet>
-                              <directory>${project.basedir}/src/test/docker/server-replica</directory>
+                              <directory>${project.basedir}/src/test/docker/server-replica/${version.mysql.server}</directory>
                               <includes>
                                 <include>my.cnf</include>
                               </includes>

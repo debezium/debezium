@@ -17,9 +17,14 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersions;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
@@ -28,6 +33,10 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
+@SkipWhenDatabaseVersions({
+        @SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "JSON data type is not available"),
+        @SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_6, reason = "JSON data type is not available")
+})
 public class MySqlConnectorJsonIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt").toAbsolutePath();
@@ -35,6 +44,9 @@ public class MySqlConnectorJsonIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
+
+    @Rule
+    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {

@@ -21,7 +21,9 @@ import io.debezium.jdbc.JdbcConnection;
 public class MySQLConnection extends JdbcConnection {
 
     public enum MySqlVersion {
-        MYSQL_5,
+        MYSQL_5_5,
+        MYSQL_5_6,
+        MYSQL_5_7,
         MYSQL_8;
     }
 
@@ -101,7 +103,21 @@ public class MySQLConnection extends JdbcConnection {
                     return rs.getString(2);
                 });
 
-                mySqlVersion = versionString.startsWith("8.") ? MySqlVersion.MYSQL_8 : MySqlVersion.MYSQL_5;
+                if (versionString.startsWith("8.")) {
+                    mySqlVersion = MySqlVersion.MYSQL_8;
+                }
+                else if (versionString.startsWith("5.5")) {
+                    mySqlVersion = MySqlVersion.MYSQL_5_5;
+                }
+                else if (versionString.startsWith("5.6")) {
+                    mySqlVersion = MySqlVersion.MYSQL_5_6;
+                }
+                else if (versionString.startsWith("5.7")) {
+                    mySqlVersion = MySqlVersion.MYSQL_5_7;
+                }
+                else {
+                    throw new IllegalStateException("Couldn't resolve MySQL Server version");
+                }
             }
             catch (SQLException e) {
                 throw new IllegalStateException("Couldn't obtain MySQL Server version", e);

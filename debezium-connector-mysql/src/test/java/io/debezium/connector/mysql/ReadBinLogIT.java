@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,9 +49,13 @@ import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
 import com.github.shyiko.mysql.binlog.network.ServerException;
 
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Testing;
 
+@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "MySQL 5.5 does not support CURRENT_TIMESTAMP on DATETIME and only a single column can specify default CURRENT_TIMESTAMP, lifted in MySQL 5.6.5")
 public class ReadBinLogIT implements Testing {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ReadBinLogIT.class);
@@ -69,6 +74,9 @@ public class ReadBinLogIT implements Testing {
     private JdbcConfiguration config;
 
     private final UniqueDatabase DATABASE = new UniqueDatabase("readbinlog_it", "readbinlog_test");
+
+    @Rule
+    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() throws TimeoutException, IOException, SQLException, InterruptedException {

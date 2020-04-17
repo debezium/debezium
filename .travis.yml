@@ -6,6 +6,8 @@ cache:
 env:
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-sqlserver -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mysql.server=5.5"'
+  - MAVEN_CLI: '"clean install -B -pl debezium-connector-mysql -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.mysql.server=5.6"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=9.6-devel"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,wal2json-decoder -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=9.6-devel"'
   - MAVEN_CLI: '"clean install -B -pl debezium-connector-postgres -am -Passembly,pgoutput-decoder,postgres-10 -Ddebezium.test.records.waittime=5 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dversion.postgres.server=10-devel"'

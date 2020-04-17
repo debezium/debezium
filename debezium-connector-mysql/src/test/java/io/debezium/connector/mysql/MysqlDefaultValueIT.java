@@ -28,9 +28,13 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -45,6 +49,7 @@ import io.debezium.util.Testing;
 /**
  * @author luobo
  */
+@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "DDL uses fractal notation on DATE, TIME, DATETIME which isn't compatible with MySQL 5.5")
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
@@ -55,6 +60,9 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
+
+    @Rule
+    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {
@@ -752,36 +760,5 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
         customerTypeSchema = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
         assertThat(customerTypeSchema.defaultValue()).isNull();
-    }
-
-    @Test
-    @FixFor("DBZ-1123")
-    public void generatedValueTest() throws InterruptedException {
-        config = DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
-                .build();
-        start(MySqlConnector.class, config);
-
-        // Testing.Print.enable();
-
-        SourceRecords records = consumeRecordsByTopic(EVENT_COUNT);
-        SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("GENERATED_TABLE")).get(0);
-        validate(record);
-
-        Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
-        Integer recordB = ((Struct) record.value()).getStruct("after").getInt32("B");
-        Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
-        Integer recordC = ((Struct) record.value()).getStruct("after").getInt32("C");
-
-        // Calculated default value is reported as null in schema
-        assertThat(schemaB.isOptional()).isEqualTo(true);
-        assertThat(schemaB.defaultValue()).isEqualTo(null);
-        assertThat(schemaC.isOptional()).isEqualTo(false);
-        assertThat(schemaC.defaultValue()).isEqualTo(null);
-
-        assertThat(recordB).isEqualTo(30);
-        assertThat(recordC).isEqualTo(45);
-
-        validate(record);
     }
 }

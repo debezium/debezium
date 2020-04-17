@@ -28,12 +28,17 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.AbstractReader.AcceptAllPredicate;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersions;
 import io.debezium.data.Envelope;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
@@ -48,6 +53,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  *
  */
+@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "Use of fractal notation on DATE, TIME, DATETIME, and TIMESTAMP not supported on MySQL 5.5")
 public class BinlogReaderIT {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-binlog.txt").toAbsolutePath();
@@ -61,6 +67,9 @@ public class BinlogReaderIT {
     private BinlogReader reader;
     private KeyValueStore store;
     private SchemaChangeHistory schemaChanges;
+
+    @Rule
+    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {
@@ -484,6 +493,10 @@ public class BinlogReaderIT {
 
     @Test
     @FixFor("DBZ-1208")
+    @SkipWhenDatabaseVersions({
+            @SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "Uses fractal notation for DATE, TIME, DATETIME, and TIMESTAMP which isn't supported by MySQL 5.5, along with no SSL support"),
+            @SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_6, reason = "MySQL 5.6 does not support SSL")
+    })
     public void shouldAcceptTls12() {
         final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(DB_HISTORY_PATH);
