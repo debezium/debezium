@@ -43,6 +43,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
+    public static final String SOURCE_TIMESTAMP_MODE_CONFIG_NAME = "source.timestamp.mode";
     protected static final int DEFAULT_PORT = 1433;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
@@ -272,6 +273,18 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
                     + "Options include: Any valid Java ZoneId");
 
+    public static final Field SOURCE_TIMESTAMP_MODE = Field.create(SOURCE_TIMESTAMP_MODE_CONFIG_NAME)
+            .withDisplayName("Source timestamp mode")
+            .withDefault(SourceTimestampMode.COMMIT.getValue())
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Configures the criteria of the attached timestamp within the source record (ts_ms)." +
+                    "Options include:" +
+                    "'" + SourceTimestampMode.COMMIT.getValue() + "', (default) the source timestamp is set to the instant where the record was committed in the database"
+                    +
+                    "'" + SourceTimestampMode.PROCESSING.getValue() + "', the source timestamp is set to the instant where the record was processed by Debezium.");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -311,7 +324,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     SERVER_TIMEZONE)
             .connector(
                     SNAPSHOT_MODE,
-                    SNAPSHOT_ISOLATION_MODE)
+                    SNAPSHOT_ISOLATION_MODE,
+                    SOURCE_TIMESTAMP_MODE)
             .excluding(
                     SCHEMA_WHITELIST,
                     SCHEMA_BLACKLIST)

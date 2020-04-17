@@ -1514,6 +1514,12 @@ twice - once in initial snapshot and once in streaming phase. Nonetheless, that 
 data mirroring.
 For `read_uncommitted` there are no data consistency guarantees at all (some data might be lost or corrupted).
 
+|[[connector-property-source-timestamp-mode]]<<connector-property-source-timestamp-mode>>, `source.timestamp.mode`
+|_commit_
+|String representing the criteria of the attached timestamp within the source record (ts_ms).
+`commit` will set the source timestamp to the instant where the record was committed in the database (default and current behavior).
+`processing` will set the source timestamp to the instant where the record was processed by Debezium. This option could be used when either we want to set the top level `ts_ms` value here or when we want to skip the query to extract the timestamp of that LSN.
+
 |[[connector-property-event-processing-failure-handling-mode]]<<connector-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
