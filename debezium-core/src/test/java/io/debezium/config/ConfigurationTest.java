@@ -5,9 +5,11 @@
  */
 package io.debezium.config;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -54,6 +56,19 @@ public class ConfigurationTest {
     public void shouldCreateInternalFields() {
         config = Configuration.create().with(Field.createInternal("a"), "a1").build();
         assertThat(config.getString("internal.a")).isEqualTo("a1");
+    }
+
+    @Test
+    @FixFor("DBZ-1962")
+    public void shouldThrowValidationOnDuplicateColumnFilterConfiguration() {
+        config = Configuration.create()
+                .with("column.whitelist", ".+aa")
+                .with("column.blacklist", ".+bb")
+                .build();
+
+        List<String> errorMessages = config.validate(Field.setOf(COLUMN_BLACKLIST)).get(COLUMN_BLACKLIST.name()).errorMessages();
+        assertThat(errorMessages).isNotEmpty();
+        assertThat(errorMessages.get(0)).isEqualTo("Column whitelist is already specified");
     }
 
     @Test

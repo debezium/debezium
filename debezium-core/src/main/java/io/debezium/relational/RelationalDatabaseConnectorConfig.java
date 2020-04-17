@@ -179,6 +179,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
+            .withValidation(RelationalDatabaseConnectorConfig::validateColumnBlacklist)
             .withDescription("");
 
     /**
@@ -192,7 +193,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withValidation(RelationalDatabaseConnectorConfig::validateColumnBlacklist)
             .withDescription("");
 
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")

@@ -770,23 +770,30 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-1962")
     public void shouldTakeColumnWhitelistFilterIntoAccount() throws Exception {
         String setupStmt = SETUP_TABLES_STMT +
-                "CREATE TABLE s1.b (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
                 "ALTER TABLE s1.a ADD COLUMN bb integer;" +
+                "ALTER TABLE s1.a ADD COLUMN cc char(12);" +
                 "INSERT INTO s1.a (aa, bb) VALUES (2, 2);";
 
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.COLUMN_WHITELIST, ".+aa");
+                .with(PostgresConnectorConfig.MASK_COLUMN(5), ".+cc")
+                .with(PostgresConnectorConfig.COLUMN_WHITELIST, ".+aa,.+cc");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
         SourceRecords actualRecords = consumeRecordsByTopic(1);
         List<SourceRecord> recordsForS1a = actualRecords.recordsForTopic(topicName("s1.a"));
-        recordsForS1a.forEach(record -> assertFieldAbsent(record, "bb"));
+        recordsForS1a.forEach(record -> {
+            assertFieldAbsent(record, "bb");
+
+            Struct recordValue = ((Struct) record.value());
+            assertThat(recordValue.getStruct("after").getString("cc")).isEqualTo("*****");
+        });
     }
 
     @Test
