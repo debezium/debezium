@@ -15,10 +15,14 @@ import java.util.regex.Pattern;
 import org.fest.assertions.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
@@ -30,6 +34,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
+@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "DDL uses fractal notation on DATE, TIME, DATETIME which isn't compatible with MySQL 5.5")
 public class ZZZGtidSetIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
@@ -39,6 +44,9 @@ public class ZZZGtidSetIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
+
+    @Rule
+    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {

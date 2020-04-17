@@ -23,10 +23,14 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
+import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
+import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
@@ -39,6 +43,7 @@ import io.debezium.util.Testing;
  * @author Randall Hauch
  *
  */
+@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "DDL uses fractal notation on DATE, TIME, DATETIME which isn't compatible with MySQL 5.5")
 public class SnapshotReaderIT {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-snapshot.txt").toAbsolutePath();
@@ -50,6 +55,9 @@ public class SnapshotReaderIT {
     private MySqlTaskContext context;
     private SnapshotReader reader;
     private CountDownLatch completed;
+
+    @Rule
+    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {
