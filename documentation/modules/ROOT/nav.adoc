@@ -30,6 +30,7 @@
 ** xref:integrations/cloudevents.adoc[CloudEvents]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Operations
+** xref:operations/debezium-server.adoc[Debezium Server]
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
 ** xref:operations/openshift.adoc[Running on Openshift]
