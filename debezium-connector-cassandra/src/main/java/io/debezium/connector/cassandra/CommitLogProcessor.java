@@ -77,6 +77,7 @@ public class CommitLogProcessor extends AbstractProcessor {
 
     @Override
     public void process() throws IOException, InterruptedException {
+        LOGGER.debug("Processing commitLogFiles while initial is {}", initial);
         if (latestOnly) {
             processLastModifiedCommitLog();
             throw new InterruptedException();
