@@ -593,7 +593,7 @@ Therefore, we interpret this key as describing the row in the `public.customers`
 
 [NOTE]
 ====
-Although the `column.blacklist` and `column.whitelist` configuration properties allow you to remove columns from the event values, all columns in a primary or unique key are always included in the event's key.
+Although the `column.blacklist` and `column.whitelist` configuration properties allow you to capture only a subset of table columns, all columns in a primary or unique key are always included in the event's key.
 ====
 
 [WARNING]
@@ -1757,12 +1757,12 @@ Only alphanumeric characters and underscores should be used.
 
 |`column.whitelist`
 |
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. May not be used with column.blacklist.
 
 
 |`column.blacklist`
 |
-|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_
+|An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. May not be used with column.whitelist.
 
 |`time.precision.mode`
 |`adaptive`
