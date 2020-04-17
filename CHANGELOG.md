@@ -3,6 +3,43 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 1.1.1.Final
+April 17th, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12345315)
+
+### New features since 1.1.0.Final
+
+* Improve documentation on WAL disk space usage for Postgres connector [DBZ-1732](https://issues.jboss.org/browse/DBZ-1732)
+* Add docs for mask column and truncate column features [DBZ-1954](https://issues.jboss.org/browse/DBZ-1954)
+* Snapshot metrics shows TotalNumberOfEventsSeen as zero [DBZ-1932](https://issues.jboss.org/browse/DBZ-1932)
+
+
+### Breaking changes since 1.1.0.Final
+
+None
+
+
+### Fixes since 1.1.0.Final
+
+* Snapshot lock timeout setting is not documented [DBZ-1914](https://issues.jboss.org/browse/DBZ-1914)
+* AvroRuntimeException when publishing transaction metadata [DBZ-1915](https://issues.jboss.org/browse/DBZ-1915)
+* Connector restart logic throttles for the first 2 seconds [DBZ-1918](https://issues.jboss.org/browse/DBZ-1918)
+* Wal2json empty change event could cause NPE above version 1.0.3.final [DBZ-1922](https://issues.jboss.org/browse/DBZ-1922)
+* Broken internal links and anchors in documentation [DBZ-1935](https://issues.jboss.org/browse/DBZ-1935)
+* Dokumentation files in modules create separate pages, should be partials instead [DBZ-1944](https://issues.jboss.org/browse/DBZ-1944)
+* Validation of binlog_row_image is not compatible with MySQL 5.5 [DBZ-1950](https://issues.jboss.org/browse/DBZ-1950)
+* High CPU usage when idle [DBZ-1960](https://issues.jboss.org/browse/DBZ-1960)
+
+
+### Other changes since 1.1.0.Final
+
+* Fix typo in Quarkus Outbox extension documentation [DBZ-1902](https://issues.jboss.org/browse/DBZ-1902)
+* Documentation should link to Apache Kafka upstream docs [DBZ-1906](https://issues.jboss.org/browse/DBZ-1906)
+* Restore documentation of MySQL event structures [DBZ-1919](https://issues.jboss.org/browse/DBZ-1919)
+* Update snapshot.mode options in SQL Server documentation [DBZ-1924](https://issues.jboss.org/browse/DBZ-1924)
+* Remove obsolete metrics from downstream docs [DBZ-1947](https://issues.jboss.org/browse/DBZ-1947)
+
+
+
 ## 1.1.0.Final
 March 23rd, 2020 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12344981)
 

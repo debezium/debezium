@@ -55,6 +55,7 @@ Eric S. Kreiseir
 Ewen Cheslack-Postava
 Fabian Aussems
 Fabio Cantarini
+Fatih Güçlü Akkaya
 Felix Eckhardt
 Fintan Bolton
 Frank Mormino
