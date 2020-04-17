@@ -1,12 +1,12 @@
 ---
 name: "Debezium Quarkus Outbox"
-description: "Debezium Outbox support"
+description: "Use outbox pattern with Debezium"
 metadata:
   keywords:
   - "debezium"
   - "outbox"
   - "cdc"
-  guide: "https://debezium.io/documentation/reference/1.1/integrations/outbox.html"
+  guide: "https://debezium.io/documentation/reference/1.2/integrations/outbox.html"
   categories:
   - "integration"
   - "cdc"
