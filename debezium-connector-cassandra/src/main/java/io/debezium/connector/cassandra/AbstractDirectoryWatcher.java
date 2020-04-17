@@ -49,6 +49,7 @@ public abstract class AbstractDirectoryWatcher {
                     handleEvent(event, absolutePath);
                 }
             }
+            key.reset();
         }
     }
 
