@@ -180,7 +180,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(RelationalDatabaseConnectorConfig::validateColumnBlacklist)
-            .withDescription("");
+            .withDescription("Regular expressions matching columns to exclude from change events");
 
     /**
      * A comma-separated list of regular expressions that match fully-qualified names of columns to be excluded from monitoring
@@ -193,7 +193,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
-            .withDescription("");
+            .withDescription("Regular expressions matching columns to include in change events");
 
     public static final Field MSG_KEY_COLUMNS = Field.create("message.key.columns")
             .withDisplayName("Columns PK mapping")
