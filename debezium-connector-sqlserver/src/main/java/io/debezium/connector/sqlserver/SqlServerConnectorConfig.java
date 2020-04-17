@@ -44,6 +44,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerConnectorConfig.class);
 
+    public static final String SKIP_LSN_TIMESTAMP_QUERY_CONFIG_NAME = "skip.lsn.timestamp.query";
     protected static final int DEFAULT_PORT = 1433;
     private static final String READ_ONLY_INTENT = "ReadOnly";
     private static final String APPLICATION_INTENT_KEY = "database.applicationIntent";
@@ -273,6 +274,17 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("The timezone of the server used to correctly shift the commit transaction timestamp on the client side"
                     + "Options include: Any valid Java ZoneId");
 
+    public static final Field SKIP_LSN_TIMESTAMP_QUERY = Field.create(DATABASE_CONFIG_PREFIX + SKIP_LSN_TIMESTAMP_QUERY_CONFIG_NAME)
+            .withDisplayName("Skip LSN timestamp query")
+            .withDefault(Boolean.FALSE)
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Skips the query which maps a commit LSN to a point in time when the commit happened." +
+                    "Options include:" +
+                    "'true', which means the LSN timestamp is defaulted to Instant.now()." +
+                    "'false', which means the [sys].[fn_cdc_map_lsn_to_time] query is executed for each processed record.");
+
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
@@ -313,6 +325,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             PASSWORD,
             SNAPSHOT_MODE,
             SERVER_TIMEZONE,
+            SKIP_LSN_TIMESTAMP_QUERY,
             RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
@@ -339,7 +352,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         ConfigDef config = new ConfigDef();
 
         Field.group(config, "SQL Server", SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
-                USER, PASSWORD, SNAPSHOT_MODE, SERVER_TIMEZONE);
+                USER, PASSWORD, SNAPSHOT_MODE, SERVER_TIMEZONE, SKIP_LSN_TIMESTAMP_QUERY);
         Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                 KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                 KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);

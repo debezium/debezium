@@ -6,6 +6,9 @@
 
 package io.debezium.connector.sqlserver;
 
+import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.SKIP_LSN_TIMESTAMP_QUERY_CONFIG_NAME;
+import static java.time.Instant.now;
+
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -72,6 +75,7 @@ public class SqlServerConnection extends JdbcConnection {
      */
     private final String realDatabaseName;
     private final ZoneId transactionTimezone;
+    private final boolean skipLsnTimestampQuery;
 
     public static interface ResultSetExtractor<T> {
         T apply(ResultSet rs) throws SQLException;
@@ -92,6 +96,7 @@ public class SqlServerConnection extends JdbcConnection {
         boolean supportsAtTimeZone = supportsAtTimeZone();
         transactionTimezone = retrieveTransactionTimezone(supportsAtTimeZone);
         lsnToTimestamp = getLsnToTimestamp(supportsAtTimeZone);
+        skipLsnTimestampQuery = skipLsnTimestampQuery(config);
     }
 
     /**
@@ -198,6 +203,10 @@ public class SqlServerConnection extends JdbcConnection {
      * @throws SQLException
      */
     public Instant timestampOfLsn(Lsn lsn) throws SQLException {
+        if (skipLsnTimestampQuery) {
+            return now();
+        }
+
         if (lsn.getBinary() == null) {
             return null;
         }
@@ -450,5 +459,13 @@ public class SqlServerConnection extends JdbcConnection {
         catch (Exception e) {
             throw new RuntimeException("Couldn't obtain database server version", e);
         }
+    }
+
+    private boolean skipLsnTimestampQuery(Configuration config) {
+        boolean skipLsnTimestampQuery = config.getBoolean(SKIP_LSN_TIMESTAMP_QUERY_CONFIG_NAME, false);
+        if (skipLsnTimestampQuery) {
+            LOGGER.info("Skipping lsnToTimestamp '{}' query. Will use Instant.now() in every LSN timestamp.", lsnToTimestamp);
+        }
+        return skipLsnTimestampQuery;
     }
 }
