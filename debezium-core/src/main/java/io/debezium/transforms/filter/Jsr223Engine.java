@@ -57,15 +57,23 @@ public class Jsr223Engine implements Engine {
     protected void configureEngine() {
     }
 
+    protected Bindings getBindings(ConnectRecord<?> record) {
+        final Bindings bindings = engine.createBindings();
+
+        bindings.put("key", record.key());
+        bindings.put("value", record.value());
+        bindings.put("keySchema", record.keySchema());
+        bindings.put("valueSchema", record.valueSchema());
+
+        return bindings;
+    }
+
     @Override
     public boolean eval(ConnectRecord<?> record) {
-        final Bindings binding = engine.createBindings();
-        binding.put("key", record.key());
-        binding.put("value", record.value());
-        binding.put("keySchema", record.keySchema());
-        binding.put("valueSchema", record.valueSchema());
+        Bindings bindings = getBindings(record);
+
         try {
-            final Object result = script != null ? script.eval(binding) : engine.eval(expression, binding);
+            final Object result = script != null ? script.eval(bindings) : engine.eval(expression, bindings);
             if (result instanceof Boolean) {
                 return (Boolean) result;
             }
@@ -77,5 +85,4 @@ public class Jsr223Engine implements Engine {
             throw new DebeziumException("Error while evaluating expression '" + expression + "' for record '" + record + "'", e);
         }
     }
-
 }

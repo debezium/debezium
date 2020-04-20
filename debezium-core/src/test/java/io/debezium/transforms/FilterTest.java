@@ -164,7 +164,7 @@ public class FilterTest {
     public void shouldRunJavaScript() {
         try (final Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "value.get('op') != 'd' || value.get('before').get('id') != 2");
+            props.put(EXPRESSION, "value.op != 'd' || value.before.id != 2");
             props.put(LANGUAGE, "jsr223.graal.js");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
