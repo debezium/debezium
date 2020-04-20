@@ -636,9 +636,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             String dataStr = (String) data;
             BitSet bitset = new BitSet(dataStr.length());
             int len = dataStr.length();
-            for (int i = len-1; i >= 0; i--) {
+            for (int i = len - 1; i >= 0; i--) {
                 if (dataStr.charAt(i) == '1') {
-                    bitset.set(len-i-1);
+                    bitset.set(len - i - 1);
                 }
             }
             data = bitset;
