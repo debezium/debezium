@@ -204,10 +204,6 @@ Step 7 releases the global write lock just 0.3 seconds after acquiring it,
 and Step 8 reads all of the rows in each of the tables and reports the time taken and number of rows found.
 In this case, the connector completed its consistent snapshot in just 0.38 seconds.
 
-:link-prefix: xref
-:link-avro-serialization: configuration/avro.adoc
-:link-mysql-connector: connectors/mysql.adoc
-
 [NOTE]
 ====
 The snapshot process will take longer with your databases,
