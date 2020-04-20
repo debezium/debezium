@@ -9,7 +9,6 @@ package io.debezium.connector.postgresql;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -22,6 +21,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -633,7 +633,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = ((PGobject) data).getValue();
         }
         if (data instanceof String) {
-            data = new BigInteger((String) data, 2).toByteArray();
+            String dataStr = (String) data;
+            BitSet bitset = new BitSet(dataStr.length());
+            int len = dataStr.length();
+            for (int i = len-1; i >= 0; i--) {
+                if (dataStr.charAt(i) == '1') {
+                    bitset.set(len-i-1);
+                }
+            }
+            data = bitset;
         }
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
