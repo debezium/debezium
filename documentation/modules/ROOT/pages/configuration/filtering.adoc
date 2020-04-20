@@ -59,6 +59,11 @@ The `key` and `value` are of type `org.apache.kafka.connect.data.Struct` and `ke
 The expression can invoke arbitrary methods on the variables and should evaluate into a boolean value that decides whether the message is removed `true` or kept.
 Expressions should be side-effect free, i.e. they should *not* modify the passed variables in any way.
 
+[NOTE]
+====
+
+====
+
 == Language specifics
 
 The same business logic - remove all update records with `id` set to `2` can be expressed like this, depending on your preferred scripting language;
