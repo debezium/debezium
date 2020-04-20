@@ -82,8 +82,8 @@ public interface DatabaseHistory {
      *            {@link #recover(Map, Map, Tables, DdlParser) recovery}; may be null if the
      *            {@link HistoryRecordComparator#INSTANCE default comparator} is to be used
      * @param listener TODO
-     * @param useCatalogBeforeSchema true if the parsed string for a table contains only 2 items and the first should be used as 
-                             the catalog and the second as the table name, or false if the first should be used as the schema and the 
+     * @param useCatalogBeforeSchema true if the parsed string for a table contains only 2 items and the first should be used as
+                             the catalog and the second as the table name, or false if the first should be used as the schema and the
                              second as the table name
      */
     void configure(Configuration config, HistoryRecordComparator comparator, DatabaseHistoryListener listener, boolean useCatalogBeforeSchema);
@@ -128,15 +128,14 @@ public interface DatabaseHistory {
     void stop();
 
     /**
-     * Determines if the DatabaseHistory entity exists
-     * @return
+     * Determines if the database history entity exists; i.e. the storage must have
+     * been initialized and the history must have been populated.
      */
     boolean exists();
 
     /**
-     * Determines if the underlying storage exists.
-     * Note: storage may exists while history entities not yet written, see {@link #exists()}
-     * @return
+     * Determines if the underlying storage exists (e.g. a Kafka topic, file or similar).
+     * Note: storage may exist while history entities not yet written, see {@link #exists()}
      */
     boolean storageExists();
 

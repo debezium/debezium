@@ -72,6 +72,7 @@ Horia Chiorean
 Ian Axelrod
 Igor Gabaydulin
 Ilia Bogdanov
+Ivan Klass
 Ivan Kovbas
 Ivan Lorenz
 Ivan Luzyanin

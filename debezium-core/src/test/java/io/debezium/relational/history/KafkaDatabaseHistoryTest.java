@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParserSql2003;
@@ -298,6 +299,7 @@ public class KafkaDatabaseHistoryTest {
     }
 
     @Test
+    @FixFor("DBZ-1886")
     public void differentiateStorageExistsFromHistoryExists() {
         Configuration config = Configuration.create()
                 .with(KafkaDatabaseHistory.BOOTSTRAP_SERVERS, kafka.brokerList())
@@ -326,5 +328,6 @@ public class KafkaDatabaseHistoryTest {
                 "CREATE TABLE products ( productId INTEGER NOT NULL PRIMARY KEY, desc VARCHAR(255) NOT NULL); \n";
         history.record(source, position, "db1", ddl);
         assertTrue(history.exists());
+        assertTrue(history.storageExists());
     }
 }
