@@ -61,21 +61,27 @@ Expressions should be side-effect free, i.e. they should *not* modify the passed
 
 == Language specifics
 
-The same business logic - remove all update records with `id` set to `2` can be expressed like this, depending on your preferred scripting language:
+The same business logic - remove all update records with `id` set to `2` can be expressed like this, depending on your preferred scripting language;
+In case of `Groovy`, the value fields can be accessed in a property-like way:
 
-JavaScript
-[source,javascript]
-----
-value.get('op') == 'u' && value.get('before').get('id') == 2
-----
-
-Groovy
 [source,groovy]
 ----
 value.op == 'd' && value.before.id == 2
 ----
 
-In case of `Grovy` the value fields can be accessed in a property-like way, instead of having to call the `get()` method, as is the case of JavaScript.
+Other languages, such as JavaScript, will typically require to  call the `Struct#get()` method:
+
+[source,javascript]
+----
+value.get('op') == 'u' && value.get('before').get('id') == 2
+----
+
+When using JavaScript via Graal.js, simplified property references can be used, akin to the Groovy approach:
+
+[source,javascript]
+----
+value.op == 'd' && value.before.id == 2
+----
 
 [[configuration-options]]
 == Configuration options
