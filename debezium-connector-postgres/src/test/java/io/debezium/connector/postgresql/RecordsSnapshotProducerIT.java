@@ -668,7 +668,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
                         .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARBIT2")
                         .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "3")
                         .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
-                        .build(), new byte[]{ 5, 0 }));
+                        .build(), new byte[]{ 5 }));
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.alias_table", expected)));
     }

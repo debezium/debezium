@@ -20,7 +20,7 @@ CREATE TABLE network_address_table (pk SERIAL, i INET, PRIMARY KEY(pk));
 CREATE TABLE cidr_network_address_table (pk SERIAL, i CIDR, PRIMARY KEY(pk));
 CREATE TABLE macaddr_table(pk SERIAL, m MACADDR, PRIMARY KEY(pk));
 CREATE TABLE cash_table (pk SERIAL, csh MONEY, PRIMARY KEY(pk));
-CREATE TABLE bitbin_table (pk SERIAL, ba BYTEA, bol BIT(1), bs BIT(2), bv BIT VARYING(2) , PRIMARY KEY(pk));
+CREATE TABLE bitbin_table (pk SERIAL, ba BYTEA, bol BIT(1), bs BIT(2), bv BIT VARYING(2), bv2 BIT VARYING(24), bvl BIT VARYING(64), PRIMARY KEY(pk));
 
 CREATE TABLE time_table (pk SERIAL, ts TIMESTAMP, tsneg TIMESTAMP(6) WITHOUT TIME ZONE, ts_ms TIMESTAMP(3), ts_us TIMESTAMP(6), tz TIMESTAMPTZ, date DATE,
     ti TIME, tip TIME(3), ttf TIME,

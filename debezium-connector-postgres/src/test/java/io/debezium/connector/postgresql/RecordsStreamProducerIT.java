@@ -1855,7 +1855,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         List<SchemaAndValueField> expected = Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5, 0 }));
+                new SchemaAndValueField("value", Bits.builder(3).build(), new byte[]{ 5 }));
 
         assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
         assertThat(consumer.isEmpty()).isTrue();

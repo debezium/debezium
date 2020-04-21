@@ -112,8 +112,9 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
             "'P1Y2M3DT4H5M6.78S'::INTERVAL," +
             "'21016-11-04T13:51:30.123456'::TIMESTAMP, '21016-11-04T13:51:30.123457'::TIMESTAMP, '21016-11-04T13:51:30.124'::TIMESTAMP," +
             "'21016-11-04T13:51:30.123456+07:00'::TIMESTAMPTZ)";
-    protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv) " +
-            "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2))";
+    protected static final String INSERT_BIN_TYPES_STMT = "INSERT INTO bitbin_table (ba, bol, bs, bv, bv2, bvl) " +
+            "VALUES (E'\\\\001\\\\002\\\\003'::bytea, '0'::bit(1), '11'::bit(2), '00'::bit(2), '000000110000001000000001'::bit(24)," +
+            "'1000000000000000000000000000000000000000000000000000000000000000'::bit(64))";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
             "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
@@ -525,8 +526,10 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
     protected List<SchemaAndValueField> schemaAndValuesForBinTypes() {
         return Arrays.asList(new SchemaAndValueField("ba", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap(new byte[]{ 1, 2, 3 })),
                 new SchemaAndValueField("bol", Schema.OPTIONAL_BOOLEAN_SCHEMA, false),
-                new SchemaAndValueField("bs", Bits.builder(2).optional().build(), new byte[]{ 3, 0 }), // bitsets get converted from two's complement
-                new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[]{ 0, 0 }));
+                new SchemaAndValueField("bs", Bits.builder(2).optional().build(), new byte[]{ 3 }),
+                new SchemaAndValueField("bv", Bits.builder(2).optional().build(), new byte[]{ 0 }),
+                new SchemaAndValueField("bv2", Bits.builder(24).optional().build(), new byte[]{ 1, 2, 3 }),
+                new SchemaAndValueField("bvl", Bits.builder(64).optional().build(), new byte[]{ 0, 0, 0, 0, 0, 0, 0, -128 })); // Long.MAX_VALUE + 1
     }
 
     private long asEpochMillis(String timestamp) {
@@ -811,8 +814,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
 
         return Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.INT32_SCHEMA, 1),
-                new SchemaAndValueField("bit_base", Bits.builder(3).build(), new byte[]{ 5, 0 }),
-                new SchemaAndValueField("bit_alias", Bits.builder(3).build(), new byte[]{ 5, 0 }),
+                new SchemaAndValueField("bit_base", Bits.builder(3).build(), new byte[]{ 5 }),
+                new SchemaAndValueField("bit_alias", Bits.builder(3).build(), new byte[]{ 5 }),
                 new SchemaAndValueField("smallint_base", SchemaBuilder.INT16_SCHEMA, (short) 1),
                 new SchemaAndValueField("smallint_alias", SchemaBuilder.INT16_SCHEMA, (short) 1),
                 new SchemaAndValueField("integer_base", SchemaBuilder.INT32_SCHEMA, 1),
@@ -869,8 +872,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
                 new SchemaAndValueField("xml_alias", Xml.builder().build(), "<foo>Hello</foo>"),
                 new SchemaAndValueField("uuid_base", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),
                 new SchemaAndValueField("uuid_alias", Uuid.builder().build(), "40e6215d-b5c6-4896-987c-f30f3678f608"),
-                new SchemaAndValueField("varbit_base", Bits.builder(3).build(), new byte[]{ 5, 0 }),
-                new SchemaAndValueField("varbit_alias", Bits.builder(3).build(), new byte[]{ 5, 0 }),
+                new SchemaAndValueField("varbit_base", Bits.builder(3).build(), new byte[]{ 5 }),
+                new SchemaAndValueField("varbit_alias", Bits.builder(3).build(), new byte[]{ 5 }),
                 new SchemaAndValueField("inet_base", SchemaBuilder.STRING_SCHEMA, "192.168.0.1"),
                 new SchemaAndValueField("inet_alias", SchemaBuilder.STRING_SCHEMA, "192.168.0.1"),
                 new SchemaAndValueField("cidr_base", SchemaBuilder.STRING_SCHEMA, "192.168.0.0/24"),

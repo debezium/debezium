@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -632,17 +633,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = ((PGobject) data).getValue();
         }
         if (data instanceof String) {
-            long longValue = Long.parseLong((String) data, 2);
-            // return the smallest possible value
-            if (Short.MIN_VALUE <= longValue && longValue <= Short.MAX_VALUE) {
-                data = (short) longValue;
+            String dataStr = (String) data;
+            BitSet bitset = new BitSet(dataStr.length());
+            int len = dataStr.length();
+            for (int i = len - 1; i >= 0; i--) {
+                if (dataStr.charAt(i) == '1') {
+                    bitset.set(len - i - 1);
+                }
             }
-            else if (Integer.MIN_VALUE <= longValue && longValue <= Integer.MAX_VALUE) {
-                data = (int) longValue;
-            }
-            else {
-                data = longValue;
-            }
+            data = bitset;
         }
         return super.convertBits(column, fieldDefn, data, numBytes);
     }
