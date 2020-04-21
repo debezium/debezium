@@ -148,7 +148,7 @@ NOTE: In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] f
 
 Excluding the `TIMESTAMP` data type, MySQL temporal types depend on the value of the `time.precision.mode` configuration property.
 
-TIP: See xref:connectors/mysql.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+TIP: See xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
 
 Temporal values without timezones are converted from UTC to milliseconds or microseconds (`DATETIME`) or to the configured database timezone (`TIMESTAMP`).
 
@@ -224,7 +224,7 @@ NOTE: Represents the number of milliseconds since epoch, and does not include ti
 
 Decimals are handled via the `decimal.handling.mode` property.
 
-TIP: See xref:connectors/mysql.adoc#mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
+TIP: See xref:mysql-connector-configuration-properties_{context}[MySQL connector configuration properties] for more details.
 
 decimal.handling.mode=precise::
 +
@@ -288,11 +288,13 @@ a| _n/a_
 
 MySQL handles the `BOOLEAN` value internally in a specific way.
 The `BOOLEAN` column is internally mapped to `TINYINT(1)` datatype.
-When the table is created during streaming then it uses proper `BOOLEAN` mapping as Debezium receives the original DDL.
-During snapshot Debezium executes `SHOW CREATE TABLE` to obtain table definition which returns `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns.
+When the table is created during streaming then it uses proper `BOOLEAN` mapping as {prodname} receives the original DDL.
+During snapshot {prodname} executes `SHOW CREATE TABLE` to obtain table definition which returns `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns.
 
-Debezium then has no way how to obtain the original type mapping and will map to `TINYINT(1)`.
-The operator can configure the out-of-the-box xref:development/converters.adoc[custom converter] `TinyIntOneToBooleanConverter` that would either map all `TINYINT(1)` columns to `BOOLEAN` or if `selector` parameter is set then a subset of columns could be enumerated using comma-separated regular expressions.
+{prodname} then has no way how to obtain the original type mapping and will map to `TINYINT(1)`.
+ifndef::cdc-product[]
+The operator can configure the out-of-the-box {link-prefix}:{link-custom-converters}[custom converter] `TinyIntOneToBooleanConverter` that would either map all `TINYINT(1)` columns to `BOOLEAN` or if `selector` parameter is set then a subset of columns could be enumerated using comma-separated regular expressions.
+endif::cdc-product[]
 
 An example configuration is
 

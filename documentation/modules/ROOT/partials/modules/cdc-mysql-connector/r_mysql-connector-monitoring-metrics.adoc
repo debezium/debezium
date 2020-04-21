@@ -6,9 +6,11 @@
 
 The {prodname} MySQL connector has three metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
 
-* <<mysql-connector-snapshot-metrics, snapshot metrics>>
-* <<mysql-connector-binlog-metrics, binlog metrics>>
-* <<mysql-connector-schema-history-metrics, schema history metrics>>
+* <<mysql-connector-snapshot-metrics, snapshot metrics>>; for monitoring the connector when performing snapshots
+* <<mysql-connector-binlog-metrics, binlog metrics>>; for monitoring the connector when reading CDC table data
+* <<mysql-connector-schema-history-metrics, schema history metrics>>; for monitoring the status of the connector's schema history
+
+Refer to the xref:operations/monitoring.adoc[monitoring documentation] for details of how to expose these metrics via JMX.
 
 == Snapshot metrics
 [[mysql-connector-snapshot-metrics]]
@@ -87,7 +89,7 @@ The *MBean* is `debezium.mysql:type=connector-metrics,context=snapshot,server=<d
 
 The *MBean* is `debezium.mysql:type=connector-metrics,context=binlog,server=<database.server.name>`.
 
-NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See xref:connectors/mysql.adoc#mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
+NOTE: The transaction-related attributes are only available if binlog event buffering is enabled. See xref:mysql-connector-configuration-properties_{context}[binlog.buffer.size] in the advanced connector configuration properties for more details.
 
 [cols="3,2,5"]
 |===
