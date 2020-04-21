@@ -420,7 +420,7 @@ public abstract class CommonConnectorConfig {
         for (String operation : operations.split(",")) {
             switch (operation.trim()) {
                 case "r":
-                case "i":
+                case "c":
                 case "u":
                 case "d":
                     continue;
