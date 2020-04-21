@@ -212,7 +212,7 @@ even when the tables have a large number of rows.
 And although an exclusive write lock is used at the beginning of the snapshot process,
 it should not last very long even for large databases.
 This is because the lock is released before any data is copied.
-For more information, see the xref:connectors/mysql.adoc[MySQL connector documentation].
+For more information, see the {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector documentation].
 ====
 
 Next, Kafka Connect reports some "errors".
