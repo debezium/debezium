@@ -58,7 +58,6 @@ import com.github.shyiko.mysql.binlog.event.WriteRowsEventData;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDataDeserializationException;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import com.github.shyiko.mysql.binlog.event.deserialization.GtidEventDataDeserializer;
-import com.github.shyiko.mysql.binlog.event.deserialization.NullEventDataDeserializer;
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 import com.github.shyiko.mysql.binlog.network.AuthenticationException;
 import com.github.shyiko.mysql.binlog.network.DefaultSSLSocketFactory;
@@ -270,44 +269,21 @@ public class BinlogReader extends AbstractReader {
         // Add our custom deserializers ...
         eventDeserializer.setEventDataDeserializer(EventType.STOP, new StopEventDataDeserializer());
         eventDeserializer.setEventDataDeserializer(EventType.GTID, new GtidEventDataDeserializer());
-
-        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOps();
-        if (skippedOperations.contains(Operation.CREATE.code())) {
-            eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS, new NullEventDataDeserializer());
-            eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS, new NullEventDataDeserializer());
-        }
-        else {
-            eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
-                    new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
-            eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
-                    new RowDeserializers.WriteRowsDeserializer(
-                            tableMapEventByTableId).setMayContainExtraInformation(true));
-        }
-
-        if (skippedOperations.contains(Operation.UPDATE.code())) {
-            eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS, new NullEventDataDeserializer());
-            eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS, new NullEventDataDeserializer());
-        }
-        else {
-            eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
-                    new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
-            eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
-                    new RowDeserializers.UpdateRowsDeserializer(
-                            tableMapEventByTableId).setMayContainExtraInformation(true));
-        }
-
-        if (skippedOperations.contains(Operation.DELETE.code())) {
-            eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS, new NullEventDataDeserializer());
-            eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS, new NullEventDataDeserializer());
-        }
-        else {
-            eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
-                    new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
-            eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
-                    new RowDeserializers.DeleteRowsDeserializer(
-                            tableMapEventByTableId).setMayContainExtraInformation(true));
-        }
-
+        eventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
+                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId));
+        eventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
+                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId));
+        eventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
+                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId));
+        eventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
+                new RowDeserializers.WriteRowsDeserializer(
+                        tableMapEventByTableId).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
+                new RowDeserializers.UpdateRowsDeserializer(
+                        tableMapEventByTableId).setMayContainExtraInformation(true));
+        eventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
+                new RowDeserializers.DeleteRowsDeserializer(
+                        tableMapEventByTableId).setMayContainExtraInformation(true));
         client.setEventDeserializer(eventDeserializer);
 
         // Set up for JMX ...
@@ -329,6 +305,7 @@ public class BinlogReader extends AbstractReader {
     @Override
     protected void doStart() {
         context.dbSchema().assureNonEmptySchema();
+        Set<Operation> skippedOperations = context.getConnectorConfig().getSkippedOps();
 
         // Register our event handlers ...
         eventHandlers.put(EventType.STOP, this::handleServerStop);
@@ -337,12 +314,22 @@ public class BinlogReader extends AbstractReader {
         eventHandlers.put(EventType.ROTATE, this::handleRotateLogsEvent);
         eventHandlers.put(EventType.TABLE_MAP, this::handleUpdateTableMetadata);
         eventHandlers.put(EventType.QUERY, this::handleQueryEvent);
-        eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
-        eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
-        eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
-        eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
-        eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
-        eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
+
+        if (!skippedOperations.contains(Operation.CREATE)) {
+            eventHandlers.put(EventType.WRITE_ROWS, this::handleInsert);
+            eventHandlers.put(EventType.EXT_WRITE_ROWS, this::handleInsert);
+        }
+
+        if (!skippedOperations.contains(Operation.UPDATE)) {
+            eventHandlers.put(EventType.UPDATE_ROWS, this::handleUpdate);
+            eventHandlers.put(EventType.EXT_UPDATE_ROWS, this::handleUpdate);
+        }
+
+        if (!skippedOperations.contains(Operation.DELETE)) {
+            eventHandlers.put(EventType.DELETE_ROWS, this::handleDelete);
+            eventHandlers.put(EventType.EXT_DELETE_ROWS, this::handleDelete);
+        }
+
         eventHandlers.put(EventType.VIEW_CHANGE, this::viewChange);
         eventHandlers.put(EventType.XA_PREPARE, this::prepareTransaction);
         eventHandlers.put(EventType.XID, this::handleTransactionCompletion);

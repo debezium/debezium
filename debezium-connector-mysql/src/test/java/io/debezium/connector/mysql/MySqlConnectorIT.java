@@ -2114,4 +2114,79 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         stopConnector();
     }
+
+    @Test
+    @FixFor("DBZ-1895")
+    public void shouldEmitNoEventsForSkippedCreateOperations() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "c")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (201,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("UPDATE products SET weight=3.13 WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (202,'rubbercrocodile','Rubber Crocodile',4.14);");
+                connection.execute("DELETE FROM products WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (203,'rubberfish','Rubber Fish',5.15);");
+                connection.execute("DELETE FROM products WHERE name = 'rubbercrocodile'");
+                connection.execute("DELETE FROM products WHERE name = 'rubberfish'");
+            }
+        }
+
+        SourceRecords records = consumeRecordsByTopic(7);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("products"));
+
+        assertUpdate(changeEvents.get(0), "id", 201);
+        assertDelete(changeEvents.get(1), "id", 201);
+        assertTombstone(changeEvents.get(2), "id", 201);
+        assertDelete(changeEvents.get(3), "id", 202);
+        assertTombstone(changeEvents.get(4), "id", 202);
+        assertDelete(changeEvents.get(5), "id", 203);
+        assertTombstone(changeEvents.get(6), "id", 203);
+        assertThat(changeEvents.size()).isEqualTo(7);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1895")
+    public void shouldEmitNoEventsForSkippedUpdateAndDeleteOperations() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(MySqlConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "u,d")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (204,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("UPDATE products SET weight=3.13 WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (205,'rubbercrocodile','Rubber Crocodile',4.14);");
+                connection.execute("DELETE FROM products WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (206,'rubberfish','Rubber Fish',5.15);");
+            }
+        }
+
+        SourceRecords records = consumeRecordsByTopic(3);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("products"));
+
+        assertInsert(changeEvents.get(0), "id", 204);
+        assertInsert(changeEvents.get(1), "id", 205);
+        assertInsert(changeEvents.get(2), "id", 206);
+        assertThat(changeEvents.size()).isEqualTo(3);
+
+        stopConnector();
+    }
 }
