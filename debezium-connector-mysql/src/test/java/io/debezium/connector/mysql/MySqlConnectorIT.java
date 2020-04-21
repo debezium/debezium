@@ -2062,4 +2062,42 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
 
         stopConnector();
     }
+
+    @Test
+    @FixFor("DBZ-582")
+    public void shouldEmitNoEventsForSkippedOperations() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(MySqlConnectorConfig.SKIPPED_OPERATIONS, "u,d")
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT); // 6 DDL changes
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("orders")).size()).isEqualTo(5);
+
+        try (MySQLConnection db = MySQLConnection.forTestDatabase(DATABASE.getDatabaseName());) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO products VALUES (201,'rubberduck','Rubber Duck',2.12);");
+                connection.execute("UPDATE products SET weight=3.13 WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (202,'rubbercrocodile','Rubber Crocodile',4.14);");
+                connection.execute("DELETE FROM products WHERE name = 'rubberduck'");
+                connection.execute("INSERT INTO products VALUES (203,'rubberfish','Rubber Fish',5.15);");
+            }
+        }
+        // Consume the update of the PK, which is one insert followed by a delete...
+        records = consumeRecordsByTopic(3);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("products"));
+        assertThat(changeEvents.size()).isEqualTo(3);
+        assertInsert(changeEvents.get(0), "id", 201);
+        assertInsert(changeEvents.get(1), "id", 202);
+        assertInsert(changeEvents.get(2), "id", 203);
+
+        stopConnector();
+    }
 }
