@@ -41,6 +41,7 @@ Cyril Scetbon
 Daan Roosen
 David Chen
 David Feinblum
+David Jerome
 David Leibovic
 David Szabo
 Deepak Barr
