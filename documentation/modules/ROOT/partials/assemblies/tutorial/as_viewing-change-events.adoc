@@ -1,7 +1,6 @@
 // Metadata created by nebel
 //
 // UserStory: As an evaluator, I want to use Debezium to view create, update, and delete events in my database.
-
 :context: debezium
 
 [id="viewing-change-events"]
@@ -14,7 +13,7 @@ When you watched the connector start up,
 you saw that events were written to the following topics with the `dbserver1` prefix (the name of the connector):
 
 `dbserver1`::
-The xref:connectors/mysql.adoc#how-the-mysql-connector-handles-schema-change-topics_{context}[schema change topic] to which all of the DDL statements are written.
+The {link-prefix}:{link-mysql-connector}#how-the-mysql-connector-handles-schema-change-topics_{context}[schema change topic] to which all of the DDL statements are written.
 
 `dbserver1.inventory.products`::
 Captures change events for the `products` table in the `inventory` database.

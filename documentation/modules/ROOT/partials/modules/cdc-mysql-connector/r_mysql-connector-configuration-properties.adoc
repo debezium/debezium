@@ -294,7 +294,7 @@ The connector will read the table contents in multiple batches of this size.
 |`snapshot.lock.timeout.ms`
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot.
-If table locks cannot be acquired in this time interval, the snapshot will fail. See xref:connectors/mysql.adoc#how-the-mysql-connector-performs-database-snapshots_{context}[How the MySQL connector performs database snapshots].
+If table locks cannot be acquired in this time interval, the snapshot will fail. See xref:how-the-mysql-connector-performs-database-snapshots_{context}[How the MySQL connector performs database snapshots].
 
 |`enable.time.adjuster`
 |
