@@ -48,13 +48,17 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
 
-    protected static final ConfigDefinition configDefinition = RelationalDatabaseConnectorConfig.configDefinition
+    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(RelationalDatabaseConnectorConfig.configDefinition())
             .history(
                     DATABASE_HISTORY,
                     KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC,
                     KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
                     KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
+
+    protected static ConfigDefinition configDefinition() {
+        return CONFIG_DEFINITION;
+    }
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, boolean useCatalogBeforeSchema) {

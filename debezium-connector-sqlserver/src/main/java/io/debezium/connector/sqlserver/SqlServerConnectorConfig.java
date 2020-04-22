@@ -299,7 +299,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
-    private static final ConfigDefinition configDefinition = HistorizedRelationalDatabaseConnectorConfig.configDefinition
+    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(HistorizedRelationalDatabaseConnectorConfig.configDefinition())
             .name("SQL Server")
             .type(
                     DATABASE_NAME,
@@ -320,10 +320,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(configDefinition.all());
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     public static ConfigDef configDef() {
-        return configDefinition.configDef();
+        return CONFIG_DEFINITION.configDef();
     }
 
     private final String databaseName;
