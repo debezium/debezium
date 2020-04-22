@@ -51,8 +51,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.engine.ChangeEventFormat;
+import io.debezium.engine.ContainerChangeEventFormat;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.KeyValueChangeEventFormat;
 import io.debezium.engine.StopEngineException;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.util.Clock;
@@ -522,10 +523,18 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord> {
         Builder using(OffsetCommitPolicy policy);
 
         @Override
-        default Builder asType(Class<? extends ChangeEventFormat<SourceRecord>> eventFormat) {
+        default Builder asType(Class<? extends ContainerChangeEventFormat<SourceRecord>> eventFormat) {
             // The legacy EmbeddedEngine always returns SourceRecord
             return this;
         };
+
+        @Override
+        default <K, V> io.debezium.engine.DebeziumEngine.Builder<SourceRecord> asType(
+                                                                                      Class<? extends KeyValueChangeEventFormat<K>> formatKey,
+                                                                                      Class<? extends KeyValueChangeEventFormat<V>> formatValue) {
+            // The legacy EmbeddedEngine always returns SourceRecord
+            return this;
+        }
 
         @Override
         EmbeddedEngine build();
