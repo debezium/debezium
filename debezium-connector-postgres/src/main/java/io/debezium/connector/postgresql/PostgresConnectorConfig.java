@@ -840,24 +840,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "If starts with 'hex:' prefix it is expected that the rest of the string repesents hexadecimally encoded octets.");
 
     /**
-     * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
-     * have their values masked by the specified number of asterisk ('*') characters.
-     *
-     * @param length the number of asterisks that should appear in place of the column's string values written in source records;
-     *               must be positive
-     * @return the field; never null
-     */
-    public static final Field MASK_COLUMN(int length) {
-        if (length <= 0) {
-            throw new IllegalArgumentException("The mask length must be positive");
-        }
-        return Field.create("column.mask.with." + length + ".chars")
-                .withValidation(Field::isInteger)
-                .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
-                        + "be masked with " + length + " asterisk ('*') characters.");
-    }
-
-    /**
      * The set of {@link Field}s defined as part of this configuration.
      */
     public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS,
@@ -869,7 +851,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
             SCHEMA_WHITELIST,
-            SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+            SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS,
+            RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+            RelationalDatabaseConnectorConfig.MASK_COLUMN,
+            RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
             COLUMN_BLACKLIST, COLUMN_WHITELIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
             INTERVAL_HANDLING_MODE, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
             SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
@@ -1028,7 +1013,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
                 DROP_SLOT_ON_STOP, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
         Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                COLUMN_BLACKLIST, COLUMN_WHITELIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+                COLUMN_BLACKLIST, COLUMN_WHITELIST, MSG_KEY_COLUMNS,
+                RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+                RelationalDatabaseConnectorConfig.MASK_COLUMN,
+                RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
                 INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, Heartbeat.HEARTBEAT_INTERVAL,
                 Heartbeat.HEARTBEAT_TOPICS_PREFIX, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,

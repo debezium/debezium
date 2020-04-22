@@ -910,41 +910,6 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                             + "'warn' the problematic event and its binlog position will be logged and the event will be skipped;"
                             + "'skip' the problematic event will be skipped.");
 
-    /**
-     * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
-     * have their values truncated to be no longer than the specified number of characters.
-     *
-     * @param length the maximum length of the column's string values written in source records; must be positive
-     * @return the field; never null
-     */
-    public static final Field TRUNCATE_COLUMN(int length) {
-        if (length <= 0) {
-            throw new IllegalArgumentException("The truncation length must be positive");
-        }
-        return Field.create("column.truncate.to." + length + ".chars")
-                .withValidation(Field::isInteger)
-                .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
-                        + "be truncated to " + length + " characters.");
-    }
-
-    /**
-     * Method that generates a Field for specifying that string columns whose names match a set of regular expressions should
-     * have their values masked by the specified number of asterisk ('*') characters.
-     *
-     * @param length the number of asterisks that should appear in place of the column's string values written in source records;
-     *            must be positive
-     * @return the field; never null
-     */
-    public static final Field MASK_COLUMN(int length) {
-        if (length <= 0) {
-            throw new IllegalArgumentException("The mask length must be positive");
-        }
-        return Field.create("column.mask.with." + length + ".chars")
-                .withValidation(Field::isInteger)
-                .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
-                        + "be masked with " + length + " asterisk ('*') characters.");
-    }
-
     public static final Field ENABLE_TIME_ADJUSTER = Field.create("enable.time.adjuster")
             .withDisplayName("Enable Time Adjuster")
             .withType(Type.BOOLEAN)
@@ -971,6 +936,8 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
             DATABASE_WHITELIST, DATABASE_BLACKLIST,
             COLUMN_BLACKLIST, MSG_KEY_COLUMNS,
             RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+            RelationalDatabaseConnectorConfig.MASK_COLUMN,
+            RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
             SNAPSHOT_MODE, SNAPSHOT_NEW_TABLES, SNAPSHOT_LOCKING_MODE,
             RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
             GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES,
@@ -1053,7 +1020,10 @@ public class MySqlConnectorConfig extends RelationalDatabaseConnectorConfig {
                 DatabaseHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, DatabaseHistory.DDL_FILTER,
                 DatabaseHistory.STORE_ONLY_MONITORED_TABLES_DDL);
         Field.group(config, "Events", INCLUDE_SCHEMA_CHANGES, INCLUDE_SQL_QUERY, TABLES_IGNORE_BUILTIN, DATABASE_WHITELIST, TABLE_WHITELIST,
-                COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+                COLUMN_BLACKLIST, TABLE_BLACKLIST, DATABASE_BLACKLIST, MSG_KEY_COLUMNS,
+                RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
+                RelationalDatabaseConnectorConfig.MASK_COLUMN,
+                RelationalDatabaseConnectorConfig.TRUNCATE_COLUMN,
                 RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS, GTID_NEW_CHANNEL_POSITION, BUFFER_SIZE_FOR_BINLOG_READER,
                 Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,

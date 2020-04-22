@@ -780,7 +780,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         TestHelper.execute(setupStmt);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.MASK_COLUMN(5), ".+cc")
+                .with("column.mask.with.5.chars", ".+cc")
                 .with(PostgresConnectorConfig.COLUMN_WHITELIST, ".+aa,.+cc");
 
         start(PostgresConnector.class, configBuilder.build());
@@ -1380,7 +1380,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     public void shouldConsumeEventsWithMaskedColumns() throws Exception {
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.MASK_COLUMN(5), "s2.a.bb");
+                .with("column.mask.with.5.chars", "s2.a.bb");
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
@@ -1514,6 +1514,64 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         }
         if (value.getStruct("after") != null) {
             assertThat(value.getStruct("after").getString("bb")).isEqualTo("b4d39ab0d198fb4cac8b2f023da74f670bcaf192dcc79b5d6361b7ae6b2fafdf");
+        }
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("DBZ-1972")
+    public void shouldConsumeEventsWithTruncatedColumns() throws Exception {
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with("column.truncate.to.3.chars", "s2.a.bb");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        SourceRecords actualRecords = consumeRecordsByTopic(2);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(2);
+
+        List<SourceRecord> recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsForTopicS2.size()).isEqualTo(1);
+
+        SourceRecord record = recordsForTopicS2.remove(0);
+        VerifyRecord.isValidRead(record, PK_FIELD, 1);
+
+        // insert and verify inserts
+        TestHelper.execute("INSERT INTO s2.a (aa,bb) VALUES (1, 'test');");
+
+        actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsForTopicS2.size()).isEqualTo(1);
+
+        record = recordsForTopicS2.remove(0);
+        VerifyRecord.isValidInsert(record, PK_FIELD, 2);
+
+        Struct value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("bb")).isEqualTo("tes");
+        }
+
+        // update and verify update
+        TestHelper.execute("UPDATE s2.a SET aa=2, bb='hello' WHERE pk=2;");
+
+        actualRecords = consumeRecordsByTopic(1);
+        assertThat(actualRecords.topics().size()).isEqualTo(1);
+
+        recordsForTopicS2 = actualRecords.recordsForTopic(topicName("s2.a"));
+        assertThat(recordsForTopicS2.size()).isEqualTo(1);
+
+        record = recordsForTopicS2.remove(0);
+        VerifyRecord.isValidUpdate(record, PK_FIELD, 2);
+
+        value = (Struct) record.value();
+        if (value.getStruct("before") != null && value.getStruct("before").getString("bb") != null) {
+            assertThat(value.getStruct("before").getString("bb")).isEqualTo("tes");
+        }
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("bb")).isEqualTo("hel");
         }
 
         stopConnector();
