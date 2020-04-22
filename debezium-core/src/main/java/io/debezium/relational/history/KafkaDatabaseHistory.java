@@ -52,7 +52,9 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.config.Field.Validator;
 import io.debezium.document.DocumentReader;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Threads;
 
@@ -96,7 +98,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
             .withWidth(Width.LONG)
             .withImportance(Importance.HIGH)
             .withDescription("The name of the topic for the database schema history")
-            .withValidation(Field::isRequired);
+            .withValidation(KafkaDatabaseHistory.forKafka(Field::isRequired));
 
     public static final Field BOOTSTRAP_SERVERS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.bootstrap.servers")
             .withDisplayName("Kafka broker addresses")
@@ -107,7 +109,7 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
                     + "connection to the Kafka cluster for retrieving database schema history previously stored "
                     + "by the connector. This should point to the same Kafka cluster used by the Kafka Connect "
                     + "process.")
-            .withValidation(Field::isRequired);
+            .withValidation(KafkaDatabaseHistory.forKafka(Field::isRequired));
 
     public static final Field RECOVERY_POLL_INTERVAL_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING
             + "kafka.recovery.poll.interval.ms")
@@ -539,4 +541,10 @@ public class KafkaDatabaseHistory extends AbstractDatabaseHistory {
         return configs.values().iterator().next();
     }
 
+    private static Validator forKafka(final Validator validator) {
+        return (config, field, problems) -> {
+            final String history = config.getString(HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
+            return KafkaDatabaseHistory.class.getName().equals(history) ? validator.validate(config, field, problems) : 0;
+        };
+    }
 }
