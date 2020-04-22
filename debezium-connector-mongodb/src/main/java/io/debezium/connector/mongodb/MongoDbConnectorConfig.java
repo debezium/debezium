@@ -19,7 +19,6 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.heartbeat.Heartbeat;
 
 /**
  * The configuration properties.
@@ -313,27 +312,40 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
 
-    public static Field.Set ALL_FIELDS = Field.setOf(USER, PASSWORD, HOSTS, LOGICAL_NAME,
-            SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
-            MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.POLL_INTERVAL_MS,
-            MAX_FAILED_CONNECTIONS,
-            CONNECT_BACKOFF_INITIAL_DELAY_MS,
-            CONNECT_BACKOFF_MAX_DELAY_MS,
-            COLLECTION_WHITELIST,
-            COLLECTION_BLACKLIST,
-            FIELD_BLACKLIST,
-            FIELD_RENAMES,
-            AUTO_DISCOVER_MEMBERS,
-            DATABASE_WHITELIST,
-            DATABASE_BLACKLIST,
-            CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            SNAPSHOT_MODE, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            CommonConnectorConfig.SKIPPED_OPERATIONS);
+    private static final ConfigDefinition configDefinition = CommonConnectorConfig.configDefinition
+            .name("MongoDB")
+            .type(
+                    HOSTS,
+                    USER,
+                    PASSWORD,
+                    AUTH_SOURCE,
+                    LOGICAL_NAME,
+                    CONNECT_BACKOFF_INITIAL_DELAY_MS,
+                    CONNECT_BACKOFF_MAX_DELAY_MS,
+                    POLL_INTERVAL_SEC,
+                    MAX_FAILED_CONNECTIONS,
+                    AUTO_DISCOVER_MEMBERS,
+                    SSL_ENABLED,
+                    SSL_ALLOW_INVALID_HOSTNAMES)
+            .events(
+                    DATABASE_WHITELIST,
+                    DATABASE_BLACKLIST,
+                    COLLECTION_WHITELIST,
+                    COLLECTION_BLACKLIST,
+                    FIELD_BLACKLIST,
+                    FIELD_RENAMES)
+            .connector(
+                    MAX_COPY_THREADS,
+                    SNAPSHOT_MODE);
+
+    /**
+     * The set of {@link Field}s defined as part of this configuration.
+     */
+    public static Field.Set ALL_FIELDS = Field.setOf(configDefinition.all());
+
+    public static ConfigDef configDef() {
+        return configDefinition.configDef();
+    }
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
 
@@ -344,20 +356,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
 
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
-    }
-
-    protected static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-        Field.group(config, "MongoDB", HOSTS, USER, PASSWORD, LOGICAL_NAME, CONNECT_BACKOFF_INITIAL_DELAY_MS,
-                CONNECT_BACKOFF_MAX_DELAY_MS, MAX_FAILED_CONNECTIONS, AUTO_DISCOVER_MEMBERS,
-                SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES, CommonConnectorConfig.SKIPPED_OPERATIONS);
-        Field.group(config, "Events", DATABASE_WHITELIST, DATABASE_BLACKLIST, COLLECTION_WHITELIST, COLLECTION_BLACKLIST, FIELD_BLACKLIST, FIELD_RENAMES,
-                CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX);
-        Field.group(config, "Connector", MAX_COPY_THREADS, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-                CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE);
-        return config;
     }
 
     private static int validateHosts(Configuration config, Field field, ValidationOutput problems) {

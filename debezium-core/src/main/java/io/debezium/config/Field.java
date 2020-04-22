@@ -60,6 +60,15 @@ public final class Field {
     }
 
     /**
+     * Create a set of fields.
+     * @param fields the fields to include
+     * @return the field set; never null
+     */
+    public static Set setOf(Iterable<Field> fields) {
+        return new Set().with(fields);
+    }
+
+    /**
      * A set of fields.
      */
     @Immutable

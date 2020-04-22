@@ -24,7 +24,6 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
 import io.debezium.function.Predicates;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -33,7 +32,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
 
 /**
  * The list of configuration options for SQL Server connector
@@ -301,66 +299,31 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    private static final ConfigDefinition configDefinition = HistorizedRelationalDatabaseConnectorConfig.configDefinition
+            .name("SQL Server")
+            .type(
+                    DATABASE_NAME,
+                    HOSTNAME,
+                    PORT,
+                    USER,
+                    PASSWORD,
+                    SNAPSHOT_MODE,
+                    SNAPSHOT_ISOLATION_MODE,
+                    SERVER_TIMEZONE)
+            .connector(
+                    SNAPSHOT_MODE,
+                    SNAPSHOT_ISOLATION_MODE)
+            .exclude(
+                    SCHEMA_WHITELIST,
+                    SCHEMA_BLACKLIST);
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(
-            SERVER_NAME,
-            DATABASE_NAME,
-            HOSTNAME,
-            PORT,
-            USER,
-            PASSWORD,
-            SNAPSHOT_MODE,
-            SERVER_TIMEZONE,
-            RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS,
-            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-            HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
-            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-            RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-            RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
-            RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-            RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
-            RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-            CommonConnectorConfig.POLL_INTERVAL_MS,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.MAX_QUEUE_SIZE,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-            CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
+    public static Field.Set ALL_FIELDS = Field.setOf(configDefinition.all());
 
     public static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-
-        Field.group(config, "SQL Server", SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
-                USER, PASSWORD, SNAPSHOT_MODE, SERVER_TIMEZONE);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-                RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-                RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
-                RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-                RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-                CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-                RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS);
-
-        return config;
+        return configDefinition.configDef();
     }
 
     private final String databaseName;
