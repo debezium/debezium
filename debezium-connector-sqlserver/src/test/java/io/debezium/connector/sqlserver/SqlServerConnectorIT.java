@@ -973,6 +973,55 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-1972")
+    public void shouldConsumeEventsWithMaskedAndTruncatedColumns() throws Exception {
+        connection.execute(
+                "CREATE TABLE masked_hashed_column_table (id int, name varchar(255) primary key(id))",
+                "CREATE TABLE truncated_column_table (id int, name varchar(20), primary key(id))");
+        TestHelper.enableTableCdc(connection, "masked_hashed_column_table");
+        TestHelper.enableTableCdc(connection, "truncated_column_table");
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with("column.mask.with.12.chars", "testDB.dbo.masked_hashed_column_table.name")
+                .with("column.truncate.to.4.chars", "testDB.dbo.truncated_column_table.name")
+                .build();
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        consumeRecordsByTopic(1);
+
+        connection.execute("INSERT INTO masked_hashed_column_table VALUES(10, 'some_name')");
+        connection.execute("INSERT INTO truncated_column_table VALUES(11, 'some_name')");
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableA = records.recordsForTopic("server1.dbo.masked_hashed_column_table");
+        final List<SourceRecord> tableB = records.recordsForTopic("server1.dbo.truncated_column_table");
+
+        assertThat(tableA).hasSize(1);
+        SourceRecord record = tableA.get(0);
+        VerifyRecord.isValidInsert(record, "id", 10);
+
+        Struct value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("name")).isEqualTo("************");
+        }
+
+        assertThat(tableB).hasSize(1);
+        record = tableB.get(0);
+        VerifyRecord.isValidInsert(record, "id", 11);
+
+        value = (Struct) record.value();
+        if (value.getStruct("after") != null) {
+            assertThat(value.getStruct("after").getString("name")).isEqualTo("some");
+        }
+
+        stopConnector();
+    }
+
     /**
      * Passing the "applicationName" property which can be asserted from the connected sessions".
      */

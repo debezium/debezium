@@ -268,6 +268,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "'adaptive_time_microseconds' like 'adaptive' mode, but TIME fields always use microseconds precision;"
                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                     + "which uses millisecond precision regardless of the database columns' precision .");
+
     public static final Field SNAPSHOT_LOCK_TIMEOUT_MS = Field.create("snapshot.lock.timeout.ms")
             .withDisplayName("Snapshot lock timeout (ms)")
             .withWidth(Width.LONG)
@@ -283,6 +284,17 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.MEDIUM)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be masked by hashing the input. Using the specified hash algorithms and salt.");
+
+
+    public static final Field MASK_COLUMN = Field.create("column.mask.with.(d+).chars")
+            .withValidation(Field::isInteger)
+            .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
+                    + "be masked with configured amount of asterisk ('*') characters.");
+
+    public static final Field TRUNCATE_COLUMN = Field.create("column.truncate.to.(d+).chars")
+            .withValidation(Field::isInteger)
+            .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
+                    + "be truncated to the configured amount of characters.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
@@ -300,7 +312,10 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SCHEMA_WHITELIST,
                     SCHEMA_BLACKLIST,
                     MSG_KEY_COLUMNS,
-                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE)
+                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
+                    MASK_COLUMN_WITH_HASH,
+                    MASK_COLUMN,
+                    TRUNCATE_COLUMN)
             .create();
 
     private final RelationalTableFilters tableFilters;

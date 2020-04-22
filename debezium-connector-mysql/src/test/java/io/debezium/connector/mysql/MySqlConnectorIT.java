@@ -1176,7 +1176,7 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         // Use the DB configuration to define the connector's configuration ...
         config = RO_DATABASE.defaultConfig()
                 .with(MySqlConnectorConfig.COLUMN_BLACKLIST, RO_DATABASE.qualifiedTableName("orders") + ".order_number")
-                .with(MySqlConnectorConfig.MASK_COLUMN(12), RO_DATABASE.qualifiedTableName("customers") + ".email")
+                .with("column.mask.with.12.chars", RO_DATABASE.qualifiedTableName("customers") + ".email")
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .build();
 
@@ -1273,6 +1273,58 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         Struct value1004 = (Struct) customers.get(3).value();
         if (value1004.getStruct("after") != null) {
             assertThat(value1004.getStruct("after").getString("email")).isEqualTo("ff21be44fb224e57d822ea9a51d343d77e4c49ac3dedd3d144024ac2012af0a1");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-1972")
+    public void shouldConsumeEventsWithTruncatedColumns() throws InterruptedException {
+        Testing.Files.delete(DB_HISTORY_PATH);
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = RO_DATABASE.defaultConfig()
+                .with("column.truncate.to.7.chars", RO_DATABASE.qualifiedTableName("customers") + ".email")
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+
+        // Consume the first records due to startup and initialization of the database ...
+        // Testing.Print.enable();
+        SourceRecords records = consumeRecordsByTopic(9 + 9 + 4 + 5 + 1);
+        assertThat(recordsForTopicForRoProductsTable(records)).hasSize(9);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("products_on_hand"))).hasSize(9);
+        final List<SourceRecord> customers = records.recordsForTopic(RO_DATABASE.topicForTable("customers"));
+        assertThat(customers).hasSize(4);
+        assertThat(records.recordsForTopic(RO_DATABASE.topicForTable("orders"))).hasSize(5);
+        assertThat(records.topics()).hasSize(5);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+
+        // More records may have been written (if this method were run after the others), but we don't care ...
+        stopConnector();
+
+        // Check that the customer.email is masked ...
+        Struct value1001 = (Struct) customers.get(0).value();
+        if (value1001.getStruct("after") != null) {
+            assertThat(value1001.getStruct("after").getString("email")).isEqualTo("sally.t");
+        }
+
+        Struct value1002 = (Struct) customers.get(1).value();
+        if (value1002.getStruct("after") != null) {
+            assertThat(value1002.getStruct("after").getString("email")).isEqualTo("gbailey");
+        }
+
+        Struct value1003 = (Struct) customers.get(2).value();
+        if (value1003.getStruct("after") != null) {
+            assertThat(value1003.getStruct("after").getString("email")).isEqualTo("ed@walk");
+        }
+
+        Struct value1004 = (Struct) customers.get(3).value();
+        if (value1004.getStruct("after") != null) {
+            assertThat(value1004.getStruct("after").getString("email")).isEqualTo("annek@n");
         }
     }
 
