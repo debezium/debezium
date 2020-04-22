@@ -47,6 +47,7 @@ public final class Envelope {
          * An operation that resulted in an existing record being removed from or deleted in the source.
          */
         DELETE("d");
+
         private final String code;
 
         private Operation(String code) {
