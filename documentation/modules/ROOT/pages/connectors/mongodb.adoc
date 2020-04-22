@@ -279,7 +279,7 @@ ifndef::cdc-product[]
 ====
 The MongoDB connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names]. This means that the logical server name must start with Latin letters or an underscore (e.g., [a-z,A-Z,\_]), and the remaining characters in the logical server name and all characters in the database and collections names must be Latin letters, digits, or an underscore (e.g., [a-z,A-Z,0-9,\_]). If not, then all invalid characters will automatically be replaced with an underscore character.
 
-This can lead to unexpected conflicts in schemas names when the logical server name, database names, and table names contain other characters, and the only distinguishing characters between table full names are invalid and thus replaced with underscores. The connector attempts to produce an exception in this such cases, but only when the conflicts exist between schemas used within a single connector.
+This can lead to unexpected conflicts in schemas names when the logical server name, database names, and collection names contain other characters, and the only distinguishing characters between collection full names are invalid and thus replaced with underscores. The connector attempts to produce an exception in this such cases, but only when the conflicts exist between schemas used within a single connector.
 ====
 endif::cdc-product[]
 
@@ -297,7 +297,7 @@ The payload section of every change event value produced by the MongoDB connecto
 
 And of course, the _schema_ portion of the event message's value contains a schema that describes this envelope structure and the nested fields within it.
 
-Let's look at what a _create_/_read_ event value might look like for our `customers` table:
+Let's look at what a _create_/_read_ event value might look like for our `customers` collection:
 
 [source,json,indent=0,subs="attributes"]
 ----
@@ -422,7 +422,7 @@ Let's look at what a _create_/_read_ event value might look like for our `custom
 
 If we look at the `schema` portion of this event's _value_, we can see the schema for the _envelope_ is specific to the collection, and the schema for the `source` structure (which is specific to the MongoDB connector and reused across all events). Also note that the `after` value is always a string, and that by convention it will contain a JSON representation of the document.
 
-If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the document was read as part of an snapshot (since `op=r` and `initsync=true`), and that the `after` field value contains the JSON string representation of the document.
+If we look at the `payload` portion of this event's _value_, we can see the information in the event, namely that it is describing that the document was read as part of an snapshot (since `op=r` and `snapshot=true`), and that the `after` field value contains the JSON string representation of the document.
 
 [NOTE]
 ====
@@ -482,7 +482,7 @@ Update events in MongoDB's oplog don't have the _before_ or _after_ states of th
 However, because _create_ or _read_ events _do_ contain the starting state, downstream consumers of the stream can actually fully-reconstruct the state by keeping the latest state for each document and applying each event to that state. {prodname} connector's are not able to keep such state, so it is not able to do this.
 ====
 
-So far we've seen samples of _create_/_read_ and _update_ events. Now, let's look at the value of a _delete_ event for the same table.
+So far we've seen samples of _create_/_read_ and _update_ events. Now, let's look at the value of a _delete_ event for the same collection.
 The value of an _delete_ event on this collection will also have the exact same _schema_, and its payload is structured the same but will hold different values.
 In particular, a delete event will not have an `after` value or a `patch` value:
 
@@ -734,7 +734,7 @@ May not be used with `database.blacklist`.
 
 |`snapshot.mode`
 |`initial`
-|Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
+|Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
 |`field.blacklist`
 |_empty string_
