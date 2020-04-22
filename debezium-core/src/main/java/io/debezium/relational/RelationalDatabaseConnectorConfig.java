@@ -283,6 +283,24 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be masked by hashing the input. Using the specified hash algorithms and salt.");
 
+    protected static final ConfigDefinition configDefinition = CommonConnectorConfig.configDefinition
+            .type(
+                    SERVER_NAME)
+            .connector(
+                    DECIMAL_HANDLING_MODE,
+                    TIME_PRECISION_MODE,
+                    SNAPSHOT_LOCK_TIMEOUT_MS)
+            .events(
+                    COLUMN_WHITELIST,
+                    COLUMN_BLACKLIST,
+                    TABLE_WHITELIST,
+                    TABLE_BLACKLIST,
+                    TABLE_IGNORE_BUILTIN,
+                    SCHEMA_WHITELIST,
+                    SCHEMA_BLACKLIST,
+                    MSG_KEY_COLUMNS,
+                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
+
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
     private final KeyMapper keyMapper;

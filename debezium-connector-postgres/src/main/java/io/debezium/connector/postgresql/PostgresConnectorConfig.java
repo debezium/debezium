@@ -17,7 +17,6 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -37,7 +36,6 @@ import io.debezium.connector.postgresql.snapshot.InitialSnapshotter;
 import io.debezium.connector.postgresql.snapshot.NeverSnapshotter;
 import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
@@ -857,28 +855,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                         + "be masked with " + length + " asterisk ('*') characters.");
     }
 
-    /**
-     * The set of {@link Field}s defined as part of this configuration.
-     */
-    public static Field.Set ALL_FIELDS = Field.setOf(PLUGIN_NAME, SLOT_NAME, DROP_SLOT_ON_STOP, PUBLICATION_NAME, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS,
-            DATABASE_NAME, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS, RelationalDatabaseConnectorConfig.SERVER_NAME,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.POLL_INTERVAL_MS,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            Heartbeat.HEARTBEAT_INTERVAL,
-            Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
-            SCHEMA_WHITELIST,
-            SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-            COLUMN_BLACKLIST, COLUMN_WHITELIST, SNAPSHOT_MODE, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
-            INTERVAL_HANDLING_MODE, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD,
-            SSL_ROOT_CERT, SSL_CLIENT_KEY, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, SSL_SOCKET_FACTORY,
-            STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, INCLUDE_UNKNOWN_DATATYPES,
-            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, SCHEMA_REFRESH_MODE, CommonConnectorConfig.TOMBSTONES_ON_DELETE,
-            CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA,
-            XMIN_FETCH_INTERVAL, TOASTED_VALUE_PLACEHOLDER, SNAPSHOT_MODE_CLASS, CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -1022,24 +998,49 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-    protected static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-        Field.group(config, "Postgres", SLOT_NAME, PUBLICATION_NAME, PLUGIN_NAME, RelationalDatabaseConnectorConfig.SERVER_NAME, DATABASE_NAME, HOSTNAME, PORT,
-                USER, PASSWORD, ON_CONNECT_STATEMENTS, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_CLIENT_KEY,
-                DROP_SLOT_ON_STOP, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, SSL_SOCKET_FACTORY, STATUS_UPDATE_INTERVAL_MS, TCP_KEEPALIVE, XMIN_FETCH_INTERVAL);
-        Field.group(config, "Events", SCHEMA_WHITELIST, SCHEMA_BLACKLIST, TABLE_WHITELIST, TABLE_BLACKLIST,
-                COLUMN_BLACKLIST, COLUMN_WHITELIST, MSG_KEY_COLUMNS, RelationalDatabaseConnectorConfig.MASK_COLUMN_WITH_HASH,
-                INCLUDE_UNKNOWN_DATATYPES, SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                CommonConnectorConfig.TOMBSTONES_ON_DELETE, CommonConnectorConfig.PROVIDE_TRANSACTION_METADATA, Heartbeat.HEARTBEAT_INTERVAL,
-                Heartbeat.HEARTBEAT_TOPICS_PREFIX, DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                TOASTED_VALUE_PLACEHOLDER, CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE, CommonConnectorConfig.MAX_QUEUE_SIZE,
-                CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                SNAPSHOT_MODE, RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TIME_PRECISION_MODE, DECIMAL_HANDLING_MODE, HSTORE_HANDLING_MODE,
-                INTERVAL_HANDLING_MODE, SCHEMA_REFRESH_MODE, SNAPSHOT_MODE_CLASS);
+    private static final ConfigDefinition configDefinition = RelationalDatabaseConnectorConfig.configDefinition
+            .name("Postgres")
+            .type(
+                    HOSTNAME,
+                    PORT,
+                    USER,
+                    PASSWORD,
+                    DATABASE_NAME,
+                    PLUGIN_NAME,
+                    SLOT_NAME,
+                    PUBLICATION_NAME,
+                    DROP_SLOT_ON_STOP,
+                    STREAM_PARAMS,
+                    ON_CONNECT_STATEMENTS,
+                    SSL_MODE,
+                    SSL_CLIENT_CERT,
+                    SSL_CLIENT_KEY_PASSWORD,
+                    SSL_ROOT_CERT,
+                    SSL_CLIENT_KEY,
+                    MAX_RETRIES,
+                    RETRY_DELAY_MS,
+                    SSL_SOCKET_FACTORY,
+                    STATUS_UPDATE_INTERVAL_MS,
+                    TCP_KEEPALIVE,
+                    XMIN_FETCH_INTERVAL)
+            .events(
+                    INCLUDE_UNKNOWN_DATATYPES,
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
+                    TOASTED_VALUE_PLACEHOLDER)
+            .connector(
+                    SNAPSHOT_MODE,
+                    SNAPSHOT_MODE_CLASS,
+                    HSTORE_HANDLING_MODE,
+                    INTERVAL_HANDLING_MODE,
+                    SCHEMA_REFRESH_MODE);
 
-        return config;
+    /**
+     * The set of {@link Field}s defined as part of this configuration.
+     */
+    public static Field.Set ALL_FIELDS = Field.setOf(configDefinition.all());
+
+    public static ConfigDef configDef() {
+        return configDefinition.configDef();
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {

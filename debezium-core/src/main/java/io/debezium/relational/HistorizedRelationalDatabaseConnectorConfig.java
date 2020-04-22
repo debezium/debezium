@@ -28,6 +28,7 @@ import io.debezium.relational.history.KafkaDatabaseHistory;
 public abstract class HistorizedRelationalDatabaseConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 2_000;
+
     private boolean useCatalogBeforeSchema;
     private final String logicalName;
     private final Class<? extends SourceConnector> connectorClass;
@@ -46,6 +47,14 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     + "The configuration properties for the history are prefixed with the '"
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
+
+    protected static final ConfigDefinition configDefinition = RelationalDatabaseConnectorConfig.configDefinition
+            .history(
+                    DATABASE_HISTORY,
+                    KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
+                    KafkaDatabaseHistory.TOPIC,
+                    KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, boolean useCatalogBeforeSchema) {
