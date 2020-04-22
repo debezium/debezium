@@ -275,7 +275,7 @@ public abstract class CommonConnectorConfig {
             .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'i' for inserts; 'u' for updates; 'd' for deletes. "
                     + "By default, no operations will be skipped.");
 
-    protected static final ConfigDefinition configDefinition = new ConfigDefinition()
+    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
                     MAX_BATCH_SIZE,
@@ -292,6 +292,10 @@ public abstract class CommonConnectorConfig {
                     SOURCE_STRUCT_MAKER_VERSION,
                     Heartbeat.HEARTBEAT_INTERVAL,
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX);
+
+    protected static ConfigDefinition configDefinition() {
+        return CONFIG_DEFINITION;
+    }
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
@@ -485,6 +489,18 @@ public abstract class CommonConnectorConfig {
         private List<Field> history = new ArrayList<>();
         private List<Field> events = new ArrayList<>();
         private Set<Field> exclude = new HashSet<>();
+
+        public ConfigDefinition() {
+        }
+
+        public ConfigDefinition(ConfigDefinition parent) {
+            this.connectorName = parent.connectorName;
+            type.addAll(parent.type);
+            connector.addAll(parent.connector);
+            history.addAll(parent.history);
+            events.addAll(parent.events);
+            exclude.addAll(parent.exclude);
+        }
 
         public ConfigDefinition name(String name) {
             this.connectorName = name;

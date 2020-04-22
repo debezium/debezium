@@ -998,7 +998,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-    private static final ConfigDefinition configDefinition = RelationalDatabaseConnectorConfig.configDefinition
+    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(RelationalDatabaseConnectorConfig.configDefinition())
             .name("Postgres")
             .type(
                     HOSTNAME,
@@ -1037,10 +1037,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(configDefinition.all());
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     public static ConfigDef configDef() {
-        return configDefinition.configDef();
+        return CONFIG_DEFINITION.configDef();
     }
 
     private static int validateTableBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
