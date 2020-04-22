@@ -147,10 +147,6 @@ public class MySqlConnectorIT extends AbstractConnectorTest {
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.DECIMAL_HANDLING_MODE);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.TIME_PRECISION_MODE);
-        assertConfigurationErrors(result, KafkaDatabaseHistory.BOOTSTRAP_SERVERS);
-        assertConfigurationErrors(result, KafkaDatabaseHistory.TOPIC);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS);
-        assertNoConfigurationErrors(result, KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
     }
 
     @Test
