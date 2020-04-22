@@ -34,12 +34,12 @@ import io.debezium.util.Strings;
 /**
  * A logical table consists of one or more physical tables with the same schema. A common use case is sharding -- the
  * two physical tables `db_shard1.my_table` and `db_shard2.my_table` together form one logical table.
- *
+ * <p>
  * This Transformation allows us to change a record's topic name and send change events from multiple physical tables to
  * one topic. For instance, we might choose to send the two tables from the above example to the topic
  * `db_shard.my_table`. The config options {@link #TOPIC_REGEX} and {@link #TOPIC_REPLACEMENT} are used
  * to change the record's topic.
- *
+ * <p>
  * Now that multiple physical tables can share a topic, the event's key may need to be augmented to include fields other
  * than just those for the record's primary/unique key, since these are not guaranteed to be unique across tables. We
  * need some identifier added to the key that distinguishes the different physical tables. The field name specified by
