@@ -312,7 +312,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
 
-    private static final ConfigDefinition configDefinition = CommonConnectorConfig.configDefinition
+    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(CommonConnectorConfig.configDefinition())
             .name("MongoDB")
             .type(
                     HOSTS,
@@ -341,10 +341,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(configDefinition.all());
+    public static Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     public static ConfigDef configDef() {
-        return configDefinition.configDef();
+        return CONFIG_DEFINITION.configDef();
     }
 
     protected static Field.Set EXPOSED_FIELDS = ALL_FIELDS;
