@@ -196,7 +196,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.container(Connect.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
@@ -258,7 +258,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(5);
 
         // create an engine with our custom class
-        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.create(Connect.class)
+        final DebeziumEngine<SourceRecord> engine = DebeziumEngine.container(Connect.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES - 1);
@@ -318,7 +318,7 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         props.setProperty("transforms.router.replacement", "trf$1");
 
         // create an engine with our custom class
-        DebeziumEngine.create(Connect.class)
+        DebeziumEngine.container(Connect.class)
                 .using(props)
                 .notifying((records, committer) -> {
                 })
@@ -345,13 +345,13 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         CountDownLatch allLatch = new CountDownLatch(6);
 
         // create an engine with our custom class
-        final DebeziumEngine<ChangeEvent<String>> engine = DebeziumEngine.create(Json.class)
+        final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
                 .using(props)
                 .notifying((records, committer) -> {
                     assertThat(records.size()).isGreaterThanOrEqualTo(NUMBER_OF_LINES);
                     Integer groupCount = records.size() / NUMBER_OF_LINES;
 
-                    for (ChangeEvent<String> r : records) {
+                    for (ChangeEvent<String, String> r : records) {
                         Assertions.assertThat(r.key()).isNull();
                         Assertions.assertThat(r.value()).startsWith("\"Generated line number ");
                         committer.markProcessed(r);

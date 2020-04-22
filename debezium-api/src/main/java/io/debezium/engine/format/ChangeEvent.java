@@ -5,32 +5,9 @@
  */
 package io.debezium.engine.format;
 
-public class ChangeEvent<T> {
+public interface ChangeEvent<K, V> {
 
-    private final T key;
-    private final T value;
-    private final Object backReference;
+    public K key();
 
-    public ChangeEvent(T key, T value, Object backReference) {
-        this.key = key;
-        this.value = value;
-        this.backReference = backReference;
-    }
-
-    public T key() {
-        return key;
-    }
-
-    public T value() {
-        return value;
-    }
-
-    public Object reference() {
-        return backReference;
-    }
-
-    @Override
-    public String toString() {
-        return "ChangeEvent [key=" + key + ", value=" + value + "]";
-    }
+    public V value();
 }

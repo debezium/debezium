@@ -70,10 +70,10 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String>> engine = DebeziumEngine.create(Json.class).using(props)
+        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class).using(props)
                 .notifying((records, committer) -> {
 
-                    for (ChangeEvent<String> r : records) {
+                    for (ChangeEvent<String, String> r : records) {
                         Assertions.assertThat(r.key()).isNotNull();
                         Assertions.assertThat(r.value()).isNotNull();
                         try {
@@ -117,7 +117,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
+        try (final DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
                     Assert.fail("Should not be invoked due to serialization error");
                 })
@@ -156,13 +156,15 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (final DebeziumEngine<ChangeEvent<String>> engine = DebeziumEngine.create(CloudEvents.class).using(props)
+        try (final DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class, CloudEvents.class).using(props)
                 .notifying((records, committer) -> {
 
-                    for (ChangeEvent<String> r : records) {
-                        Assertions.assertThat(r.key()).isNull();
-                        Assertions.assertThat(r.value()).isNotNull();
+                    for (ChangeEvent<String, String> r : records) {
                         try {
+                            final Document key = DocumentReader.defaultReader().read(r.key());
+                            Assertions.assertThat(key.getInteger("id")).isEqualTo(1);
+                            Assertions.assertThat(r.value()).isNotNull();
+
                             final Document value = DocumentReader.defaultReader().read(r.value());
                             Assertions.assertThat(value.getString("id")).contains("txId");
                             Assertions.assertThat(value.getDocument("data").getDocument("payload").getDocument("after").getInteger("id")).isEqualTo(1);

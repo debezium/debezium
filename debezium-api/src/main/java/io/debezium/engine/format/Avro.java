@@ -6,9 +6,10 @@
 package io.debezium.engine.format;
 
 import io.debezium.engine.ChangeEventFormat;
+import io.debezium.engine.KeyValueChangeEventFormat;
 
 /**
  * A {@link ChangeEventFormat} defining the Avro format serialized as byte[].
  */
-public class Avro implements ChangeEventFormat<ChangeEvent<byte[]>> {
+public class Avro implements KeyValueChangeEventFormat<byte[]> {
 }
