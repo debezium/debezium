@@ -528,6 +528,25 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    public void shouldNotStreamAllOperationsWithSkippedOperations() throws Exception {
+        TestHelper.execute("CREATE TABLE public.skipped_op_table (pk SERIAL, data varchar(25) NOT NULL, PRIMARY KEY (pk));");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SKIPPED_OPERATIONS, "d")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER),
+                false);
+        consumer = testConsumer(0);
+
+        // Insert
+        TestHelper.execute("INSERT INTO skipped_op_table (data) VALUES ('test')");
+        consumer.expects(1);
+
+        // Delete
+        TestHelper.execute("DELETE FROM skipped_op_table WHERE pk=1");
+        consumer.expects(0);
+
+    }
+
+    @Test
     @FixFor("DBZ-478")
     public void shouldReceiveChangesForNullInsertsWithArrayTypes() throws Exception {
         TestHelper.executeDDL("postgres_create_tables.ddl");

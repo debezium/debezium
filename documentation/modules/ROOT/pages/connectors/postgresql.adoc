@@ -2005,6 +2005,11 @@ See link:#toasted-values[Toasted Values] for additional details.
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
+|`skipped.operations`
+|
+| comma-separated list of oplog operations that will be skipped during streaming.
+The operations include: `c` for inserts, `u` for updates, and `d` for deletes.
+By default, no operations are skipped.
 See link:#transaction-metadata[Transaction Metadata] for additional details.
 
 |=======================

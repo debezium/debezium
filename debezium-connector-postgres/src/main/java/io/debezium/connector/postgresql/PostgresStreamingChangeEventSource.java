@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,6 +23,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.spi.Snapshotter;
+import io.debezium.data.Envelope;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -162,6 +164,15 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
                         offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), message.getTransactionId(), tableId,
                                 taskContext.getSlotXmin(connection));
+
+                        Set<Envelope.Operation> skippedOperations = taskContext.getConfig().getSkippedOps();
+                        if (skippedOperations != null) {
+                            for (Envelope.Operation operation : skippedOperations) {
+                                if (operation == Envelope.Operation.CREATE || operation == Envelope.Operation.UPDATE || operation == Envelope.Operation.DELETE) {
+                                    return;
+                                }
+                            }
+                        }
 
                         boolean dispatched = (message.getOperation() == Operation.NOOP) ? false
                                 : dispatcher.dispatchDataChangeEvent(
