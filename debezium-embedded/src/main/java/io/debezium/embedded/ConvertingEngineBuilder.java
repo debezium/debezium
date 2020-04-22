@@ -19,14 +19,15 @@ import org.apache.kafka.connect.storage.Converter;
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.engine.ChangeEventFormat;
+import io.debezium.engine.ContainerChangeEventFormat;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Builder;
 import io.debezium.engine.DebeziumEngine.ChangeConsumer;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
+import io.debezium.engine.KeyValueChangeEventFormat;
 import io.debezium.engine.format.Avro;
-import io.debezium.engine.format.ChangeEvent;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -40,11 +41,15 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
 public class ConvertingEngineBuilder<R> implements Builder<R> {
 
     private static final String CONVERTER_PREFIX = "converter";
+    private static final String KEY_CONVERTER_PREFIX = "key.converter";
+    private static final String VALUE_CONVERTER_PREFIX = "value.converter";
     private static final String FIELD_CLASS = "class";
     private static final String TOPIC_NAME = "debezium";
 
     private final Builder<SourceRecord> delegate;
-    private Class<? extends ChangeEventFormat<R>> format;
+    private Class<? extends ContainerChangeEventFormat<?>> containerFormat;
+    private Class<? extends KeyValueChangeEventFormat<?>> formatKey;
+    private Class<? extends KeyValueChangeEventFormat<?>> formatValue;
     private Configuration config;
 
     @SuppressWarnings("unchecked")
@@ -59,7 +64,7 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     @SuppressWarnings("unchecked")
     @Override
     public Builder<R> notifying(Consumer<R> consumer) {
-        if (isFormat(Connect.class)) {
+        if (isContainerFormat(Connect.class)) {
             delegate.notifying((record) -> consumer.accept((R) record));
         }
         else {
@@ -68,14 +73,18 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         return this;
     }
 
-    private boolean isFormat(Class<? extends ChangeEventFormat<?>> format) {
-        return (Class<?>) this.format == (Class<?>) format;
+    private boolean isContainerFormat(Class<? extends ContainerChangeEventFormat<?>> format) {
+        return isFormat(this.containerFormat, format);
+    }
+
+    private boolean isFormat(Class<? extends ChangeEventFormat<?>> format1, Class<? extends ChangeEventFormat<?>> format2) {
+        return format1 == (Class<?>) format2;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Builder<R> notifying(ChangeConsumer<R> handler) {
-        if (isFormat(Connect.class)) {
+        if (isContainerFormat(Connect.class)) {
             delegate.notifying((records, committer) -> handler.handleBatch((List<R>) records, (RecordCommitter<R>) committer));
         }
         else {
@@ -135,8 +144,16 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     }
 
     @Override
-    public Builder<R> asType(Class<? extends ChangeEventFormat<R>> format) {
-        this.format = format;
+    public Builder<R> asType(Class<? extends ContainerChangeEventFormat<R>> format) {
+        this.containerFormat = format;
+        return this;
+    }
+
+    @Override
+    public <K, V> Builder<R> asType(Class<? extends KeyValueChangeEventFormat<K>> formatKey,
+                                    Class<? extends KeyValueChangeEventFormat<V>> formatValue) {
+        this.formatKey = formatKey;
+        this.formatValue = formatValue;
         return this;
     }
 
@@ -144,36 +161,21 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
     @Override
     public DebeziumEngine<R> build() {
         final DebeziumEngine<SourceRecord> engine = delegate.build();
-        Configuration converterConfig = config.subset(CONVERTER_PREFIX, true);
         Converter keyConverter;
         Converter valueConverter;
 
-        if (!isFormat(Connect.class)) {
-            if (isFormat(Json.class)) {
-                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
-            }
-            else if (isFormat(CloudEvents.class)) {
-                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.debezium.converters.CloudEventsConverter").build();
-            }
-            else if (isFormat(Avro.class)) {
-                converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
-            }
-            else {
-                throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
-            }
-            keyConverter = converterConfig.getInstance(FIELD_CLASS, Converter.class);
-            valueConverter = converterConfig.getInstance(FIELD_CLASS, Converter.class);
-            keyConverter.configure(converterConfig.asMap(), true);
-            valueConverter.configure(converterConfig.asMap(), false);
+        if (!isContainerFormat(Connect.class)) {
+            keyConverter = createConverter(formatKey, true);
+            valueConverter = createConverter(formatValue, false);
             toFormat = (record) -> {
                 final byte[] key = keyConverter.fromConnectData(TOPIC_NAME, record.keySchema(), record.key());
                 final byte[] value = valueConverter.fromConnectData(TOPIC_NAME, record.valueSchema(), record.value());
-                return (R) new ChangeEvent<String>(
+                return (R) new EmbeddedEngineChangeEvent<String, String>(
                         key != null ? new String(key) : null,
                         value != null ? new String(value) : null,
                         record);
             };
-            fromFormat = (record) -> (SourceRecord) ((ChangeEvent<String>) record).reference();
+            fromFormat = (record) -> (SourceRecord) ((EmbeddedEngineChangeEvent<?, ?>) record).sourceRecord();
         }
 
         return new DebeziumEngine<R>() {
@@ -190,4 +192,28 @@ public class ConvertingEngineBuilder<R> implements Builder<R> {
         };
     }
 
+    private Converter createConverter(Class<? extends KeyValueChangeEventFormat<?>> format, boolean key) {
+        // The converters can be configured both using converter.* prefix for cases when both converters
+        // are the same or using key.converter.* and value.converter.* converter when converters
+        // are different for key and value
+        Configuration converterConfig = config.subset(key ? KEY_CONVERTER_PREFIX : VALUE_CONVERTER_PREFIX, true);
+        final Configuration commonConverterConfig = config.subset(CONVERTER_PREFIX, true);
+        converterConfig = commonConverterConfig.edit().with(converterConfig).build();
+
+        if (isFormat(format, Json.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+        }
+        else if (isFormat(format, CloudEvents.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.debezium.converters.CloudEventsConverter").build();
+        }
+        else if (isFormat(format, Avro.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.confluent.connect.avro.AvroConverter").build();
+        }
+        else {
+            throw new DebeziumException("Converter '" + format.getSimpleName() + "' is not supported");
+        }
+        final Converter converter = converterConfig.getInstance(FIELD_CLASS, Converter.class);
+        converter.configure(converterConfig.asMap(), key);
+        return converter;
+    }
 }
