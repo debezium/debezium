@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
@@ -17,24 +18,21 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
 
 /**
  * @author Jiri Pechanec, Randall Hauch
  */
-@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "Use of fractal notation on DATE, TIME, DATETIME, and TIMESTAMP not supported on MySQL 5.5")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class BinlogReaderBufferIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
@@ -44,9 +42,6 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
-
-    @Rule
-    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {
@@ -335,7 +330,7 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             int recordCount;
             int customerEventsCount;
             int topicCount;
-            if (isMySql5("emptydb")) {
+            if (MySQLConnection.isMySQL5()) {
                 // MySQL 5 contains events when the TX was effectively rolled-back
                 // INSERT + INSERT + ROLLBACK, SAVEPOINT filtered
                 recordCount = 3;
@@ -354,17 +349,6 @@ public class BinlogReaderBufferIT extends AbstractConnectorTest {
             assertThat(records.recordsForTopic(DATABASE.topicForTable("customers"))).hasSize(customerEventsCount);
             assertThat(records.allRecordsInOrder()).hasSize(recordCount);
             Testing.print("*** Done with savepoint TX");
-        }
-    }
-
-    private static boolean isMySql5(String databaseName) {
-        switch (MySQLConnection.forTestDatabase(databaseName).getMySqlVersion()) {
-            case MYSQL_5_5:
-            case MYSQL_5_6:
-            case MYSQL_5_7:
-                return true;
-            default:
-                return false;
         }
     }
 }

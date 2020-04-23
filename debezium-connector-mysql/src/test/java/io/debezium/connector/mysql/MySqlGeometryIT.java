@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
@@ -17,15 +18,12 @@ import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
 import mil.nga.wkb.geom.Point;
@@ -35,7 +33,7 @@ import mil.nga.wkb.io.WkbGeometryReader;
 /**
  * @author Omar Al-Safi
  */
-@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "Function ST_GeomFromText is not available in MySQL 5.5")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "Function ST_GeomFromText not added until MySQL 5.6")
 public class MySqlGeometryIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-json.txt")
@@ -45,13 +43,10 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
 
     private Configuration config;
 
-    @Rule
-    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
-
     @Before
     public void beforeEach() {
         stopConnector();
-        databaseDifferences = databaseGeoDifferences(MySQLConnection.forTestDatabase("mysql").getMySqlVersion());
+        databaseDifferences = databaseGeoDifferences(MySQLConnection.isMySQL5());
 
         DATABASE = new UniqueDatabase("geometryit", databaseDifferences.geometryDatabaseName())
                 .withDbHistoryPath(DB_HISTORY_PATH);
@@ -223,8 +218,8 @@ public class MySqlGeometryIT extends AbstractConnectorTest {
         }
     }
 
-    private DatabaseGeoDifferences databaseGeoDifferences(MySqlVersion mySqlVersion) {
-        if (mySqlVersion == MySqlVersion.MYSQL_5_5 || mySqlVersion == MySqlVersion.MYSQL_5_6 || mySqlVersion == MySqlVersion.MYSQL_5_7) {
+    private DatabaseGeoDifferences databaseGeoDifferences(boolean mySql5) {
+        if (mySql5) {
             return new DatabaseGeoDifferences() {
 
                 @Override

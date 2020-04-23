@@ -8,7 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
-import static io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion.POSTGRES_10;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -34,12 +34,9 @@ import org.fest.assertions.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
@@ -47,6 +44,8 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
@@ -61,7 +60,7 @@ import io.debezium.util.Testing;
 public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Rule
-    public final TestRule skip = new SkipTestDependingOnDatabaseVersionRule();
+    public final SkipTestRule skip = new SkipTestRule();
 
     @Before
     public void before() throws Exception {
@@ -376,7 +375,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("DBZ-1118")
-    @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "Database version is less than 10.0")
     public void shouldGenerateSnapshotsForPartitionedTables() throws Exception {
         TestHelper.dropAllSchemas();
 
@@ -492,8 +491,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
-    // MACADDR8 Postgres type is only supported since Postgres version 10
-    @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "MACADDR8 data type is only supported since Postgres 10+")
     @FixFor("DBZ-1193")
     public void shouldGenerateSnapshotForMacaddr8Datatype() throws Exception {
         TestHelper.dropAllSchemas();

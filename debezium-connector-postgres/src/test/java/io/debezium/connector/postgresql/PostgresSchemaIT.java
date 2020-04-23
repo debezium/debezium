@@ -6,7 +6,7 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion.POSTGRES_10;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_BLACKLIST;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -24,12 +24,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.data.Ltree;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
 import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
@@ -40,6 +37,8 @@ import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
@@ -60,7 +59,7 @@ import io.debezium.util.Strings;
 public class PostgresSchemaIT {
 
     @Rule
-    public final TestRule skip = new SkipTestDependingOnDatabaseVersionRule();
+    public final SkipTestRule skipTest = new SkipTestRule();
 
     private static final String[] TEST_TABLES = new String[]{ "public.numeric_table", "public.numeric_decimal_table", "public.string_table",
             "public.cash_table", "public.bitbin_table", "public.network_address_table",
@@ -133,8 +132,7 @@ public class PostgresSchemaIT {
     }
 
     @Test
-    // MACADDR8 Postgres type is only supported since Postgres version 10
-    @SkipWhenDatabaseVersionLessThan(POSTGRES_10)
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "MACADDR8 type is only supported on Postgres 10+")
     @FixFor("DBZ-1193")
     public void shouldLoadSchemaForMacaddr8PostgresType() throws Exception {
         String tableId = "public.macaddr8_table";

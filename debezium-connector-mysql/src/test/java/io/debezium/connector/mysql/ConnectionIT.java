@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -12,16 +14,15 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
-@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "MySQL 5.5 does not support CURRENT_TIMESTAMP on DATETIME and only a single column can specify default CURRENT_TIMESTAMP, lifted in MySQL 5.6.5")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, patch = 5, reason = "MySQL 5.5 does not support CURRENT_TIMESTAMP on DATETIME and only a single column can specify default CURRENT_TIMESTAMP, lifted in MySQL 5.6.5")
 public class ConnectionIT implements Testing {
 
     @Rule
-    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
+    public SkipTestRule skipTest = new SkipTestRule();
 
     @Ignore
     @Test

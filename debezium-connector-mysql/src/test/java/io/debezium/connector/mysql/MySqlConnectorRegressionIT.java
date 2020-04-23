@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -30,18 +31,15 @@ import org.apache.kafka.connect.data.Struct;
 import org.fest.assertions.Delta;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.time.ZonedTimestamp;
@@ -50,7 +48,7 @@ import io.debezium.util.Testing;
 /**
  * @author Randall Hauch
  */
-@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "Use of fractal notation in DATE, TIME, DATETIME, and TIMESTAMP is not supported on MySQL 5.5")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
 
     private static final Path DB_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-regression.txt").toAbsolutePath();
@@ -60,9 +58,6 @@ public class MySqlConnectorRegressionIT extends AbstractConnectorTest {
     private static final TemporalAdjuster ADJUSTER = MySqlValueConverters::adjustTemporal;
 
     private Configuration config;
-
-    @Rule
-    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {

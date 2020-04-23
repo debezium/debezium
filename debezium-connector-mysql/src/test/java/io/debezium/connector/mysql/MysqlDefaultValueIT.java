@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.math.BigDecimal;
@@ -28,18 +29,15 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.history.DatabaseHistory;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Timestamp;
@@ -49,7 +47,7 @@ import io.debezium.util.Testing;
 /**
  * @author luobo
  */
-@SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "DDL uses fractal notation on DATE, TIME, DATETIME which isn't compatible with MySQL 5.5")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
 public class MysqlDefaultValueIT extends AbstractConnectorTest {
 
     // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
@@ -60,9 +58,6 @@ public class MysqlDefaultValueIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
-
-    @Rule
-    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {

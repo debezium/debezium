@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.nio.file.Path;
@@ -14,25 +15,18 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySQLConnection.MySqlVersion;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseVersionRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersion;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseVersions;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.util.Testing;
 
 /**
  * @author Chris Cranford
  */
-@SkipWhenDatabaseVersions({
-        @SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_5, reason = "Generated values are not supported"),
-        @SkipWhenDatabaseVersion(version = MySqlVersion.MYSQL_5_6, reason = "Generated values are not supported")
-})
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "Generated values were not added until MySQL 5.7")
 public class MysqlDefaultGeneratedValueIT extends AbstractConnectorTest {
 
     // 4 meta events (set character_set etc.) and then 15 tables with 3 events each (drop DDL, create DDL, insert)
@@ -43,9 +37,6 @@ public class MysqlDefaultGeneratedValueIT extends AbstractConnectorTest {
             .withDbHistoryPath(DB_HISTORY_PATH);
 
     private Configuration config;
-
-    @Rule
-    public SkipTestDependingOnDatabaseVersionRule skipRule = new SkipTestDependingOnDatabaseVersionRule();
 
     @Before
     public void beforeEach() {
