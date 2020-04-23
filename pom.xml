@@ -25,7 +25,7 @@
         <!-- Dependencies -->
         <version.dropwizard>4.0.1</version.dropwizard>
         <!-- Databases -->
-        <version.oracle.driver>12.1.0.2</version.oracle.driver>
+        <version.oracle.driver>12.2.0.1</version.oracle.driver>
         <version.cassandra.driver>3.5.0</version.cassandra.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <!-- Debezium parent -->

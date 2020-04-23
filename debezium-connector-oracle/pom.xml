@@ -26,7 +26,7 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.oracle.instantclient</groupId>
+            <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc8</artifactId>
             <version>${version.oracle.driver}</version>
             <scope>provided</scope>

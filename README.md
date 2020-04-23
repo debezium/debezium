@@ -42,20 +42,13 @@ In order to build the Debezium Oracle connector, the following prerequisites mus
 * Oracle DB is installed, enabled for change data capturing and configured as described in the [README.md](https://github.com/debezium/oracle-vagrant-box) of the debezium-vagrant-box project
 (Running Oracle in VirtualBox is not a requirement, but we found it to be the easiest in terms of set-up)
 * The Instant Client is downloaded (e.g. [from here](http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html) for Linux) and unpacked
-* The _xstream.jar_ and _ojdbc8.jar_ from the Instant Client directory must be installed to the local Maven repository:
+* The _xstream.jar_ from the Instant Client directory must be installed to the local Maven repository:
 
 ```bash
 mvn install:install-file \
   -DgroupId=com.oracle.instantclient \
-  -DartifactId=ojdbc8 \
-  -Dversion=12.1.0.2 \
-  -Dpackaging=jar \
-  -Dfile=ojdbc8.jar
-
-mvn install:install-file \
-  -DgroupId=com.oracle.instantclient \
   -DartifactId=xstreams \
-  -Dversion=12.1.0.2 \
+  -Dversion=12.2.0.1 \
   -Dpackaging=jar \
   -Dfile=xstreams.jar
 ```
