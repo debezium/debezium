@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.transforms.filter;
+package io.debezium.transforms.scripting;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 
@@ -23,10 +23,10 @@ public interface Engine {
     void configure(String language, String expression);
 
     /**
-     * Evaluates whether the record matches the predicate expression.
+     * Calculate a value out of the record.
      *
-     * @param record to be evaluated
-     * @return true if the input argument matches the predicate expression, otherwise false
+     * @param record to be used
+     * @return result of calculation
      */
-    boolean eval(ConnectRecord<?> record);
+    <T> T eval(ConnectRecord<?> record, Class<T> type);
 }
