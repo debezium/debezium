@@ -2,8 +2,10 @@
 [id="metrics-monitoring-connectors"]
 = Metrics for monitoring {prodname} connectors
 
-In addition to the built-in support for JMX metrics in Kafka, Zookeeper, and Kafka Connect,
-each connector provides additional metrics that you can use to monitor their activities.
+In addition to the built-in support for JMX metrics in Kafka, 
+Zookeeper, and Kafka Connect,
+each connector provides additional metrics that you can 
+use to monitor their activities.
 
 * {link-prefix}:{link-mysql-connector}#mysql-connector-monitoring-metrics_{context}[MySQL connector metrics]
 * {link-prefix}:{link-mongodb-connector}#mongodb-connector-monitoring[MongoDB connector metrics]
