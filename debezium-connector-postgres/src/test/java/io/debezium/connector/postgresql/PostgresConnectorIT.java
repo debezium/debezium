@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.connector.postgresql.TestHelper.PK_FIELD;
 import static io.debezium.connector.postgresql.TestHelper.topicName;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static junit.framework.TestCase.assertEquals;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -54,10 +55,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.connector.postgresql.junit.SkipTestDependingOnDatabaseVersionRule;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
-import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan;
-import io.debezium.connector.postgresql.junit.SkipWhenDatabaseVersionLessThan.PostgresVersion;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.converters.CloudEventsConverterTest;
@@ -68,6 +66,7 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
@@ -97,9 +96,6 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
-
-    @Rule
-    public final TestRule skipVersion = new SkipTestDependingOnDatabaseVersionRule();
 
     @BeforeClass
     public static void beforeClass() throws SQLException {
@@ -704,7 +700,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1857")
-    @SkipWhenDatabaseVersionLessThan(PostgresVersion.POSTGRES_10)
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "Database version less than 10.0")
     public void shouldRecoverFromRetriableException() throws Exception {
         // Testing.Print.enable();
         String setupStmt = SETUP_TABLES_STMT;

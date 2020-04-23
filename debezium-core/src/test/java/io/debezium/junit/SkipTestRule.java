@@ -8,10 +8,13 @@ package io.debezium.junit;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.Set;
 
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
+import org.reflections.Reflections;
 
+import io.debezium.junit.DatabaseVersionResolver.DatabaseVersion;
 import io.debezium.util.Testing;
 
 /**
@@ -50,7 +53,7 @@ public class SkipTestRule extends AnnotationBasedTestRule {
         SkipWhenKafkaVersion skipWhenKafkaVersionAnnotation = hasAnnotation(description, SkipWhenKafkaVersion.class);
         if (skipWhenKafkaVersionAnnotation != null) {
             SkipWhenKafkaVersion.KafkaVersion kafkaVersion = skipWhenKafkaVersionAnnotation.value();
-            SkipWhenKafkaVersion.EqualityCheck check = skipWhenKafkaVersionAnnotation.check();
+            EqualityCheck check = skipWhenKafkaVersionAnnotation.check();
             try (InputStream stream = Testing.class.getResourceAsStream("/kafka/kafka-version.properties")) {
                 if (stream != null) {
                     final Properties properties = new Properties();
@@ -97,6 +100,64 @@ public class SkipTestRule extends AnnotationBasedTestRule {
             }
         }
 
+        // First check if multiple database version skips are specified.
+        SkipWhenDatabaseVersions skipWhenDatabaseVersions = hasAnnotation(description, SkipWhenDatabaseVersions.class);
+        if (skipWhenDatabaseVersions != null) {
+            for (SkipWhenDatabaseVersion skipWhenDatabaseVersion : skipWhenDatabaseVersions.value()) {
+                if (isSkippedByDatabaseVersion(skipWhenDatabaseVersion)) {
+                    return emptyStatement(skipWhenDatabaseVersion.reason(), description);
+                }
+            }
+        }
+
+        // Now check if a single database version skip is specified.
+        SkipWhenDatabaseVersion skipWhenDatabaseVersion = hasAnnotation(description, SkipWhenDatabaseVersion.class);
+        if (skipWhenDatabaseVersion != null) {
+            if (isSkippedByDatabaseVersion(skipWhenDatabaseVersion)) {
+                return emptyStatement(skipWhenDatabaseVersion.reason(), description);
+            }
+        }
+
         return base;
+    }
+
+    private boolean isSkippedByDatabaseVersion(SkipWhenDatabaseVersion skipWhenDatabaseVersion) {
+
+        final EqualityCheck equalityCheck = skipWhenDatabaseVersion.check();
+        final int major = skipWhenDatabaseVersion.major();
+        final int minor = skipWhenDatabaseVersion.minor();
+        final int patch = skipWhenDatabaseVersion.patch();
+
+        // Scans the class path for SkipWhenDatabaseVersionResolver implementations under io.debezium packages
+        final Reflections reflections = new Reflections("io.debezium");
+        Set<Class<? extends DatabaseVersionResolver>> resolvers = reflections.getSubTypesOf(DatabaseVersionResolver.class);
+        Class<? extends DatabaseVersionResolver> resolverClass = resolvers.stream().findFirst().orElse(null);
+
+        if (resolverClass != null) {
+            try {
+                final DatabaseVersionResolver resolver = resolverClass.getDeclaredConstructor().newInstance();
+                DatabaseVersion dbVersion = resolver.getVersion();
+                if (dbVersion != null) {
+                    switch (equalityCheck) {
+                        case LESS_THAN:
+                            return dbVersion.isLessThan(major, minor, patch);
+                        case LESS_THAN_OR_EQUAL:
+                            return dbVersion.isLessThanEqualTo(major, minor, patch);
+                        case EQUAL:
+                            return dbVersion.isEqualTo(major, minor, patch);
+                        case GREATER_THAN_OR_EQUAL:
+                            return dbVersion.isGreaterThanEqualTo(major, minor, patch);
+                        case GREATER_THAN:
+                            return dbVersion.isGreaterThan(major, minor, patch);
+                    }
+                }
+            }
+            catch (Exception e) {
+                // In the event that the class cannot be loaded, run the test.
+                e.printStackTrace();
+            }
+        }
+
+        return false;
     }
 }

@@ -64,12 +64,4 @@ public @interface SkipWhenKafkaVersion {
 
         abstract boolean isGreaterThan(int major, int minor, int patch);
     }
-
-    public enum EqualityCheck {
-        LESS_THAN,
-        LESS_THAN_OR_EQUAL,
-        EQUAL,
-        GREATER_THAN_OR_EQUAL,
-        GREATER_THAN
-    }
 }
