@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.transforms.filter;
+package io.debezium.transforms.scripting;
 
 import javax.script.Bindings;
 import javax.script.Compilable;
@@ -68,17 +68,18 @@ public class Jsr223Engine implements Engine {
         return bindings;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public boolean eval(ConnectRecord<?> record) {
+    public <T> T eval(ConnectRecord<?> record, Class<T> type) {
         Bindings bindings = getBindings(record);
 
         try {
             final Object result = script != null ? script.eval(bindings) : engine.eval(expression, bindings);
-            if (result instanceof Boolean) {
-                return (Boolean) result;
+            if (result == null || type.isAssignableFrom(result.getClass())) {
+                return (T) result;
             }
             else {
-                throw new DebeziumException("Value '" + result + "' returned by the condition is not a boolean");
+                throw new DebeziumException("Value '" + result + "' returned by the expression is not a " + type.getSimpleName());
             }
         }
         catch (Exception e) {
