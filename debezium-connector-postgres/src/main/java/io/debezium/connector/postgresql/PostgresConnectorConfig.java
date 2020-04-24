@@ -17,6 +17,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigValue;
 
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -998,7 +999,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(RelationalDatabaseConnectorConfig.configDefinition())
+    private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Postgres")
             .type(
                     HOSTNAME,
@@ -1032,7 +1033,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SNAPSHOT_MODE_CLASS,
                     HSTORE_HANDLING_MODE,
                     INTERVAL_HANDLING_MODE,
-                    SCHEMA_REFRESH_MODE);
+                    SCHEMA_REFRESH_MODE)
+            .create();
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
