@@ -12,9 +12,11 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Field;
 
 /**
- * This SMT should allow user to route records depending on their content, an expression and language configured.
+ * This SMT allows to route records to specific topics depending on their
+ * content, an expression and language configured.
  *
- * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
+ * @param <R> the subtype of {@link ConnectRecord} on which this transformation
+ *            will operate
  * @author Jiri Pechanec
  */
 @Incubating

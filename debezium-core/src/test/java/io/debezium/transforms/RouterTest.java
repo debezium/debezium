@@ -64,15 +64,15 @@ public class RouterTest {
         }
     }
 
+    @Test
     public void shouldRoute() {
         try (final ContentBasedRouter<SourceRecord> transform = new ContentBasedRouter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
-            final SourceRecord record = createDeleteRecord(1);
+            assertThat(transform.apply(createDeleteRecord(1)).topic()).isEqualTo("ones");
             assertThat(transform.apply(createDeleteRecord(2)).topic()).isEqualTo("original");
-            assertThat(transform.apply(record).topic()).isEqualTo("ones");
         }
     }
 
