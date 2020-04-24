@@ -1045,16 +1045,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return CONFIG_DEFINITION.configDef();
     }
 
-    private static int validateTableBlacklist(Configuration config, Field field, Field.ValidationOutput problems) {
-        String whitelist = config.getString(TABLE_WHITELIST);
-        String blacklist = config.getString(TABLE_BLACKLIST);
-        if (whitelist != null && blacklist != null) {
-            problems.accept(TABLE_BLACKLIST, blacklist, "Table whitelist is already specified");
-            return 1;
-        }
-        return 0;
-    }
-
     // Source of the validation rules - https://doxygen.postgresql.org/slot_8c.html#afac399f07320b9adfd2c599cf822aaa3
     private static int validateReplicationSlotName(Configuration config, Field field, Field.ValidationOutput problems) {
         final String name = config.getString(field);
