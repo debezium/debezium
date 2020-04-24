@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -299,7 +300,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
-    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(HistorizedRelationalDatabaseConnectorConfig.configDefinition())
+    private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
                     DATABASE_NAME,
@@ -313,9 +314,10 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE)
-            .exclude(
+            .excluding(
                     SCHEMA_WHITELIST,
-                    SCHEMA_BLACKLIST);
+                    SCHEMA_BLACKLIST)
+            .create();
 
     /**
      * The set of {@link Field}s defined as part of this configuration.

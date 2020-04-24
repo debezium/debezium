@@ -18,6 +18,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -283,7 +284,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be masked by hashing the input. Using the specified hash algorithms and salt.");
 
-    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(CommonConnectorConfig.configDefinition())
+    protected static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .type(
                     SERVER_NAME)
             .connector(
@@ -299,11 +300,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     SCHEMA_WHITELIST,
                     SCHEMA_BLACKLIST,
                     MSG_KEY_COLUMNS,
-                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-
-    protected static ConfigDefinition configDefinition() {
-        return CONFIG_DEFINITION;
-    }
+                    SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE)
+            .create();
 
     private final RelationalTableFilters tableFilters;
     private final TemporalPrecisionMode temporalPrecisionMode;
