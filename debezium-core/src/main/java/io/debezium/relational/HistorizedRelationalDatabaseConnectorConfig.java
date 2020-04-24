@@ -11,6 +11,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
@@ -48,17 +49,14 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
                     + DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING + "' string.")
             .withDefault(KafkaDatabaseHistory.class.getName());
 
-    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(RelationalDatabaseConnectorConfig.configDefinition())
+    protected static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .history(
                     DATABASE_HISTORY,
                     KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
                     KafkaDatabaseHistory.TOPIC,
                     KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS);
-
-    protected static ConfigDefinition configDefinition() {
-        return CONFIG_DEFINITION;
-    }
+                    KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS)
+            .create();
 
     protected HistorizedRelationalDatabaseConnectorConfig(Class<? extends SourceConnector> connectorClass, Configuration config, String logicalName,
                                                           TableFilter systemTablesFilter, boolean useCatalogBeforeSchema) {

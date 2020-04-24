@@ -7,16 +7,13 @@ package io.debezium.config;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -275,7 +272,7 @@ public abstract class CommonConnectorConfig {
             .withDescription("The comma-separated list of operations to skip during streaming, defined as: 'i' for inserts; 'u' for updates; 'd' for deletes. "
                     + "By default, no operations will be skipped.");
 
-    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition()
+    protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
                     MAX_BATCH_SIZE,
@@ -291,11 +288,8 @@ public abstract class CommonConnectorConfig {
                     TOMBSTONES_ON_DELETE,
                     SOURCE_STRUCT_MAKER_VERSION,
                     Heartbeat.HEARTBEAT_INTERVAL,
-                    Heartbeat.HEARTBEAT_TOPICS_PREFIX);
-
-    protected static ConfigDefinition configDefinition() {
-        return CONFIG_DEFINITION;
-    }
+                    Heartbeat.HEARTBEAT_TOPICS_PREFIX)
+            .create();
 
     private final Configuration config;
     private final boolean emitTombstoneOnDelete;
@@ -481,91 +475,4 @@ public abstract class CommonConnectorConfig {
      * Returns the connector-specific {@link SourceInfoStructMaker} based on the given configuration.
      */
     protected abstract SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version);
-
-    public static class ConfigDefinition {
-        private String connectorName;
-        private List<Field> type = new ArrayList<>();
-        private List<Field> connector = new ArrayList<>();
-        private List<Field> history = new ArrayList<>();
-        private List<Field> events = new ArrayList<>();
-        private Set<Field> exclude = new HashSet<>();
-
-        public ConfigDefinition() {
-        }
-
-        public ConfigDefinition(ConfigDefinition parent) {
-            this.connectorName = parent.connectorName;
-            type.addAll(parent.type);
-            connector.addAll(parent.connector);
-            history.addAll(parent.history);
-            events.addAll(parent.events);
-            exclude.addAll(parent.exclude);
-        }
-
-        public ConfigDefinition name(String name) {
-            this.connectorName = name;
-            return this;
-        }
-
-        public ConfigDefinition type(Field... fields) {
-            type.addAll(Arrays.asList(fields));
-            return this;
-        }
-
-        public ConfigDefinition connector(Field... fields) {
-            connector.addAll(Arrays.asList(fields));
-            return this;
-        }
-
-        public ConfigDefinition history(Field... fields) {
-            history.addAll(Arrays.asList(fields));
-            return this;
-        }
-
-        public ConfigDefinition events(Field... fields) {
-            events.addAll(Arrays.asList(fields));
-            return this;
-        }
-
-        public ConfigDefinition exclude(Field... fields) {
-            exclude.addAll(Arrays.asList(fields));
-            return this;
-        }
-
-        public Iterable<Field> all() {
-            final List<Field> all = new ArrayList<>();
-            addToList(all, type);
-            addToList(all, connector);
-            addToList(all, history);
-            addToList(all, events);
-            return removeExcluded(all);
-        }
-
-        public ConfigDef configDef() {
-            final ConfigDef config = new ConfigDef();
-            addToConfigDef(config, connectorName, type);
-            addToConfigDef(config, "Connector", connector);
-            addToConfigDef(config, "History Storage", history);
-            addToConfigDef(config, "Events", events);
-            return config;
-        }
-
-        private void addToList(List<Field> list, List<Field> fields) {
-            if (fields != null) {
-                list.addAll(fields);
-            }
-        }
-
-        private void addToConfigDef(ConfigDef configDef, String group, List<Field> fields) {
-            if (!fields.isEmpty()) {
-                Field.group(configDef, group, removeExcluded(fields).toArray(new Field[fields.size()]));
-            }
-        }
-
-        private List<Field> removeExcluded(List<Field> list) {
-            return list.stream()
-                    .filter(f -> !exclude.contains(f))
-                    .collect(Collectors.toList());
-        }
-    }
 }

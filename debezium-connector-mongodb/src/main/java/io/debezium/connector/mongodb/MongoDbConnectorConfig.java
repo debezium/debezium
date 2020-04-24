@@ -13,6 +13,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -312,7 +313,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isInteger)
             .withInvisibleRecommender();
 
-    private static final ConfigDefinition CONFIG_DEFINITION = new ConfigDefinition(CommonConnectorConfig.configDefinition())
+    private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
             .type(
                     HOSTS,
@@ -336,7 +337,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     FIELD_RENAMES)
             .connector(
                     MAX_COPY_THREADS,
-                    SNAPSHOT_MODE);
+                    SNAPSHOT_MODE)
+            .create();
 
     /**
      * The set of {@link Field}s defined as part of this configuration.
