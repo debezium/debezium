@@ -7,15 +7,6 @@ RUN dnf -y install gcc gcc-c++  python3-devel python3-requests
 RUN python3 -m pip install JPype1==0.6.3
 RUN python3 -m pip install JayDeBeApi matplotlib kafka-python scipy
 
-
-#RUN pip install ibm-db
-## SQL SERVER connector
-#RUN pip install pyodbc
-#RUN pip install mysql-connector-python
-
-# https://docs.omnisci.com/v3.6.0/mapd-core-guide/jaydebeapi/
-
-
 RUN useradd -ms /bin/bash tpc
 
 USER tpc
