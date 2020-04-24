@@ -25,7 +25,7 @@ This is a very powerful mechanism but has two drawbacks:
 
 To solve this problem, Debezium comes with the Filtering SMT.
 This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either filtered out or passed on for further processing.
-The current implementation is tested with two languages in which the expression can be written: Groovy and JavaScript.
+The current implementation supports any scripting language which integrates with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
 
 The Filtering SMT can be used like so:
 
