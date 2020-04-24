@@ -1279,19 +1279,15 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
-            connection.execute(
-                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
-            connection.execute(
-                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+            connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
-        for (int i = 0; !connection.getMaxLsn().isAvailable(); i++) {
-            if (i == 30) {
-                org.junit.Assert.fail("Initial changes not written to CDC structures");
-            }
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).until(() -> {
             Testing.debug("Waiting for initial changes to be propagated to CDC structures");
-            Thread.sleep(1000);
-        }
+            return connection.getMaxLsn().isAvailable();
+        });
+
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
@@ -1311,10 +1307,8 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_RESTART + i;
-            connection.execute(
-                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
-            connection.execute(
-                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+            connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
