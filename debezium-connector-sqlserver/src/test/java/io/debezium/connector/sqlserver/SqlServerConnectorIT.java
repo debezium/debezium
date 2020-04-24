@@ -8,12 +8,14 @@ package io.debezium.connector.sqlserver;
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.Assert.assertNull;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -39,6 +41,14 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.Tables;
+import io.debezium.relational.ddl.DdlParser;
+import io.debezium.relational.history.DatabaseHistory;
+import io.debezium.relational.history.DatabaseHistoryException;
+import io.debezium.relational.history.DatabaseHistoryListener;
+import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.TableChanges;
 import io.debezium.util.Testing;
 
 /**
@@ -1255,7 +1265,128 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-1923")
+    public void shouldDetectPurgedHistory() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+        final int TABLES = 2;
+        final int ID_START = 10;
+        final int ID_RESTART = 100;
+        final Configuration config = TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.DATABASE_HISTORY, PurgableFileDatabaseHistory.class)
+                .build();
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_START + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        for (int i = 0; !connection.getMaxLsn().isAvailable(); i++) {
+            if (i == 30) {
+                org.junit.Assert.fail("Initial changes not written to CDC structures");
+            }
+            Testing.debug("Waiting for initial changes to be propagated to CDC structures");
+            Thread.sleep(1000);
+        }
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        List<SourceRecord> records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * TABLES).allRecordsInOrder();
+        records = records.subList(1, records.size());
+        for (Iterator<SourceRecord> it = records.iterator(); it.hasNext();) {
+            SourceRecord record = it.next();
+            assertThat(record.sourceOffset().get("snapshot")).as("Snapshot phase").isEqualTo(true);
+            if (it.hasNext()) {
+                assertThat(record.sourceOffset().get("snapshot_completed")).as("Snapshot in progress").isEqualTo(false);
+            }
+            else {
+                assertThat(record.sourceOffset().get("snapshot_completed")).as("Snapshot completed").isEqualTo(true);
+            }
+        }
+
+        stopConnector();
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            final int id = ID_RESTART + i;
+            connection.execute(
+                    "INSERT INTO tablea VALUES(" + id + ", 'a')");
+            connection.execute(
+                    "INSERT INTO tableb VALUES(" + id + ", 'b')");
+        }
+
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+
+        final LogInterceptor logInterceptor = new LogInterceptor();
+        start(SqlServerConnector.class, config);
+        assertConnectorNotRunning();
+        assertThat(logInterceptor.containsStacktraceElement(
+                "The db history topic or its content is fully or partially missing. Please check database history topic configuration and re-execute the snapshot."))
+                        .isTrue();
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    }
+
+    public static class PurgableFileDatabaseHistory implements DatabaseHistory {
+
+        final DatabaseHistory delegate = new FileDatabaseHistory();
+
+        @Override
+        public boolean exists() {
+            try {
+                return storageExists() && java.nio.file.Files.size(TestHelper.DB_HISTORY_PATH) > 0;
+            }
+            catch (IOException e) {
+                throw new DatabaseHistoryException("File should exist");
+            }
+        }
+
+        @Override
+        public void configure(Configuration config, HistoryRecordComparator comparator,
+                              DatabaseHistoryListener listener, boolean useCatalogBeforeSchema) {
+            delegate.configure(config, comparator, listener, useCatalogBeforeSchema);
+        }
+
+        @Override
+        public void start() {
+            delegate.start();
+        }
+
+        @Override
+        public void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String ddl)
+                throws DatabaseHistoryException {
+            delegate.record(source, position, databaseName, ddl);
+        }
+
+        @Override
+        public void record(Map<String, ?> source, Map<String, ?> position, String databaseName, String schemaName,
+                           String ddl, TableChanges changes)
+                throws DatabaseHistoryException {
+            delegate.record(source, position, databaseName, schemaName, ddl, changes);
+        }
+
+        @Override
+        public void recover(Map<String, ?> source, Map<String, ?> position, Tables schema, DdlParser ddlParser) {
+            delegate.recover(source, position, schema, ddlParser);
+        }
+
+        @Override
+        public void stop() {
+            delegate.stop();
+        }
+
+        @Override
+        public boolean storageExists() {
+            return delegate.storageExists();
+        }
+
+        @Override
+        public void initializeStorage() {
+            delegate.initializeStorage();
+        }
     }
 }
