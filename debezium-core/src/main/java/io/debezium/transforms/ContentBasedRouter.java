@@ -22,7 +22,7 @@ import io.debezium.config.Field;
 @Incubating
 public class ContentBasedRouter<R extends ConnectRecord<R>> extends ScriptingTransformation<R> {
 
-    public static final Field EXPRESSION = Field.create("topic")
+    public static final Field EXPRESSION = Field.create("topic.expression")
             .withDisplayName("Topic name expression")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.MEDIUM)

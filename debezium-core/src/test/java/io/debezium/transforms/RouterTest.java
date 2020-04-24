@@ -26,7 +26,7 @@ import io.debezium.data.Envelope;
 public class RouterTest {
 
     private static final String LANGUAGE = "language";
-    private static final String EXPRESSION = "topic";
+    private static final String EXPRESSION = "topic.expression";
     private static final String NULL_HANDLING = "null.handling.mode";
 
     final Schema recordSchema = SchemaBuilder.struct()

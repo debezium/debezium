@@ -1,4 +1,4 @@
-= Message Filtering
+= Content-Based Routing
 include::../_attributes.adoc[]
 :toc:
 :toc-placement: macro
@@ -10,36 +10,36 @@ toc::[]
 
 [NOTE]
 ====
-This SMT is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this filter transformation.
+This SMT is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive. Please let us know if you encounter any problems while using this routing transformation.
 ====
 
-With real-life applications, it is often necessary to deliver only a subset of events into the Kafka broker.
-The user might need to filter the events according to different business rules.
-Kafka Connect provides a generic mechanism to do the filtering in the form of link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
+With real-life applications, it is often necessary to route the events not only to a static topic but to a topic based on the message content.
+This is expressed as the https://www.enterpriseintegrationpatterns.com/patterns/messaging/ContentBasedRouter.html[Content-Based Router] integration pattern.
+Kafka Connect provides a generic mechanism to do the routing in the form of link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[Simple Message Transforms] (SMT).
 
-The SMT is a Java class that encodes the filtering logic.
+The SMT is a Java class that encodes the routing logic.
 This is a very powerful mechanism but has two drawbacks:
 
 * It is necessary to compile the transformation upfront and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-To solve this problem, Debezium comes with the Filtering SMT.
-This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either filtered out or passed on for further processing.
-The current implementation is tested with two languages in which the expression can be written: Groovy and JavaScript.
+To solve this problem, Debezium comes with the Content-Based Router SMT.
+This SMT allows the operator to write an expression that is evaluated for each event and according to the result, it is either kept in the original topic or re-routed to another one.
+The current implementation supports two languages in which the expression can be written: Groovy and JavaScript.
 
-The Filtering SMT can be used like so:
+The Content-Based Router SMT can be used like so:
 
 [source]
 ----
 ...
-transforms=filter
-transforms.filter.type=io.debezium.transforms.Filter
-transforms.filter.language=jsr223.groovy
-transforms.filter.condition=value.op == 'u' && value.before.id == 2
+transforms=route
+transforms.route.type=io.debezium.transforms.ContentBasedRouter
+transforms.route.language=jsr223.groovy
+transforms.route.topic.expression=value.op == 'u' ? 'updates' : null
 ...
 ----
 
-In this example we are using `Groovy` as expression language, and we're filtering out all update records with `id` field equal to `2`.
+In this example, we are using `Groovy` as the expression language, and we're re-routing all update records to the `updates` topic and the others into the default one.
 
 [IMPORTANT]
 ====
@@ -66,26 +66,26 @@ Expressions should be side-effect free, i.e. they should *not* modify the passed
 
 == Language specifics
 
-The same business logic - remove all update records with `id` set to `2` can be expressed like this, depending on your preferred scripting language;
+The same business logic - re-route all update records an be expressed like this, depending on your preferred scripting language;
 In case of `Groovy`, the value fields can be accessed in a property-like way:
 
 [source,groovy]
 ----
-value.op == 'u' && value.before.id == 2
+value.op == 'u' ? 'updates' : null
 ----
 
 Other languages, such as JavaScript, will typically require to  call the `Struct#get()` method:
 
 [source,javascript]
 ----
-value.get('op') == 'u' && value.get('before').get('id') == 2
+value.get('op') == 'u' ? 'updates' : null
 ----
 
 When using JavaScript via Graal.js, simplified property references can be used, akin to the Groovy approach:
 
 [source,javascript]
 ----
-value.op == 'u' && value.before.id == 2
+value.op == 'u' ? 'updates' : null
 ----
 
 [[configuration-options]]
@@ -100,12 +100,12 @@ value.op == 'u' && value.before.id == 2
 |
 |The language in which the expression is written. Must begin with `jsr223.`, e.g. `jsr223.groovy`, or `jsr223.graal.js`. Currently, only bootstrapping via the https://jcp.org/en/jsr/detail?id=223[JSR 223 API] ("Scripting for the Java (TM) Platform") is supported.
 
-|`condition`
+|`topic.expression`
 |
-|The expression evaluated for every message. Must evaluate to a boolean value where a result of `true` will keep the message, and a result of `false` will remove it.
+|The expression evaluated for every message. Must evaluate to a `String` value where a result of non-null will re-route the message to a new topic, and a `null` value will keep it in the original topic.
 
 |`null.handling.mode`
 |`keep`
-|Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely or `evaluate` to run the message through the condition expression.
+|Prescribes how the transformation should handle `null` (tombstone) messages. The options are: `keep` (the default) to pass the message through, `drop` to remove the messages completely, or `evaluate` to run the message through the topic expression.
 
 |=======================

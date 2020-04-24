@@ -11,6 +11,7 @@
 ** xref:configuration/mongodb-event-flattening.adoc[MongoDB New Document State Extraction]
 ** xref:configuration/outbox-event-router.adoc[Outbox Event Router]
 ** xref:configuration/filtering.adoc[Message Filtering]
+** xref:configuration/content-based-routing.adoc[Content-Based Routing]
 * Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
