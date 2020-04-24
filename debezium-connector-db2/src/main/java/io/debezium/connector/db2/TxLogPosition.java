@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.db2;
 
+import io.debezium.connector.Nullable;
+
 /**
  * Defines a position of change in the transaction log. The position is defined as a combination of commit LSN
  * and sequence number of the change in the given transaction.

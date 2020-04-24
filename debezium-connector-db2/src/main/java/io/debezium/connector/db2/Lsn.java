@@ -8,11 +8,12 @@ package io.debezium.connector.db2;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import io.debezium.connector.Nullable;
 import io.debezium.util.Strings;
 
 /**
  * A logical representation of DB2 LSN (log sequence number) position. When LSN is not available
- * it is replaced with {@link Lsn.NULL} constant.
+ * it is replaced with {@link Lsn#NULL} constant.
  *
  * @author Jiri Pechanec, Luis Garcés-Erice
  *

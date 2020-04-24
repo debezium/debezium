@@ -18,11 +18,11 @@ import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 public class Db2SchemaChangeEventEmitter implements SchemaChangeEventEmitter {
 
     private final Db2OffsetContext offsetContext;
-    private final ChangeTable changeTable;
+    private final Db2ChangeTable changeTable;
     private final Table tableSchema;
     private final SchemaChangeEventType eventType;
 
-    public Db2SchemaChangeEventEmitter(Db2OffsetContext offsetContext, ChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
+    public Db2SchemaChangeEventEmitter(Db2OffsetContext offsetContext, Db2ChangeTable changeTable, Table tableSchema, SchemaChangeEventType eventType) {
         this.offsetContext = offsetContext;
         this.changeTable = changeTable;
         this.tableSchema = tableSchema;
