@@ -149,13 +149,13 @@ public class SqlServerConnection extends JdbcConnection {
      * @param consumer - the change processor
      * @throws SQLException
      */
-    public void getChangesForTables(ChangeTable[] changeTables, Lsn intervalFromLsn, Lsn intervalToLsn, BlockingMultiResultSetConsumer consumer)
+    public void getChangesForTables(SqlServerChangeTable[] changeTables, Lsn intervalFromLsn, Lsn intervalToLsn, BlockingMultiResultSetConsumer consumer)
             throws SQLException, InterruptedException {
         final String[] queries = new String[changeTables.length];
         final StatementPreparer[] preparers = new StatementPreparer[changeTables.length];
 
         int idx = 0;
-        for (ChangeTable changeTable : changeTables) {
+        for (SqlServerChangeTable changeTable : changeTables) {
             final String query = GET_ALL_CHANGES_FOR_TABLE.replace(STATEMENTS_PLACEHOLDER, changeTable.getCaptureInstance());
             queries[idx] = query;
             // If the table was added in the middle of queried buffer we need
@@ -285,14 +285,14 @@ public class SqlServerConnection extends JdbcConnection {
         }
     }
 
-    public Set<ChangeTable> listOfChangeTables() throws SQLException {
+    public Set<SqlServerChangeTable> listOfChangeTables() throws SQLException {
         final String query = GET_LIST_OF_CDC_ENABLED_TABLES;
 
         return queryAndMap(query, rs -> {
-            final Set<ChangeTable> changeTables = new HashSet<>();
+            final Set<SqlServerChangeTable> changeTables = new HashSet<>();
             while (rs.next()) {
                 changeTables.add(
-                        new ChangeTable(
+                        new SqlServerChangeTable(
                                 new TableId(realDatabaseName, rs.getString(1), rs.getString(2)),
                                 rs.getString(3),
                                 rs.getInt(4),
@@ -303,7 +303,7 @@ public class SqlServerConnection extends JdbcConnection {
         });
     }
 
-    public Set<ChangeTable> listOfNewChangeTables(Lsn fromLsn, Lsn toLsn) throws SQLException {
+    public Set<SqlServerChangeTable> listOfNewChangeTables(Lsn fromLsn, Lsn toLsn) throws SQLException {
         final String query = GET_LIST_OF_NEW_CDC_ENABLED_TABLES;
 
         return prepareQueryAndMap(query,
@@ -312,9 +312,9 @@ public class SqlServerConnection extends JdbcConnection {
                     ps.setBytes(2, toLsn.getBinary());
                 },
                 rs -> {
-                    final Set<ChangeTable> changeTables = new HashSet<>();
+                    final Set<SqlServerChangeTable> changeTables = new HashSet<>();
                     while (rs.next()) {
-                        changeTables.add(new ChangeTable(
+                        changeTables.add(new SqlServerChangeTable(
                                 rs.getString(4),
                                 rs.getInt(1),
                                 Lsn.valueOf(rs.getBytes(5)),
@@ -324,7 +324,7 @@ public class SqlServerConnection extends JdbcConnection {
                 });
     }
 
-    public Table getTableSchemaFromTable(ChangeTable changeTable) throws SQLException {
+    public Table getTableSchemaFromTable(SqlServerChangeTable changeTable) throws SQLException {
         final DatabaseMetaData metadata = connection().getMetaData();
 
         List<Column> columns = new ArrayList<>();
@@ -347,7 +347,7 @@ public class SqlServerConnection extends JdbcConnection {
                 .create();
     }
 
-    public Table getTableSchemaFromChangeTable(ChangeTable changeTable) throws SQLException {
+    public Table getTableSchemaFromChangeTable(SqlServerChangeTable changeTable) throws SQLException {
         final DatabaseMetaData metadata = connection().getMetaData();
         final TableId changeTableId = changeTable.getChangeTableId();
 

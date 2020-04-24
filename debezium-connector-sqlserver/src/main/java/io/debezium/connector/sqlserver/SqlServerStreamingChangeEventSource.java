@@ -7,7 +7,6 @@ package io.debezium.connector.sqlserver;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.spi.ChangeTableResultSet;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
@@ -103,9 +103,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     @Override
     public void execute(ChangeEventSourceContext context) throws InterruptedException {
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
-        final Queue<ChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
+        final Queue<SqlServerChangeTable> schemaChangeCheckpoints = new PriorityQueue<>((x, y) -> x.getStopLsn().compareTo(y.getStopLsn()));
         try {
-            final AtomicReference<ChangeTable[]> tablesSlot = new AtomicReference<ChangeTable[]>(getCdcTablesToQuery());
+            final AtomicReference<SqlServerChangeTable[]> tablesSlot = new AtomicReference<SqlServerChangeTable[]>(getCdcTablesToQuery());
 
             final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
             final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
@@ -149,9 +149,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     migrateTable(schemaChangeCheckpoints);
                 }
                 if (!dataConnection.listOfNewChangeTables(fromLsn, currentMaxLsn).isEmpty()) {
-                    final ChangeTable[] tables = getCdcTablesToQuery();
+                    final SqlServerChangeTable[] tables = getCdcTablesToQuery();
                     tablesSlot.set(tables);
-                    for (ChangeTable table : tables) {
+                    for (SqlServerChangeTable table : tables) {
                         if (table.getStartLsn().isBetween(fromLsn, currentMaxLsn)) {
                             LOGGER.info("Schema will be changed for {}", table);
                             schemaChangeCheckpoints.add(table);
@@ -164,7 +164,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         long eventSerialNoInInitialTx = 1;
                         final int tableCount = resultSets.length;
                         final ChangeTablePointer[] changeTables = new ChangeTablePointer[tableCount];
-                        final ChangeTable[] tables = tablesSlot.get();
+                        final SqlServerChangeTable[] tables = tablesSlot.get();
 
                         for (int i = 0; i < tableCount; i++) {
                             changeTables[i] = new ChangeTablePointer(tables[i], resultSets[i]);
@@ -268,33 +268,33 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         }
     }
 
-    private void migrateTable(final Queue<ChangeTable> schemaChangeCheckpoints)
+    private void migrateTable(final Queue<SqlServerChangeTable> schemaChangeCheckpoints)
             throws InterruptedException, SQLException {
-        final ChangeTable newTable = schemaChangeCheckpoints.poll();
+        final SqlServerChangeTable newTable = schemaChangeCheckpoints.poll();
         LOGGER.info("Migrating schema to {}", newTable);
         dispatcher.dispatchSchemaChangeEvent(newTable.getSourceTableId(),
                 new SqlServerSchemaChangeEventEmitter(offsetContext, newTable, metadataConnection.getTableSchemaFromTable(newTable), SchemaChangeEventType.ALTER));
     }
 
-    private ChangeTable[] processErrorFromChangeTableQuery(SQLException exception, ChangeTable[] currentChangeTables) throws Exception {
+    private SqlServerChangeTable[] processErrorFromChangeTableQuery(SQLException exception, SqlServerChangeTable[] currentChangeTables) throws Exception {
         final Matcher m = MISSING_CDC_FUNCTION_CHANGES_ERROR.matcher(exception.getMessage());
         if (m.matches()) {
             final String captureName = m.group(1);
             LOGGER.info("Table is no longer captured with capture instance {}", captureName);
             return Arrays.asList(currentChangeTables).stream()
                     .filter(x -> !x.getCaptureInstance().equals(captureName))
-                    .collect(Collectors.toList()).toArray(new ChangeTable[0]);
+                    .collect(Collectors.toList()).toArray(new SqlServerChangeTable[0]);
         }
         throw exception;
     }
 
-    private ChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
-        final Set<ChangeTable> cdcEnabledTables = dataConnection.listOfChangeTables();
+    private SqlServerChangeTable[] getCdcTablesToQuery() throws SQLException, InterruptedException {
+        final Set<SqlServerChangeTable> cdcEnabledTables = dataConnection.listOfChangeTables();
         if (cdcEnabledTables.isEmpty()) {
             LOGGER.warn("No table has enabled CDC or security constraints prevents getting the list of change tables");
         }
 
-        final Map<TableId, List<ChangeTable>> whitelistedCdcEnabledTables = cdcEnabledTables.stream()
+        final Map<TableId, List<SqlServerChangeTable>> whitelistedCdcEnabledTables = cdcEnabledTables.stream()
                 .filter(changeTable -> {
                     if (connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(changeTable.getSourceTableId())) {
                         return true;
@@ -311,11 +311,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     "No whitelisted table has enabled CDC, whitelisted table list does not contain any table with CDC enabled or no table match the white/blacklist filter(s)");
         }
 
-        final List<ChangeTable> tables = new ArrayList<>();
-        for (List<ChangeTable> captures : whitelistedCdcEnabledTables.values()) {
-            ChangeTable currentTable = captures.get(0);
+        final List<SqlServerChangeTable> tables = new ArrayList<>();
+        for (List<SqlServerChangeTable> captures : whitelistedCdcEnabledTables.values()) {
+            SqlServerChangeTable currentTable = captures.get(0);
             if (captures.size() > 1) {
-                ChangeTable futureTable;
+                SqlServerChangeTable futureTable;
                 if (captures.get(0).getStartLsn().compareTo(captures.get(1).getStartLsn()) < 0) {
                     futureTable = captures.get(1);
                 }
@@ -341,7 +341,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             tables.add(currentTable);
         }
 
-        return tables.toArray(new ChangeTable[tables.size()]);
+        return tables.toArray(new SqlServerChangeTable[tables.size()]);
     }
 
     /**
@@ -355,69 +355,29 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
      * @author Jiri Pechanec
      *
      */
-    private static class ChangeTablePointer {
+    private static class ChangeTablePointer extends ChangeTableResultSet<SqlServerChangeTable, TxLogPosition> {
 
-        private final ChangeTable changeTable;
-        private final ResultSet resultSet;
-        private boolean completed = false;
-        private TxLogPosition currentChangePosition;
-
-        public ChangeTablePointer(ChangeTable changeTable, ResultSet resultSet) {
-            this.changeTable = changeTable;
-            this.resultSet = resultSet;
-        }
-
-        public ChangeTable getChangeTable() {
-            return changeTable;
-        }
-
-        public TxLogPosition getChangePosition() throws SQLException {
-            return currentChangePosition;
-        }
-
-        public int getOperation() throws SQLException {
-            return resultSet.getInt(COL_OPERATION);
-        }
-
-        public Object[] getData() throws SQLException {
-            final int dataColumnCount = resultSet.getMetaData().getColumnCount() - (COL_DATA - 1);
-            final Object[] data = new Object[dataColumnCount];
-            for (int i = 0; i < dataColumnCount; i++) {
-                if (resultSet.getMetaData().getColumnType(COL_DATA + i) == Types.TIME) {
-                    Timestamp timestamp = resultSet.getTimestamp(COL_DATA + i);
-                    data[i] = timestamp;
-                }
-                else {
-                    data[i] = resultSet.getObject(COL_DATA + i);
-                }
-
-            }
-            return data;
-        }
-
-        public boolean next() throws SQLException {
-            completed = !resultSet.next();
-            currentChangePosition = completed ? TxLogPosition.NULL
-                    : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
-            if (completed) {
-                LOGGER.trace("Closing result set of change tables for table {}", changeTable);
-                resultSet.close();
-            }
-            return !completed;
-        }
-
-        public boolean isCompleted() {
-            return completed;
-        }
-
-        public int compareTo(ChangeTablePointer o) throws SQLException {
-            return getChangePosition().compareTo(o.getChangePosition());
+        public ChangeTablePointer(SqlServerChangeTable changeTable, ResultSet resultSet) {
+            super(changeTable, resultSet, COL_DATA);
         }
 
         @Override
-        public String toString() {
-            return "ChangeTablePointer [changeTable=" + changeTable + ", resultSet=" + resultSet + ", completed="
-                    + completed + ", currentChangePosition=" + currentChangePosition + "]";
+        protected int getOperation(ResultSet resultSet) throws SQLException {
+            return resultSet.getInt(COL_OPERATION);
+        }
+
+        @Override
+        protected Object getColumnData(ResultSet resultSet, int columnIndex) throws SQLException {
+            if (resultSet.getMetaData().getColumnType(columnIndex) == Types.TIME) {
+                return resultSet.getTime(columnIndex);
+            }
+            return super.getColumnData(resultSet, columnIndex);
+        }
+
+        @Override
+        protected TxLogPosition getNextChangePosition(ResultSet resultSet) throws SQLException {
+            return isCompleted() ? TxLogPosition.NULL
+                    : TxLogPosition.valueOf(Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)), Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)));
         }
     }
 }

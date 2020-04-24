@@ -7,11 +7,12 @@ package io.debezium.connector.sqlserver;
 
 import java.util.Arrays;
 
+import io.debezium.connector.Nullable;
 import io.debezium.util.Strings;
 
 /**
  * A logical representation of SQL Server LSN (log sequence number) position. When LSN is not available
- * it is replaced with {@link Lsn.NULL} constant.
+ * it is replaced with {@link Lsn#NULL} constant.
  *
  * @author Jiri Pechanec
  *
