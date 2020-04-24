@@ -13,7 +13,6 @@ from pprint import pprint
 import requests
 import datetime
 import threading
-
 import jpype
 
 
@@ -154,12 +153,12 @@ def main(argv):
         print('tpc-connector deleted')
         pass
 
-
     dockerbootstrapserver = config['config']['database.history.kafka.bootstrap.servers']
-    bootstrapserver = config['config']['database.history.kafka.bootstrap.servers'].split(",")
+    bootstrapserver = config['config']['database.history.kafka.bootstrap.servers'].split(
+        ",")
     # check integrated test ( all in one docker)
-    if  dockerbootstrapserver == 'kafka:9092'  :
-        
+    if dockerbootstrapserver == 'kafka:9092':
+
         print(bootstrapserver)
         kafkaadmin = KafkaAdminClient(bootstrap_servers=bootstrapserver)
 
