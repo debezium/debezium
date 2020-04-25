@@ -190,7 +190,7 @@ This is because wal2json's messages won't contain a field for such column.
 The requirement for adding this is tracked under the wal2json https://github.com/eulerto/wal2json/issues/98[issue 98].
 See the documentation of `columns_diff_exclude_unchanged_toast` further below for implications of using it.
 
-* pgoutput plug-in does not emit all the events for tables without primary keys. It only emits inserts 
+* pgoutput plug-in does not emit all the events for tables without primary keys, it only emits inserts 
 
 All up-to-date differences are tracked in a test suite https://github.com/debezium/debezium/blob/master/debezium-connector-postgres/src/test/java/io/debezium/connector/postgresql/DecoderDifferences.java[Java class].
 
