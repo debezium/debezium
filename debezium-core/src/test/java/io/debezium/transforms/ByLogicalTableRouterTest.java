@@ -215,7 +215,4 @@ public class ByLogicalTableRouterTest {
         assertThat(transformed1.keySchema()).isNull();
         assertThat(transformed1.key()).isNull();
     }
-
-    // FIXME: This SMT can use more tests for more detailed coverage.
-    // The creation of a DBZ-ish SourceRecord is required for each test
 }
