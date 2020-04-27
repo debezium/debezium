@@ -1053,7 +1053,7 @@ Installing the SQL Server connector is a simple process whereby you only need to
 
 .Procedure
 
-. Visit link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?downloadType=distributions&product=jboss.amq.streams[Product Downloads^] on the Red Hat Customer Portal and download the SQL Server connector.
+. Download the {prodname} link:https://access.redhat.com/jbossnetwork/restricted/listSoftware.html?product=red.hat.integration&downloadType=distributions[SQL Server connector].
 . Extract the files into your Kafka Connect environment.
 . Add the plugin's parent directory to your Kafka Connect plugin path:
 +
