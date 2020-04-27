@@ -285,6 +285,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "
                     + "be masked by hashing the input. Using the specified hash algorithms and salt.");
 
+
     public static final Field MASK_COLUMN = Field.create("column.mask.with.(d+).chars")
             .withValidation(Field::isInteger)
             .withDescription("A comma-separated list of regular expressions matching fully-qualified names of columns that should "

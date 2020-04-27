@@ -46,7 +46,6 @@ public class TestHelper {
 
     private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=0)\n"
             + "EXEC sys.sp_cdc_enable_db";
-    private static final String REDUCE_CDC_POLL_INTERVAL = "EXEC sys.sp_cdc_change_job @job_type = 'capture', @pollinginterval = 1";
     private static final String DISABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=1)\n"
             + "EXEC sys.sp_cdc_disable_db";
     private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
@@ -193,7 +192,6 @@ public class TestHelper {
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
         String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, name.replaceAll("\\$", "\\\\\\$"));
         connection.execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
-        connection.execute(REDUCE_CDC_POLL_INTERVAL);
     }
 
     /**
@@ -223,7 +221,6 @@ public class TestHelper {
         Objects.requireNonNull(captureName);
         String enableCdcForTableStmt = String.format(ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, tableName, captureName);
         connection.execute(enableCdcForTableStmt);
-        connection.execute(REDUCE_CDC_POLL_INTERVAL);
     }
 
     /**
