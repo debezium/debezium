@@ -299,7 +299,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (decimalMode == DecimalMode.PRECISE && isVariableScaleDecimal(column)) {
             return VariableScaleDecimal.builder();
         }
-        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
+        return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElseGet(() -> 0));
     }
 
     private SchemaBuilder hstoreSchema() {
@@ -840,8 +840,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
-        return (column.scale().isPresent() && column.scale().get() == 0 && column.length() == VARIABLE_SCALE_DECIMAL_LENGTH)
-                || (!column.scale().isPresent() && column.length() == -1);
+        return column.length() == VARIABLE_SCALE_DECIMAL_LENGTH &&
+                column.scale().orElseGet(() -> 0) == 0;
     }
 
     public static Optional<SpecialValueDecimal> toSpecialValue(String value) {
