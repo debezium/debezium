@@ -591,7 +591,10 @@ To use the connector to produce change events for a particular MongoDB replica s
 When the connector starts, it will perform a snapshot of the collections in your MongoDB replica sets and start reading the replica sets' oplogs, producing events for every inserted, updated, and deleted row.
 Optionally filter out collections that are not needed.
 
-Here is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`:
+ifndef::cdc-product[]
+
+Following is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} MongoDB connector in a `.json` file using the configuration properties available for the connector.
 
 [source,json]
 ----
@@ -607,9 +610,37 @@ Here is an example of the configuration for a MongoDB connector that monitors a 
 ----
 <1> The name of our connector when we register it with a Kafka Connect service.
 <2> The name of the MongoDB connector class.
-<3> The host addresses to use to connect to the MongoDB replica set
+<3> The host addresses to use to connect to the MongoDB replica set.
 <4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
-<5> A list of regular expressions that match the collection namespaces (e.g., <dbName>.<collectionName>) of all collections to be monitored. This is optional.
+<5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
+
+endif::[]
+
+ifdef::cdc-product[]
+Following is an example of the configuration for a MongoDB connector that monitors a MongoDB replica set `rs0` at port 27017 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} MongoDB connector in a `.yaml` file using the configuration properties available for the connector.
+
+[source,yaml,options="nowrap"]
+----
+apiVersion: 
+  kind: MongoDbConnector
+  metadata:
+    name: inventory-connector  // <1>
+    labels:  
+  spec:
+    class: io.debezium.connector.mongodb.MongoDbConnector // <2>
+    config:  
+     mongodb.hosts: rs0/192.168.99.100:27017 // <3>
+     mongodb.name: fulfillment // <4>
+     collection.whitelist: inventory[.]* // <5>
+----
+<1> The name of our connector when we register it with a Kafka Connect service.
+<2> The name of the MongoDB connector class.
+<3> The host addresses to use to connect to the MongoDB replica set.
+<4> The _logical name_ of the MongoDB replica set, which forms a namespace for generated events and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<5> A list of regular expressions that match the collection namespaces (for example, <dbName>.<collectionName>) of all collections to be monitored. This is optional.
+
+endif::[]
 
 See the link:#mongodb-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
