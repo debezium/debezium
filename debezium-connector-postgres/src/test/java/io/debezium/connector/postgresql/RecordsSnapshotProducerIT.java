@@ -876,6 +876,33 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_table", expected)));
     }
 
+    @Test
+    @FixFor("DBZ-1969")
+    public void shouldSnapshotEnumArrayAsKnownType() throws Exception {
+        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1', 'V2');");
+        TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, value test_type[] NOT NULL, primary key(pk));");
+        TestHelper.execute("INSERT INTO enum_array_table (value) values ('{V1, V2}');");
+
+        // Specifically enable `column.propagate.source.type` here to validate later that the actual
+        // type, length, and scale values are resolved correctly when paired with Enum types.
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.enum_array_table")
+                .with("column.propagate.source.type", "public.enum_array_table.value"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        List<SchemaAndValueField> expected = Collections.singletonList(
+                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), Arrays.asList("V1", "V2")));
+
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.enum_array_table", expected)));
+    }
+
     private void buildNoStreamProducer(Configuration.Builder config) {
         start(PostgresConnector.class, config
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)

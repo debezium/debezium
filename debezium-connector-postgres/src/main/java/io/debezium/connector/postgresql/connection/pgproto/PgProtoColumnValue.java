@@ -325,6 +325,9 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
                 type.getOid() == typeRegistry.hstoreArrayOid()) {
             return asArray(columnName, type, fullType, connection);
         }
+        if (type.isArrayType() && type.getElementType().isEnumType()) {
+            return asArray(columnName, type, fullType, connection);
+        }
         // unknown data type is sent by decoder as binary value
         if (includeUnknownDatatypes) {
             return asByteArray();
