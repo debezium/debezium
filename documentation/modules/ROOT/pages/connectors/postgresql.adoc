@@ -1595,12 +1595,15 @@ To use the connector to produce change events for a particular PostgreSQL server
 
 . Install the link:#output-plugin[logical decoding plugin]
 . Configure the link:#server-configuration[PostgreSQL server] to support logical replication
-. Create a configuration file for the PostgreSQL connector in JSON.
+. Create a configuration file for the PostgreSQL connector.
 
 When the connector starts, it will grab a consistent snapshot of the databases in your PostgreSQL server and start streaming changes, producing events for every inserted, updated, and deleted row. You can also choose to produce events for a subset of the schemas and tables.
 Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
-Here is an example of the configuration for a PostgreSQL connector that monitors a PostgreSQL server at port 5432 on 192.168.99.100, which we logically name `fullfillment`:
+ifndef::cdc-product[]
+
+Following is an example of the configuration for a PostgreSQL connector that monitors a PostgreSQL server at port 5432 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} PostgreSQL connector in a `.json` file using the configuration properties available for the connector.
 
 [source,json]
 ----
@@ -1628,6 +1631,49 @@ Here is an example of the configuration for a PostgreSQL connector that monitors
 <7> The name of the PostgreSQL database to connect to
 <8> The logical name of the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
 <9> A list of all tables hosted by this server that this connector will monitor. This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
+
+endif::[]
+
+ifdef::cdc-product[]
+
+Following is an example of the configuration for a PostgreSQL connector that monitors a PostgreSQL server at port 5432 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} PostgreSQL connector in a `.yaml` file using the configuration properties available for the connector.
+
+[source,yaml,options="nowrap"]
+----
+apiVersion: 
+  kind: PostgresConnector
+  metadata:
+    name: inventory-connector  // <1>
+    labels:  
+  spec:
+    class: io.debezium.connector.postgresql.PostgresConnector
+    tasksMax: 1  // <2>
+    config:  // <3>
+      database.hostname: postgresqldb   // <4>
+      database.port: 5432
+      database.user: debezium
+      database.password: dbz
+      database.dbname: postgres  
+      database.server.name: fullfillment   // <5>
+      database.whitelist: public.inventory   // <6>
+----
+<1> The name of the connector.
+<2> Only one task should operate at any one time.
+Because the PostgreSQL connector reads the PostgreSQL server’s `binlog`,
+using a single connector task ensures proper order and event handling.
+The Kafka Connect service uses connectors to start one or more tasks that do the work,
+and it automatically distributes the running tasks across the cluster of Kafka Connect services.
+If any of the services stop or crash,
+those tasks will be redistributed to running services.
+<3> The connector’s configuration.
+<4> The database host, which is the name of the container running the PostgreSQL server (`postgresqldb`).
+<5> A unique server name.
+The server name is the logical identifier for the PostgreSQL server or cluster of servers.
+This name will be used as the prefix for all Kafka topics.
+<6> Only changes in the `public.inventory` database will be detected.
+
+endif::[]
 
 See the link:#connector-properties[complete list of connector properties] that can be specified in these configurations.
 
