@@ -6,7 +6,7 @@
 package io.debezium.relational;
 
 /**
- * A logical representation of a change table containtaing changes for a given source table.
+ * A logical representation of a change table containing changes for a given source table.
  * There is usually one change table for each source table.  When the schema of the source table is changed,
  * then two change tables could be present.
  *
