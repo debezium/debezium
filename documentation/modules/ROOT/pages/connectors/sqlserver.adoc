@@ -1086,14 +1086,16 @@ endif::cdc-product[]
 
 To use the connector to produce change events for a particular SQL Server database or cluster:
 
-. Enable the link:#setting-up-sqlserver[CDC on SQL Server] to publish the _CDC_ events in the database
-. Create a configuration file for the SQL Server connector in JSON.
+. Enable the link:#setting-up-sqlserver[CDC on SQL Server] to publish the _CDC_ events in the database.
+. Create a configuration file for the SQL Server connector.
 
 When the connector starts, it will grab a consistent snapshot of the schemas in your SQL Server database and start streaming changes, producing events for every inserted, updated, and deleted row.
 You can also choose to produce events for a subset of the schemas and tables.
 Optionally ignore, mask, or truncate columns that are sensitive, too large, or not needed.
 
-Here is an example of the configuration for a connector instance that monitors a SQL Server server at port 3306 on 192.168.99.100, which we logically name `fullfillment`:
+ifndef::cdc-product[]
+Following is an example of the configuration for a connector instance that monitors a SQL Server server at port 3306 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} SQL Server connector in a `.json` file using the configuration properties available for the connector.
 
 [source,json]
 ----
@@ -1102,7 +1104,7 @@ Here is an example of the configuration for a connector instance that monitors a
   "config": {
     "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector", // <2>
     "database.hostname": "192.168.99.100", // <3>
-    "database.port": "1433", // <4>
+    "database.port": "3306", // <4>
     "database.user": "sa", // <5>
     "database.password": "Password!", // <6>
     "database.dbname": "testDB", // <7>
@@ -1119,11 +1121,52 @@ Here is an example of the configuration for a connector instance that monitors a
 <4> The port number of the SQL Server instance.
 <5> The name of the SQL Server user
 <6> The password for the SQL Server user
-<7> The name of the database to capture changes from
+<7> The name of the database to capture changes from.
 <8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
-<9> A list of all tables whose changes {prodname} should capture
+<9> A list of all tables whose changes {prodname} should capture.
 <10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
 <11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+
+endif::[]
+
+ifdef::cdc-product[]
+Following is an example of the configuration for a connector instance that monitors a SQL Server server at port 3306 on 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} SQL Server connector in a `.yaml` file using the configuration properties available for the connector.
+
+[source,yaml,options="nowrap"]
+----
+apiVersion: 
+  kind: SqlServerConnector
+  metadata:
+    name: inventory-connector  // <1>
+    labels:
+  spec:
+    class: io.debezium.connector.sqlserver.SqlServerConnector // <2>
+    config:  
+      database.hostname: 192.168.99.100  // <3>
+      database.port: 3306 //<4>
+      database.user: debezium  //<5>
+      database.password: dbz  //<6>
+      database.dbname: testDB  //<7>
+      database.server.name: fullfullment //<8>
+      database.whitelist: dbo.customers   //<9>
+      database.history.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  //<10> 
+      database.history.kafka.topic: dbhistory.fullfillment  //<11>
+
+----
+<1> The name of our connector when we register it with a Kafka Connect service.
+<2> The name of this SQL Server connector class.
+<3> The address of the SQL Server instance.
+<4> The port number of the SQL Server instance.
+<5> The name of the SQL Server user
+<6> The password for the SQL Server user
+<7> The name of the database to capture changes from.
+<8> The logical name of the SQL Server instance/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro Connector is used.
+<9> A list of all tables whose changes {prodname} should capture.
+<10> The list of Kafka brokers that this connector will use to write and recover DDL statements to the database history topic.
+<11> The name of the database history topic where the connector will write and recover DDL statements. This topic is for internal use only and should not be used by consumers.
+
+endif::[]
 
 See the link:#sqlserver-connector-properties[complete list of connector properties] that can be specified in these configurations.
 
