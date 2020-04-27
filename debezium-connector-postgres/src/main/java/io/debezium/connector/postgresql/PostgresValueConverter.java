@@ -284,6 +284,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 if (resolvedType.isEnumType()) {
                     return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
                 }
+                else if (resolvedType.isArrayType() && resolvedType.getElementType().isEnumType()) {
+                    List<String> enumValues = resolvedType.getElementType().getEnumValues();
+                    return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
+                }
 
                 final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                 if (jdbcSchemaBuilder == null) {
@@ -422,6 +426,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         oidValue == typeRegistry.geographyArrayOid() ||
                         oidValue == typeRegistry.citextArrayOid() ||
                         oidValue == typeRegistry.hstoreArrayOid()) {
+                    return createArrayConverter(column, fieldDefn);
+                }
+
+                final PostgresType resolvedType = typeRegistry.get(oidValue);
+                if (resolvedType.isArrayType()) {
                     return createArrayConverter(column, fieldDefn);
                 }
 

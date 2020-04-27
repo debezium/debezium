@@ -941,7 +941,6 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         }
         else {
             assertNotNull("expected there to be content in Envelope under " + envelopeFieldName, content);
-
             expectedSchemaAndValuesByColumn.forEach(
                     schemaAndValueField -> schemaAndValueField.assertFor(content));
         }

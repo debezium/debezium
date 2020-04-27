@@ -2089,6 +2089,64 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    public void shouldStreamEnumArrayAsKnownType() throws Exception {
+        // Specifically enable `column.propagate.source.type` here to validate later that the actual
+        // type, length, and scale values are resolved correctly when paired with Enum types.
+        TestHelper.execute("CREATE TABLE enum_array_table (pk SERIAL, PRIMARY KEY (pk));");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with("column.propagate.source.type", "public.enum_array_table.value")
+                .with(PostgresConnectorConfig.TABLE_WHITELIST, "public.enum_array_table"), false);
+
+        waitForStreamingToStart();
+
+        // We create the enum type after streaming started to simulate some future schema change
+        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1','V2');");
+        TestHelper.execute("ALTER TABLE enum_array_table ADD COLUMN value test_type[] NOT NULL;");
+
+        consumer = testConsumer(1);
+
+        // INSERT
+        executeAndWait("INSERT INTO enum_array_table (value) VALUES ('{V1, V2}');");
+
+        SourceRecord insertRec = assertRecordInserted("public.enum_array_table", PK_FIELD, 1);
+        assertSourceInfo(insertRec, "postgres", "public", "enum_array_table");
+
+        List<SchemaAndValueField> expectedInsert = Arrays.asList(
+                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1,V2"))
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), Arrays.asList("V1", "V2")));
+        assertRecordSchemaAndValues(expectedInsert, insertRec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+
+        // UPDATE
+        executeAndWait("UPDATE enum_array_table set value = '{V1}';");
+        SourceRecord updateRec = consumer.remove();
+        assertSourceInfo(updateRec, "postgres", "public", "enum_array_table");
+
+        List<SchemaAndValueField> expectedUpdate = Arrays.asList(
+                new SchemaAndValueField(PK_FIELD, Schema.INT32_SCHEMA, 1),
+                new SchemaAndValueField("value", SchemaBuilder.array(Enum.builder("V1"))
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "_TEST_TYPE")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .build(), Arrays.asList("V1")));
+        assertRecordSchemaAndValues(expectedUpdate, updateRec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+
+        // DELETE
+        executeAndWait("DELETE FROM enum_array_table;");
+        SourceRecord deleteRec = consumer.remove();
+        VerifyRecord.isValidDelete(deleteRec, PK_FIELD, 1);
+        assertSourceInfo(updateRec, "postgres", "public", "enum_array_table");
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
     @FixFor("DBZ-1680")
     public void shouldStreamEnumsWhenIncludeUnknownDataTypesDisabled() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
