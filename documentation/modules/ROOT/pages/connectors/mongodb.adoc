@@ -709,92 +709,92 @@ The following configuration properties are _required_ unless a default value is 
 |=======================
 |Property |Default |Description
 
-|`name`
+|[[connector-property-name]]<<connector-property-name, `name`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
-|`connector.class`
+|[[connector-property-connector-class]]<<connector-property-connector-class, `connector.class`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.mongodb.MongoDbConnector` for the MongoDB connector.
 
-|`mongodb.hosts`
+|[[connector-property-mongodb-hosts]]<<connector-property-mongodb-hosts, `mongodb.hosts`>>
 |
 |The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the replica set. The list can contain a single hostname and port pair. If `mongodb.members.auto.discover` is set to `false`, then the host and port pair should be prefixed with the replica set name (e.g., `rs0/localhost:27017`).
 
-|`mongodb.name`
+|[[connector-property-mongodb-name]]<<connector-property-mongodb-name, `mongodb.name`>>
 |
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors. Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
 Only alphanumeric characters and underscores should be used.
 
-|`mongodb.user`
+|[[connector-property-mongodb-user]]<<connector-property-mongodb-user, `mongodb.user`>>
 |
 |Name of the database user to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
-|`mongodb.password`
+|[[connector-property-mongodb-password]]<<connector-property-mongodb-password, `mongodb.password`>>
 |
 |Password to be used when connecting to MongoDB. This is required only when MongoDB is configured to use authentication.
 
-|`mongodb.authsource`
+|[[connector-property-mongodb-authsource]]<<connector-property-mongodb-authsource, `mongodb.authsource`>>
 |`admin`
 |Database (authentication source) containing MongoDB credentials. This is required only when MongoDB is configured to use authentication with another authentication database than `admin`.
 
-|`mongodb.ssl.enabled`
+|[[connector-property-mongodb-ssl-enabled]]<<connector-property-mongodb-ssl-enabled, `mongodb.ssl.enabled`>>
 |`false`
 |Connector will use SSL to connect to MongoDB instances.
 
-|`mongodb.ssl.invalid.hostname.allowed`
+|[[connector-property-mongodb-ssl-invalid-hostname-allowed]]<<connector-property-mongodb-ssl-invalid-hostname-allowed, `mongodb.ssl.invalid.hostname.allowed`>>
 |`false`
 |When SSL is enabled this setting controls whether strict hostname checking is disabled during connection phase. If `true` the connection will not prevent man-in-the-middle attacks.
 
-|`database.whitelist`
+|[[connector-property-database-whitelist]]<<connector-property-database-whitelist, `database.whitelist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be monitored; any database name not included in the whitelist is excluded from monitoring. By default all databases is monitored.
 May not be used with `database.blacklist`.
 
-|`database.blacklist`
+|[[connector-property-database-blacklist]]<<connector-property-database-blacklist, `database.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match database names to be excluded from monitoring; any database name not included in the blacklist is monitored. May not be used with `database.whitelist`.
 
-|`collection.whitelist`
+|[[connector-property-collection-whitelist]]<<connector-property-collection-whitelist, `collection.whitelist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be monitored; any collection not included in the whitelist is excluded from monitoring. Each identifier is of the form _databaseName_._collectionName_. By default the connector will monitor all collections except those in the `local` and `admin` databases. May not be used with `collection.blacklist`.
 
-|`collection.blacklist`
+|[[connector-property-collection-blacklist]]<<connector-property-collection-blacklist, `collection.blacklist`>>
 |_empty string_
 |An optional comma-separated list of regular expressions that match fully-qualified namespaces for MongoDB collections to be excluded from monitoring; any collection not included in the blacklist is monitored. Each identifier is of the form _databaseName_._collectionName_. May not be used with `collection.whitelist`.
 
-|`snapshot.mode`
+|[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector reads a snapshot when either no offset is found or if the oplog no longer contains the previous offset. The *never* option specifies that the connector should never use snapshots, instead the connector should proceed to tail the log.
 
-|`field.blacklist`
+|[[connector-property-field-blacklist]]<<connector-property-field-blacklist, `field.blacklist`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters.
 
-|`field.renames`
+|[[connector-property-field-renames]]<<connector-property-field-renames, `field.renames`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change event message values. Fully-qualified replacements for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_:__newNestedFieldName__, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters, the colon character (:) is used to determine rename mapping of field. The next field replacement is applied to the result of the previous field replacement in the list, so keep this in mind when renaming multiple fields that are in the same path.
 
-|`tasks.max`
+|[[connector-property-tasks-max]]<<connector-property-tasks-max, `tasks.max`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The MongoDB connector will attempt to use a separate task for each replica set, so the default is acceptable when using the connector with a single MongoDB replica set. When using the connector with a MongoDB sharded cluster, we recommend specifying a value that is equal to or more than the number of shards in the cluster, so that the work for each replica set can be distributed by Kafka Connect.
 
-|`initial.sync.max.threads`
+|[[connector-property-initial-sync-max-threads]]<<connector-property-initial-sync-max-threads, `initial.sync.max.threads`>>
 |`1`
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
-|`tombstones.on.delete`
+|[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|`snapshot.delay.ms`
+|[[connector-property-snapshot-delay-ms]]<<connector-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|`snapshot.fetch.size`
+|[[connector-property-snapshot-fetch-size]]<<connector-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |`0`
 |Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
 The connector will read the collection contents in multiple batches of this size. +
@@ -811,36 +811,36 @@ The following _advanced_ configuration properties have good defaults that will w
 |Default
 |Description
 
-|`max.queue.size`
+|[[connector-property-max-queue-size]]<<connector-property-max-queue-size, `max.queue.size`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the database log are placed before they are written to Kafka. This queue can provide backpressure to the oplog reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the `max.batch.size` property.
 
-|`max.batch.size`
+|[[connector-property-max-batch-size]]<<connector-property-max-batch-size, `max.batch.size`>>
 |`2048`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector. Defaults to 2048.
 
-|`poll.interval.ms`
+|[[connector-property-poll-interval-ms]]<<connector-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
-|`connect.backoff.initial.delay.ms`
+|[[connector-property-connect-backoff-initial-delay-ms]]<<connector-property-connect-backoff-initial-delay-ms, `connect.backoff.initial.delay.ms`>>
 |`1000`
 |Positive integer value that specifies the initial delay when trying to reconnect to a primary after the first failed connection attempt or when no primary is available. Defaults to 1 second (1000 ms).
 
-|`connect.backoff.max.delay.ms`
+|[[connector-property-connect-backoff-max-delay-ms]]<<connector-property-connect-backoff-max-delay-ms, `connect.backoff.max.delay.ms`>>
 |`1000`
 |Positive integer value that specifies the maximum delay when trying to reconnect to a primary after repeated failed connection attempts or when no primary is available. Defaults to 120 seconds (120,000 ms).
 
-|`connect.max.attempts`
+|[[connector-property-connect-max-attempts]]<<connector-property-connect-max-attempts, `connect.max.attempts`>>
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
 
-|`mongodb.members.auto.discover`
+|[[connector-property-mongodb-members-auto-discover]]<<connector-property-mongodb-members-auto-discover, `mongodb.members.auto.discover`>>
 |`true`
 |Boolean value that specifies whether the addresses in 'mongodb.hosts' are seeds that should be used to discover all members of the cluster or replica set (`true`), or whether the address(es) in `mongodb.hosts` should be used as is (`false`). The default is `true` and should be used in all cases except where MongoDB is link:#mongodb-replicaset[fronted by a proxy].
 
 ifndef::cdc-product[]
-|`source.struct.version`
+|[[connector-property-source-struct-version]]<<connector-property-source-struct-version, `source.struct.version`>>
 |v2
 |Schema version for the `source` block in CDC events. Debezium 0.10 introduced a few breaking +
 changes to the structure of the `source` block in order to unify the exposed structure across
@@ -849,7 +849,7 @@ By setting this option to `v1` the structure used in earlier versions can be pro
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::cdc-product[]
 
-|`heartbeat.interval.ms`
+|[[connector-property-heartbeat-interval-ms]]<<connector-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -862,19 +862,19 @@ This will cause the oplog files to be rotated out but connector will not notice 
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|`heartbeat.topics.prefix`
+|[[connector-property-heartbeat-topics-prefix]]<<connector-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|`sanitize.field.names`
+|[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names are sanitized to adhere to Avro naming requirements.
 ifndef::cdc-product[]
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 endif::cdc-product[]
 
-|`skipped.operations`
+|[[connector-property-skipped-operations]]<<connector-property-skipped-operations, `skipped.operations`>>
 |
 | comma-separated list of oplog operations that will be skipped during streaming.
 The operations include: `i` for inserts, `u` for updates, and `d` for deletes.

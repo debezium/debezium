@@ -1716,19 +1716,19 @@ The following configuration properties are _required_ unless a default value is 
 |Default
 |Description
 
-|`name`
+|[[connector-property-name]]<<connector-property-name, `name`>>
 |
 |Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
 
-|`connector.class`
+|[[connector-property-connector-class]]<<connector-property-connector-class, `connector.class`>>
 |
 |The name of the Java class for the connector. Always use a value of `io.debezium.connector.postgresql.PostgresConnector` for the PostgreSQL connector.
 
-|`tasks.max`
+|[[connector-property-tasks-max]]<<connector-property-tasks-max, `tasks.max`>>
 |`1`
 |The maximum number of tasks that should be created for this connector. The PostgreSQL connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
-|`plugin.name`
+|[[connector-property-plugin-name]]<<connector-property-plugin-name, `plugin.name`>>
 |`decoderbufs`
 |The name of the Postgres link:#output-plugin[logical decoding plugin] installed on the server.
 ifdef::cdc-product[]
@@ -1741,15 +1741,15 @@ endif::cdc-product[]
 When the processed transactions are very large it is possible that the `JSON` batch event with all changes in the transaction will not fit into the hard-coded memory buffer of size 1 GB.
 In such cases it is possible to switch to so-called *streaming* mode when every change in transactions is sent as a separate message from PostgreSQL into {prodname}.
 
-|`slot.name`
+|[[connector-property-slot-name]]<<connector-property-slot-name, `slot.name`>>
 |`debezium`
 |The name of the Postgres logical decoding slot created for streaming changes from a plugin and database instance. Values must conform to link:https://www.postgresql.org/docs/current/static/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION[Postgres replication slot naming rules] which state: _"Each replication slot has a name, which can contain lower-case letters, numbers, and the underscore character."_
 
-|`slot.drop.on.stop`
+|[[connector-property-slot-drop-on-stop]]<<connector-property-slot-drop-on-stop, `slot.drop.on.stop`>>
 |`false`
 |Whether or not to drop the logical replication slot when the connector finishes orderly. Should only be set to `true` in testing or development environments. Dropping the slot allows WAL segments to be discarded by the database, so it may happen that after a restart the connector cannot resume from the WAL position where it left off before.
 
-|`publication.name`
+|[[connector-property-publication-name]]<<connector-property-publication-name, `publication.name`>>
 |`dbz_publication`
 |The name of the PostgreSQL publication created created for streaming changes when using `pgoutput`.
 
@@ -1760,111 +1760,112 @@ so it is usually preferable to create the publication upfront.
 
 If the publication already exists (either for all tables or configured with a subset of tables),
 {prodname} will instead use the publication as defined.
-|`database.hostname`
+
+|[[connector-property-database-hostname]]<<connector-property-database-hostname, `database.hostname`>>
 |
 |IP address or hostname of the PostgreSQL database server.
 
-|`database.port`
+|[[connector-property-database-port]]<<connector-property-database-port, `database.port`>>
 |`5432`
 |Integer port number of the PostgreSQL database server.
 
-|`database.user`
+|[[connector-property-database-user]]<<connector-property-database-user, `database.user`>>
 |
 |Name of the PostgreSQL database to use when connecting to the PostgreSQL database server.
 
-|`database.password`
+|[[connector-property-database-password]]<<connector-property-database-password, `database.password`>>
 |
 |Password to use when connecting to the PostgreSQL database server.
 
-|`database.dbname`
+|[[connector-property-database-dbname]]<<connector-property-database-dbname, `database.dbname`>>
 |
 |The name of the PostgreSQL database from which to stream the changes
 
-|`database.server.name`
+|[[connector-property-database-server-name]]<<connector-property-database-server-name, `database.server.name`>>
 |
 |Logical name that identifies and provides a namespace for the particular PostgreSQL database server/cluster being monitored. The logical name should be unique across all other connectors, since it is used as a prefix for all Kafka topic names coming from this connector.
 Only alphanumeric characters and underscores should be used.
 
-|`schema.whitelist`
+|[[connector-property-schema-whitelist]]<<connector-property-schema-whitelist, `schema.whitelist`>>
 |
 |An optional comma-separated list of regular expressions that match schema names to be monitored; any schema name not included in the whitelist will be excluded from monitoring. By default all non-system schemas will be monitored. May not be used with `schema.blacklist`.
 
-|`schema.blacklist`
+|[[connector-property-schema-blacklist]]<<connector-property-schema-blacklist, `schema.blacklist`>>
 |
 |An optional comma-separated list of regular expressions that match schema names to be excluded from monitoring; any schema name not included in the blacklist will be monitored, with the exception of system schemas. May not be used with `schema.whitelist`.
 
-|`table.whitelist`
+|[[connector-property-table-whitelist]]<<connector-property-table-whitelist, `table.whitelist`>>
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be monitored; any table not included in the whitelist will be excluded from monitoring. Each identifier is of the form _schemaName_._tableName_. By default the connector will monitor every non-system table in each monitored schema. May not be used with `table.blacklist`.
 
-|`table.blacklist`
+|[[connector-property-table-blacklist]]<<connector-property-table-blacklist, `table.blacklist`>>
 |
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring; any table not included in the blacklist will be monitored. Each identifier is of the form _schemaName_._tableName_. May not be used with `table.whitelist`.
 
-|`column.whitelist`
+|[[connector-property-column-whitelist]]<<connector-property-column-whitelist, `column.whitelist`>>
 |
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be included in change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. May not be used with column.blacklist.
 
 
-|`column.blacklist`
+|[[connector-property-column-blacklist]]<<connector-property-column-blacklist, `column.blacklist`>>
 |
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns that should be excluded from change event message values. Fully-qualified names for columns are of the form _schemaName_._tableName_._columnName_. May not be used with column.whitelist.
 
-|`time.precision.mode`
+|[[connector-property-time-precision-mode]]<<connector-property-time-precision-mode, `time.precision.mode`>>
 |`adaptive`
 | Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; `adaptive_time_microseconds` captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision. See link:#temporal-values[temporal values].
 
-|`decimal.handling.mode`
+|[[connector-property-decimal-handling-mode]]<<connector-property-decimal-handling-mode, `decimal.handling.mode`>>
 |`precise`
 | Specifies how the connector should handle values for `DECIMAL` and `NUMERIC` columns: `precise` (the default) represents them precisely using `java.math.BigDecimal` values represented in change events in a binary form; or `double` represents them using `double` values, which may result in a loss of precision but will be far easier to use. `string` option encodes values as formatted string which is easy to consume but a semantic information about the real type is lost. See <<decimal-values>>.
 
-|`hstore.handling.mode`
+|[[connector-property-hstore-handling-mode]]<<connector-property-hstore-handling-mode, `hstore.handling.mode`>>
 |`map`
 | Specifies how the connector should handle values for `hstore` columns: `map` (the default) represents using `MAP`; or `json` represents them using `json string`.`json` option encodes values as formatted string such as `{"key" : "val"}`. See <<hstore-values>>.
 
-|`interval.handling.mode`
+|[[connector-property-interval-handling-mode]]<<connector-property-interval-handling-mode, `interval.handling.mode`>>
 |`numeric`
 | Specifies how the connector should handle values for `interval` columns: `numeric` (the default) represents interval using approximate number of microseconds; `string` represents them exactly, using the string pattern representation `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, e.g. `P1Y2M3DT4H5M6.78S`. See <<data-types>>.
 
-|`database.sslmode`
+|[[connector-property-database-sslmode]]<<connector-property-database-sslmode, `database.sslmode`>>
 |`disable`
 |Whether to use an encrypted connection to the PostgreSQL server. Options include: *disable* (the default) to use an unencrypted connection ; *require* to use a secure (encrypted) connection, and fail if one cannot be established; *verify-ca* like `require` but additionally verify the server TLS certificate against the configured Certificate Authority (CA) certificates, or fail if no valid matching CA certificates are found; *verify-full* like `verify-ca` but additionally verify that the server certificate matches the host to which the connection is attempted. See https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|`database.sslcert`
+|[[connector-property-database-sslcert]]<<connector-property-database-sslcert, `database.sslcert`>>
 |
 |The path to the file containing the SSL Certificate for the client. See https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|`database.sslkey`
+|[[connector-property-database-sslkey]]<<connector-property-database-sslkey, `database.sslkey`>>
 |
 |The path to the file containing the SSL private key of the client. See https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|`database.sslpassword`
+|[[connector-property-database-sslpassword]]<<connector-property-database-sslpassword, `database.sslpassword`>>
 |
 |The password to access the client private key from the file specified by `database.sslkey`. See https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|`database.sslrootcert`
+|[[connector-property-database-sslrootcert]]<<connector-property-database-sslrootcert, `database.sslrootcert`>>
 |
 |The path to the file containing the root certificate(s) against which the server is validated. See https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|`database.tcpKeepAlive`
+|[[connector-property-database-tcpkeepalive]]<<connector-property-database-tcpkeepalive, `database.tcpKeepAlive`>>
 |
 |Enable TCP keep-alive probe to verify that database connection is still alive. (enabled by default). See https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation] for more information.
 
-|`tombstones.on.delete`
+|[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`true`
 | Controls whether a tombstone event should be generated after a delete event. +
 When `true` the delete operations are represented by a delete event and a subsequent tombstone event. When `false` only a delete event is sent. +
 Emitting the tombstone event (the default behavior) allows Kafka to completely delete all events pertaining to the given key once the source record got deleted.
 
-|`column.truncate.to._length_.chars`
+|[[connector-property-column-truncate-to-length-chars]]<<connector-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be truncated in the change event message values if the field values are longer than the specified number of characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|`column.mask.with._length_.chars`
+|[[connector-property-column-mask-with-length-chars]]<<connector-property-column-mask-with-length-chars, `column.mask.with._length_.chars`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be replaced in the change event message values with a field value consisting of the specified number of asterisk (`*`) characters. Multiple properties with different lengths can be used in a single configuration, although in each the length must be a positive integer or zero. Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|`column.mask.hash._hashAlgorithm_.with.salt._salt_`
+|[[connector-property-column-mask-hash]]<<connector-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of character-based columns whose values should be pseudonyms in the change event message values with a field value consisting of the hashed value using the algorithm `_hashAlgorithm_` and salt `_salt_`.
 Based on the used hash function referential integrity is kept while data is pseudonymized. Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation.
@@ -1880,14 +1881,14 @@ where `CzQMA0cB5K` is a randomly selected salt.
 
 Note: Depending on the `_hashAlgorithm_` used, the `_salt_` selected and the actual data set, the resulting masked data set may not be completely anonymized.
 
-|`column.propagate.source.type`
+|[[connector-property-column-propagate-source-type]]<<connector-property-column-propagate-source-type, `column.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the fully-qualified names of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
 Useful to properly size corresponding columns in sink databases.
 Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_.
 
-|`datatype.propagate.source.type`
+|[[connector-property-datatype-propagate-source-type]]<<connector-property-datatype-propagate-source-type, `datatype.propagate.source.type`>>
 |_n/a_
 |An optional comma-separated list of regular expressions that match the database-specific data type name of columns whose original type and length should be added as a parameter to the corresponding field schemas in the emitted change messages.
 The schema parameters `pass:[_]pass:[_]debezium.source.column.type`, `pass:[_]pass:[_]debezium.source.column.length` and `pass:[_]pass:[_]debezium.source.column.scale` will be used to propagate the original type name and length (for variable-width types), respectively.
@@ -1895,7 +1896,7 @@ Useful to properly size corresponding columns in sink databases.
 Fully-qualified data type names are of the form _databaseName_._tableName_._typeName_, or _databaseName_._schemaName_._tableName_._typeName_.
 See xref:data-types[] for the list of PostgreSQL-specific data type names.
 
-|`message.key.columns`
+|[[connector-property-message-key-columns]]<<connector-property-message-key-columns, `message.key.columns`>>
 |_empty string_
 | A semi-colon list of regular expressions that match fully-qualified tables and columns to map a primary key. +
 Each item (regular expression) must match the fully-qualified `<fully-qualified table>:<a comma-separated list of columns>` representing the custom key. +
@@ -1912,45 +1913,47 @@ The following _advanced_ configuration properties have good defaults that will w
 |Default
 |Description
 
-|`snapshot.mode`
+|[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
 |`initial`
 |Specifies the criteria for running a snapshot upon startup of the connector. The default is *initial*, and specifies the connector can run a snapshot only when no offsets have been recorded for the logical server name. The *always* option specifies that the connector run a snapshot each time on startup. The *never* option specifies that the connect should never use snapshots and that upon first startup with a logical server name the connector should read from either from where it last left off (last LSN position) or start from the beginning from the point of the view of the logical replication slot. The *initial_only* option specifies that the connector should only take an initial snapshot and then stop, without processing any subsequent changes. The *exported* option specifies that the database snapshot will be based on the point in time when the replication slot was created and is an excellent way to perform the snapshot in a lock-free way.
 ifndef::cdc-product[]
 Finally, if set to *custom* then the user must also set `snapshot.custom.class` which is a custom implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. See link:#snapshots[snapshots].
-|`snapshot.custom.class`
+
+|[[connector-property-snapshot-custom-class]]<<connector-property-snapshot-custom-class, `snapshot.custom.class`>>
 |
 | A full java class name that must be an implementation of the `io.debezium.connector.postgresql.spi.Snapshotter` interface. Only used when `snapshot.mode` is *custom
 endif::cdc-product[]
-|`snapshot.lock.timeout.ms`
+
+|[[connector-property-snapshot-lock-timeout-ms]]<<connector-property-snapshot-lock-timeout-ms, `snapshot.lock.timeout.ms`>>
 |`10000`
 |Positive integer value that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If table locks cannot be acquired in this time interval, the snapshot will fail. See link:#snapshots[snapshots]
 
-|`snapshot.select.statement.overrides`
+|[[connector-property-snapshot-select-statement-overrides]]<<connector-property-snapshot-select-statement-overrides, `snapshot.select.statement.overrides`>>
 |
 |Controls which rows from tables will be included in snapshot. +
 This property contains a comma-separated list of fully-qualified tables _(DB_NAME.TABLE_NAME)_. Select statements for the individual tables are specified in further configuration properties, one for each table, identified by the id `snapshot.select.statement.overrides.[DB_NAME].[TABLE_NAME]`. The value of those properties is the SELECT statement to use when retrieving data from the specific table during snapshotting. _A possible use case for large append-only tables is setting a specific point where to start (resume) snapshotting, in case a previous snapshotting was interrupted._ +
 NOTE: This setting has impact on snapshots only. Events generated by logical decoder are not affected by it at all.
 
-|`event.processing{zwsp}.failure.handling.mode`
+|[[connector-property-event-processing-failure-handling-mode]]<<connector-property-event-processing-failure-handling-mode, `event.processing{zwsp}.failure.handling.mode`>>
 |`fail`
 | Specifies how the connector should react to exceptions during processing of events.
 `fail` will propagate the exception (indicating the offset of the problematic event), causing the connector to stop. +
 `warn` will cause the problematic event to be skipped and the offset of the problematic event to be logged. +
 `skip` will cause the problematic event to be skipped.
 
-|`max.queue.size`
+|[[connector-property-max-queue-size]]<<connector-property-max-queue-size, `max.queue.size`>>
 |`20240`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events received via streaming replication are placed before they are written to Kafka. This queue can provide backpressure when, for example, writes to Kafka are slower or if Kafka is not available.
 
-|`max.batch.size`
+|[[connector-property-max-batch-size]]<<connector-property-max-batch-size, `max.batch.size`>>
 |`10240`
 |Positive integer value that specifies the maximum size of each batch of events that should be processed during each iteration of this connector.
 
-|`poll.interval.ms`
+|[[connector-property-poll-interval-ms]]<<connector-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 1000 milliseconds, or 1 second.
 
-|`include.unknown.datatypes`
+|[[connector-property-include-unknown-datatypes]]<<connector-property-include-unknown-datatypes, `include.unknown.datatypes`>>
 |`false`
 |When {prodname} meets a field whose data type is unknown, then by default the field is omitted from the change event and a warning is logged.
 In some cases it may be preferable though to include the field and send it downstream to clients in the opaque binary representation so the clients will decode it themselves.
@@ -1958,14 +1961,14 @@ Set to `false` to filter unknown data out of events and `true` to keep them in b
 
 NOTE: The clients risk backward compatibility issues. Not only may the database specific binary representation change between releases, but also when the datatype is supported by {prodname} eventually, it will be sent downstream in a logical type, requiring adjustments by consumers. In general, when encountering unsupported data types, please file a feature request so that support can be added.
 
-|`database.initial.statements`
+|[[connector-property-database-initial-statements]]<<connector-property-database-initial-statements, `database.initial.statements`>>
 |
 |A semicolon separated list of SQL statements to be executed when a JDBC connection (not the transaction log reading connection) to the database is established.
 Use doubled semicolon (';;') to use a semicolon as a character and not as a delimiter.
 
 NOTE: The connector may establish JDBC connections at its own discretion, so this should typically be used for configuration of session parameters only, but not for executing DML statements.
 
-|`heartbeat.interval.ms`
+|[[connector-property-heartbeat-interval-ms]]<<connector-property-heartbeat-interval-ms, `heartbeat.interval.ms`>>
 |`0`
 |Controls how frequently heartbeat messages are sent. +
 This property contains an interval in milli-seconds that defines how frequently the connector sends messages into a heartbeat topic.
@@ -1979,12 +1982,12 @@ and also may result in more change events to be re-sent after a connector restar
 Set this parameter to `0` to not send heartbeat messages at all. +
 Disabled by default.
 
-|`heartbeat.topics.prefix`
+|[[connector-property-heartbeat-topics-prefix]]<<connector-property-heartbeat-topics-prefix, `heartbeat.topics.prefix`>>
 |`__debezium-heartbeat`
 |Controls the naming of the topic to which heartbeat messages are sent. +
 The topic is named according to the pattern `<heartbeat.topics.prefix>.<server.name>`.
 
-|`heartbeat.action.query`
+|[[connector-property-heartbeat-action-query]]<<connector-property-heartbeat-action-query, `heartbeat.action.query`>>
 |
 |If specified, this query will be executed upon every heartbeat against the source database.
 
@@ -1996,7 +1999,7 @@ preventing an unbounded WAL growth on the database host.
 
 Example: `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')`
 
-|`schema.refresh.mode`
+|[[connector-property-schema-refresh-mode]]<<connector-property-schema-refresh-mode, `schema.refresh.mode`>>
 |`columns_diff`
 |Specify the conditions that trigger a refresh of the in-memory schema for a table.
 
@@ -2009,17 +2012,17 @@ This setting can improve connector performance significantly if there are freque
 have TOASTed data that are rarely part of these updates. However, it is possible for the in-memory schema to
 become outdated if TOASTable columns are dropped from the table.
 
-|`snapshot.delay.ms`
+|[[connector-property-snapshot-delay-ms]]<<connector-property-snapshot-delay-ms, `snapshot.delay.ms`>>
 |
 |An interval in milli-seconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
 
-|`snapshot.fetch.size`
+|[[connector-property-snapshot-fetch-size]]<<connector-property-snapshot-fetch-size, `snapshot.fetch.size`>>
 |`10240`
 |Specifies the maximum number of rows that should be read in one go from each table while taking a snapshot.
 The connector will read the table contents in multiple batches of this size. Defaults to 10240.
 
-|`slot.stream.params`
+|[[connector-property-slot-stream-params]]<<connector-property-slot-stream-params, `slot.stream.params`>>
 |
 |Optional list of parameters to be passed to the configured logical decoding plug-in.
 ifndef::cdc-product[]
@@ -2028,26 +2031,26 @@ Allowed values depend on the chosen plug-in are separated by semicolon.
 endif::cdc-product[]
 For example, `add-tables=public.table,public.table2;include-lsn=true`.
 
-|`sanitize.field.names`
+|[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
 
-|`slot.max.retries`
+|[[connector-property-slot-max-retries]]<<connector-property-slot-max-retries, `slot.max.retries`>>
 |6
 |How many times to retry connecting to a replication slot when an attempt fails.
 
-|`slot.retry.delay.ms` +
+|[[connector-property-slot-retry-delay-ms]]<<connector-property-slot-retry-delay-ms, `slot.retry.delay.ms`>> +
 |10000 (10 seconds)
 |The number of milli-seconds to wait between retry attempts when the connector fails to connect to a replication slot.
 
-|`toasted.value.placeholder`
+|[[connector-property-toasted-value-placeholder]]<<connector-property-toasted-value-placeholder, `toasted.value.placeholder`>>
 |`__debezium_unavailable_value`
 |Specify the constant that will be provided by {prodname} to indicate that the original value is a toasted value not provided by the database.
 If starts with `hex:` prefix it is expected that the rest of the string repesents hexadecimally encoded octets.
 See link:#toasted-values[Toasted Values] for additional details.
 
-|`provide.transaction.metadata` (Incubating)
+|[[connector-property-provide-transaction-metadata]]<<connector-property-provide-transaction-metadata, `provide.transaction.metadata` (Incubating)>>
 |`false`
 |When set to `true` Debezium generates events with transaction boundaries and enriches data events envelope with transaction metadata.
 
