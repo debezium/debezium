@@ -895,113 +895,113 @@ Cassandra connector has built-in support for JMX metrics. The Cassandra driver a
 |Default
 |Description
 
-|`snapshot.mode`
+|[[connector-property-snapshot-mode]]<<connector-property-snapshot-mode, `snapshot.mode`>>
 |`INITIAL`
 |Specifies the criteria for running a snapshot (eg. initial sync) upon startup of the cassandra connector agent. Must be one of 'INITIAL', 'ALWAYS', or 'NEVER'. The default snapshot mode is 'INITIAL'.
 
-|`snapshot.consistency`
+|[[connector-property-snapshot-consistency]]<<connector-property-snapshot-consistency, `snapshot.consistency`>>
 |`ALL`
 |Specify the {@link ConsistencyLevel} used for the snapshot query.
 
-|`http.port`
+|[[connector-property-http-port]]<<connector-property-http-port, `http.port`>>
 |`8000`
 |The port used by the HTTP server for ping, health check, and build info
 
-|`cassandra.config`
+|[[connector-property-cassandra-config]]<<connector-property-cassandra-config, `cassandra.config`>>
 |
 |The absolute path of the YAML config file used by a Cassandra node.
 
-|`cassandra.hosts`
+|[[connector-property-cassandra-hosts]]<<connector-property-cassandra-hosts, `cassandra.hosts`>>
 |`localhost`
 |One or more addresses of Cassandra nodes that driver uses to discover topology, separated by ","
 
-|`cassandra.port`
+|[[connector-property-cassandra-port]]<<connector-property-cassandra-port, `cassandra.port`>>
 |`9042`
 |The port used to connect to Cassandra host(s).
 
-|`cassandra.username`
+|[[connector-property-cassandra-username]]<<connector-property-cassandra-username, `cassandra.username`>>
 |
 |The username used when connecting to Cassandra hosts.
 
-|`cassandra.password`
+|[[connector-property-cassandra-password]]<<connector-property-cassandra-password, `cassandra.password`>>
 |
 |The password used when connecting to Cassandra hosts.
 
-|`cassandra.ssl.enabled`
+|[[connector-property-cassandra-ssl-enabled]]<<connector-property-cassandra-ssl-enabled, `cassandra.ssl.enabled`>>
 |`false`
 |If set to true, Cassandra connector agent will use SSL to connect to Cassandra node.
 
-|`cassandra.ssl.config.path`
+|[[connector-property-cassandra-ssl-config-path]]<<connector-property-cassandra-ssl-config-path, `cassandra.ssl.config.path`>>
 |
 |The SSL config file path required for storage node.
 
-|`commit.log.relocation.dir`
+|[[connector-property-commit-log-relocation-dir]]<<connector-property-commit-log-relocation-dir, `commit.log.relocation.dir`>>
 |
 |The local directory which commit logs get relocated to once processed.
 
-|`commit.log.post.processing.enabled`
+|[[connector-property-commit-log-post-processing-enabled]]<<connector-property-commit-log-post-processing-enabled, `commit.log.post.processing.enabled`>>
 |`true`
 |Determines whether or not the CommitLogPostProcessor should run. If disabled, commit logs would not be deleted post-process.
 
-|`commit.log.transfer.class`
+|[[connector-property-commit-log-transfer-class]]<<connector-property-commit-log-transfer-class, `commit.log.transfer.class`>>
 |`io.debezium.connector.cassandra.BlackHoleCommitLogTransfer`
 |The fully qualified {@link CommitLogTransfer} class used to transfer commit logs. Built-in transfers are `BlackHoleCommitLogTransfer` and `GCSCommitLogTransfer`.
 
-|`remote.commit.log.relocation.dir`
+|[[connector-property-remote-commit-log-relocation-dir]]<<connector-property-remote-commit-log-relocation-dir, `remote.commit.log.relocation.dir`>>
 |
 |The remote base directory to transfer commit log to. Required to be specified if GCSCommitLogTransfer is used as COMMIT_LOG_TRANSFER_CLASS. For example: "gcs://bucket-name/prefix-name".
 
-|`storage.credential.key.file`
+|[[connector-property-storage-credential-key-file]]<<connector-property-storage-credential-key-file, `storage.credential.key.file`>>
 |
 |The path of the storage key file used for setting up credential to access remote storage service. If {@link GCSCommitLogTransfer} is used and this config is not provided, then Application Default Credential would be used.
 
-|`offset.backing.store.dir`
+|[[connector-property-offset-backing-store-dir]]<<connector-property-offset-backing-store-dir, `offset.backing.store.dir`>>
 |
 |The directory to store offset tracking files.
 
-|`offset.flush.interval.ms`
+|[[connector-property-offset-flush-interval-ms]]<<connector-property-offset-flush-interval-ms, `offset.flush.interval.ms`>>
 |`0`
 |The minimum amount of time to wait before committing the offset. The default value of 0 implies
 the offset will be flushed every time.
 
-|`max.offset.flush.size`
+|[[connector-property-max-offset-flush-size]]<<connector-property-max-offset-flush-size, `max.offset.flush.size`>>
 |`100`
 |The maximum records that are allowed to be processed until it is required to flush offset to disk. This config is effective only if offset_flush_interval_ms != 0.
 
-|`max.queue.size`
+|[[connector-property-max-queue-size]]<<connector-property-max-queue-size, `max.queue.size`>>
 |`8192`
 |Positive integer value that specifies the maximum size of the blocking queue into which change events read from the commit log are placed before they are written to Kafka. This queue can provide back pressure to the commit log reader when, for example, writes to Kafka are slower or if Kafka is not available. Events that appear in the queue are not included in the offsets periodically recorded by this connector. Defaults to 8192, and should always be larger than the maximum batch size specified in the max.batch.size property. The capacity of the queue to hold deserialized records before they are converted to Kafka Connect structs and emitted to Kafka.
 
-|`max.batch.size`
+|[[connector-property-max-batch-size]]<<connector-property-max-batch-size, `max.batch.size`>>
 |`2048`
 |The maximum number of change events to dequeue each time.
 
-|`poll.interval.ms`
+|[[connector-property-poll-interval-ms]]<<connector-property-poll-interval-ms, `poll.interval.ms`>>
 |`1000`
 |Positive integer value that specifies the number of milliseconds the commit log processor should wait during each iteration for new change events to appear in the queue. Defaults to 1000 milliseconds, or 1 second.
 
-|`schema.refresh.interval.ms`
+|[[connector-property-schema-refresh-interval-ms]]<<connector-property-schema-refresh-interval-ms, `schema.refresh.interval.ms`>>
 |`10000`
 |Positive integer value that specifies the number of milliseconds the schema processor should wait before
 refreshing the cached Cassandra table schemas.
 
-|`cdc.dir.poll.interval.ms`
+|[[connector-property-cdc-dir-poll-interval-ms]]<<connector-property-cdc-dir-poll-interval-ms, `cdc.dir.poll.interval.ms`>>
 |`10000`
 |The maximum amount of time to wait on each poll before reattempt.
 
-|`snapshot.scan.interval.ms`
+|[[connector-property-snapshot-scan-interval-ms]]<<connector-property-snapshot-scan-interval-ms, `snapshot.scan.interval.ms`>>
 |`10000`
 |Positive integer value that specifies the number of milliseconds the snapshot processor should wait before re-scanning tables to look for new cdc-enabled tables. Defaults to 10000 milliseconds, or 10 seconds.
 
-|`tombstones.on.delete`
+|[[connector-property-tombstones-on-delete]]<<connector-property-tombstones-on-delete, `tombstones.on.delete`>>
 |`false`
 |Whether deletion events should have a subsequent tombstone event (true) or not (false). It's important to note that in Cassandra, two events with the same key may be updating different columns of a given table. So this could potentially result in records being lost during compaction if they haven't been consumed by the consumer yet. In other words, do NOT set this to true if you have kafka compaction turned on.
 
-|`field.blacklist`
+|[[connector-property-field-blacklist]]<<connector-property-field-blacklist, `field.blacklist`>>
 |
 |A comma-separated list of fully-qualified names of fields that should be excluded from change event message values. Fully-qualified names for fields are in the form keyspace_name>.<field_name>.<nested_field_name>.
 
-|`sanitize.field.names`
+|[[connector-property-sanitize-field-names]]<<connector-property-sanitize-field-names, `sanitize.field.names`>>
 |`true` when connector configuration explicitly specifies the `key.converter` or `value.converter` parameters to use Avro, otherwise defaults to `false`.
 |Whether field names will be sanitized to adhere to Avro naming requirements.
 See xref:configuration/avro.adoc#names[Avro naming] for more details.
