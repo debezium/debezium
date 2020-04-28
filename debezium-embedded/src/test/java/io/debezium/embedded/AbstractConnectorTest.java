@@ -10,7 +10,6 @@ import static org.junit.Assert.fail;
 
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,7 +29,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -51,9 +49,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
+import org.awaitility.Awaitility;
 import org.fest.assertions.Assertions;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -69,9 +67,7 @@ import io.debezium.function.BooleanConsumer;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
 import io.debezium.relational.history.HistoryRecord;
-import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
-import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
 
 /**
@@ -834,7 +830,7 @@ public abstract class AbstractConnectorTest implements Testing {
         Assertions.assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
 
         Assertions
-                .assertThat(((List<Object>) end.getArray("data_collections")).stream().map(x -> (Struct) x)
+                .assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
                         .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
                 .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
         Assertions.assertThat(offset.get("transaction_id")).isEqualTo(expectedTxId);
@@ -852,29 +848,18 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForSnapshotToBeCompleted(String connector, String server) throws InterruptedException {
-        int waitForSeconds = 60;
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
 
-        while (true) {
-            if (waitForSeconds-- <= 0) {
-                Assert.fail("Snapshot was not completed on time");
-            }
-            try {
-                final boolean completed = (boolean) mbeanServer
-                        .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted");
-                if (completed) {
-                    break;
-                }
-            }
-            catch (InstanceNotFoundException e) {
-                Testing.print("Metrics has not started yet");
-            }
-            catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
-            metronome.pause();
-        }
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(60, TimeUnit.SECONDS)
+                .until(() -> {
+                    boolean snapshotCompleted = (boolean) mbeanServer
+                            .getAttribute(getSnapshotMetricsObjectName(connector, server), "SnapshotCompleted");
+
+                    return snapshotCompleted;
+                });
     }
 
     public static void waitForStreamingRunning(String connector, String server) throws InterruptedException {
@@ -882,31 +867,18 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static void waitForStreamingRunning(String connector, String server, String contextName) throws InterruptedException {
-        int waitForSeconds = 60;
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        final Metronome metronome = Metronome.sleeper(Duration.ofSeconds(1), Clock.system());
 
-        while (true) {
-            if (waitForSeconds-- <= 0) {
-                Assert.fail("Streaming was not started on time");
-            }
-            try {
-                final boolean completed = (boolean) mbeanServer
-                        .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
-                if (completed) {
-                    break;
-                }
-                System.out.println("Not yet completed, waiting...");
-            }
-            catch (InstanceNotFoundException e) {
-                System.out.println("Not yet started");
-                Testing.print("Metrics has not started yet");
-            }
-            catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
-            metronome.pause();
-        }
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(60, TimeUnit.SECONDS)
+                .until(() -> {
+                    boolean connected = (boolean) mbeanServer
+                            .getAttribute(getStreamingMetricsObjectName(connector, server, contextName), "Connected");
+
+                    return connected;
+                });
     }
 
     public static ObjectName getSnapshotMetricsObjectName(String connector, String server) throws MalformedObjectNameException {

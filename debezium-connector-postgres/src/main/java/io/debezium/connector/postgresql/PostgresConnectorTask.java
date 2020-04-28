@@ -80,11 +80,11 @@ public class PostgresConnectorTask extends BaseSourceTask {
         try {
             // Print out the server information
             SlotState slotInfo = null;
-            try (PostgresConnection connection = taskContext.createConnection()) {
+            try {
                 if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info(connection.serverInfo().toString());
+                    LOGGER.info(jdbcConnection.serverInfo().toString());
                 }
-                slotInfo = connection.getReplicationSlotState(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
+                slotInfo = jdbcConnection.getReplicationSlotState(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
             }
             catch (SQLException e) {
                 LOGGER.warn("unable to load info of replication slot, Debezium will try to create the slot");

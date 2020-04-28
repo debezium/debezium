@@ -78,6 +78,11 @@
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <properties>
         <!-- By default we need to run these 5 containers, although the two init containers exit quickly -->
