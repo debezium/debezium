@@ -40,7 +40,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -1203,43 +1202,6 @@ public class JdbcConnection implements AutoCloseable {
             }
         }
         return this;
-    }
-
-    /**
-     * Use the supplied table editor to create columns for the supplied result set.
-     *
-     * @param resultSet the query result set; may not be null
-     * @param editor the consumer of the definitions; may not be null
-     * @throws SQLException if an error occurs while using the result set
-     */
-    public static void columnsFor(ResultSet resultSet, TableEditor editor) throws SQLException {
-        List<Column> columns = new ArrayList<>();
-        columnsFor(resultSet, columns::add);
-        editor.setColumns(columns);
-    }
-
-    /**
-     * Determine the column definitions for the supplied result set and add each column to the specified consumer.
-     *
-     * @param resultSet the query result set; may not be null
-     * @param consumer the consumer of the definitions; may not be null
-     * @throws SQLException if an error occurs while using the result set
-     */
-    public static void columnsFor(ResultSet resultSet, Consumer<Column> consumer) throws SQLException {
-        ResultSetMetaData metadata = resultSet.getMetaData();
-        ColumnEditor column = Column.editor();
-        for (int position = 1; position <= metadata.getColumnCount(); ++position) {
-            String columnLabel = metadata.getColumnLabel(position);
-            column.name(columnLabel != null ? columnLabel : metadata.getColumnName(position));
-            column.type(metadata.getColumnTypeName(position));
-            column.jdbcType(metadata.getColumnType(position));
-            column.length(metadata.getPrecision(position));
-            column.scale(metadata.getScale(position));
-            column.optional(isNullable(metadata.isNullable(position)));
-            column.autoIncremented(metadata.isAutoIncrement(position));
-            column.generated(false);
-            consumer.accept(column.create());
-        }
     }
 
     protected static boolean isNullable(int jdbcNullable) {
